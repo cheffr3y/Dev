@@ -1,0 +1,188 @@
+// Culinary Operations Platform — data model
+// One catalog of Items + Recipes shared across the company,
+// with Inventory, Order Guides, and Events scoped per Venue.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  STAFF
+}
+
+enum EventStatus {
+  PLANNED
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         Role     @default(STAFF)
+  homeVenueId  String?
+  homeVenue    Venue?   @relation(fields: [homeVenueId], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Venue {
+  id        String   @id @default(cuid())
+  name      String
+  code      String   @unique // short label e.g. "DT", "WH"
+  address   String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users       User[]
+  inventory   InventoryItem[]
+  orderGuides OrderGuide[]
+  events      Event[]
+}
+
+model Vendor {
+  id        String   @id @default(cuid())
+  name      String
+  contact   String?
+  phone     String?
+  email     String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items       Item[]
+  orderGuides OrderGuide[]
+}
+
+// Master catalog item / ingredient / purchasable product.
+model Item {
+  id        String  @id @default(cuid())
+  name      String
+  category  String  @default("Other")
+  unit      String  @default("each") // purchase & count unit, e.g. "lb", "case", "each"
+  packSize  String? // descriptive, e.g. "6 x #10 can"
+  unitCost  Float   @default(0) // cost per `unit`
+  sku       String?
+  vendorId  String?
+  vendor    Vendor? @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  recipeItems     RecipeItem[]
+  inventoryItems  InventoryItem[]
+  orderGuideLines OrderGuideLine[]
+
+  @@index([category])
+}
+
+// A recipe or build. Shared across all venues.
+model Recipe {
+  id           String   @id @default(cuid())
+  name         String
+  category     String   @default("Other")
+  station      String? // e.g. "Garde Manger", "Bar", "Pastry"
+  yieldQty     Float    @default(1)
+  yieldUnit    String   @default("servings")
+  menuPrice    Float? // sell price per yield unit, for margin calc
+  instructions String? // prep steps, plating notes
+  photoUrl     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  items      RecipeItem[]
+  eventItems EventMenuItem[]
+}
+
+model RecipeItem {
+  id       String @id @default(cuid())
+  recipeId String
+  recipe   Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  itemId   String
+  item     Item   @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  quantity Float  @default(0) // in the item's unit
+  unit     String @default("each")
+  note     String?
+
+  @@unique([recipeId, itemId])
+}
+
+// Per-venue current stock with par levels.
+model InventoryItem {
+  id        String   @id @default(cuid())
+  venueId   String
+  venue     Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  itemId    String
+  item      Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  quantity  Float    @default(0)
+  par       Float    @default(0)
+  unit      String   @default("each")
+  updatedAt DateTime @updatedAt
+
+  @@unique([venueId, itemId])
+}
+
+// A vendor order sheet for a venue.
+model OrderGuide {
+  id        String   @id @default(cuid())
+  name      String
+  venueId   String
+  venue     Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  vendorId  String?
+  vendor    Vendor?  @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lines OrderGuideLine[]
+}
+
+model OrderGuideLine {
+  id           String     @id @default(cuid())
+  orderGuideId String
+  orderGuide   OrderGuide @relation(fields: [orderGuideId], references: [id], onDelete: Cascade)
+  itemId       String
+  item         Item       @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  par          Float      @default(0)
+  unit         String     @default("each")
+  sortOrder    Int        @default(0)
+
+  @@unique([orderGuideId, itemId])
+}
+
+model Event {
+  id         String      @id @default(cuid())
+  name       String
+  venueId    String
+  venue      Venue       @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  date       DateTime
+  guestCount Int         @default(0)
+  status     EventStatus @default(PLANNED)
+  location   String?
+  notes      String?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  menuItems EventMenuItem[]
+}
+
+model EventMenuItem {
+  id              String @id @default(cuid())
+  eventId         String
+  event           Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  recipeId        String
+  recipe          Recipe @relation(fields: [recipeId], references: [id], onDelete: Restrict)
+  plannedServings Float  @default(0)
+  note            String?
+
+  @@unique([eventId, recipeId])
+}

@@ -1,0 +1,2 @@
+# Local Postgres data (if created at repo root by older runs)
+/.pgdata
