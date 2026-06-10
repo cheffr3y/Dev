@@ -1,0 +1,41 @@
+# DigitalOcean App Platform spec for culinary-ops.
+#
+# Two ways to use it:
+#   • Dashboard:  Create → Apps → (pick repo) … or "Import from App Spec" and paste this.
+#   • CLI:        doctl apps create --spec culinary-ops/.do/app.yaml
+#
+# Before the app will work, do these first (see MIGRATION.md for detail):
+#   1. Create a `culinary_ops` database inside your existing managed cluster.
+#   2. Run the one-time data migration from your laptop (npm run db:migrate-legacy).
+#   3. Fill in the two env-var values below.
+#
+# The old foxtownhq app and its database are NOT touched by any of this.
+
+name: culinary-ops
+region: nyc
+services:
+  - name: web
+    github:
+      repo: cheffr3y/Dev
+      branch: main
+      deploy_on_push: true
+    # The app lives in a subfolder of the Dev repo.
+    source_dir: culinary-ops
+    environment_slug: node-js
+    build_command: npm run build
+    run_command: npm start
+    instance_count: 1
+    # Bump to basic-s if the Next.js build runs out of memory.
+    instance_size_slug: basic-xs
+    envs:
+      # Use the SAME connection string for the `culinary_ops` database that you
+      # used as DATABASE_URL when running the data migration.
+      - key: DATABASE_URL
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+        value: REPLACE_WITH_CULINARY_OPS_CONNECTION_STRING
+      # Generate with:  openssl rand -hex 32
+      - key: AUTH_SECRET
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+        value: REPLACE_WITH_A_LONG_RANDOM_STRING
