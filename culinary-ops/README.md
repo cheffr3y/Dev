@@ -109,6 +109,12 @@ Designed to deploy cleanly to **Vercel** with a hosted Postgres (Neon, Supabase,
 2. Set env vars `DATABASE_URL` and `AUTH_SECRET`.
 3. Vercel runs `prisma generate` via the `postinstall` hook; run `npm run db:push` once against your database to create tables.
 
+### Migrating from the legacy foxtownhq app
+Replacing an existing foxtownhq deployment and want to keep its recipes, items,
+venues, and users? See **[MIGRATION.md](./MIGRATION.md)** for the full cutover
+runbook. The data migration is automated (`npm run db:migrate-legacy`), reads the
+old database read-only, and leaves it intact as your backup.
+
 ## Roadmap ideas
 - Unit conversions and sub-recipes (a build used as an ingredient in another build).
 - Inventory count sessions with history and variance reporting.
