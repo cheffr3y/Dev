@@ -2,8 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireUser, hasRole } from "@/lib/session";
-import { recipeCost, costPerServing, foodCostPct, money, pct, num } from "@/lib/costing";
-import { Badge, Button, Card, CardHeader, Field, Input, PageHeader, Select, StatCard, Textarea } from "@/components/ui";
+import { recipeCost, costPerServing, foodCostPct, lineCost, money, pct, num } from "@/lib/costing";
+import { UNIT_OPTIONS, unitLabel } from "@/lib/units";
+import { Badge, Button, Card, CardHeader, Field, Input, LinkButton, PageHeader, Select, StatCard, Textarea } from "@/components/ui";
 import { addRecipeItem, removeRecipeItem, updateRecipe, deleteRecipe } from "../actions";
 
 const CATEGORIES = ["Starter", "Entrée", "Side", "Dessert", "Sauce", "Prep/Build", "Beverage", "Other"];
@@ -38,6 +39,11 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
       <PageHeader
         title={recipe.name}
         subtitle={`${recipe.category}${recipe.station ? ` · ${recipe.station}` : ""} · yields ${num(recipe.yieldQty)} ${recipe.yieldUnit}`}
+        action={
+          <LinkButton href={`/recipes/${recipe.id}/print`} variant="secondary">
+            🖨 Print recipe card
+          </LinkButton>
+        }
       />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -70,15 +76,29 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
                     </td>
                   </tr>
                 )}
-                {recipe.items.map((ri) => (
+                {recipe.items.map((ri) => {
+                  const lc = lineCost(ri);
+                  return (
                   <tr key={ri.id}>
-                    <td className="px-4 py-2 text-zinc-800">{ri.item.name}</td>
-                    <td className="px-4 py-2 text-right text-zinc-600">
-                      {num(ri.quantity)} {ri.unit}
+                    <td className="px-4 py-2 text-zinc-800">
+                      {ri.item.name}
+                      {!lc.converted && (
+                        <span
+                          className="ml-2 align-middle"
+                          title={`Can't convert ${unitLabel(ri.unit)} to ${unitLabel(ri.item.unit)} — cost assumes quantity is in ${unitLabel(ri.item.unit)}.`}
+                        >
+                          <Badge color="amber">unit mismatch</Badge>
+                        </span>
+                      )}
                     </td>
-                    <td className="px-4 py-2 text-right text-zinc-500">{money(ri.item.unitCost)}</td>
+                    <td className="px-4 py-2 text-right text-zinc-600">
+                      {num(ri.quantity)} {unitLabel(ri.unit)}
+                    </td>
+                    <td className="px-4 py-2 text-right text-zinc-500">
+                      {money(ri.item.unitCost)}/{unitLabel(ri.item.unit)}
+                    </td>
                     <td className="px-4 py-2 text-right font-medium text-zinc-800">
-                      {money(ri.quantity * ri.item.unitCost)}
+                      {money(lc.cost)}
                     </td>
                     {canEdit && (
                       <td className="px-4 py-2 text-right">
@@ -90,7 +110,8 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
                       </td>
                     )}
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
               <tfoot>
                 <tr className="border-t border-zinc-200 bg-zinc-50 font-medium">
@@ -126,15 +147,26 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
                       <Input name="quantity" type="number" step="0.01" min="0" defaultValue={1} />
                     </Field>
                   </div>
-                  <div className="w-24">
+                  <div className="w-28">
                     <Field label="Unit">
-                      <Input name="unit" defaultValue="each" />
+                      <Select name="unit" defaultValue="each">
+                        {UNIT_OPTIONS.map((g) => (
+                          <optgroup key={g.group} label={g.group}>
+                            {g.units.map((u) => (
+                              <option key={u} value={u}>
+                                {unitLabel(u)}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </Select>
                     </Field>
                   </div>
                   <Button type="submit">Add</Button>
                 </form>
                 <p className="mt-2 text-xs text-zinc-400">
-                  Tip: enter the quantity in the same unit the item is costed in for accurate costing.
+                  Quantities convert automatically within volume (tsp → gal) and weight (g → lb) units, even when
+                  the item is purchased in a different unit.
                 </p>
               </div>
             )}
@@ -146,6 +178,34 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
               {recipe.instructions || <span className="text-zinc-400">No method recorded.</span>}
             </div>
           </Card>
+
+          {(recipe.criticalNotes || recipe.allergens) && (
+            <Card className="mt-4 border-amber-300">
+              <CardHeader>⚠ Critical · Food Safety</CardHeader>
+              <div className="space-y-2 p-4 text-sm text-zinc-700">
+                {recipe.criticalNotes && <p className="whitespace-pre-wrap">{recipe.criticalNotes}</p>}
+                {recipe.allergens && (
+                  <p>
+                    <span className="font-medium text-zinc-800">Allergens:</span> {recipe.allergens}
+                  </p>
+                )}
+              </div>
+            </Card>
+          )}
+
+          {(recipe.storage || recipe.shelfLife) && (
+            <Card className="mt-4">
+              <CardHeader>Storage &amp; Shelf Life</CardHeader>
+              <div className="space-y-2 p-4 text-sm text-zinc-700">
+                {recipe.storage && <p className="whitespace-pre-wrap">{recipe.storage}</p>}
+                {recipe.shelfLife && (
+                  <p>
+                    <span className="font-medium text-zinc-800">Shelf life:</span> {recipe.shelfLife}
+                  </p>
+                )}
+              </div>
+            </Card>
+          )}
         </div>
 
         {/* Edit panel */}
@@ -179,8 +239,28 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
                 <Field label="Menu Price ($)">
                   <Input name="menuPrice" type="number" step="0.01" min="0" defaultValue={recipe.menuPrice ?? ""} />
                 </Field>
-                <Field label="Method / Instructions">
+                <div className="grid grid-cols-2 gap-2">
+                  <Field label="Prep (min)">
+                    <Input name="prepMinutes" type="number" min="0" defaultValue={recipe.prepMinutes ?? ""} />
+                  </Field>
+                  <Field label="Cook (min)">
+                    <Input name="cookMinutes" type="number" min="0" defaultValue={recipe.cookMinutes ?? ""} />
+                  </Field>
+                </div>
+                <Field label="Method / Instructions" hint="One step per line — steps are numbered on the printed card.">
                   <Textarea name="instructions" defaultValue={recipe.instructions ?? ""} rows={6} />
+                </Field>
+                <Field label="Critical / Food Safety" hint="HACCP critical limits, e.g. “Cook to 165°F internal · hold above 140°F”.">
+                  <Textarea name="criticalNotes" defaultValue={recipe.criticalNotes ?? ""} rows={2} />
+                </Field>
+                <Field label="Allergens">
+                  <Input name="allergens" defaultValue={recipe.allergens ?? ""} placeholder="dairy, gluten, tree nuts" />
+                </Field>
+                <Field label="Storage Instructions">
+                  <Textarea name="storage" defaultValue={recipe.storage ?? ""} rows={2} placeholder="Cool rapidly, store covered & labeled…" />
+                </Field>
+                <Field label="Shelf Life">
+                  <Input name="shelfLife" defaultValue={recipe.shelfLife ?? ""} placeholder="3 days refrigerated" />
                 </Field>
                 <Button type="submit">Save changes</Button>
               </form>

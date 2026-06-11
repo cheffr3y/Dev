@@ -97,6 +97,14 @@ model Recipe {
   menuPrice    Float? // sell price per yield unit, for margin calc
   instructions String? // prep steps, plating notes
   photoUrl     String?
+
+  // Recipe card / food-safety details (printed for line cooks)
+  prepMinutes   Int? // active prep time
+  cookMinutes   Int? // cook / bake time
+  shelfLife     String? // e.g. "3 days refrigerated"
+  storage       String? // storage & holding instructions
+  allergens     String? // comma-separated, e.g. "dairy, gluten, tree nuts"
+  criticalNotes String? // HACCP / critical control points, e.g. "Cook to 165°F internal"
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

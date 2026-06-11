@@ -98,7 +98,10 @@ scripts/dev-setup.sh     Local Postgres bootstrap
 ```
 
 ## Costing model
-`line cost = quantity × item.unitCost`, summed per recipe. The MVP assumes a recipe ingredient's quantity is entered in the same unit the catalog item is costed in (e.g. cost an item per `lb`, then enter `lb` in the recipe). Unit conversions can be layered into `lib/costing.ts` later without touching the UI.
+`line cost = converted quantity × item.unitCost`, summed per recipe. Recipe quantities convert automatically between units in the same family (`lib/units.ts`) — volume (tsp, tbsp, fl oz, cup, pt, qt, gal, mL, L) and weight (g, kg, oz, lb) — so an item costed per `gal` can be used by the `tbsp` in a recipe. When units aren't convertible (e.g. `cup` of an item costed per `lb`), costing falls back to the legacy same-unit assumption and the recipe page flags the line with a *unit mismatch* badge.
+
+## Printable recipe cards
+Every recipe has a kitchen-facing print view at `/recipes/[id]/print`: ingredient table, numbered method steps, allergen banner, critical food-safety (HACCP) box, storage & shelf-life instructions, and a prepared/verified sign-off footer. Quantities and yield scale for batches via `?x=N` (×1–×4 in the toolbar). Costs and margins are intentionally omitted from the card.
 
 ---
 
@@ -116,7 +119,8 @@ runbook. The data migration is automated (`npm run db:migrate-legacy`), reads th
 old database read-only, and leaves it intact as your backup.
 
 ## Roadmap ideas
-- Unit conversions and sub-recipes (a build used as an ingredient in another build).
+- Sub-recipes (a build used as an ingredient in another build).
+- Density-based volume↔weight conversion per item (e.g. cups of flour from an item costed per lb).
 - Inventory count sessions with history and variance reporting.
 - Convert an order guide into a placed order + receiving workflow.
 - Per-venue recipe availability and pricing.

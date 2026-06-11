@@ -1,15 +1,26 @@
-// Costing helpers. The MVP assumes a recipe ingredient's quantity is
-// expressed in the same unit as the catalog item's cost unit, so
-// line cost = quantity * item.unitCost. Unit conversions can be layered
-// on later without changing the call sites.
+// Costing helpers. Recipe quantities are converted from the recipe's unit
+// into the item's purchase/cost unit (e.g. 2 tbsp of an item bought by the
+// gallon), so line cost = converted quantity * item.unitCost. When the two
+// units aren't convertible (e.g. cups of an item costed by the lb) we fall
+// back to the legacy same-unit assumption and report `converted: false` so
+// the UI can flag the line.
+
+import { convertQty } from "./units";
 
 export type RecipeItemWithCost = {
   quantity: number;
-  item: { unitCost: number };
+  unit: string;
+  item: { unitCost: number; unit: string };
 };
 
+export function lineCost(ri: RecipeItemWithCost): { cost: number; converted: boolean } {
+  const qty = convertQty(ri.quantity, ri.unit, ri.item.unit);
+  if (qty == null) return { cost: ri.quantity * (ri.item.unitCost ?? 0), converted: false };
+  return { cost: qty * (ri.item.unitCost ?? 0), converted: true };
+}
+
 export function recipeCost(items: RecipeItemWithCost[]): number {
-  return items.reduce((sum, ri) => sum + ri.quantity * (ri.item.unitCost ?? 0), 0);
+  return items.reduce((sum, ri) => sum + lineCost(ri).cost, 0);
 }
 
 export function costPerServing(totalCost: number, yieldQty: number): number {

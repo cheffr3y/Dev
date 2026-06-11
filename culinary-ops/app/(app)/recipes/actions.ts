@@ -14,6 +14,12 @@ const recipeSchema = z.object({
   yieldUnit: z.string().trim().min(1).default("servings"),
   menuPrice: z.coerce.number().min(0).optional(),
   instructions: z.string().trim().optional(),
+  prepMinutes: z.coerce.number().int().min(0).optional(),
+  cookMinutes: z.coerce.number().int().min(0).optional(),
+  shelfLife: z.string().trim().optional(),
+  storage: z.string().trim().optional(),
+  allergens: z.string().trim().optional(),
+  criticalNotes: z.string().trim().optional(),
 });
 
 function parseRecipe(formData: FormData) {
@@ -25,6 +31,12 @@ function parseRecipe(formData: FormData) {
     yieldUnit: formData.get("yieldUnit") || "servings",
     menuPrice: formData.get("menuPrice") || undefined,
     instructions: formData.get("instructions") || undefined,
+    prepMinutes: formData.get("prepMinutes") || undefined,
+    cookMinutes: formData.get("cookMinutes") || undefined,
+    shelfLife: formData.get("shelfLife") || undefined,
+    storage: formData.get("storage") || undefined,
+    allergens: formData.get("allergens") || undefined,
+    criticalNotes: formData.get("criticalNotes") || undefined,
   });
   return {
     name: d.name,
@@ -34,6 +46,12 @@ function parseRecipe(formData: FormData) {
     yieldUnit: d.yieldUnit,
     menuPrice: d.menuPrice ?? null,
     instructions: d.instructions || null,
+    prepMinutes: d.prepMinutes ?? null,
+    cookMinutes: d.cookMinutes ?? null,
+    shelfLife: d.shelfLife || null,
+    storage: d.storage || null,
+    allergens: d.allergens || null,
+    criticalNotes: d.criticalNotes || null,
   };
 }
 

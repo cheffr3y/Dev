@@ -17,7 +17,11 @@ body {
   color: var(--foreground);
 }
 
-/* Print-friendly order guides & event prep sheets */
+/* Print-friendly order guides, event prep sheets & recipe cards */
+@page {
+  margin: 0.5in;
+}
+
 @media print {
   .no-print {
     display: none !important;
@@ -27,7 +31,15 @@ body {
     margin: 0 !important;
     padding: 0 !important;
   }
+  .print-sheet {
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
   body {
     background: #fff;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
   }
 }
