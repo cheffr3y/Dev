@@ -49,7 +49,7 @@ export function Sidebar({ role }: { role: string }) {
     <nav className="flex flex-col gap-6">
       {sections.map((section) => (
         <div key={section.heading}>
-          <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+          <p className="mb-2 px-3 font-mono text-[11px] uppercase tracking-[0.04em] text-white/50">
             {section.heading}
           </p>
           <ul className="space-y-1">
@@ -60,8 +60,8 @@ export function Sidebar({ role }: { role: string }) {
                   className={cn(
                     "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors",
                     isActive(item.href)
-                      ? "bg-zinc-800 text-white"
-                      : "text-zinc-300 hover:bg-zinc-800/60 hover:text-white",
+                      ? "bg-white/10 text-white"
+                      : "text-white/70 hover:bg-white/5 hover:text-white",
                   )}
                 >
                   <span className="w-5 text-center text-base leading-none">{item.icon}</span>

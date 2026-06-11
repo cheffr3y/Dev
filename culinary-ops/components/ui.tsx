@@ -15,10 +15,16 @@ export function PageHeader({
   action?: ReactNode;
 }) {
   return (
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <div className="mb-8 flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">{title}</h1>
-        {subtitle && <p className="mt-1 text-sm text-zinc-500">{subtitle}</p>}
+        <h1 className="font-display text-3xl leading-none tracking-tight text-ink md:text-4xl">
+          {title}
+        </h1>
+        {subtitle && (
+          <p className="mt-2 font-mono text-xs uppercase tracking-[0.02em] text-zinc-500">
+            {subtitle}
+          </p>
+        )}
       </div>
       {action}
     </div>
@@ -33,20 +39,24 @@ export function Card({
   className?: string;
 }) {
   return (
-    <div className={cn("rounded-xl border border-zinc-200 bg-white shadow-sm", className)}>
+    <div className={cn("rounded-lg border border-hairline bg-canvas", className)}>
       {children}
     </div>
   );
 }
 
 export function CardHeader({ children }: { children: ReactNode }) {
-  return <div className="border-b border-zinc-100 px-5 py-3 text-sm font-medium text-zinc-700">{children}</div>;
+  return (
+    <div className="border-b border-hairline px-5 py-3 font-mono text-xs uppercase tracking-[0.02em] text-zinc-600">
+      {children}
+    </div>
+  );
 }
 
 const buttonStyles = {
-  primary: "bg-zinc-900 text-white hover:bg-zinc-700",
-  secondary: "border border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50",
-  danger: "border border-red-200 bg-white text-red-600 hover:bg-red-50",
+  primary: "rounded-full bg-primary text-white hover:bg-zinc-700",
+  secondary: "rounded-full border border-hairline bg-transparent text-ink hover:border-ink",
+  danger: "rounded-full border border-red-200 bg-transparent text-red-600 hover:border-red-600",
 };
 
 export function Button({
@@ -58,7 +68,7 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium transition-colors disabled:opacity-50",
+        "inline-flex items-center justify-center gap-1.5 px-5 py-2 text-sm font-medium transition-colors disabled:opacity-50",
         buttonStyles[variant],
         className,
       )}
@@ -84,7 +94,7 @@ export function LinkButton({
     <Link
       href={href}
       className={cn(
-        "inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium transition-colors",
+        "inline-flex items-center justify-center gap-1.5 px-5 py-2 text-sm font-medium transition-colors",
         buttonStyles[variant],
         className,
       )}
@@ -95,7 +105,7 @@ export function LinkButton({
 }
 
 const fieldBase =
-  "w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500";
+  "w-full rounded-sm border border-zinc-300 bg-canvas px-3 py-2 text-sm text-ink placeholder:text-zinc-400 focus:border-form-focus focus:outline-none focus:ring-1 focus:ring-form-focus";
 
 export function Field({
   label,
@@ -108,7 +118,9 @@ export function Field({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-medium text-zinc-600">{label}</span>
+      <span className="mb-1 block font-mono text-xs uppercase tracking-[0.02em] text-zinc-600">
+        {label}
+      </span>
       {children}
       {hint && <span className="mt-1 block text-xs text-zinc-400">{hint}</span>}
     </label>
@@ -128,11 +140,11 @@ export function Select(props: ComponentProps<"select">) {
 }
 
 const badgeStyles: Record<string, string> = {
-  gray: "bg-zinc-100 text-zinc-600",
-  green: "bg-emerald-100 text-emerald-700",
-  red: "bg-red-100 text-red-700",
-  amber: "bg-amber-100 text-amber-700",
-  blue: "bg-blue-100 text-blue-700",
+  gray: "border-hairline bg-zinc-50 text-zinc-600",
+  green: "border-emerald-600/30 bg-pale-green text-emerald-700",
+  red: "border-red-200 bg-red-50 text-red-600",
+  amber: "border-coral-soft bg-amber-50 text-amber-700",
+  blue: "border-focus/30 bg-pale-blue text-blue-600",
 };
 
 export function Badge({
@@ -143,7 +155,12 @@ export function Badge({
   color?: keyof typeof badgeStyles;
 }) {
   return (
-    <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium", badgeStyles[color])}>
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full border px-2.5 py-0.5 font-mono text-[11px] uppercase tracking-[0.02em]",
+        badgeStyles[color],
+      )}
+    >
       {children}
     </span>
   );
@@ -151,7 +168,7 @@ export function Badge({
 
 export function EmptyState({ title, hint }: { title: string; hint?: string }) {
   return (
-    <div className="rounded-xl border border-dashed border-zinc-300 bg-white px-6 py-12 text-center">
+    <div className="rounded-lg border border-dashed border-zinc-300 bg-zinc-50 px-6 py-12 text-center">
       <p className="text-sm font-medium text-zinc-600">{title}</p>
       {hint && <p className="mt-1 text-sm text-zinc-400">{hint}</p>}
     </div>
@@ -170,11 +187,11 @@ export function StatCard({
   href?: string;
 }) {
   const inner = (
-    <Card className="p-5 transition-shadow hover:shadow-md">
-      <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-zinc-900">{value}</p>
-      {sub && <p className="mt-1 text-xs text-zinc-500">{sub}</p>}
-    </Card>
+    <div className="rounded-lg bg-stone p-5 transition-colors hover:bg-zinc-200">
+      <p className="font-mono text-xs uppercase tracking-[0.02em] text-zinc-600">{label}</p>
+      <p className="mt-3 font-display text-3xl leading-none tracking-tight text-ink">{value}</p>
+      {sub && <p className="mt-2 text-xs text-zinc-500">{sub}</p>}
+    </div>
   );
   return href ? <Link href={href}>{inner}</Link> : inner;
 }

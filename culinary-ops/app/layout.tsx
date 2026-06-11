@@ -1,14 +1,22 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter, Space_Grotesk, Space_Mono } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// Cohere system fallbacks: CohereText -> Space Grotesk, Unica77 -> Inter,
+// CohereMono -> a true mono to keep the technical-label cadence.
+const display = Space_Grotesk({
+  variable: "--font-cohere-display",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const body = Inter({
+  variable: "--font-unica-fallback",
+  subsets: ["latin"],
+});
+
+const mono = Space_Mono({
+  variable: "--font-cohere-mono",
+  weight: ["400", "700"],
   subsets: ["latin"],
 });
 
@@ -25,7 +33,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${display.variable} ${body.variable} ${mono.variable} h-full antialiased`}
     >
       <body className="min-h-full font-sans">{children}</body>
     </html>

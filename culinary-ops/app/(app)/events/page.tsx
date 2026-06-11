@@ -72,7 +72,7 @@ export default async function EventsPage() {
         </details>
       )}
 
-      <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-500">Upcoming</h2>
+      <h2 className="mb-3 font-mono text-xs uppercase tracking-[0.02em] text-zinc-600">Upcoming</h2>
       {upcoming.length === 0 ? (
         <EmptyState title="No upcoming events" />
       ) : (
@@ -85,7 +85,7 @@ export default async function EventsPage() {
 
       {past.length > 0 && (
         <>
-          <h2 className="mb-2 mt-8 text-sm font-semibold uppercase tracking-wide text-zinc-500">Past</h2>
+          <h2 className="mb-3 mt-10 font-mono text-xs uppercase tracking-[0.02em] text-zinc-600">Past</h2>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {past.map((e) => (
               <EventCard key={e.id} event={e} />

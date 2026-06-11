@@ -60,7 +60,7 @@ export default async function RecipesPage() {
 
       <Card className="overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-zinc-50 text-left text-xs uppercase tracking-wide text-zinc-500">
+          <thead className="bg-zinc-50 text-left font-mono text-[11px] uppercase tracking-[0.02em] text-zinc-600">
             <tr>
               <th className="px-4 py-2.5 font-medium">Recipe</th>
               <th className="px-4 py-2.5 font-medium">Category</th>

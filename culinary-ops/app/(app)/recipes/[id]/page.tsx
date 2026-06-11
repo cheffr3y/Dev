@@ -59,7 +59,7 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
           <Card>
             <CardHeader>Ingredients</CardHeader>
             <table className="w-full text-sm">
-              <thead className="bg-zinc-50 text-left text-xs uppercase tracking-wide text-zinc-500">
+              <thead className="bg-zinc-50 text-left font-mono text-[11px] uppercase tracking-[0.02em] text-zinc-600">
                 <tr>
                   <th className="px-4 py-2 font-medium">Item</th>
                   <th className="px-4 py-2 text-right font-medium">Qty</th>

@@ -1,15 +1,79 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f7f7f8;
-  --foreground: #1c1c1f;
+  --background: #ffffff;
+  --foreground: #212121;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-unica-fallback);
+  --font-display: var(--font-cohere-display);
+  --font-mono: var(--font-cohere-mono);
+}
+
+/*
+ * Cohere design system tokens (DESIGNcohere.md).
+ * Semantic names for new component code, plus the stock Tailwind ramps
+ * (zinc/blue/red/amber/emerald) remapped to the documented Cohere values so
+ * existing utility classes inherit the palette.
+ */
+@theme {
+  /* Brand & surfaces */
+  --color-primary: #17171c;
+  --color-ink: #212121;
+  --color-deep-green: #003c33;
+  --color-dark-navy: #071829;
+  --color-canvas: #ffffff;
+  --color-stone: #eeece7;
+  --color-pale-green: #edfce9;
+  --color-pale-blue: #f1f5ff;
+  --color-hairline: #d9d9dd;
+  --color-coral: #ff7759;
+  --color-coral-soft: #ffad9b;
+  --color-action: #1863dc;
+  --color-focus: #4c6ee6;
+  --color-form-focus: #9b60aa;
+
+  /* Neutral ramp -> Cohere ink/slate scale */
+  --color-zinc-50: #f7f6f3;
+  --color-zinc-100: #eeece7;
+  --color-zinc-200: #e5e7eb;
+  --color-zinc-300: #d9d9dd;
+  --color-zinc-400: #93939f;
+  --color-zinc-500: #75758a;
+  --color-zinc-600: #616161;
+  --color-zinc-700: #3d3d44;
+  --color-zinc-800: #212121;
+  --color-zinc-900: #17171c;
+  --color-zinc-950: #000000;
+
+  /* Action blue ramp */
+  --color-blue-100: #f1f5ff;
+  --color-blue-600: #1863dc;
+  --color-blue-700: #1453b8;
+
+  /* Error ramp anchored on #b30000 */
+  --color-red-50: #fdf1f0;
+  --color-red-100: #f9dedb;
+  --color-red-200: #f0bdb8;
+  --color-red-500: #c52f1f;
+  --color-red-600: #b30000;
+  --color-red-700: #8f0000;
+
+  /* Warm accents -> coral */
+  --color-amber-50: #fff4f1;
+  --color-amber-100: #ffe5dd;
+  --color-amber-300: #ffad9b;
+  --color-amber-600: #e05a37;
+  --color-amber-700: #b6492d;
+  --color-amber-900: #7c3220;
+
+  /* Green accents -> deep enterprise green */
+  --color-emerald-100: #edfce9;
+  --color-emerald-600: #0a5c4d;
+  --color-emerald-700: #003c33;
 }
 
 body {

@@ -56,8 +56,8 @@ export default async function RecipePrintPage({
               href={`/recipes/${recipe.id}/print${b === 1 ? "" : `?x=${b}`}`}
               className={
                 b === batch
-                  ? "rounded-lg bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white"
-                  : "rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-50"
+                  ? "rounded-full bg-primary px-3.5 py-1.5 text-sm font-medium text-white"
+                  : "rounded-full border border-hairline bg-transparent px-3.5 py-1.5 text-sm text-zinc-600 hover:border-ink hover:text-ink"
               }
             >
               ×{b}
