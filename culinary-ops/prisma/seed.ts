@@ -12,6 +12,8 @@ async function main() {
   await prisma.orderGuideLine.deleteMany();
   await prisma.orderGuide.deleteMany();
   await prisma.inventoryItem.deleteMany();
+  await prisma.recipeChange.deleteMany();
+  await prisma.recipeComponent.deleteMany();
   await prisma.recipeItem.deleteMany();
   await prisma.recipe.deleteMany();
   await prisma.item.deleteMany();

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireUser, hasRole } from "@/lib/session";
-import { recipeCost, costPerServing, foodCostPct, money, pct } from "@/lib/costing";
+import { buildCostMap, costPerServing, foodCostPct, money, pct } from "@/lib/costing";
 import { Badge, Button, Card, Field, Input, PageHeader, Select } from "@/components/ui";
 import { createRecipe } from "./actions";
 
@@ -12,9 +12,15 @@ export default async function RecipesPage() {
   const canEdit = hasRole(user, "MANAGER");
 
   const recipes = await prisma.recipe.findMany({
-    include: { items: { include: { item: true } } },
+    include: {
+      items: { include: { item: true } },
+      components: { select: { childId: true, quantity: true } },
+    },
     orderBy: [{ category: "asc" }, { name: "asc" }],
   });
+
+  // Cost map includes nested sub-recipes (built across the whole catalog).
+  const costMap = buildCostMap(recipes);
 
   return (
     <div>
@@ -79,7 +85,7 @@ export default async function RecipesPage() {
               </tr>
             )}
             {recipes.map((r) => {
-              const cost = recipeCost(r.items);
+              const cost = costMap.get(r.id) ?? 0;
               const perServing = costPerServing(cost, r.yieldQty);
               const fcp = foodCostPct(perServing, r.menuPrice);
               return (

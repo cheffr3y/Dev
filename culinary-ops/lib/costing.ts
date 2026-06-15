@@ -23,6 +23,56 @@ export function recipeCost(items: RecipeItemWithCost[]): number {
   return items.reduce((sum, ri) => sum + lineCost(ri).cost, 0);
 }
 
+// A recipe reduced to just what's needed to cost it, including sub-recipes.
+export type RecipeCostNode = {
+  id: string;
+  yieldQty: number;
+  items: RecipeItemWithCost[];
+  components: { childId: string; quantity: number }[];
+};
+
+// Cost of a single sub-recipe line: (child total cost / child yield) * quantity.
+export function componentLineCost(
+  component: { childId: string; quantity: number },
+  costMap: Map<string, number>,
+  byId: Map<string, RecipeCostNode>,
+): number {
+  const child = byId.get(component.childId);
+  if (!child) return 0;
+  const childTotal = costMap.get(component.childId) ?? 0;
+  const perYield = child.yieldQty > 0 ? childTotal / child.yieldQty : childTotal;
+  return perYield * component.quantity;
+}
+
+// Build a map of recipeId -> fully-loaded cost (ingredients + nested
+// sub-recipes). Cycles are guarded against and contribute nothing.
+export function buildCostMap(recipes: RecipeCostNode[]): Map<string, number> {
+  const byId = new Map(recipes.map((r) => [r.id, r]));
+  const cache = new Map<string, number>();
+
+  function cost(id: string, stack: Set<string>): number {
+    const cached = cache.get(id);
+    if (cached != null) return cached;
+    const node = byId.get(id);
+    if (!node || stack.has(id)) return 0;
+    stack.add(id);
+    let total = recipeCost(node.items);
+    for (const c of node.components) {
+      const child = byId.get(c.childId);
+      if (!child) continue;
+      const childTotal = cost(c.childId, stack);
+      const perYield = child.yieldQty > 0 ? childTotal / child.yieldQty : childTotal;
+      total += perYield * c.quantity;
+    }
+    stack.delete(id);
+    cache.set(id, total);
+    return total;
+  }
+
+  for (const r of recipes) cost(r.id, new Set());
+  return cache;
+}
+
 export function costPerServing(totalCost: number, yieldQty: number): number {
   if (!yieldQty || yieldQty <= 0) return 0;
   return totalCost / yieldQty;

@@ -110,6 +110,43 @@ model Recipe {
 
   items      RecipeItem[]
   eventItems EventMenuItem[]
+
+  // Sub-recipes: a recipe can be built from other recipes (components).
+  components RecipeComponent[] @relation("ParentRecipe")
+  usedIn     RecipeComponent[] @relation("ChildRecipe")
+
+  // Automatically-recorded edit history.
+  changes RecipeChange[]
+}
+
+// A recipe used as a component / sub-recipe of another recipe.
+// quantity is expressed in the child recipe's yield unit (e.g. 0.5 batch).
+model RecipeComponent {
+  id       String  @id @default(cuid())
+  parentId String
+  parent   Recipe  @relation("ParentRecipe", fields: [parentId], references: [id], onDelete: Cascade)
+  childId  String
+  child    Recipe  @relation("ChildRecipe", fields: [childId], references: [id], onDelete: Restrict)
+  quantity Float   @default(1)
+  unit     String  @default("serving")
+  note     String?
+
+  @@unique([parentId, childId])
+  @@index([childId])
+}
+
+// Auto-generated changelog entry for a recipe edit.
+model RecipeChange {
+  id        String   @id @default(cuid())
+  recipeId  String
+  recipe    Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  summary   String // short headline, e.g. "Edited details"
+  detail    String? // newline-separated field-level changes
+  userId    String?
+  userName  String? // snapshot of editor name at the time
+  createdAt DateTime @default(now())
+
+  @@index([recipeId, createdAt])
 }
 
 model RecipeItem {
