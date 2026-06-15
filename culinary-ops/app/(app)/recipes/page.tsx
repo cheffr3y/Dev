@@ -62,12 +62,12 @@ export default async function RecipesPage() {
         <table className="w-full text-sm">
           <thead className="bg-zinc-50 text-left font-mono text-[11px] uppercase tracking-[0.02em] text-zinc-600">
             <tr>
-              <th className="px-4 py-2.5 font-medium">Recipe</th>
-              <th className="px-4 py-2.5 font-medium">Category</th>
-              <th className="px-4 py-2.5 text-right font-medium">Cost</th>
-              <th className="px-4 py-2.5 text-right font-medium">$ / {""}serving</th>
-              <th className="px-4 py-2.5 text-right font-medium">Menu</th>
-              <th className="px-4 py-2.5 text-right font-medium">Food %</th>
+              <th className="px-6 py-4 font-medium">Recipe</th>
+              <th className="px-6 py-4 font-medium">Category</th>
+              <th className="px-6 py-4 text-right font-medium">Cost</th>
+              <th className="px-6 py-4 text-right font-medium">$ / {""}serving</th>
+              <th className="px-6 py-4 text-right font-medium">Menu</th>
+              <th className="px-6 py-4 text-right font-medium">Food %</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100">
@@ -84,19 +84,19 @@ export default async function RecipesPage() {
               const fcp = foodCostPct(perServing, r.menuPrice);
               return (
                 <tr key={r.id} className="hover:bg-zinc-50">
-                  <td className="px-4 py-2.5">
+                  <td className="px-6 py-4">
                     <Link href={`/recipes/${r.id}`} className="font-medium text-zinc-800 hover:underline">
                       {r.name}
                     </Link>
                     {r.station && <span className="ml-2 text-xs text-zinc-400">{r.station}</span>}
                   </td>
-                  <td className="px-4 py-2.5">
+                  <td className="px-6 py-4">
                     <Badge>{r.category}</Badge>
                   </td>
-                  <td className="px-4 py-2.5 text-right text-zinc-600">{money(cost)}</td>
-                  <td className="px-4 py-2.5 text-right text-zinc-600">{money(perServing)}</td>
-                  <td className="px-4 py-2.5 text-right text-zinc-600">{r.menuPrice ? money(r.menuPrice) : "—"}</td>
-                  <td className="px-4 py-2.5 text-right">
+                  <td className="px-6 py-4 text-right text-zinc-600">{money(cost)}</td>
+                  <td className="px-6 py-4 text-right text-zinc-600">{money(perServing)}</td>
+                  <td className="px-6 py-4 text-right text-zinc-600">{r.menuPrice ? money(r.menuPrice) : "—"}</td>
+                  <td className="px-6 py-4 text-right">
                     {fcp == null ? (
                       <span className="text-zinc-400">—</span>
                     ) : (

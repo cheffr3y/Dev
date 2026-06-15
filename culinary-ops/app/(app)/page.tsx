@@ -63,7 +63,7 @@ export default async function DashboardPage() {
           </CardHeader>
           {lowItems.length === 0 ? (
             <div className="p-5">
-              <p className="text-sm text-zinc-500">Everything is at or above par. 🎉</p>
+              <p className="text-sm text-zinc-500">Everything is at or above par.</p>
             </div>
           ) : (
             <ul className="divide-y divide-zinc-100">

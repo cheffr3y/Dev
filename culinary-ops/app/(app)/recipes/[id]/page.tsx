@@ -28,6 +28,10 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
   const perServing = costPerServing(cost, recipe.yieldQty);
   const fcp = foodCostPct(perServing, recipe.menuPrice);
   const margin = recipe.menuPrice ? recipe.menuPrice - perServing : null;
+  const methodSteps = (recipe.instructions ?? "")
+    .split(/\r?\n/)
+    .map((s) => s.trim().replace(/^\d+[.)]\s*/, ""))
+    .filter(Boolean);
 
   return (
     <div>
@@ -40,8 +44,11 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
         title={recipe.name}
         subtitle={`${recipe.category}${recipe.station ? ` · ${recipe.station}` : ""} · yields ${num(recipe.yieldQty)} ${recipe.yieldUnit}`}
         action={
-          <LinkButton href={`/recipes/${recipe.id}/print`} variant="secondary">
-            🖨 Print recipe card
+          <LinkButton href={`/recipes/${recipe.id}/print`} variant="gold">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4">
+              <path d="M6 9V3h12v6M6 18H4v-7h16v7h-2M8 14h8v7H8z" strokeLinejoin="round" />
+            </svg>
+            Print Recipe Card
           </LinkButton>
         }
       />
@@ -174,9 +181,20 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
 
           <Card className="mt-4">
             <CardHeader>Method</CardHeader>
-            <div className="whitespace-pre-wrap p-4 text-sm text-zinc-700">
-              {recipe.instructions || <span className="text-zinc-400">No method recorded.</span>}
-            </div>
+            {methodSteps.length === 0 ? (
+              <p className="p-4 text-sm text-zinc-400">No method recorded.</p>
+            ) : (
+              <ol className="space-y-4 p-5">
+                {methodSteps.map((step, i) => (
+                  <li key={i} className="flex gap-4 text-sm leading-relaxed text-zinc-700">
+                    <span className="font-display text-lg leading-none text-gold tabular-nums">
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                    <span className="pt-0.5">{step}</span>
+                  </li>
+                ))}
+              </ol>
+            )}
           </Card>
 
           {(recipe.criticalNotes || recipe.allergens) && (

@@ -3,10 +3,10 @@ import { Card } from "@/components/ui";
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-canvas px-4">
+    <div className="flex min-h-screen items-center justify-center bg-cream px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-deep-green font-display text-xl text-white">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-charcoal font-display text-xl text-white">
             M
           </div>
           <h1 className="font-display text-4xl leading-none tracking-tight text-ink">Mise</h1>

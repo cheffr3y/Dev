@@ -75,7 +75,7 @@ export default async function RecipePrintPage({
           <span>Standardized Recipe</span>
         </div>
 
-        <h1 className="mt-3 text-4xl font-semibold tracking-tight text-zinc-900">{recipe.name}</h1>
+        <h1 className="mt-3 font-display text-5xl font-medium tracking-tight text-zinc-900">{recipe.name}</h1>
         <p className="mt-1 text-sm text-zinc-500">
           {recipe.category}
           {recipe.station ? ` · ${recipe.station} station` : ""}

@@ -39,7 +39,12 @@ export function Card({
   className?: string;
 }) {
   return (
-    <div className={cn("rounded-lg border border-hairline bg-canvas", className)}>
+    <div
+      className={cn(
+        "rounded-lg border border-hairline bg-canvas shadow-[0_1px_2px_rgba(26,26,26,0.04)]",
+        className,
+      )}
+    >
       {children}
     </div>
   );
@@ -55,8 +60,9 @@ export function CardHeader({ children }: { children: ReactNode }) {
 
 const buttonStyles = {
   primary: "rounded-full bg-primary text-white hover:bg-zinc-700",
-  secondary: "rounded-full border border-hairline bg-transparent text-ink hover:border-ink",
+  secondary: "rounded-full border border-hairline bg-canvas text-ink hover:border-ink",
   danger: "rounded-full border border-red-200 bg-transparent text-red-600 hover:border-red-600",
+  gold: "rounded-full bg-gold text-white hover:bg-amber-700",
 };
 
 export function Button({
@@ -68,7 +74,7 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center gap-1.5 px-5 py-2 text-sm font-medium transition-colors disabled:opacity-50",
+        "inline-flex items-center justify-center gap-1.5 px-5 py-2 text-sm font-medium tracking-wide transition-colors disabled:opacity-50",
         buttonStyles[variant],
         className,
       )}
@@ -94,7 +100,7 @@ export function LinkButton({
     <Link
       href={href}
       className={cn(
-        "inline-flex items-center justify-center gap-1.5 px-5 py-2 text-sm font-medium transition-colors",
+        "inline-flex items-center justify-center gap-1.5 px-5 py-2 text-sm font-medium tracking-wide transition-colors",
         buttonStyles[variant],
         className,
       )}
@@ -141,10 +147,10 @@ export function Select(props: ComponentProps<"select">) {
 
 const badgeStyles: Record<string, string> = {
   gray: "border-hairline bg-zinc-50 text-zinc-600",
-  green: "border-emerald-600/30 bg-pale-green text-emerald-700",
+  green: "border-emerald-600/30 bg-pale-sage text-emerald-700",
   red: "border-red-200 bg-red-50 text-red-600",
-  amber: "border-coral-soft bg-amber-50 text-amber-700",
-  blue: "border-focus/30 bg-pale-blue text-blue-600",
+  amber: "border-amber-300 bg-amber-50 text-amber-700",
+  blue: "border-blue-600/25 bg-blue-100 text-blue-600",
 };
 
 export function Badge({

@@ -1,84 +1,101 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #212121;
+  /* Off-white / cream workspace, near-black ink. */
+  --background: #f9f9f8;
+  --foreground: #1a1a1a;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-unica-fallback);
-  --font-display: var(--font-cohere-display);
-  --font-mono: var(--font-cohere-mono);
+  /* Serif for page titles & summary numbers; Inter for everything else.
+     "mono" is repurposed to Inter so small-caps labels read as clean,
+     letter-spaced sans rather than typewriter mono. */
+  --font-sans: var(--font-sans-fallback);
+  --font-display: var(--font-serif);
+  --font-mono: var(--font-sans-fallback);
 }
 
 /*
- * Cohere design system tokens (DESIGNcohere.md).
+ * "The French Laundry" design tokens — sophisticated, minimalist, gallery-like.
  * Semantic names for new component code, plus the stock Tailwind ramps
- * (zinc/blue/red/amber/emerald) remapped to the documented Cohere values so
- * existing utility classes inherit the palette.
+ * (zinc/blue/red/amber/emerald) remapped to the documented values so existing
+ * utility classes inherit the refined palette without per-page edits.
  */
 @theme {
   /* Brand & surfaces */
-  --color-primary: #17171c;
-  --color-ink: #212121;
-  --color-deep-green: #003c33;
-  --color-dark-navy: #071829;
-  --color-canvas: #ffffff;
-  --color-stone: #eeece7;
-  --color-pale-green: #edfce9;
-  --color-pale-blue: #f1f5ff;
-  --color-hairline: #d9d9dd;
-  --color-coral: #ff7759;
-  --color-coral-soft: #ffad9b;
-  --color-action: #1863dc;
-  --color-focus: #4c6ee6;
-  --color-form-focus: #9b60aa;
+  --color-primary: #1a1a1a; /* charcoal — primary buttons */
+  --color-ink: #1a1a1a;
+  --color-charcoal: #1a1a1a; /* sidebar */
+  --color-navy: #101827; /* alternate sidebar */
+  --color-canvas: #ffffff; /* cards float white on cream */
+  --color-cream: #f9f9f8; /* workspace */
+  --color-stone: #f1efea; /* warm tint for stat cards */
+  --color-hairline: #e5e5e5; /* very light grey borders */
 
-  /* Neutral ramp -> Cohere ink/slate scale */
-  --color-zinc-50: #f7f6f3;
-  --color-zinc-100: #eeece7;
-  --color-zinc-200: #e5e7eb;
-  --color-zinc-300: #d9d9dd;
-  --color-zinc-400: #93939f;
-  --color-zinc-500: #75758a;
-  --color-zinc-600: #616161;
-  --color-zinc-700: #3d3d44;
-  --color-zinc-800: #212121;
-  --color-zinc-900: #17171c;
+  /* Accents — subtle gold & sage */
+  --color-gold: #9c7c50;
+  --color-gold-soft: #c8b18c;
+  --color-pale-gold: #f5efe4;
+  --color-sage: #5c6e54;
+  --color-sage-soft: #aab69f;
+  --color-pale-sage: #eaefe6;
+
+  /* Focus uses the warm gold rather than a tech blue */
+  --color-focus: #9c7c50;
+  --color-form-focus: #9c7c50;
+
+  /* Neutral ramp — warm, gallery greys */
+  --color-zinc-50: #f7f6f4;
+  --color-zinc-100: #efedea;
+  --color-zinc-200: #e5e5e5;
+  --color-zinc-300: #d6d4cf;
+  --color-zinc-400: #9a9892;
+  --color-zinc-500: #76746e;
+  --color-zinc-600: #57554f;
+  --color-zinc-700: #3a3833;
+  --color-zinc-800: #262420;
+  --color-zinc-900: #1a1a1a;
   --color-zinc-950: #000000;
 
-  /* Action blue ramp */
-  --color-blue-100: #f1f5ff;
-  --color-blue-600: #1863dc;
-  --color-blue-700: #1453b8;
+  /* "Blue" -> muted slate-navy, used for links & info badges */
+  --color-blue-100: #eef1f4;
+  --color-blue-600: #3e4c5e;
+  --color-blue-700: #2e3a48;
 
-  /* Error ramp anchored on #b30000 */
-  --color-red-50: #fdf1f0;
-  --color-red-100: #f9dedb;
-  --color-red-200: #f0bdb8;
-  --color-red-500: #c52f1f;
-  --color-red-600: #b30000;
-  --color-red-700: #8f0000;
+  /* Error -> deep wine red */
+  --color-red-50: #f6ecea;
+  --color-red-100: #ebd3cf;
+  --color-red-200: #dbb3ac;
+  --color-red-500: #a33d31;
+  --color-red-600: #8c3328;
+  --color-red-700: #6e281f;
 
-  /* Warm accents -> coral */
-  --color-amber-50: #fff4f1;
-  --color-amber-100: #ffe5dd;
-  --color-amber-300: #ffad9b;
-  --color-amber-600: #e05a37;
-  --color-amber-700: #b6492d;
-  --color-amber-900: #7c3220;
+  /* Warm "watch" accents -> muted ochre / gold */
+  --color-amber-50: #f7f1e8;
+  --color-amber-100: #efe3d2;
+  --color-amber-300: #c8b18c;
+  --color-amber-600: #9c7c50;
+  --color-amber-700: #7e6440;
+  --color-amber-900: #5c4a30;
 
-  /* Green accents -> deep enterprise green */
-  --color-emerald-100: #edfce9;
-  --color-emerald-600: #0a5c4d;
-  --color-emerald-700: #003c33;
+  /* Success "green" -> sage */
+  --color-emerald-100: #eaefe6;
+  --color-emerald-600: #5c6e54;
+  --color-emerald-700: #44523e;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
+  font-feature-settings: "liga" 1, "calt" 1;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Serif display gets refined optical tuning. */
+.font-display {
+  font-feature-settings: "liga" 1, "dlig" 1;
 }
 
 /* Print-friendly order guides, event prep sheets & recipe cards */
