@@ -1,8 +1,6 @@
 import { requireUser } from "@/lib/session";
-import { getActiveVenue } from "@/lib/venue";
 import { prisma } from "@/lib/prisma";
 import { Sidebar } from "@/components/Sidebar";
-import { VenueSwitcher } from "@/components/VenueSwitcher";
 import { CommandSearch } from "@/components/CommandSearch";
 import { signOutAction } from "@/lib/auth-actions";
 
@@ -14,8 +12,7 @@ const ROLE_LABEL: Record<string, string> = {
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
-  const [{ venues, active }, recipes, items] = await Promise.all([
-    getActiveVenue(user.homeVenueId),
+  const [recipes, items] = await Promise.all([
     prisma.recipe.findMany({
       select: { id: true, name: true, category: true, station: true },
       orderBy: { name: "asc" },
@@ -50,7 +47,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="no-print sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-hairline bg-cream/80 px-6 py-3 backdrop-blur">
           <div className="flex items-center gap-4">
-            <VenueSwitcher venues={venues} activeId={active?.id ?? null} />
             <CommandSearch recipes={recipes} items={items} />
           </div>
           <div className="flex items-center gap-4">
@@ -68,7 +64,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
         </header>
 
-        <main className="print-full mx-auto w-full max-w-6xl flex-1 px-6 py-10">{children}</main>
+        <main className="print-full mx-auto w-full max-w-[100rem] flex-1 px-6 py-10">{children}</main>
       </div>
     </div>
   );
