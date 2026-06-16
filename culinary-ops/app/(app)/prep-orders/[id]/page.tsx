@@ -3,18 +3,13 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireUser, hasRole } from "@/lib/session";
 import { getVenues, getActiveVenue } from "@/lib/venue";
-import { money, num } from "@/lib/costing";
+import { money } from "@/lib/costing";
 import { unitLabel, UNIT_OPTIONS } from "@/lib/units";
-import { Badge, Button, Card, CardHeader, Field, Input, LinkButton, PageHeader, Select, Textarea } from "@/components/ui";
-import {
-  addPrepLine,
-  updatePrepLine,
-  removePrepLine,
-  updatePrepOrder,
-  deletePrepOrder,
-  generatePacket,
-} from "../actions";
-import { isOpenStatus, prepStatusLabel, PREP_STATUS_COLOR, type PrepStatus } from "@/lib/prep";
+import { Button, Card, CardHeader, EmptyState, Field, Input, LinkButton, PageHeader, Select, Textarea } from "@/components/ui";
+import { addPrepLine, updatePrepOrder, deletePrepOrder, generatePacket } from "../actions";
+import { isOpenStatus } from "@/lib/prep";
+import { PrepLineCard } from "../PrepLineCard";
+import { RecipePicker } from "@/components/RecipePicker";
 
 export default async function PrepOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -108,182 +103,98 @@ export default async function PrepOrderDetailPage({ params }: { params: Promise<
         </Card>
       )}
 
-      {/* Lines */}
-      <Card className="mt-6">
-        <CardHeader>Requested Recipes</CardHeader>
-        <table className="w-full text-sm">
-          <thead className="bg-zinc-50 text-left font-mono text-[11px] uppercase tracking-[0.02em] text-zinc-600">
-            <tr>
-              <th className="px-4 py-2 font-medium">Recipe</th>
-              <th className="px-4 py-2 font-medium">Destination</th>
-              <th className="px-4 py-2 text-right font-medium">Requested</th>
-              <th className="px-4 py-2 text-right font-medium">Actual</th>
-              <th className="px-4 py-2 font-medium">Lot</th>
-              <th className="px-4 py-2 font-medium">Status</th>
-              {canManage && <th className="px-4 py-2 no-print"></th>}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-zinc-100">
-            {lines.length === 0 && (
-              <tr>
-                <td colSpan={canManage ? 7 : 6} className="px-4 py-6 text-center text-zinc-400">
-                  No recipes yet. Add one below.
-                </td>
-              </tr>
-            )}
-            {lines.map((l) => {
-              const split = (recipeCount.get(l.recipeId) ?? 0) > 1;
-              const editable = canManage && l.status === "REQUESTED";
-              return (
-                <tr key={l.id}>
-                  <td className="px-4 py-2 text-zinc-800">
-                    <Link href={`/recipes/${l.recipeId}`} className="font-medium hover:underline">
-                      {l.recipe.name}
-                    </Link>{" "}
-                    <span className="font-mono text-[11px] text-zinc-400">{l.recipe.prodCode}</span>
-                    {split && (
-                      <span className="ml-2 align-middle">
-                        <Badge color="blue">split</Badge>
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-2 text-zinc-700">{l.destinationVenue.name}</td>
-                  <td className="px-4 py-2 text-right tabular-nums text-zinc-700">
-                    {num(l.requestedQty)} {unitLabel(l.requestedUnit)}
-                  </td>
-                  <td className="px-4 py-2 text-right tabular-nums text-zinc-700">
-                    {l.actualQty != null ? `${num(l.actualQty)} ${unitLabel(l.actualUnit ?? "")}` : "—"}
-                  </td>
-                  <td className="px-4 py-2 font-mono text-[13px] text-zinc-800">{l.lot ?? "—"}</td>
-                  <td className="px-4 py-2">
-                    <Badge color={PREP_STATUS_COLOR[l.status as PrepStatus]}>{prepStatusLabel(l.status)}</Badge>
-                  </td>
-                  {canManage && (
-                    <td className="px-4 py-2 text-right no-print">
-                      {editable ? (
-                        <form action={removePrepLine}>
-                          <input type="hidden" name="id" value={l.id} />
-                          <input type="hidden" name="prepOrderId" value={order.id} />
-                          <button className="text-xs text-red-500 hover:underline">remove</button>
-                        </form>
-                      ) : null}
-                    </td>
-                  )}
-                </tr>
-              );
-            })}
-          </tbody>
-          {totalAllocated > 0 && (
-            <tfoot>
-              <tr className="border-t border-zinc-200 bg-zinc-50 font-medium">
-                <td className="px-4 py-2 text-zinc-700" colSpan={canManage ? 6 : 5}>
-                  Estimated Mise cost (frozen)
-                </td>
-                <td className="px-4 py-2 text-right text-zinc-900">{money(totalAllocated)}</td>
-              </tr>
-            </tfoot>
-          )}
-        </table>
+      {/* Requested recipes */}
+      <div className="mt-8">
+        <h2 className="mb-3 font-mono text-xs font-semibold uppercase tracking-[0.08em] text-zinc-700">Requested Recipes</h2>
+        {lines.length === 0 ? (
+          <EmptyState title="No recipes yet" hint="Add one below." />
+        ) : (
+          <div className="space-y-3">
+            {lines.map((l) => (
+              <PrepLineCard
+                key={l.id}
+                orderId={order.id}
+                canManage={canManage}
+                venues={venues.map((v) => ({ id: v.id, name: v.name }))}
+                line={{
+                  id: l.id,
+                  recipeId: l.recipeId,
+                  recipeName: l.recipe.name,
+                  prodCode: l.recipe.prodCode,
+                  requestedQty: l.requestedQty,
+                  requestedUnit: l.requestedUnit,
+                  destinationVenueId: l.destinationVenueId,
+                  destinationVenueName: l.destinationVenue.name,
+                  status: l.status,
+                  lot: l.lot,
+                  actualQty: l.actualQty,
+                  actualUnit: l.actualUnit,
+                  split: (recipeCount.get(l.recipeId) ?? 0) > 1,
+                }}
+              />
+            ))}
+          </div>
+        )}
 
-        {/* Inline edit for un-printed lines */}
-        {canManage && lines.some((l) => l.status === "REQUESTED") && (
-          <div className="border-t border-zinc-100 px-4 py-3 no-print">
-            <p className="mb-2 font-mono text-[11px] uppercase tracking-[0.02em] text-zinc-500">Adjust requested lines</p>
-            <div className="space-y-2">
-              {lines
-                .filter((l) => l.status === "REQUESTED")
-                .map((l) => (
-                  <form key={l.id} action={updatePrepLine} className="flex flex-wrap items-end gap-2">
-                    <input type="hidden" name="id" value={l.id} />
-                    <input type="hidden" name="prepOrderId" value={order.id} />
-                    <span className="min-w-[140px] flex-1 truncate text-sm text-zinc-700">{l.recipe.name}</span>
-                    <Select name="destinationVenueId" defaultValue={l.destinationVenueId} className="w-40">
-                      {venues.map((v) => (
-                        <option key={v.id} value={v.id}>
-                          {v.name}
+        {totalAllocated > 0 && (
+          <div className="mt-3 flex items-center justify-between rounded-lg border border-hairline bg-zinc-50 px-4 py-3 text-sm">
+            <span className="font-medium text-zinc-700">Estimated Mise cost (frozen)</span>
+            <span className="font-semibold text-zinc-900">{money(totalAllocated)}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Add new item */}
+      {canManage && (
+        <div className="no-print mt-6 rounded-xl border border-[#dcd3c0] bg-[#e9e3d4] p-5">
+          <h3 className="mb-3 font-mono text-xs font-semibold uppercase tracking-[0.08em] text-zinc-700">Add New Item</h3>
+          <form action={addPrepLine} className="flex flex-wrap items-end gap-3">
+            <input type="hidden" name="prepOrderId" value={order.id} />
+            <div className="min-w-[220px] flex-1">
+              <Field label="Recipe search">
+                <RecipePicker recipes={recipes} />
+              </Field>
+            </div>
+            <div className="w-44">
+              <Field label="Destination venue">
+                <Select name="destinationVenueId" required defaultValue={active?.id ?? venues[0]?.id}>
+                  {venues.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.name}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </div>
+            <div className="w-24">
+              <Field label="Qty">
+                <Input name="requestedQty" type="number" step="0.01" min="0.01" defaultValue={1} required />
+              </Field>
+            </div>
+            <div className="w-28">
+              <Field label="Unit">
+                <Select name="requestedUnit" defaultValue="quart">
+                  {UNIT_OPTIONS.map((g) => (
+                    <optgroup key={g.group} label={g.group}>
+                      {g.units.map((u) => (
+                        <option key={u} value={u}>
+                          {unitLabel(u)}
                         </option>
                       ))}
-                    </Select>
-                    <Input name="requestedQty" type="number" step="0.01" min="0.01" defaultValue={num(l.requestedQty)} className="w-24" />
-                    <Select name="requestedUnit" defaultValue={l.requestedUnit} className="w-28">
-                      {UNIT_OPTIONS.map((g) => (
-                        <optgroup key={g.group} label={g.group}>
-                          {g.units.map((u) => (
-                            <option key={u} value={u}>
-                              {unitLabel(u)}
-                            </option>
-                          ))}
-                        </optgroup>
-                      ))}
-                    </Select>
-                    <Button type="submit" variant="secondary">
-                      Save
-                    </Button>
-                  </form>
-                ))}
+                    </optgroup>
+                  ))}
+                </Select>
+              </Field>
             </div>
-          </div>
-        )}
+            <Button type="submit">Add</Button>
+          </form>
+          <p className="mt-2 text-xs text-zinc-500">
+            To split a batch across venues, add the same recipe again with a different destination — combined on the
+            packet, costed separately.
+          </p>
+        </div>
+      )}
 
-        {/* Add line */}
-        {canManage && (
-          <div className="border-t border-zinc-100 p-4 no-print">
-            <form action={addPrepLine} className="flex flex-wrap items-end gap-2">
-              <input type="hidden" name="prepOrderId" value={order.id} />
-              <div className="min-w-[200px] flex-1">
-                <Field label="Add recipe">
-                  <Select name="recipeId" required defaultValue="">
-                    <option value="" disabled>
-                      Select recipe…
-                    </option>
-                    {recipes.map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.name} ({r.prodCode})
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-              </div>
-              <div className="w-44">
-                <Field label="Destination venue">
-                  <Select name="destinationVenueId" required defaultValue={active?.id ?? venues[0]?.id}>
-                    {venues.map((v) => (
-                      <option key={v.id} value={v.id}>
-                        {v.name}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-              </div>
-              <div className="w-24">
-                <Field label="Qty">
-                  <Input name="requestedQty" type="number" step="0.01" min="0.01" defaultValue={1} required />
-                </Field>
-              </div>
-              <div className="w-28">
-                <Field label="Unit">
-                  <Select name="requestedUnit" defaultValue="quart">
-                    {UNIT_OPTIONS.map((g) => (
-                      <optgroup key={g.group} label={g.group}>
-                        {g.units.map((u) => (
-                          <option key={u} value={u}>
-                            {unitLabel(u)}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ))}
-                  </Select>
-                </Field>
-              </div>
-              <Button type="submit">Add</Button>
-            </form>
-            <p className="mt-2 text-xs text-zinc-400">
-              To split a batch across venues, add the same recipe again with a different destination — combined on the
-              packet, costed separately.
-            </p>
-          </div>
-        )}
-      </Card>
 
       {/* Edit / delete order */}
       {canManage && (
@@ -317,10 +228,10 @@ export default async function PrepOrderDetailPage({ params }: { params: Promise<
 
 function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="rounded-lg bg-stone p-5">
-      <p className="font-mono text-xs uppercase tracking-[0.02em] text-zinc-600">{label}</p>
-      <p className="mt-3 font-display text-3xl leading-none tracking-tight text-ink">{value}</p>
-      {sub && <p className="mt-2 text-xs text-zinc-500">{sub}</p>}
+    <div className="rounded-xl border border-hairline bg-canvas px-5 py-6 text-center">
+      <p className="font-mono text-xs uppercase tracking-[0.08em] text-zinc-500">{label}</p>
+      <p className="mt-3 font-display text-4xl leading-none tracking-tight text-ink">{value}</p>
+      {sub && <p className="mt-2 text-xs text-zinc-400">{sub}</p>}
     </div>
   );
 }
