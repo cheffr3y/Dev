@@ -24,6 +24,17 @@ enum EventStatus {
   CANCELLED
 }
 
+// Lifecycle of a single prep-order line — one record at two points in time
+// (requested, then made). A blank line is never "skipped"; NOT_MADE is explicit.
+enum PrepLineStatus {
+  REQUESTED // chef submitted, not yet printed
+  PRINTED // packet generated, lot assigned (lot frozen here)
+  IN_PROGRESS // cook started (optional)
+  MADE // back-entered: actual qty, made-by, entered-by
+  SHORT // made, but less than requested
+  NOT_MADE // explicitly skipped (out of ingredient / time)
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -34,6 +45,11 @@ model User {
   homeVenue    Venue?   @relation(fields: [homeVenueId], references: [id], onDelete: SetNull)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  // Prep / production ledger
+  prepOrders       PrepOrder[]
+  prepLinesMade    PrepOrderLine[] @relation("PrepMadeBy")
+  prepLinesEntered PrepOrderLine[] @relation("PrepEnteredBy")
 }
 
 model Venue {
@@ -49,6 +65,7 @@ model Venue {
   inventory   InventoryItem[]
   orderGuides OrderGuide[]
   events      Event[]
+  prepLines   PrepOrderLine[] // production destined here
 }
 
 model Vendor {
@@ -98,6 +115,10 @@ model Recipe {
   instructions String? // prep steps, plating notes
   photoUrl     String?
 
+  // Production / lot identity (see lib/prep.ts)
+  prodCode     String  @unique // 3-char auto-generated code used in lot numbers
+  holdLifeDays Int? // optional shelf life in days; drives use-by on labels
+
   // Recipe card / food-safety details (printed for line cooks)
   prepMinutes   Int? // active prep time
   cookMinutes   Int? // cook / bake time
@@ -110,6 +131,7 @@ model Recipe {
 
   items      RecipeItem[]
   eventItems EventMenuItem[]
+  prepLines  PrepOrderLine[]
 
   // Sub-recipes: a recipe can be built from other recipes (components).
   components RecipeComponent[] @relation("ParentRecipe")
@@ -230,4 +252,69 @@ model EventMenuItem {
   note            String?
 
   @@unique([eventId, recipeId])
+}
+
+// ---------------------------------------------------------------------------
+// Commissary Prep Order & Production Ledger
+//
+// A chef submits a prep order for a target date; each requested recipe becomes
+// a PrepOrderLine. Lines are printed (lots assigned), produced, then
+// back-entered with actuals. Mise owns production + transfer truth; Acumatica
+// owns raw inventory and authoritative costing.
+// ---------------------------------------------------------------------------
+
+// Header: one chef's submission for one production date.
+model PrepOrder {
+  id                String   @id @default(cuid())
+  submittedByUserId String
+  submittedBy       User     @relation(fields: [submittedByUserId], references: [id], onDelete: Restrict)
+  forDate           DateTime // the production / target date
+  notes             String?
+  createdAt         DateTime @default(now())
+
+  lines PrepOrderLine[]
+
+  @@index([forDate])
+}
+
+// The spine: one requested recipe → one destination venue. A batch serving two
+// venues is two lines on the same recipe with different destinationVenueId
+// (combined production, split accounting).
+model PrepOrderLine {
+  id                 String         @id @default(cuid())
+  prepOrderId        String
+  prepOrder          PrepOrder      @relation(fields: [prepOrderId], references: [id], onDelete: Cascade)
+  recipeId           String
+  recipe             Recipe         @relation(fields: [recipeId], references: [id], onDelete: Restrict)
+  recipeVersion      Int            @default(1) // snapshot of recipe version at request time
+  destinationVenueId String
+  destinationVenue   Venue          @relation(fields: [destinationVenueId], references: [id], onDelete: Restrict)
+  requestedQty       Float
+  requestedUnit      String
+  status             PrepLineStatus @default(REQUESTED)
+
+  // Lot — generated at first print, then frozen (immutable). Reprints reuse it.
+  lot          String?
+  lotPrintedAt DateTime?
+
+  // Production (null until MADE / SHORT / NOT_MADE)
+  actualQty       Float?
+  actualUnit      String?
+  madeByUserId    String? // who physically cooked it (per the packet)
+  madeBy          User?     @relation("PrepMadeBy", fields: [madeByUserId], references: [id], onDelete: SetNull)
+  madeAt          DateTime?
+  enteredByUserId String? // who keyed the back-entry (distinct from madeBy)
+  enteredBy       User?     @relation("PrepEnteredBy", fields: [enteredByUserId], references: [id], onDelete: SetNull)
+  enteredAt       DateTime?
+
+  // Cost snapshots — frozen when produced, never recomputed against live Catalog.
+  unitCostSnapshot Float? // Mise cost per recipe yield unit at time of production
+  allocatedCost    Float? // this line's cost share (proportional to qty for splits)
+
+  notes String? // line-level, queryable
+
+  @@index([prepOrderId])
+  @@index([recipeId])
+  @@index([destinationVenueId])
+  @@index([status])
 }

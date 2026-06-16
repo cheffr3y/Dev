@@ -9,6 +9,7 @@ type IconKey =
   | "dashboard"
   | "recipes"
   | "events"
+  | "prep"
   | "inventory"
   | "orders"
   | "catalog"
@@ -25,6 +26,7 @@ const SECTIONS: Array<{ heading: string; items: NavItem[] }> = [
       { href: "/", label: "Dashboard", icon: "dashboard" },
       { href: "/recipes", label: "Recipes & Builds", icon: "recipes" },
       { href: "/events", label: "Events", icon: "events" },
+      { href: "/prep-orders", label: "Prep Orders", icon: "prep" },
     ],
   },
   {
@@ -66,6 +68,12 @@ function Icon({ name }: { name: IconKey }) {
       <>
         <rect x="3" y="5" width="18" height="16" rx="2" />
         <path d="M3 9h18M8 3v4M16 3v4" />
+      </>
+    ),
+    prep: (
+      <>
+        <rect x="4" y="3" width="16" height="18" rx="2" />
+        <path d="M8 7h8M8 11h8M8 15h5" />
       </>
     ),
     inventory: (

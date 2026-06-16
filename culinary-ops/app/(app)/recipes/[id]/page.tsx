@@ -91,7 +91,7 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
       </div>
       <PageHeader
         title={recipe.name}
-        subtitle={`${recipe.category}${recipe.station ? ` · ${recipe.station}` : ""} · yields ${num(recipe.yieldQty)} ${recipe.yieldUnit}`}
+        subtitle={`${recipe.prodCode} · ${recipe.category}${recipe.station ? ` · ${recipe.station}` : ""} · yields ${num(recipe.yieldQty)} ${recipe.yieldUnit}`}
         action={
           <LinkButton href={`/recipes/${recipe.id}/print`} variant="gold">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4">
@@ -444,7 +444,16 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
                       <Field label="Shelf Life">
                         <Input name="shelfLife" defaultValue={recipe.shelfLife ?? ""} placeholder="3 days refrigerated" />
                       </Field>
+                      <Field label="Hold Life (days)" hint="Drives the use-by date printed on cook packets. Leave blank if N/A.">
+                        <Input name="holdLifeDays" type="number" min="0" defaultValue={recipe.holdLifeDays ?? ""} placeholder="—" />
+                      </Field>
                     </div>
+                  </Section>
+
+                  <Section title="Production">
+                    <Field label="Production Code" hint="Auto-generated, used in lot numbers. Frozen once it appears on a printed lot.">
+                      <Input value={recipe.prodCode} disabled readOnly />
+                    </Field>
                   </Section>
 
                   <Button type="submit" className="w-full">
@@ -471,6 +480,8 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
                 <DetailRow label="Allergens" value={recipe.allergens} />
                 <DetailRow label="Storage" value={recipe.storage} />
                 <DetailRow label="Shelf life" value={recipe.shelfLife} />
+                <DetailRow label="Hold life" value={recipe.holdLifeDays != null ? `${recipe.holdLifeDays} days` : null} />
+                <DetailRow label="Prod. code" value={recipe.prodCode} />
                 <DetailRow label="Critical" value={recipe.criticalNotes} />
               </dl>
             </Card>
