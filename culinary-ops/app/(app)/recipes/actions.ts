@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { requireRole, type AppUser } from "@/lib/session";
 import { money } from "@/lib/costing";
 import { unitLabel } from "@/lib/units";
+import { generateProdCode } from "@/lib/prep";
 
 const recipeSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
@@ -22,6 +23,7 @@ const recipeSchema = z.object({
   storage: z.string().trim().optional(),
   allergens: z.string().trim().optional(),
   criticalNotes: z.string().trim().optional(),
+  holdLifeDays: z.coerce.number().int().min(0).optional(),
 });
 
 // Method steps are submitted as repeated `step` fields by the inline editor;
@@ -51,6 +53,7 @@ function parseRecipe(formData: FormData) {
     storage: formData.get("storage") || undefined,
     allergens: formData.get("allergens") || undefined,
     criticalNotes: formData.get("criticalNotes") || undefined,
+    holdLifeDays: formData.get("holdLifeDays") || undefined,
   });
   return {
     name: d.name,
@@ -66,6 +69,7 @@ function parseRecipe(formData: FormData) {
     storage: d.storage || null,
     allergens: d.allergens || null,
     criticalNotes: d.criticalNotes || null,
+    holdLifeDays: d.holdLifeDays ?? null,
   };
 }
 
@@ -97,6 +101,7 @@ const FIELD_LABELS: Record<string, string> = {
   storage: "Storage",
   allergens: "Allergens",
   criticalNotes: "Critical notes",
+  holdLifeDays: "Hold life (days)",
 };
 
 function fmt(field: string, v: unknown): string {
@@ -128,8 +133,12 @@ function diffRecipe(prev: Record<string, unknown>, next: Record<string, unknown>
 
 export async function createRecipe(formData: FormData) {
   const user = await requireRole("MANAGER");
-  const recipe = await prisma.recipe.create({ data: parseRecipe(formData) });
-  await logChange(recipe.id, user, "Recipe created");
+  const data = parseRecipe(formData);
+  // Auto-generate the 3-char production code (hands-off; ban O/I/L; unique).
+  const existing = await prisma.recipe.findMany({ select: { prodCode: true } });
+  const prodCode = generateProdCode(data.name, new Set(existing.map((r) => r.prodCode)));
+  const recipe = await prisma.recipe.create({ data: { ...data, prodCode } });
+  await logChange(recipe.id, user, "Recipe created", `Production code: ${prodCode}`);
   revalidatePath("/recipes");
   redirect(`/recipes/${recipe.id}`);
 }

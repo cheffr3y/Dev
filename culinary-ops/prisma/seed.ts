@@ -88,6 +88,8 @@ async function main() {
       name: "Spaghetti Carbonara",
       category: "Entrée",
       station: "Pasta",
+      prodCode: "CAR",
+      holdLifeDays: 2,
       yieldQty: 4,
       yieldUnit: "servings",
       menuPrice: 19,
@@ -110,6 +112,7 @@ async function main() {
       name: "Classic Smash Burger",
       category: "Entrée",
       station: "Grill",
+      prodCode: "CSB",
       yieldQty: 1,
       yieldUnit: "servings",
       menuPrice: 14,
@@ -130,6 +133,8 @@ async function main() {
       name: "Pan-Seared Salmon",
       category: "Entrée",
       station: "Sauté",
+      prodCode: "PSS",
+      holdLifeDays: 2,
       yieldQty: 1,
       yieldUnit: "servings",
       menuPrice: 28,
@@ -151,6 +156,8 @@ async function main() {
       name: "Caesar Salad",
       category: "Starter",
       station: "Garde Manger",
+      prodCode: "CAS",
+      holdLifeDays: 3,
       yieldQty: 1,
       yieldUnit: "servings",
       menuPrice: 11,
@@ -252,7 +259,28 @@ async function main() {
     },
   });
 
-  console.log(`Seeded: 3 venues, 3 users, ${items.length} items, 4 recipes, events incl. "${gala.name}".`);
+  // --- Prep order (commissary production) ---
+  const manager = await prisma.user.findFirstOrThrow({ where: { role: "MANAGER" } });
+  const prepDate = new Date();
+  prepDate.setDate(prepDate.getDate() + 1);
+  await prisma.prepOrder.create({
+    data: {
+      submittedByUserId: manager.id,
+      forDate: prepDate,
+      notes: "Morning commissary prep.",
+      lines: {
+        create: [
+          // Shared batch: one Caesar dressing build split across two venues.
+          { recipeId: caesar.id, recipeVersion: 1, destinationVenueId: downtown.id, requestedQty: 6, requestedUnit: "quart" },
+          { recipeId: caesar.id, recipeVersion: 1, destinationVenueId: waterfront.id, requestedQty: 4, requestedUnit: "quart" },
+          // Single-destination line.
+          { recipeId: carbonara.id, recipeVersion: 1, destinationVenueId: catering.id, requestedQty: 20, requestedUnit: "servings" },
+        ],
+      },
+    },
+  });
+
+  console.log(`Seeded: 3 venues, 3 users, ${items.length} items, 4 recipes, events incl. "${gala.name}", 1 prep order.`);
   console.log("Login with admin@culinaryops.test / password123");
 }
 
