@@ -245,7 +245,9 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
                       </td>
                     </tr>
                   )}
-                  {recipe.components.map((c) => (
+                  {recipe.components.map((c) => {
+                    const cm = displayMeasure(c.quantity, c.unit);
+                    return (
                     <tr key={c.id}>
                       <td className="px-4 py-2 text-zinc-800">
                         <Link href={`/recipes/${c.childId}`} className="hover:underline">
@@ -256,7 +258,7 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
                         </span>
                       </td>
                       <td className="px-4 py-2 text-right text-zinc-600">
-                        {num(c.quantity)} {c.unit}
+                        {num(cm.qty)} {cm.label}
                       </td>
                       <td className="px-4 py-2 text-right font-medium text-zinc-800">
                         {money(componentLineCost(c, costMap, byId))}
@@ -271,7 +273,8 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
                         </td>
                       )}
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
                 {recipe.components.length > 0 && (
                   <tfoot>
