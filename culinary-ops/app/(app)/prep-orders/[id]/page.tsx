@@ -64,6 +64,11 @@ export default async function PrepOrderDetailPage({ params }: { params: Promise<
             </LinkButton>
           )}
           {hasPrinted && (
+            <LinkButton href={`/prep-orders/${order.id}/shopping-list`} variant="secondary">
+              Shopping list
+            </LinkButton>
+          )}
+          {hasPrinted && (
             <LinkButton href={`/prep-orders/${order.id}/back-entry`} variant="gold">
               Back-entry →
             </LinkButton>
