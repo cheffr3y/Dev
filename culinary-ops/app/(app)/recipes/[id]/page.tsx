@@ -13,7 +13,7 @@ import {
   pct,
   num,
 } from "@/lib/costing";
-import { UNIT_OPTIONS, unitLabel } from "@/lib/units";
+import { UNIT_OPTIONS, unitLabel, displayMeasure } from "@/lib/units";
 import { Badge, Button, Card, CardHeader, Field, Input, LinkButton, PageHeader, Select } from "@/components/ui";
 import { MethodEditor } from "@/components/MethodEditor";
 import {
@@ -135,6 +135,7 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
                 )}
                 {recipe.items.map((ri) => {
                   const lc = lineCost(ri);
+                  const m = displayMeasure(ri.quantity, ri.unit);
                   return (
                     <tr key={ri.id}>
                       <td className="px-4 py-2 text-zinc-800">
@@ -149,7 +150,7 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
                         )}
                       </td>
                       <td className="px-4 py-2 text-right text-zinc-600">
-                        {num(ri.quantity)} {unitLabel(ri.unit)}
+                        {num(m.qty)} {m.label}
                       </td>
                       <td className="px-4 py-2 text-right text-zinc-500">
                         {money(ri.item.unitCost)}/{unitLabel(ri.item.unit)}
@@ -244,7 +245,9 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
                       </td>
                     </tr>
                   )}
-                  {recipe.components.map((c) => (
+                  {recipe.components.map((c) => {
+                    const cm = displayMeasure(c.quantity, c.unit);
+                    return (
                     <tr key={c.id}>
                       <td className="px-4 py-2 text-zinc-800">
                         <Link href={`/recipes/${c.childId}`} className="hover:underline">
@@ -255,7 +258,7 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
                         </span>
                       </td>
                       <td className="px-4 py-2 text-right text-zinc-600">
-                        {num(c.quantity)} {c.unit}
+                        {num(cm.qty)} {cm.label}
                       </td>
                       <td className="px-4 py-2 text-right font-medium text-zinc-800">
                         {money(componentLineCost(c, costMap, byId))}
@@ -270,7 +273,8 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
                         </td>
                       )}
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
                 {recipe.components.length > 0 && (
                   <tfoot>
