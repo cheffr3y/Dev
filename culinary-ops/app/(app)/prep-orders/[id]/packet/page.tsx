@@ -69,7 +69,12 @@ export default async function CookPacketPage({ params }: { params: Promise<{ id:
         <Link href={`/prep-orders/${order.id}`} className="text-sm text-blue-600 hover:underline">
           ← Back to order
         </Link>
-        <PrintButton label="Print cook packet" />
+        <div className="flex items-center gap-2">
+          <Link href={`/prep-orders/${order.id}/shopping-list`} className="text-sm text-blue-600 hover:underline">
+            Shopping list
+          </Link>
+          <PrintButton label="Print cook packet" />
+        </div>
       </div>
 
       {printed.length === 0 ? (
