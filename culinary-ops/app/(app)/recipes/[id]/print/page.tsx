@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { num } from "@/lib/costing";
-import { unitLabel } from "@/lib/units";
+import { displayMeasure } from "@/lib/units";
 import { PrintButton } from "@/components/PrintButton";
 
 // Kitchen-facing recipe card: ingredients, method, critical food-safety data
@@ -128,16 +128,19 @@ export default async function RecipePrintPage({
                 </td>
               </tr>
             )}
-            {recipe.items.map((ri) => (
+            {recipe.items.map((ri) => {
+              const m = displayMeasure(ri.quantity * batch, ri.unit);
+              return (
               <tr key={ri.id}>
                 <td className="py-2 pr-3 text-right font-semibold tabular-nums text-zinc-900">
-                  {num(ri.quantity * batch)}
+                  {num(m.qty)}
                 </td>
-                <td className="py-2 pr-4 text-zinc-600">{unitLabel(ri.unit)}</td>
+                <td className="py-2 pr-4 text-zinc-600">{m.label}</td>
                 <td className="py-2 pr-4 text-zinc-900">{ri.item.name}</td>
                 <td className="py-2 text-zinc-500">{ri.note ?? ""}</td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
 
