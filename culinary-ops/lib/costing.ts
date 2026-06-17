@@ -27,21 +27,40 @@ export function recipeCost(items: RecipeItemWithCost[]): number {
 export type RecipeCostNode = {
   id: string;
   yieldQty: number;
+  yieldUnit: string;
   items: RecipeItemWithCost[];
-  components: { childId: string; quantity: number }[];
+  components: { childId: string; quantity: number; unit: string }[];
 };
 
-// Cost of a single sub-recipe line: (child total cost / child yield) * quantity.
+// How many child batches a sub-recipe line represents. The component quantity
+// is given in `unit` (e.g. "2.5 gal"); we convert it into the child's yield
+// unit and divide by the child's yield qty. When the unit can't convert to the
+// yield unit (e.g. "gal" of something yielded in "servings") we fall back to
+// treating the quantity as already being in yield units and report
+// converted:false so callers can flag it.
+export function componentBatchFactor(
+  quantity: number,
+  unit: string,
+  childYieldQty: number,
+  childYieldUnit: string,
+): { batches: number; converted: boolean } {
+  const denom = childYieldQty > 0 ? childYieldQty : 1;
+  const inYield = convertQty(quantity, unit, childYieldUnit);
+  if (inYield == null) return { batches: quantity / denom, converted: false };
+  return { batches: inYield / denom, converted: true };
+}
+
+// Cost of a single sub-recipe line: child total cost × batches used.
 export function componentLineCost(
-  component: { childId: string; quantity: number },
+  component: { childId: string; quantity: number; unit: string },
   costMap: Map<string, number>,
   byId: Map<string, RecipeCostNode>,
 ): number {
   const child = byId.get(component.childId);
   if (!child) return 0;
   const childTotal = costMap.get(component.childId) ?? 0;
-  const perYield = child.yieldQty > 0 ? childTotal / child.yieldQty : childTotal;
-  return perYield * component.quantity;
+  const { batches } = componentBatchFactor(component.quantity, component.unit, child.yieldQty, child.yieldUnit);
+  return childTotal * batches;
 }
 
 // Build a map of recipeId -> fully-loaded cost (ingredients + nested
@@ -61,8 +80,8 @@ export function buildCostMap(recipes: RecipeCostNode[]): Map<string, number> {
       const child = byId.get(c.childId);
       if (!child) continue;
       const childTotal = cost(c.childId, stack);
-      const perYield = child.yieldQty > 0 ? childTotal / child.yieldQty : childTotal;
-      total += perYield * c.quantity;
+      const { batches } = componentBatchFactor(c.quantity, c.unit, child.yieldQty, child.yieldUnit);
+      total += childTotal * batches;
     }
     stack.delete(id);
     cache.set(id, total);

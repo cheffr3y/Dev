@@ -16,12 +16,12 @@ import {
 import { UNIT_OPTIONS, unitLabel, displayMeasure } from "@/lib/units";
 import { Badge, Button, Card, CardHeader, Field, Input, LinkButton, PageHeader, Select } from "@/components/ui";
 import { MethodEditor } from "@/components/MethodEditor";
+import { SubRecipeForm } from "../SubRecipeForm";
 import {
   addRecipeItem,
   removeRecipeItem,
   updateRecipe,
   deleteRecipe,
-  addSubRecipe,
   removeSubRecipe,
 } from "../actions";
 
@@ -57,7 +57,7 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
         yieldQty: true,
         yieldUnit: true,
         items: { select: { quantity: true, unit: true, item: { select: { unitCost: true, unit: true } } } },
-        components: { select: { childId: true, quantity: true } },
+        components: { select: { childId: true, quantity: true, unit: true } },
       },
       orderBy: { name: "asc" },
     }),
@@ -290,39 +290,16 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
               </table>
 
               {canEdit && (
-                <div className="border-t border-zinc-100 p-4">
-                  <form action={addSubRecipe} className="flex flex-wrap items-end gap-2">
-                    <input type="hidden" name="parentId" value={recipe.id} />
-                    <div className="min-w-[180px] flex-1">
-                      <Field label="Add sub-recipe">
-                        <Select name="childId" required defaultValue="">
-                          <option value="" disabled>
-                            Select recipe…
-                          </option>
-                          {subRecipeOptions.map((r) => (
-                            <option key={r.id} value={r.id}>
-                              {r.name} ({money(costMap.get(r.id) ?? 0)} / {num(r.yieldQty)} {r.yieldUnit})
-                            </option>
-                          ))}
-                        </Select>
-                      </Field>
-                    </div>
-                    <div className="w-24">
-                      <Field label="Qty">
-                        <Input name="quantity" type="number" step="0.01" min="0.01" defaultValue={1} />
-                      </Field>
-                    </div>
-                    <div className="w-28">
-                      <Field label="Unit">
-                        <Input name="unit" defaultValue="serving" />
-                      </Field>
-                    </div>
-                    <Button type="submit">Add</Button>
-                  </form>
-                  <p className="mt-2 text-xs text-zinc-400">
-                    Sub-recipe cost is its full cost ÷ yield, times the quantity above. Circular references are blocked.
-                  </p>
-                </div>
+                <SubRecipeForm
+                  parentId={recipe.id}
+                  options={subRecipeOptions.map((r) => ({
+                    id: r.id,
+                    name: r.name,
+                    yieldQty: r.yieldQty,
+                    yieldUnit: r.yieldUnit,
+                    cost: costMap.get(r.id) ?? 0,
+                  }))}
+                />
               )}
             </Card>
           )}

@@ -38,7 +38,7 @@ export default async function ShoppingListPage({ params }: { params: Promise<{ i
         yieldQty: true,
         yieldUnit: true,
         items: { select: { quantity: true, unit: true, item: { select: { id: true, name: true, category: true } } } },
-        components: { select: { childId: true, quantity: true } },
+        components: { select: { childId: true, quantity: true, unit: true } },
       },
     }),
   ]);

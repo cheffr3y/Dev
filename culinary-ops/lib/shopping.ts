@@ -5,6 +5,7 @@
 // instead of cost. The result is grouped by item category for the printout.
 
 import { convertQty, canConvert, displayMeasure } from "./units";
+import { componentBatchFactor } from "./costing";
 
 // A recipe reduced to what the explosion needs: its raw items (with the parent
 // Item's identity/category for grouping) and its sub-recipe components.
@@ -19,7 +20,7 @@ export type ShoppingRecipeNode = {
     quantity: number;
     unit: string;
   }>;
-  components: Array<{ childId: string; quantity: number }>;
+  components: Array<{ childId: string; quantity: number; unit: string }>;
 };
 
 // One requested batch from the prep order (a printed line).
@@ -86,8 +87,10 @@ function accumulate(
   for (const c of node.components) {
     const child = byId.get(c.childId);
     if (!child) continue;
-    const childFactor = child.yieldQty > 0 ? (c.quantity / child.yieldQty) * factor : c.quantity * factor;
-    accumulate(c.childId, childFactor, byId, stack, add);
+    // Convert the sub-recipe quantity into the child's yield unit, then express
+    // it as a batch fraction of the child — same math the cost engine uses.
+    const { batches } = componentBatchFactor(c.quantity, c.unit, child.yieldQty, child.yieldUnit);
+    accumulate(c.childId, batches * factor, byId, stack, add);
   }
 
   stack.delete(recipeId);

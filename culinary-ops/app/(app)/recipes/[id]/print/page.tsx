@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
-import { num } from "@/lib/costing";
+import { num, componentBatchFactor } from "@/lib/costing";
 import { displayMeasure } from "@/lib/units";
 import { PrintButton } from "@/components/PrintButton";
 
@@ -31,7 +31,10 @@ export default async function RecipePrintPage({
 
   const recipe = await prisma.recipe.findUnique({
     where: { id },
-    include: { items: { include: { item: true }, orderBy: { item: { name: "asc" } } } },
+    include: {
+      items: { include: { item: true }, orderBy: { item: { name: "asc" } } },
+      components: { include: { child: true }, orderBy: { child: { name: "asc" } } },
+    },
   });
   if (!recipe) notFound();
 
@@ -143,6 +146,39 @@ export default async function RecipePrintPage({
             })}
           </tbody>
         </table>
+
+        {/* Sub-recipes — components built from other recipes, prepared separately */}
+        {recipe.components.length > 0 && (
+          <>
+            <h2 className="mt-8 border-b border-zinc-200 pb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-900">
+              Sub-Recipes
+            </h2>
+            <table className="mt-1 w-full text-sm">
+              <thead>
+                <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-zinc-400">
+                  <th className="w-20 py-2 pr-3 text-right font-medium">Qty</th>
+                  <th className="w-16 py-2 pr-4 font-medium">Unit</th>
+                  <th className="py-2 pr-4 font-medium">Recipe</th>
+                  <th className="py-2 font-medium">Prep / Note</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100">
+                {recipe.components.map((c) => {
+                  const { batches } = componentBatchFactor(c.quantity, c.unit, c.child.yieldQty, c.child.yieldUnit);
+                  const m = displayMeasure(batches * c.child.yieldQty * batch, c.child.yieldUnit);
+                  return (
+                    <tr key={c.id}>
+                      <td className="py-2 pr-3 text-right font-semibold tabular-nums text-zinc-900">{num(m.qty)}</td>
+                      <td className="py-2 pr-4 text-zinc-600">{m.label}</td>
+                      <td className="py-2 pr-4 text-zinc-900">{c.child.name}</td>
+                      <td className="py-2 text-zinc-500">prepare separately</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </>
+        )}
 
         {/* Method */}
         <h2 className="mt-8 border-b border-zinc-200 pb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-900">

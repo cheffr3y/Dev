@@ -2,8 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
-import { num } from "@/lib/costing";
-import { convertQty, unitLabel } from "@/lib/units";
+import { num, componentBatchFactor } from "@/lib/costing";
+import { convertQty, unitLabel, displayMeasure } from "@/lib/units";
 import { batchScaleFlag } from "@/lib/prep";
 import { PrintButton } from "@/components/PrintButton";
 
@@ -126,7 +126,7 @@ type PacketLine = {
     storage: string | null;
     holdLifeDays: number | null;
     items: Array<{ id: string; quantity: number; unit: string; note: string | null; item: { name: string } }>;
-    components: Array<{ id: string; quantity: number; unit: string; child: { name: string } }>;
+    components: Array<{ id: string; quantity: number; unit: string; child: { name: string; yieldQty: number; yieldUnit: string } }>;
   };
 };
 
@@ -251,14 +251,21 @@ function PacketEntry({
               <td className="py-1.5 text-zinc-500">{ri.note ?? ""}</td>
             </tr>
           ))}
-          {recipe.components.map((c) => (
-            <tr key={c.id}>
-              <td className="py-1.5 pr-3 text-right font-semibold tabular-nums text-zinc-900">{num(c.quantity * scale)}</td>
-              <td className="py-1.5 pr-4 text-zinc-600">{unitLabel(c.unit)}</td>
-              <td className="py-1.5 pr-4 text-zinc-900">{c.child.name} (sub-recipe)</td>
-              <td className="py-1.5 text-zinc-500"></td>
-            </tr>
-          ))}
+          {recipe.components.map((c) => {
+            // Show the sub-recipe amount in the child's own yield unit (rolled
+            // up), scaled by this batch — so "2.5 gal" of a recipe yielded in
+            // servings reads in servings, not a meaningless free-text unit.
+            const { batches } = componentBatchFactor(c.quantity, c.unit, c.child.yieldQty, c.child.yieldUnit);
+            const m = displayMeasure(batches * c.child.yieldQty * scale, c.child.yieldUnit);
+            return (
+              <tr key={c.id}>
+                <td className="py-1.5 pr-3 text-right font-semibold tabular-nums text-zinc-900">{num(m.qty)}</td>
+                <td className="py-1.5 pr-4 text-zinc-600">{m.label}</td>
+                <td className="py-1.5 pr-4 text-zinc-900">{c.child.name} (sub-recipe)</td>
+                <td className="py-1.5 text-zinc-500">prepare separately</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
 

@@ -215,7 +215,7 @@ export async function saveBackEntry(formData: FormData) {
       yieldQty: true,
       yieldUnit: true,
       items: { select: { quantity: true, unit: true, item: { select: { unitCost: true, unit: true } } } },
-      components: { select: { childId: true, quantity: true } },
+      components: { select: { childId: true, quantity: true, unit: true } },
     },
   });
   const costMap = buildCostMap(recipeNodes as RecipeCostNode[]);

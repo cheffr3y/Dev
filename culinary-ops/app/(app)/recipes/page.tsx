@@ -14,7 +14,7 @@ export default async function RecipesPage() {
   const recipes = await prisma.recipe.findMany({
     include: {
       items: { include: { item: true } },
-      components: { select: { childId: true, quantity: true } },
+      components: { select: { childId: true, quantity: true, unit: true } },
     },
     orderBy: [{ category: "asc" }, { name: "asc" }],
   });
