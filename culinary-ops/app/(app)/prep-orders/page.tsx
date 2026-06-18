@@ -1,12 +1,59 @@
-import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireUser, hasRole } from "@/lib/session";
-import { Badge, Button, Card, EmptyState, Field, Input, LinkButton, PageHeader } from "@/components/ui";
+import { Button, Card, Field, Input, LinkButton, PageHeader } from "@/components/ui";
+import { money } from "@/lib/costing";
 import { createPrepOrder } from "./actions";
-import { isOpenStatus, prepStatusLabel, PREP_STATUS_COLOR, type PrepStatus } from "@/lib/prep";
+import { isOpenStatus } from "@/lib/prep";
+import { PrepOrdersTabs, type OrderSummary } from "./PrepOrdersTabs";
 
 function todayValue(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+type OrderWithLines = {
+  id: string;
+  forDate: Date;
+  notes: string | null;
+  submittedBy: { name: string };
+  lines: { status: string; allocatedCost: number | null }[];
+};
+
+// Collapse a single order's lines into the dashboard-card shape, deciding which
+// of the three tabs it belongs to.
+function toSummary(o: OrderWithLines, startOfTomorrow: Date): { bucket: "active" | "scheduled" | "historical"; summary: OrderSummary } {
+  const total = o.lines.length;
+  const open = o.lines.filter((l) => isOpenStatus(l.status)).length;
+  const started = o.lines.some((l) => l.status === "PRINTED" || l.status === "IN_PROGRESS");
+  const cost = o.lines.reduce((sum, l) => sum + (l.allocatedCost ?? 0), 0);
+
+  const status: OrderSummary["status"] =
+    total > 0 && open === 0 ? "completed" : started ? "in_progress" : "draft";
+
+  // Completed work is filed away; everything still live is sorted by whether
+  // its production date has arrived yet (scheduled = future, active = due/overdue).
+  const bucket =
+    status === "completed" ? "historical" : o.forDate >= startOfTomorrow ? "scheduled" : "active";
+
+  return {
+    bucket,
+    summary: {
+      id: o.id,
+      ref: `#${o.id.slice(-4).toUpperCase()}`,
+      dateLabel: o.forDate.toLocaleDateString("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        timeZone: "UTC",
+      }),
+      total,
+      open,
+      user: o.submittedBy.name,
+      cost: money(cost),
+      status,
+      notes: o.notes,
+    },
+  };
 }
 
 export default async function PrepOrdersPage() {
@@ -16,15 +63,24 @@ export default async function PrepOrdersPage() {
   const orders = await prisma.prepOrder.findMany({
     include: {
       submittedBy: { select: { name: true } },
-      lines: { select: { status: true } },
+      lines: { select: { status: true, allocatedCost: true } },
     },
     orderBy: { forDate: "desc" },
   });
 
-  const startOfToday = new Date();
-  startOfToday.setHours(0, 0, 0, 0);
-  const current = orders.filter((o) => o.forDate >= startOfToday);
-  const past = orders.filter((o) => o.forDate < startOfToday);
+  const startOfTomorrow = new Date();
+  startOfTomorrow.setHours(0, 0, 0, 0);
+  startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+
+  const active: OrderSummary[] = [];
+  const scheduled: OrderSummary[] = [];
+  const historical: OrderSummary[] = [];
+  for (const o of orders) {
+    const { bucket, summary } = toSummary(o, startOfTomorrow);
+    (bucket === "active" ? active : bucket === "scheduled" ? scheduled : historical).push(summary);
+  }
+  // Upcoming reads best soonest-first; the rest stay newest-first.
+  scheduled.reverse();
 
   return (
     <div>
@@ -59,68 +115,7 @@ export default async function PrepOrdersPage() {
         </details>
       )}
 
-      <h2 className="mb-3 font-mono text-xs uppercase tracking-[0.02em] text-zinc-600">Today &amp; Upcoming</h2>
-      {current.length === 0 ? (
-        <EmptyState title="No upcoming prep orders" hint={canCreate ? "Create one above to get started." : undefined} />
-      ) : (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          {current.map((o) => (
-            <OrderCard key={o.id} order={o} />
-          ))}
-        </div>
-      )}
-
-      {past.length > 0 && (
-        <>
-          <h2 className="mb-3 mt-10 font-mono text-xs uppercase tracking-[0.02em] text-zinc-600">Past</h2>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            {past.map((o) => (
-              <OrderCard key={o.id} order={o} />
-            ))}
-          </div>
-        </>
-      )}
+      <PrepOrdersTabs active={active} scheduled={scheduled} historical={historical} />
     </div>
-  );
-}
-
-function OrderCard({
-  order,
-}: {
-  order: {
-    id: string;
-    forDate: Date;
-    notes: string | null;
-    submittedBy: { name: string };
-    lines: { status: string }[];
-  };
-}) {
-  const total = order.lines.length;
-  const open = order.lines.filter((l) => isOpenStatus(l.status)).length;
-  // Dominant status for the summary badge.
-  const allResolved = total > 0 && open === 0;
-  const printed = order.lines.some((l) => l.status === "PRINTED" || l.status === "IN_PROGRESS");
-  const summaryStatus: PrepStatus = allResolved ? "MADE" : printed ? "PRINTED" : "REQUESTED";
-
-  return (
-    <Link href={`/prep-orders/${order.id}`}>
-      <Card className="p-4 transition-shadow hover:shadow-md">
-        <div className="flex items-start justify-between">
-          <div>
-            <h3 className="font-medium text-zinc-900">
-              {order.forDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}
-            </h3>
-            <p className="text-sm text-zinc-500">
-              {total} line{total === 1 ? "" : "s"}
-              {total > 0 && ` · ${open} open`} · by {order.submittedBy.name}
-            </p>
-          </div>
-          <Badge color={PREP_STATUS_COLOR[summaryStatus]}>
-            {allResolved ? "complete" : prepStatusLabel(summaryStatus).toLowerCase()}
-          </Badge>
-        </div>
-        {order.notes && <p className="mt-2 text-sm text-zinc-600">{order.notes}</p>}
-      </Card>
-    </Link>
   );
 }
