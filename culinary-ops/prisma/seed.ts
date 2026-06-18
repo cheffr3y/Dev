@@ -259,7 +259,9 @@ async function main() {
     },
   });
 
-  // --- Prep order (commissary production) ---
+  // --- Prep orders (commissary production) ---
+  // One order = one destination venue; every line inherits the order's venue.
+  // Producing for two venues means two separate orders.
   const manager = await prisma.user.findFirstOrThrow({ where: { role: "MANAGER" } });
   const prepDate = new Date();
   prepDate.setDate(prepDate.getDate() + 1);
@@ -267,20 +269,31 @@ async function main() {
     data: {
       submittedByUserId: manager.id,
       forDate: prepDate,
-      notes: "Morning commissary prep.",
+      destinationVenueId: downtown.id,
+      notes: "Morning commissary prep — Downtown.",
       lines: {
         create: [
-          // Shared batch: one Caesar dressing build split across two venues.
           { recipeId: caesar.id, recipeVersion: 1, destinationVenueId: downtown.id, requestedQty: 6, requestedUnit: "quart" },
+          { recipeId: carbonara.id, recipeVersion: 1, destinationVenueId: downtown.id, requestedQty: 20, requestedUnit: "servings" },
+        ],
+      },
+    },
+  });
+  await prisma.prepOrder.create({
+    data: {
+      submittedByUserId: manager.id,
+      forDate: prepDate,
+      destinationVenueId: waterfront.id,
+      notes: "Morning commissary prep — Waterfront.",
+      lines: {
+        create: [
           { recipeId: caesar.id, recipeVersion: 1, destinationVenueId: waterfront.id, requestedQty: 4, requestedUnit: "quart" },
-          // Single-destination line.
-          { recipeId: carbonara.id, recipeVersion: 1, destinationVenueId: catering.id, requestedQty: 20, requestedUnit: "servings" },
         ],
       },
     },
   });
 
-  console.log(`Seeded: 3 venues, 3 users, ${items.length} items, 4 recipes, events incl. "${gala.name}", 1 prep order.`);
+  console.log(`Seeded: 3 venues, 3 users, ${items.length} items, 4 recipes, events incl. "${gala.name}", 2 prep orders.`);
   console.log("Login with admin@culinaryops.test / password123");
 }
 

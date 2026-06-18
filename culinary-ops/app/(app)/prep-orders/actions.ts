@@ -13,6 +13,7 @@ import { formatLot, nextLotSeq, lineCostSnapshot, BACK_ENTRY_STATUSES } from "@/
 
 const orderSchema = z.object({
   forDate: z.string().min(1, "Production date is required"),
+  destinationVenueId: z.string().min(1, "Pick a destination venue"),
   notes: z.string().trim().optional(),
 });
 
@@ -20,12 +21,14 @@ export async function createPrepOrder(formData: FormData) {
   const user = await requireRole("MANAGER");
   const d = orderSchema.parse({
     forDate: formData.get("forDate"),
+    destinationVenueId: formData.get("destinationVenueId"),
     notes: formData.get("notes") || undefined,
   });
   const order = await prisma.prepOrder.create({
     data: {
       submittedByUserId: user.id,
       forDate: new Date(d.forDate),
+      destinationVenueId: d.destinationVenueId,
       notes: d.notes || null,
     },
   });
@@ -38,12 +41,20 @@ export async function updatePrepOrder(formData: FormData) {
   const id = String(formData.get("id"));
   const d = orderSchema.parse({
     forDate: formData.get("forDate"),
+    destinationVenueId: formData.get("destinationVenueId"),
     notes: formData.get("notes") || undefined,
   });
-  await prisma.prepOrder.update({
-    where: { id },
-    data: { forDate: new Date(d.forDate), notes: d.notes || null },
-  });
+  // The whole order ships to one venue, so changing it re-points every line.
+  await prisma.$transaction([
+    prisma.prepOrder.update({
+      where: { id },
+      data: { forDate: new Date(d.forDate), destinationVenueId: d.destinationVenueId, notes: d.notes || null },
+    }),
+    prisma.prepOrderLine.updateMany({
+      where: { prepOrderId: id },
+      data: { destinationVenueId: d.destinationVenueId },
+    }),
+  ]);
   revalidatePath(`/prep-orders/${id}`);
 }
 
@@ -60,7 +71,6 @@ export async function deletePrepOrder(formData: FormData) {
 const lineSchema = z.object({
   prepOrderId: z.string().min(1),
   recipeId: z.string().min(1, "Pick a recipe"),
-  destinationVenueId: z.string().min(1, "Pick a destination venue"),
   requestedQty: z.coerce.number().positive("Quantity must be greater than 0"),
   requestedUnit: z.string().trim().min(1).default("each"),
 });
@@ -70,10 +80,19 @@ export async function addPrepLine(formData: FormData) {
   const d = lineSchema.parse({
     prepOrderId: formData.get("prepOrderId"),
     recipeId: formData.get("recipeId"),
-    destinationVenueId: formData.get("destinationVenueId"),
     requestedQty: formData.get("requestedQty"),
     requestedUnit: formData.get("requestedUnit") || "each",
   });
+
+  // Venue is set once on the order; every line inherits it.
+  const order = await prisma.prepOrder.findUnique({
+    where: { id: d.prepOrderId },
+    select: { destinationVenueId: true },
+  });
+  if (!order) throw new Error("Prep order not found.");
+  if (!order.destinationVenueId) {
+    throw new Error("Set a destination venue for this order before adding recipes.");
+  }
 
   const recipe = await prisma.recipe.findUnique({
     where: { id: d.recipeId },
@@ -81,10 +100,11 @@ export async function addPrepLine(formData: FormData) {
   });
   if (!recipe) throw new Error("Recipe not found.");
 
-  // The requested unit must be convertible from the recipe's base (yield) unit.
+  // The requested unit must be convertible from the recipe's base (yield) unit
+  // — i.e. same measurement family (volume↔volume, weight↔weight).
   if (!canConvert(d.requestedUnit, recipe.yieldUnit)) {
     throw new Error(
-      `Can't convert ${d.requestedUnit} to the recipe's base unit (${recipe.yieldUnit}). Pick a compatible unit.`,
+      `Can't order ${d.requestedUnit} of a recipe measured in ${recipe.yieldUnit}. Pick a matching unit (liquids in volume, dry goods by weight).`,
     );
   }
 
@@ -94,7 +114,7 @@ export async function addPrepLine(formData: FormData) {
       recipeId: d.recipeId,
       // Snapshot the recipe version (changelog depth, min 1) as printed.
       recipeVersion: Math.max(1, recipe._count.changes),
-      destinationVenueId: d.destinationVenueId,
+      destinationVenueId: order.destinationVenueId,
       requestedQty: d.requestedQty,
       requestedUnit: d.requestedUnit,
     },
@@ -105,7 +125,6 @@ export async function addPrepLine(formData: FormData) {
 const editLineSchema = z.object({
   id: z.string().min(1),
   prepOrderId: z.string().min(1),
-  destinationVenueId: z.string().min(1),
   requestedQty: z.coerce.number().positive(),
   requestedUnit: z.string().trim().min(1),
 });
@@ -115,19 +134,26 @@ export async function updatePrepLine(formData: FormData) {
   const d = editLineSchema.parse({
     id: formData.get("id"),
     prepOrderId: formData.get("prepOrderId"),
-    destinationVenueId: formData.get("destinationVenueId"),
     requestedQty: formData.get("requestedQty"),
     requestedUnit: formData.get("requestedUnit"),
   });
-  const line = await prisma.prepOrderLine.findUnique({ where: { id: d.id } });
+  const line = await prisma.prepOrderLine.findUnique({
+    where: { id: d.id },
+    include: { recipe: { select: { yieldUnit: true } } },
+  });
   // Only requested (un-printed) lines are editable — lots are frozen at print.
   if (!line || line.status !== "REQUESTED") {
     throw new Error("Only un-printed lines can be edited.");
   }
+  // Keep the unit locked to the recipe's base measurement family.
+  if (!canConvert(d.requestedUnit, line.recipe.yieldUnit)) {
+    throw new Error(
+      `Can't order ${d.requestedUnit} of a recipe measured in ${line.recipe.yieldUnit}. Pick a matching unit (liquids in volume, dry goods by weight).`,
+    );
+  }
   await prisma.prepOrderLine.update({
     where: { id: d.id },
     data: {
-      destinationVenueId: d.destinationVenueId,
       requestedQty: d.requestedQty,
       requestedUnit: d.requestedUnit,
     },

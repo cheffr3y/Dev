@@ -2,14 +2,23 @@
 
 import { useMemo, useRef, useState } from "react";
 
-type Recipe = { id: string; name: string; prodCode: string };
+type Recipe = { id: string; name: string; prodCode: string; yieldUnit?: string };
 
 const LIMIT = 8;
 
 // Typeahead recipe combobox for the prep-order add-line form. Renders a search
 // field + dropdown and writes the chosen recipe id into a hidden input so the
-// surrounding server-action <form> submits it like a normal field.
-export function RecipePicker({ recipes, name = "recipeId" }: { recipes: Recipe[]; name?: string }) {
+// surrounding server-action <form> submits it like a normal field. `onSelect`
+// lets a parent react to the chosen recipe (e.g. lock the unit to its family).
+export function RecipePicker({
+  recipes,
+  name = "recipeId",
+  onSelect,
+}: {
+  recipes: Recipe[];
+  name?: string;
+  onSelect?: (recipe: Recipe | null) => void;
+}) {
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState("");
   const [open, setOpen] = useState(false);
@@ -28,6 +37,7 @@ export function RecipePicker({ recipes, name = "recipeId" }: { recipes: Recipe[]
     setSelectedId(r.id);
     setQuery(`${r.name} (${r.prodCode})`);
     setOpen(false);
+    onSelect?.(r);
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
@@ -61,6 +71,7 @@ export function RecipePicker({ recipes, name = "recipeId" }: { recipes: Recipe[]
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
+            if (selectedId) onSelect?.(null);
             setSelectedId("");
             setActive(0);
             setOpen(true);

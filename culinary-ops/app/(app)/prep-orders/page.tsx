@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { requireUser, hasRole } from "@/lib/session";
-import { Button, Card, Field, Input, LinkButton, PageHeader } from "@/components/ui";
+import { Button, Card, Field, Input, LinkButton, PageHeader, Select } from "@/components/ui";
 import { money } from "@/lib/costing";
+import { getVenues, getActiveVenue } from "@/lib/venue";
 import { createPrepOrder } from "./actions";
 import { isOpenStatus } from "@/lib/prep";
 import { PrepOrdersTabs, type OrderSummary } from "./PrepOrdersTabs";
@@ -60,13 +61,17 @@ export default async function PrepOrdersPage() {
   const user = await requireUser();
   const canCreate = hasRole(user, "MANAGER");
 
-  const orders = await prisma.prepOrder.findMany({
-    include: {
-      submittedBy: { select: { name: true } },
-      lines: { select: { status: true, allocatedCost: true } },
-    },
-    orderBy: { forDate: "desc" },
-  });
+  const [orders, venues, { active: activeVenue }] = await Promise.all([
+    prisma.prepOrder.findMany({
+      include: {
+        submittedBy: { select: { name: true } },
+        lines: { select: { status: true, allocatedCost: true } },
+      },
+      orderBy: { forDate: "desc" },
+    }),
+    getVenues(),
+    getActiveVenue(user.homeVenueId),
+  ]);
 
   const startOfTomorrow = new Date();
   startOfTomorrow.setHours(0, 0, 0, 0);
@@ -104,7 +109,18 @@ export default async function PrepOrdersPage() {
                   <Input name="forDate" type="date" required defaultValue={todayValue()} />
                 </Field>
               </div>
-              <div className="min-w-[220px] flex-1">
+              <div className="w-48">
+                <Field label="Destination venue" hint="One venue per order.">
+                  <Select name="destinationVenueId" required defaultValue={activeVenue?.id ?? venues[0]?.id}>
+                    {venues.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.name}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </div>
+              <div className="min-w-[200px] flex-1">
                 <Field label="Notes (optional)">
                   <Input name="notes" placeholder="Morning commissary prep…" />
                 </Field>

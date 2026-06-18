@@ -66,6 +66,7 @@ model Venue {
   orderGuides OrderGuide[]
   events      Event[]
   prepLines   PrepOrderLine[] // production destined here
+  prepOrders  PrepOrder[] // orders destined here
 }
 
 model Vendor {
@@ -263,18 +264,25 @@ model EventMenuItem {
 // owns raw inventory and authoritative costing.
 // ---------------------------------------------------------------------------
 
-// Header: one chef's submission for one production date.
+// Header: one chef's submission for one production date, bound to a single
+// destination venue. Every line inherits this venue — to produce for another
+// venue, create a separate order (each venue orders separately).
 model PrepOrder {
-  id                String   @id @default(cuid())
-  submittedByUserId String
-  submittedBy       User     @relation(fields: [submittedByUserId], references: [id], onDelete: Restrict)
-  forDate           DateTime // the production / target date
-  notes             String?
-  createdAt         DateTime @default(now())
+  id                 String   @id @default(cuid())
+  submittedByUserId  String
+  submittedBy        User     @relation(fields: [submittedByUserId], references: [id], onDelete: Restrict)
+  forDate            DateTime // the production / target date
+  // Destination venue for the whole order. Nullable only so existing rows
+  // migrate cleanly; the UI requires one before any line can be added.
+  destinationVenueId String?
+  destinationVenue   Venue?   @relation(fields: [destinationVenueId], references: [id], onDelete: Restrict)
+  notes              String?
+  createdAt          DateTime @default(now())
 
   lines PrepOrderLine[]
 
   @@index([forDate])
+  @@index([destinationVenueId])
 }
 
 // The spine: one requested recipe → one destination venue. A batch serving two

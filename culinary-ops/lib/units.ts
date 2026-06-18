@@ -137,3 +137,35 @@ export const UNIT_OPTIONS: Array<{ group: string; units: string[] }> = [
   { group: "Weight", units: ["oz", "lb", "gram", "kg"] },
   { group: "Count", units: ["each", "dozen", "case", "can", "bottle", "bunch"] },
 ];
+
+// The measurement family of a unit string ("volume" | "weight" | "count"), or
+// null when the unit isn't recognized (e.g. free-text "servings", "batch").
+export function unitFamily(raw: string): UnitFamily | null {
+  return resolve(raw)?.family ?? null;
+}
+
+// Units a prep line may be ordered in, given the recipe's base (yield) unit.
+// Selection is locked to the same family so liquids order in volume and dry
+// goods in weight — you can't request 5 lb of a soup yielded in quarts.
+// Unrecognized base units lock to themselves (the only convertible choice).
+export function allowedUnitsFor(yieldUnit: string): string[] {
+  const fam = unitFamily(yieldUnit);
+  if (!fam) return [yieldUnit];
+  const group = UNIT_OPTIONS.find((g) => g.group.toLowerCase() === fam);
+  // Keep only units that actually convert within the family (drops count
+  // packaging like "case"/"can" that share the group but have no factor).
+  const units = (group?.units ?? []).filter((u) => unitFamily(u) === fam);
+  return units.length ? units : [yieldUnit];
+}
+
+// Best default unit to request a recipe in: its own yield unit when that is a
+// real, convertible unit, otherwise the first allowed unit in the family.
+export function defaultUnitFor(yieldUnit: string): string {
+  const allowed = allowedUnitsFor(yieldUnit);
+  const canonical = resolve(yieldUnit);
+  if (canonical) {
+    const match = allowed.find((u) => resolve(u)?.label === canonical.label);
+    if (match) return match;
+  }
+  return allowed.includes(yieldUnit) ? yieldUnit : allowed[0];
+}

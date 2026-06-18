@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { num } from "@/lib/costing";
-import { unitLabel, UNIT_OPTIONS } from "@/lib/units";
+import { allowedUnitsFor, defaultUnitFor, unitLabel } from "@/lib/units";
 import { Badge } from "@/components/ui";
 import { prepStatusLabel, PREP_STATUS_COLOR, type PrepStatus } from "@/lib/prep";
 import { updatePrepLine, removePrepLine } from "./actions";
@@ -13,9 +13,9 @@ export type PrepLineCardData = {
   recipeId: string;
   recipeName: string;
   prodCode: string;
+  recipeYieldUnit: string;
   requestedQty: number;
   requestedUnit: string;
-  destinationVenueId: string;
   destinationVenueName: string;
   status: string;
   lot: string | null;
@@ -27,12 +27,10 @@ export type PrepLineCardData = {
 export function PrepLineCard({
   line,
   orderId,
-  venues,
   canManage,
 }: {
   line: PrepLineCardData;
   orderId: string;
-  venues: { id: string; name: string }[];
   canManage: boolean;
 }) {
   const [editing, setEditing] = useState(false);
@@ -51,17 +49,6 @@ export function PrepLineCard({
           <span className="min-w-[140px] flex-1 truncate text-sm font-medium text-zinc-700">
             {line.recipeName} <span className="font-mono text-[11px] text-zinc-400">({line.prodCode})</span>
           </span>
-          <select
-            name="destinationVenueId"
-            defaultValue={line.destinationVenueId}
-            className="w-40 rounded-sm border border-zinc-300 bg-canvas px-3 py-2 text-sm"
-          >
-            {venues.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.name}
-              </option>
-            ))}
-          </select>
           <input
             name="requestedQty"
             type="number"
@@ -70,19 +57,20 @@ export function PrepLineCard({
             defaultValue={num(line.requestedQty)}
             className="w-24 rounded-sm border border-zinc-300 bg-canvas px-3 py-2 text-sm"
           />
+          {/* Unit locked to the recipe's base measurement family. */}
           <select
             name="requestedUnit"
-            defaultValue={line.requestedUnit}
+            defaultValue={
+              allowedUnitsFor(line.recipeYieldUnit).includes(line.requestedUnit)
+                ? line.requestedUnit
+                : defaultUnitFor(line.recipeYieldUnit)
+            }
             className="w-28 rounded-sm border border-zinc-300 bg-canvas px-3 py-2 text-sm"
           >
-            {UNIT_OPTIONS.map((g) => (
-              <optgroup key={g.group} label={g.group}>
-                {g.units.map((u) => (
-                  <option key={u} value={u}>
-                    {unitLabel(u)}
-                  </option>
-                ))}
-              </optgroup>
+            {allowedUnitsFor(line.recipeYieldUnit).map((u) => (
+              <option key={u} value={u}>
+                {unitLabel(u)}
+              </option>
             ))}
           </select>
           <button
