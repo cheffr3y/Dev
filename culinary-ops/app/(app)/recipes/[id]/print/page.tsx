@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { num, componentBatchFactor } from "@/lib/costing";
 import { displayMeasure } from "@/lib/units";
+import { allergenLabels, effectiveAllergens } from "@/lib/allergens";
 import { PrintButton } from "@/components/PrintButton";
 
 // Kitchen-facing recipe card: ingredients, method, critical food-safety data
@@ -29,15 +30,23 @@ export default async function RecipePrintPage({
   const [{ id }, { x }] = await Promise.all([params, searchParams]);
   await requireUser();
 
-  const recipe = await prisma.recipe.findUnique({
-    where: { id },
-    include: {
-      items: { include: { item: true }, orderBy: { item: { name: "asc" } } },
-      components: { include: { child: true }, orderBy: { child: { name: "asc" } } },
-    },
-  });
+  const [recipe, allRecipes] = await Promise.all([
+    prisma.recipe.findUnique({
+      where: { id },
+      include: {
+        items: { include: { item: true }, orderBy: { item: { name: "asc" } } },
+        components: { include: { child: true }, orderBy: { child: { name: "asc" } } },
+      },
+    }),
+    // Lightweight catalog so allergens propagate up from sub-recipes to any depth.
+    prisma.recipe.findMany({
+      select: { id: true, allergens: true, components: { select: { childId: true } } },
+    }),
+  ]);
   if (!recipe) notFound();
 
+  const byId = new Map(allRecipes.map((r) => [r.id, r]));
+  const allergens = allergenLabels(effectiveAllergens(recipe.id, byId));
   const batch = Math.min(Math.max(Number(x) || 1, 0.25), 100);
   const steps = parseSteps(recipe.instructions);
   const totalMinutes = (recipe.prepMinutes ?? 0) + (recipe.cookMinutes ?? 0);
@@ -101,12 +110,12 @@ export default async function RecipePrintPage({
         </div>
 
         {/* Allergen banner */}
-        {recipe.allergens && (
+        {allergens && (
           <div className="mt-5 border-2 border-zinc-900 px-4 py-2.5">
             <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-900">
               Contains allergens:
             </span>{" "}
-            <span className="text-sm font-semibold uppercase text-zinc-900">{recipe.allergens}</span>
+            <span className="text-sm font-semibold uppercase text-zinc-900">{allergens}</span>
           </div>
         )}
 

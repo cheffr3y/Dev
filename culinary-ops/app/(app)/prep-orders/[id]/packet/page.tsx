@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { num, componentBatchFactor } from "@/lib/costing";
 import { convertQty, unitLabel, displayMeasure } from "@/lib/units";
+import { allergenLabels, effectiveAllergens } from "@/lib/allergens";
 import { batchScaleFlag } from "@/lib/prep";
 import { PrintButton } from "@/components/PrintButton";
 
@@ -170,6 +171,7 @@ type PacketLine = {
   requestedUnit: string;
   destinationVenue: { name: string; code: string };
   recipe: {
+    id: string;
     name: string;
     prodCode: string;
     yieldQty: number;
@@ -296,10 +298,10 @@ function PacketEntry({
         <LabelCell label="Prod. code" value={recipe.prodCode} />
       </div>
 
-      {recipe.allergens && (
+      {allergenLabels(effectiveAllergens(recipe.id, byId)) && (
         <div className="mt-3 border border-zinc-900 px-3 py-1.5 text-xs">
           <span className="font-bold uppercase tracking-wide">Allergens:</span>{" "}
-          <span className="font-semibold uppercase">{recipe.allergens}</span>
+          <span className="font-semibold uppercase">{allergenLabels(effectiveAllergens(recipe.id, byId))}</span>
         </div>
       )}
 
@@ -422,10 +424,10 @@ function SubBuild({
         {node.prodCode} · base yield {num(node.yieldQty)} {node.yieldUnit}
       </p>
 
-      {node.allergens && (
+      {allergenLabels(effectiveAllergens(node.id, byId)) && (
         <div className="mt-2 border border-zinc-900 px-3 py-1 text-xs">
           <span className="font-bold uppercase tracking-wide">Allergens:</span>{" "}
-          <span className="font-semibold uppercase">{node.allergens}</span>
+          <span className="font-semibold uppercase">{allergenLabels(effectiveAllergens(node.id, byId))}</span>
         </div>
       )}
 

@@ -8,6 +8,7 @@ import { requireRole, type AppUser } from "@/lib/session";
 import { money } from "@/lib/costing";
 import { unitLabel } from "@/lib/units";
 import { generateProdCode } from "@/lib/prep";
+import { allergenLabels, parseAllergens, serializeAllergens } from "@/lib/allergens";
 
 const recipeSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
@@ -38,6 +39,16 @@ function readInstructions(formData: FormData): string | undefined {
   return raw ? String(raw) : undefined;
 }
 
+// Allergens post as repeated `allergen` checkboxes (canonical keys). Inherited
+// ones are disabled in the UI and never submitted, so this captures only the
+// recipe's own selections. Falls back to a legacy `allergens` string field.
+function readAllergens(formData: FormData): string | undefined {
+  const boxes = formData.getAll("allergen").map((s) => String(s));
+  if (boxes.length > 0) return serializeAllergens(boxes) || undefined;
+  const legacy = formData.get("allergens");
+  return legacy ? serializeAllergens(parseAllergens(String(legacy))) || undefined : undefined;
+}
+
 function parseRecipe(formData: FormData) {
   const d = recipeSchema.parse({
     name: formData.get("name"),
@@ -51,7 +62,7 @@ function parseRecipe(formData: FormData) {
     cookMinutes: formData.get("cookMinutes") || undefined,
     shelfLife: formData.get("shelfLife") || undefined,
     storage: formData.get("storage") || undefined,
-    allergens: formData.get("allergens") || undefined,
+    allergens: readAllergens(formData),
     criticalNotes: formData.get("criticalNotes") || undefined,
     holdLifeDays: formData.get("holdLifeDays") || undefined,
   });
@@ -110,6 +121,9 @@ function fmt(field: string, v: unknown): string {
   if (field === "instructions") {
     const n = String(v).split(/\r?\n/).filter((s) => s.trim()).length;
     return `${n} step${n === 1 ? "" : "s"}`;
+  }
+  if (field === "allergens") {
+    return allergenLabels(parseAllergens(String(v))) || "—";
   }
   // Multi-line free-text fields read better as one line in the changelog diff.
   if (field === "storage" || field === "criticalNotes") {

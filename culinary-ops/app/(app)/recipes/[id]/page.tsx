@@ -14,7 +14,9 @@ import {
   num,
 } from "@/lib/costing";
 import { UNIT_OPTIONS, unitLabel, displayMeasure } from "@/lib/units";
+import { allergenLabels, effectiveAllergens, inheritedAllergenSources, parseAllergens } from "@/lib/allergens";
 import { Badge, Button, Card, CardHeader, Field, Input, LinkButton, PageHeader, Select, Textarea } from "@/components/ui";
+import { AllergenPicker } from "@/components/AllergenPicker";
 import { MethodEditor } from "@/components/MethodEditor";
 import { SubRecipeForm } from "../SubRecipeForm";
 import {
@@ -56,6 +58,7 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
         category: true,
         yieldQty: true,
         yieldUnit: true,
+        allergens: true,
         items: { select: { quantity: true, unit: true, item: { select: { unitCost: true, unit: true } } } },
         components: { select: { childId: true, quantity: true, unit: true } },
       },
@@ -78,6 +81,13 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
   const fcp = foodCostPct(perServing, recipe.menuPrice);
   const margin = recipe.menuPrice ? recipe.menuPrice - perServing : null;
   const methodSteps = parseSteps(recipe.instructions);
+
+  // Allergens: this recipe's own selections, plus those auto-inherited from its
+  // sub-recipes (shown locked in the editor; rolled into the effective set
+  // displayed everywhere else).
+  const ownAllergens = parseAllergens(recipe.allergens);
+  const inheritedAllergens = inheritedAllergenSources(recipe.id, byId);
+  const effectiveAllergenKeys = effectiveAllergens(recipe.id, byId);
 
   // Recipes available to add as sub-recipes (everything but this one).
   const subRecipeOptions = allRecipes.filter((r) => r.id !== recipe.id);
@@ -416,8 +426,8 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
                       <Field label="Critical / Food Safety" hint="HACCP critical limits — put each point on its own line for clarity.">
                         <Textarea name="criticalNotes" rows={3} defaultValue={recipe.criticalNotes ?? ""} placeholder={"Cook to 165°F internal\nHold above 140°F\nDiscard after 4 hrs in danger zone"} />
                       </Field>
-                      <Field label="Allergens">
-                        <Input name="allergens" defaultValue={recipe.allergens ?? ""} placeholder="dairy, gluten, tree nuts" />
+                      <Field label="Allergens" hint="Check what this recipe's own ingredients contain. Allergens from sub-recipes are added automatically.">
+                        <AllergenPicker selected={ownAllergens} inherited={inheritedAllergens} />
                       </Field>
                       <Field label="Storage Instructions" hint="One step per line so it's easy to follow on the line.">
                         <Textarea name="storage" rows={3} defaultValue={recipe.storage ?? ""} placeholder={"Cool rapidly to 41°F within 4 hrs\nStore covered & labeled, FIFO\nKeep below 40°F"} />
@@ -458,7 +468,7 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
                 <DetailRow label="Yield" value={`${num(recipe.yieldQty)} ${recipe.yieldUnit}`} />
                 <DetailRow label="Prep" value={recipe.prepMinutes != null ? `${recipe.prepMinutes} min` : null} />
                 <DetailRow label="Cook" value={recipe.cookMinutes != null ? `${recipe.cookMinutes} min` : null} />
-                <DetailRow label="Allergens" value={recipe.allergens} />
+                <DetailRow label="Allergens" value={allergenLabels(effectiveAllergenKeys) || null} multiline />
                 <DetailRow label="Storage" value={recipe.storage} multiline />
                 <DetailRow label="Shelf life" value={recipe.shelfLife} />
                 <DetailRow label="Hold life" value={recipe.holdLifeDays != null ? `${recipe.holdLifeDays} days` : null} />
