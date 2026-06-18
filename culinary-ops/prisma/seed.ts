@@ -6,6 +6,19 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("Seeding culinary operations data...");
 
+  // Guard: this seed WIPES every table before inserting sample data. Refuse to
+  // run against a database that already holds real data unless explicitly
+  // forced (SEED_FORCE=1), so it can never clobber production by accident.
+  const existingRecipes = await prisma.recipe.count();
+  const existingOrders = await prisma.prepOrder.count();
+  if ((existingRecipes > 0 || existingOrders > 0) && process.env.SEED_FORCE !== "1") {
+    throw new Error(
+      `Refusing to seed: database already has data (${existingRecipes} recipes, ${existingOrders} prep orders).\n` +
+        `This seed DELETES everything first. If you really want to wipe and reseed, re-run with SEED_FORCE=1:\n` +
+        `  SEED_FORCE=1 npm run db:seed`,
+    );
+  }
+
   // Wipe in dependency order so the seed is idempotent. Prep lines/orders go
   // first — they RESTRICT-reference recipes and venues, so those can't be
   // cleared until the production ledger is gone.
