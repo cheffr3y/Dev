@@ -87,6 +87,140 @@ export function buildBanquetPlan(lines: BanquetLine[], recipes: BanquetRecipeRow
   return { lineCosts, totalCost, shoppingList };
 }
 
+// --- Day rollup (multiple banquets, one date) -----------------------------
+//
+// Kitchens batch prep by recipe and sub-recipe, not by event. When two parties
+// on the same day both call for "House Marinara" — directly or buried inside a
+// dish — the chef wants to make ONE batch for the day, then divide it between
+// the parties afterward. buildDayPlan rolls every recipe and sub-recipe up by
+// batch across all of the day's banquets, records which party contributed how
+// much (the split), and produces one combined raw-item pull list.
+
+// One banquet on the day, reduced to its food lines.
+export type BanquetParty = {
+  id: string;
+  name: string;
+  guestCount: number;
+  lines: BanquetLine[];
+};
+
+// What one party contributes to a rolled-up recipe/sub-recipe.
+export type RecipeRollupSplit = { partyId: string; partyName: string; batches: number; qty: number };
+
+// One recipe or sub-recipe, summed across the whole day.
+export type RecipeRollupRow = {
+  recipeId: string;
+  recipeName: string;
+  yieldUnit: string;
+  isSubRecipe: boolean; // reached only through another recipe's components, never ordered directly
+  totalBatches: number;
+  totalQty: number; // totalBatches × yieldQty, expressed in yieldUnit
+  splits: RecipeRollupSplit[]; // per party, in day order; shared when length > 1
+};
+
+export type DayPlan = {
+  parties: Array<{ id: string; name: string; guestCount: number; cost: number }>;
+  recipeRollup: RecipeRollupRow[];
+  shoppingList: ShoppingList;
+  totalCost: number;
+  totalGuests: number;
+};
+
+// Walk a recipe tree recording the batch factor for every recipe touched —
+// same recursion the cost/shopping engines use, but accumulating batches per
+// recipe instead of cost or raw items. Cycles contribute nothing.
+function accumulateRecipeBatches(
+  recipeId: string,
+  factor: number,
+  byId: Map<string, BanquetRecipeRow>,
+  stack: Set<string>,
+  add: (recipeId: string, batches: number) => void,
+) {
+  const node = byId.get(recipeId);
+  if (!node || stack.has(recipeId)) return;
+  stack.add(recipeId);
+  add(recipeId, factor);
+  for (const c of node.components) {
+    const child = byId.get(c.childId);
+    if (!child) continue;
+    const { batches } = componentBatchFactor(c.quantity, c.unit, child.yieldQty, child.yieldUnit);
+    accumulateRecipeBatches(c.childId, batches * factor, byId, stack, add);
+  }
+  stack.delete(recipeId);
+}
+
+export function buildDayPlan(parties: BanquetParty[], recipes: Array<BanquetRecipeRow & { name: string }>): DayPlan {
+  const byId = new Map(recipes.map((r) => [r.id, r]));
+  const nameById = new Map(recipes.map((r) => [r.id, r.name]));
+
+  // Recipes ordered directly on any BEO line are dishes, not sub-recipes —
+  // even if they also appear inside another recipe.
+  const rootRecipeIds = new Set<string>();
+  for (const p of parties) for (const l of p.lines) rootRecipeIds.add(l.recipeId);
+
+  // recipeId → (partyId → batches)
+  const perRecipe = new Map<string, Map<string, number>>();
+  for (const party of parties) {
+    for (const line of party.lines) {
+      const y = byId.get(line.recipeId);
+      const { batches } = componentBatchFactor(line.orderedQty, line.unit, y?.yieldQty ?? 1, y?.yieldUnit ?? line.unit);
+      accumulateRecipeBatches(line.recipeId, batches, byId, new Set(), (rid, b) => {
+        let byParty = perRecipe.get(rid);
+        if (!byParty) {
+          byParty = new Map();
+          perRecipe.set(rid, byParty);
+        }
+        byParty.set(party.id, (byParty.get(party.id) ?? 0) + b);
+      });
+    }
+  }
+
+  const recipeRollup: RecipeRollupRow[] = [];
+  for (const [recipeId, byParty] of perRecipe) {
+    const node = byId.get(recipeId);
+    const yieldQty = node?.yieldQty ?? 1;
+    const yieldUnit = node?.yieldUnit ?? "batch";
+    const splits: RecipeRollupSplit[] = parties
+      .filter((p) => (byParty.get(p.id) ?? 0) > 0)
+      .map((p) => {
+        const batches = byParty.get(p.id)!;
+        return { partyId: p.id, partyName: p.name, batches, qty: batches * yieldQty };
+      });
+    const totalBatches = splits.reduce((s, x) => s + x.batches, 0);
+    recipeRollup.push({
+      recipeId,
+      recipeName: nameById.get(recipeId) ?? "Unknown recipe",
+      yieldUnit,
+      isSubRecipe: !rootRecipeIds.has(recipeId),
+      totalBatches,
+      totalQty: totalBatches * yieldQty,
+      splits,
+    });
+  }
+  // Shared lines (2+ parties) first, then dishes before sub-recipes, then name.
+  recipeRollup.sort(
+    (a, b) =>
+      Number(b.splits.length > 1) - Number(a.splits.length > 1) ||
+      Number(a.isSubRecipe) - Number(b.isSubRecipe) ||
+      a.recipeName.localeCompare(b.recipeName),
+  );
+
+  // Combined pull list + per-party cost reuse the single-banquet engine.
+  const allLines = parties.flatMap((p) => p.lines);
+  const { shoppingList } = buildBanquetPlan(allLines, recipes);
+
+  let totalCost = 0;
+  let totalGuests = 0;
+  const partySummaries = parties.map((p) => {
+    const cost = buildBanquetPlan(p.lines, recipes).totalCost;
+    totalCost += cost;
+    totalGuests += p.guestCount;
+    return { id: p.id, name: p.name, guestCount: p.guestCount, cost };
+  });
+
+  return { parties: partySummaries, recipeRollup, shoppingList, totalCost, totalGuests };
+}
+
 // The Prisma `select` shared by the banquet pages to load BanquetRecipeRow.
 export const banquetRecipeSelect = {
   id: true,

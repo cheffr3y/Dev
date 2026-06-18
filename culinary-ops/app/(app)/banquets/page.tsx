@@ -2,9 +2,9 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireUser, hasRole } from "@/lib/session";
 import { getVenues, getActiveVenue } from "@/lib/venue";
-import { Badge, Button, Card, EmptyState, Field, Input, PageHeader, Select, Textarea } from "@/components/ui";
+import { Badge, Button, Card, EmptyState, Field, Input, PageHeader, Select } from "@/components/ui";
 import { createBanquet } from "./actions";
-import { STATUS_COLOR, EVENT_STATUSES as STATUSES, statusLabel } from "@/lib/event-status";
+import { STATUS_COLOR } from "@/lib/event-status";
 
 export default async function BanquetsPage() {
   const user = await requireUser();
@@ -30,10 +30,16 @@ export default async function BanquetsPage() {
         <details className="mb-5">
           <summary className="cursor-pointer text-sm font-medium text-blue-600">+ New banquet (from a BEO)</summary>
           <Card className="mt-2 p-4">
+            {/* Just enough to file the BEO — name + date. The rest (guests, service
+                window, contact, setup, instructions) lives on the banquet itself
+                and is filled in on the next screen straight from the sheet. */}
             <form action={createBanquet} className="space-y-3">
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
                 <Field label="Event name">
                   <Input name="name" required placeholder="Miller Wedding" />
+                </Field>
+                <Field label="Date">
+                  <Input name="date" type="date" required />
                 </Field>
                 <Field label="Venue">
                   <Select name="venueId" defaultValue={active?.id ?? venues[0]?.id}>
@@ -44,76 +50,78 @@ export default async function BanquetsPage() {
                     ))}
                   </Select>
                 </Field>
-                <Field label="Date">
-                  <Input name="date" type="date" required />
-                </Field>
-                <Field label="Service window">
-                  <Input name="timeLabel" placeholder="5:00 pm – 1:00 am" />
-                </Field>
-                <Field label="Guests">
-                  <Input name="guestCount" type="number" min="0" defaultValue={0} />
-                </Field>
-                <Field label="Status">
-                  <Select name="status" defaultValue="PLANNED">
-                    {STATUSES.map((s) => (
-                      <option key={s} value={s}>
-                        {statusLabel(s)}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-                <Field label="Location">
-                  <Input name="location" placeholder="Foxtown Station" />
-                </Field>
-                <Field label="Area(s) / room">
-                  <Input name="areas" placeholder="Opitz Hall" />
-                </Field>
-                <Field label="Sales manager">
-                  <Input name="salesManager" placeholder="Michelle Banaszak" />
-                </Field>
-                <Field label="Contact name">
-                  <Input name="contactName" placeholder="Sarah Miller" />
-                </Field>
-                <Field label="Contact email">
-                  <Input name="contactEmail" type="email" placeholder="contact@example.com" />
-                </Field>
-                <Field label="Contact phone">
-                  <Input name="contactPhone" placeholder="414-555-1717" />
-                </Field>
               </div>
-              <Field label="Special instructions">
-                <Textarea name="specialInstructions" placeholder="Kings table for head table; white linen grey napkins…" />
-              </Field>
-              <Field label="Setup">
-                <Textarea name="setupNotes" placeholder="Full table setting; salt & pepper; meal indicators on place cards…" />
-              </Field>
-              <Button type="submit">Create & add food lines →</Button>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-zinc-500">Everything else off the BEO is filled in on the next screen.</p>
+                <Button type="submit">Create & add food lines →</Button>
+              </div>
             </form>
           </Card>
         </details>
       )}
 
-      <h2 className="mb-3 font-mono text-xs uppercase tracking-[0.02em] text-zinc-600">Upcoming</h2>
       {upcoming.length === 0 ? (
-        <EmptyState title="No upcoming banquets" hint={canEdit ? "Transcribe a BEO to get started." : undefined} />
+        <>
+          <h2 className="mb-3 font-mono text-xs uppercase tracking-[0.02em] text-zinc-600">Upcoming</h2>
+          <EmptyState title="No upcoming banquets" hint={canEdit ? "Transcribe a BEO to get started." : undefined} />
+        </>
       ) : (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          {upcoming.map((b) => (
-            <BanquetCard key={b.id} banquet={b} />
-          ))}
-        </div>
+        <DaySections heading="Upcoming" banquets={upcoming} />
       )}
 
-      {past.length > 0 && (
-        <>
-          <h2 className="mb-3 mt-10 font-mono text-xs uppercase tracking-[0.02em] text-zinc-600">Past</h2>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            {past.map((b) => (
-              <BanquetCard key={b.id} banquet={b} />
-            ))}
-          </div>
-        </>
-      )}
+      {past.length > 0 && <DaySections heading="Past" banquets={[...past].reverse()} className="mt-10" />}
+    </div>
+  );
+}
+
+type BanquetListItem = Parameters<typeof BanquetCard>[0]["banquet"];
+
+// Group a banquet list by calendar date (UTC, matching how dates are stored)
+// so a chef sees the whole day at once. When a date holds more than one event,
+// surface a "Day prep" link to the combined make-once rollup.
+function DaySections({ heading, banquets, className }: { heading: string; banquets: BanquetListItem[]; className?: string }) {
+  const groups = new Map<string, BanquetListItem[]>();
+  for (const b of banquets) {
+    const key = b.date.toISOString().slice(0, 10);
+    const arr = groups.get(key) ?? [];
+    arr.push(b);
+    groups.set(key, arr);
+  }
+
+  return (
+    <div className={className}>
+      <h2 className="mb-3 font-mono text-xs uppercase tracking-[0.02em] text-zinc-600">{heading}</h2>
+      <div className="space-y-6">
+        {[...groups.entries()].map(([key, group]) => {
+          const date = group[0].date;
+          return (
+            <section key={key}>
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <h3 className="text-sm font-medium text-zinc-700">
+                  {date.toLocaleDateString("en-US", {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                    timeZone: "UTC",
+                  })}
+                  {group.length > 1 && <span className="ml-2 text-xs font-normal text-zinc-400">{group.length} events</span>}
+                </h3>
+                {group.length > 1 && (
+                  <Link href={`/banquets/day/${key}`} className="text-xs font-medium text-blue-600 hover:underline">
+                    Day prep →
+                  </Link>
+                )}
+              </div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                {group.map((b) => (
+                  <BanquetCard key={b.id} banquet={b} />
+                ))}
+              </div>
+            </section>
+          );
+        })}
+      </div>
     </div>
   );
 }
