@@ -1,22 +1,17 @@
 import type { Metadata } from "next";
-import { Inter, Space_Grotesk, Space_Mono } from "next/font/google";
+import { Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
 
-// Cohere system fallbacks: CohereText -> Space Grotesk, Unica77 -> Inter,
-// CohereMono -> a true mono to keep the technical-label cadence.
-const display = Space_Grotesk({
-  variable: "--font-cohere-display",
+// "The French Laundry" type pairing: a high-contrast serif for page titles
+// and summary numbers, a clean sans for table data, labels and navigation.
+const serif = Playfair_Display({
+  variable: "--font-serif",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
-const body = Inter({
-  variable: "--font-unica-fallback",
-  subsets: ["latin"],
-});
-
-const mono = Space_Mono({
-  variable: "--font-cohere-mono",
-  weight: ["400", "700"],
+const sans = Inter({
+  variable: "--font-sans-fallback",
   subsets: ["latin"],
 });
 
@@ -33,7 +28,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${display.variable} ${body.variable} ${mono.variable} h-full antialiased`}
+      className={`${serif.variable} ${sans.variable} h-full antialiased`}
     >
       <body className="min-h-full font-sans">{children}</body>
     </html>

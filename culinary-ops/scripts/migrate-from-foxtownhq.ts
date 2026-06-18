@@ -38,6 +38,7 @@ import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { Client } from "pg";
 import { randomBytes } from "crypto";
+import { generateProdCode } from "../lib/prep";
 
 type RoleName = "ADMIN" | "MANAGER" | "STAFF";
 
@@ -252,6 +253,11 @@ async function main() {
     for (const c of optional) {
       if (await columnExists(src, "recipes", c)) present.push(c);
     }
+    // Seed taken production codes from any recipes already in the target DB so
+    // re-runs stay unique. Existing recipes keep their (frozen) code on update.
+    const existingRecipes = await prisma.recipe.findMany({ select: { id: true, prodCode: true } });
+    const takenCodes = new Set(existingRecipes.map((r) => r.prodCode));
+    const codeByRecipeId = new Map(existingRecipes.map((r) => [r.id, r.prodCode]));
     const { rows } = await src.query(
       `SELECT id, name, category, yield_qty, yield_unit, instructions
               ${present.length ? "," + present.join(",") : ""}
@@ -297,10 +303,17 @@ async function main() {
         yieldUnit: clean(row.yield_unit) ?? "servings",
         instructions: instructions || null,
       };
+      // Reuse the recipe's existing code if present; otherwise auto-generate.
+      let prodCode = codeByRecipeId.get(id);
+      if (!prodCode) {
+        prodCode = generateProdCode(name, takenCodes);
+        takenCodes.add(prodCode);
+        codeByRecipeId.set(id, prodCode);
+      }
       await prisma.recipe.upsert({
         where: { id },
         update: data,
-        create: { id, ...data },
+        create: { id, ...data, prodCode },
       });
       knownRecipeIds.add(id);
     }

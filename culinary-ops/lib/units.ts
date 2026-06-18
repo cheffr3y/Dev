@@ -87,6 +87,32 @@ export function unitLabel(raw: string): string {
   return resolve(raw)?.label ?? raw;
 }
 
+// Pick a natural display unit for a recipe quantity when pulling/printing.
+// Volume rolls up into fl oz → qt → gal (anything under a quart stays fl oz);
+// weight rolls into g → oz → lb (under an ounce drops to grams). Count and
+// unrecognized units pass through unchanged. This is display-only — the stored
+// quantity/unit (and any costing that depends on it) are left untouched.
+export function displayMeasure(qty: number, unit: string): { qty: number; label: string } {
+  const def = resolve(unit);
+  if (!def) return { qty, label: unit };
+
+  if (def.family === "volume") {
+    const flOz = qty * def.factor; // base unit = fl oz
+    if (flOz >= UNITS.gallon.factor) return { qty: flOz / UNITS.gallon.factor, label: UNITS.gallon.label };
+    if (flOz >= UNITS.quart.factor) return { qty: flOz / UNITS.quart.factor, label: UNITS.quart.label };
+    return { qty: flOz, label: UNITS["fl oz"].label };
+  }
+
+  if (def.family === "weight") {
+    const oz = qty * def.factor; // base unit = oz
+    if (oz >= UNITS.lb.factor) return { qty: oz / UNITS.lb.factor, label: UNITS.lb.label };
+    if (oz < UNITS.oz.factor) return { qty: oz / UNITS.gram.factor, label: UNITS.gram.label };
+    return { qty: oz, label: UNITS.oz.label };
+  }
+
+  return { qty, label: def.label };
+}
+
 // Convert a quantity between units. Returns null when the conversion is
 // unknown (unrecognized unit or different families) — unless the two unit
 // strings are literally the same (e.g. "case" -> "case"), which is a no-op.

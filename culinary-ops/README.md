@@ -16,6 +16,7 @@ Built with Next.js (App Router), TypeScript, Prisma, and PostgreSQL. Role-based 
 | **Inventory** | Per-venue on-hand counts vs. par levels, low-stock highlighting, and inventory value. |
 | **Order Guides** | Per-venue / per-vendor order sheets. Computes **order quantity = par − on-hand** and an estimated order total. Print-friendly. |
 | **Events** | Plan events with a menu of recipes scaled to servings. Rolls up estimated food cost and a single **aggregated prep & shopping list** across all dishes. Print-friendly. |
+| **Prep Orders** | Commissary production ledger: a chef requests recipes per destination venue for a date → printable **lot-stamped cook packet** → **back-entry** of actuals (made-by / entered-by / status) → a **cost-transfer report** (quantity per item per venue) for accounting. |
 | **Vendors / Venues / Users** | Manage suppliers, locations, and team access. |
 
 ### Roles
@@ -89,6 +90,7 @@ app/
     inventory/           Per-venue stock
     order-guides/        Order sheets (list + detail + print)
     events/              Event planning (list + detail + prep list)
+    prep-orders/         Prep orders (entry, cook packet, back-entry, report + CSV)
     vendors/ venues/     Supplier & location management
     admin/users/         User & role management (admin)
 lib/                     prisma client, session/RBAC, costing, venue context
@@ -102,6 +104,16 @@ scripts/dev-setup.sh     Local Postgres bootstrap
 
 ## Printable recipe cards
 Every recipe has a kitchen-facing print view at `/recipes/[id]/print`: ingredient table, numbered method steps, allergen banner, critical food-safety (HACCP) box, storage & shelf-life instructions, and a prepared/verified sign-off footer. Quantities and yield scale for batches via `?x=N` (×1–×4 in the toolbar). Costs and margins are intentionally omitted from the card.
+
+## Prep orders & production ledger
+Commissary production is tracked from request to transfer at `/prep-orders`:
+
+1. **Order entry** — a manager submits recipes for a **target date**, each with a **destination venue** and requested qty/unit. The same recipe added for a second venue becomes a split (combined batch, separate accounting).
+2. **Cook packet** (`/prep-orders/[id]/packet`) — printing assigns each batch a frozen **lot** (`MMDD-XXX-N`, where `XXX` is the recipe's auto-generated 3-char production code) and moves lines `REQUESTED → PRINTED`. Each entry is the recipe **scaled** to the combined qty, lot-stamped, with made-date/use-by for hand-written labels and a `⚠` flag on non-clean batch multiples. The system prints **no label** — cooks hand-copy the lot, so the production code bans the ambiguous characters **O/I/L**.
+3. **Back-entry** (`/prep-orders/[id]/back-entry`) — every printed line is pre-loaded with the requested qty as the default actual; a person confirms or corrects qty, made-by, status (`MADE` / `SHORT` / `NOT_MADE`) and notes in one save. `entered-by` is recorded automatically and kept distinct from made-by. Mise cost is **frozen** at this moment (`unitCostSnapshot`, `allocatedCost`) and never recomputed against the live catalog.
+4. **Cost-transfer report** (`/prep-orders/report`) — groups produced quantity by destination venue → item over a date range, with a clearly-labeled, **non-authoritative** Mise cost column and CSV/print export. Quantity is the contract; accounting applies Acumatica pricing. A yield-insight panel surfaces requested-vs-actual deltas to flag recipes whose stated yield is off.
+
+Raw-ingredient inventory depletion, non-linear scaling, and programmatic Acumatica push are intentionally out of scope — Acumatica owns raw inventory and authoritative costing.
 
 ---
 
