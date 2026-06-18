@@ -111,6 +111,10 @@ function fmt(field: string, v: unknown): string {
     const n = String(v).split(/\r?\n/).filter((s) => s.trim()).length;
     return `${n} step${n === 1 ? "" : "s"}`;
   }
+  // Multi-line free-text fields read better as one line in the changelog diff.
+  if (field === "storage" || field === "criticalNotes") {
+    return String(v).split(/\r?\n/).map((s) => s.trim()).filter(Boolean).join(" · ");
+  }
   return String(v);
 }
 

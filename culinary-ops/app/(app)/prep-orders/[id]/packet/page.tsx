@@ -353,7 +353,7 @@ function PacketEntry({
       )}
 
       {recipe.criticalNotes && (
-        <p className="mt-3 border-l-2 border-zinc-900 bg-zinc-50 px-3 py-1.5 text-sm font-medium text-zinc-900">
+        <p className="mt-3 whitespace-pre-wrap border-l-2 border-zinc-900 bg-zinc-50 px-3 py-1.5 text-sm font-medium text-zinc-900">
           ⚠ {recipe.criticalNotes}
         </p>
       )}
@@ -480,7 +480,7 @@ function SubBuild({
       )}
 
       {node.criticalNotes && (
-        <p className="mt-2 border-l-2 border-zinc-900 bg-zinc-50 px-3 py-1 text-sm font-medium text-zinc-900">
+        <p className="mt-2 whitespace-pre-wrap border-l-2 border-zinc-900 bg-zinc-50 px-3 py-1 text-sm font-medium text-zinc-900">
           ⚠ {node.criticalNotes}
         </p>
       )}

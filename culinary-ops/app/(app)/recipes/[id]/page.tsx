@@ -14,7 +14,7 @@ import {
   num,
 } from "@/lib/costing";
 import { UNIT_OPTIONS, unitLabel, displayMeasure } from "@/lib/units";
-import { Badge, Button, Card, CardHeader, Field, Input, LinkButton, PageHeader, Select } from "@/components/ui";
+import { Badge, Button, Card, CardHeader, Field, Input, LinkButton, PageHeader, Select, Textarea } from "@/components/ui";
 import { MethodEditor } from "@/components/MethodEditor";
 import { SubRecipeForm } from "../SubRecipeForm";
 import {
@@ -413,14 +413,14 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
 
                   <Section title="Safety & Storage">
                     <div className="space-y-3">
-                      <Field label="Critical / Food Safety" hint="HACCP critical limits, e.g. “Cook to 165°F internal · hold above 140°F”.">
-                        <Input name="criticalNotes" defaultValue={recipe.criticalNotes ?? ""} placeholder="—" />
+                      <Field label="Critical / Food Safety" hint="HACCP critical limits — put each point on its own line for clarity.">
+                        <Textarea name="criticalNotes" rows={3} defaultValue={recipe.criticalNotes ?? ""} placeholder={"Cook to 165°F internal\nHold above 140°F\nDiscard after 4 hrs in danger zone"} />
                       </Field>
                       <Field label="Allergens">
                         <Input name="allergens" defaultValue={recipe.allergens ?? ""} placeholder="dairy, gluten, tree nuts" />
                       </Field>
-                      <Field label="Storage Instructions">
-                        <Input name="storage" defaultValue={recipe.storage ?? ""} placeholder="Cool rapidly, store covered & labeled…" />
+                      <Field label="Storage Instructions" hint="One step per line so it's easy to follow on the line.">
+                        <Textarea name="storage" rows={3} defaultValue={recipe.storage ?? ""} placeholder={"Cool rapidly to 41°F within 4 hrs\nStore covered & labeled, FIFO\nKeep below 40°F"} />
                       </Field>
                       <Field label="Shelf Life">
                         <Input name="shelfLife" defaultValue={recipe.shelfLife ?? ""} placeholder="3 days refrigerated" />
@@ -459,11 +459,11 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
                 <DetailRow label="Prep" value={recipe.prepMinutes != null ? `${recipe.prepMinutes} min` : null} />
                 <DetailRow label="Cook" value={recipe.cookMinutes != null ? `${recipe.cookMinutes} min` : null} />
                 <DetailRow label="Allergens" value={recipe.allergens} />
-                <DetailRow label="Storage" value={recipe.storage} />
+                <DetailRow label="Storage" value={recipe.storage} multiline />
                 <DetailRow label="Shelf life" value={recipe.shelfLife} />
                 <DetailRow label="Hold life" value={recipe.holdLifeDays != null ? `${recipe.holdLifeDays} days` : null} />
                 <DetailRow label="Prod. code" value={recipe.prodCode} />
-                <DetailRow label="Critical" value={recipe.criticalNotes} />
+                <DetailRow label="Critical" value={recipe.criticalNotes} multiline />
               </dl>
             </Card>
           )}
@@ -492,8 +492,26 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function DetailRow({ label, value }: { label: string; value?: string | null }) {
+function DetailRow({
+  label,
+  value,
+  multiline = false,
+}: {
+  label: string;
+  value?: string | null;
+  multiline?: boolean;
+}) {
   if (!value) return null;
+  // Free-text fields (storage, food safety) can run several lines — stack the
+  // label above a left-aligned block that preserves the entered line breaks.
+  if (multiline) {
+    return (
+      <div>
+        <dt className="font-mono text-xs uppercase tracking-[0.02em] text-zinc-500">{label}</dt>
+        <dd className="mt-1 whitespace-pre-wrap leading-relaxed text-zinc-800">{value}</dd>
+      </div>
+    );
+  }
   return (
     <div className="flex justify-between gap-3">
       <dt className="font-mono text-xs uppercase tracking-[0.02em] text-zinc-500">{label}</dt>
