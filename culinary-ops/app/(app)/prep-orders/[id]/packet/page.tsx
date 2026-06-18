@@ -241,26 +241,41 @@ function PacketEntry({
       </div>
 
       {/* Quantity + split allocation */}
-      <div className="mt-3 border-y border-zinc-300 bg-zinc-50 px-4 py-2.5 text-sm">
-        <span className="font-semibold text-zinc-900">
-          Total {convertible ? `${num(combinedInYield)} ${unitLabel(recipe.yieldUnit)}` : "(mixed units)"}
-        </span>
-        {split && (
-          <span className="text-zinc-600">
-            {" "}
-            →{" "}
-            {lines
-              .map((l) => `${l.destinationVenue.code} ${num(l.requestedQty)} ${unitLabel(l.requestedUnit)}`)
-              .join(", ")}
+      {split ? (
+        <div className="mt-3 border-2 border-zinc-900 text-sm">
+          <div className="bg-zinc-900 px-4 py-1.5">
+            <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-white">
+              Split Batch — Portion before pickup
+            </span>
+          </div>
+          <div className="divide-y divide-zinc-200 bg-white">
+            {lines.map((l) => (
+              <div key={l.id} className="flex items-center justify-between px-4 py-2.5">
+                <span className="font-medium text-zinc-900">{l.destinationVenue.name}</span>
+                <span className="font-bold tabular-nums text-zinc-900">
+                  {num(l.requestedQty)} {unitLabel(l.requestedUnit)}
+                </span>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center justify-between border-t-2 border-zinc-900 bg-zinc-50 px-4 py-2">
+            <span className="font-semibold text-zinc-500">Combined total</span>
+            <span className="font-bold tabular-nums text-zinc-900">
+              {convertible ? `${num(combinedInYield)} ${unitLabel(recipe.yieldUnit)}` : "(mixed units)"}
+            </span>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-3 border-y border-zinc-300 bg-zinc-50 px-4 py-2.5 text-sm">
+          <span className="font-semibold text-zinc-900">
+            Total {convertible ? `${num(combinedInYield)} ${unitLabel(recipe.yieldUnit)}` : "(mixed units)"}
           </span>
-        )}
-        {!split && (
           <span className="text-zinc-600">
             {" "}
             → {lines[0].destinationVenue.name} ({num(lines[0].requestedQty)} {unitLabel(lines[0].requestedUnit)})
           </span>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Scaling guard */}
       {flag && !flag.clean && (
