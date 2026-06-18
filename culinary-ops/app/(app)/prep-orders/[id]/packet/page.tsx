@@ -316,14 +316,20 @@ function PacketEntry({
           </tr>
         </thead>
         <tbody className="divide-y divide-zinc-100">
-          {recipe.items.map((ri) => (
-            <tr key={ri.id}>
-              <td className="py-1.5 pr-3 text-right font-semibold tabular-nums text-zinc-900">{num(ri.quantity * scale)}</td>
-              <td className="py-1.5 pr-4 text-zinc-600">{unitLabel(ri.unit)}</td>
-              <td className="py-1.5 pr-4 text-zinc-900">{ri.item.name}</td>
-              <td className="py-1.5 text-zinc-500">{ri.note ?? ""}</td>
-            </tr>
-          ))}
+          {recipe.items.map((ri) => {
+            // Roll the scaled amount up into its natural unit (oz→lb, sub-oz→g,
+            // fl oz→qt→gal) so cooks read "3 lb" not "48 oz" — same treatment
+            // the sub-recipe lines already get below.
+            const m = displayMeasure(ri.quantity * scale, ri.unit);
+            return (
+              <tr key={ri.id}>
+                <td className="py-1.5 pr-3 text-right font-semibold tabular-nums text-zinc-900">{num(m.qty)}</td>
+                <td className="py-1.5 pr-4 text-zinc-600">{m.label}</td>
+                <td className="py-1.5 pr-4 text-zinc-900">{ri.item.name}</td>
+                <td className="py-1.5 text-zinc-500">{ri.note ?? ""}</td>
+              </tr>
+            );
+          })}
           {recipe.components.map((c) => {
             // Show the sub-recipe amount in the child's own yield unit (rolled
             // up), scaled by this batch — so "2.5 gal" of a recipe yielded in
