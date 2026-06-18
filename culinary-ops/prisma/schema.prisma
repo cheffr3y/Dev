@@ -65,6 +65,7 @@ model Venue {
   inventory   InventoryItem[]
   orderGuides OrderGuide[]
   events      Event[]
+  banquets    Banquet[]
   prepLines   PrepOrderLine[] // production destined here
   prepOrders  PrepOrder[] // orders destined here
 }
@@ -130,9 +131,10 @@ model Recipe {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  items      RecipeItem[]
-  eventItems EventMenuItem[]
-  prepLines  PrepOrderLine[]
+  items        RecipeItem[]
+  eventItems   EventMenuItem[]
+  banquetItems BanquetMenuItem[]
+  prepLines    PrepOrderLine[]
 
   // Sub-recipes: a recipe can be built from other recipes (components).
   components RecipeComponent[] @relation("ParentRecipe")
@@ -253,6 +255,65 @@ model EventMenuItem {
   note            String?
 
   @@unique([eventId, recipeId])
+}
+
+// ---------------------------------------------------------------------------
+// Banquets — transcribed Banquet Event Orders (BEOs).
+//
+// A customer-facing catering order received from sales (contact, service
+// window, room, special instructions, setup). Each food line links to a Recipe
+// and an ordered quantity; the kitchen view scales every recipe by the ordered
+// amount and rolls the dishes up into one aggregated prep / pull sheet.
+// Customer pricing and beverage/additional charges are intentionally not
+// tracked here — this is the kitchen's production side of the BEO.
+// ---------------------------------------------------------------------------
+model Banquet {
+  id         String      @id @default(cuid())
+  name       String // event name on the BEO, e.g. "Miller Wedding"
+  venueId    String
+  venue      Venue       @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  date       DateTime
+  timeLabel  String? // free-text service window as printed, e.g. "5:00 pm – 1:00 am"
+  guestCount Int         @default(0)
+  status     EventStatus @default(PLANNED)
+  location   String? // venue / building, e.g. "Foxtown Station"
+  areas      String? // room(s) within the venue, e.g. "Opitz Hall"
+
+  // Account / contact block copied from the BEO header (reference only).
+  contactName  String?
+  contactEmail String?
+  contactPhone String?
+  salesManager String?
+
+  // Notes transcribed from the BEO.
+  specialInstructions String? // multi-line — service notes from the sheet
+  setupNotes          String? // multi-line — linen / table setting / setup
+  notes               String? // anything else
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  menuItems BanquetMenuItem[]
+
+  @@index([date])
+}
+
+// One food line off the BEO: a recipe and the quantity ordered. The recipe is
+// scaled by orderedQty (in `unit`, convertible to the recipe's yield unit) to
+// drive the aggregated prep/pull sheet. The same recipe may appear more than
+// once (e.g. an adult vs. kids portion), so there is no per-recipe uniqueness.
+model BanquetMenuItem {
+  id          String   @id @default(cuid())
+  banquetId   String
+  banquet     Banquet  @relation(fields: [banquetId], references: [id], onDelete: Cascade)
+  recipeId    String
+  recipe      Recipe   @relation(fields: [recipeId], references: [id], onDelete: Restrict)
+  orderedQty  Float    @default(0)
+  unit        String   @default("servings")
+  description String? // BEO line wording / prep note, e.g. "prefers sticks, not promised 5pm"
+  createdAt   DateTime @default(now())
+
+  @@index([banquetId])
 }
 
 // ---------------------------------------------------------------------------

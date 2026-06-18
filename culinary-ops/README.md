@@ -16,6 +16,7 @@ Built with Next.js (App Router), TypeScript, Prisma, and PostgreSQL. Role-based 
 | **Inventory** | Per-venue on-hand counts vs. par levels, low-stock highlighting, and inventory value. |
 | **Order Guides** | Per-venue / per-vendor order sheets. Computes **order quantity = par − on-hand** and an estimated order total. Print-friendly. |
 | **Events** | Plan events with a menu of recipes scaled to servings. Rolls up estimated food cost and a single **aggregated prep & shopping list** across all dishes. Print-friendly. |
+| **Banquets** | Transcribe a **Banquet Event Order (BEO)**: the header (contact, service window, room, special instructions, setup) plus food lines that link each recipe to its **ordered count**. Every dish scales by the ordered amount into one **aggregated prep / pull sheet** (sub-recipes exploded to raw items, summed by category), with a printable kitchen prep sheet. Customer pricing & beverage/additional charges are out of scope — this is the kitchen side of the BEO. |
 | **Prep Orders** | Commissary production ledger: a chef requests recipes per destination venue for a date → printable **lot-stamped cook packet** → **back-entry** of actuals (made-by / entered-by / status) → a **cost-transfer report** (quantity per item per venue) for accounting. |
 | **Vendors / Venues / Users** | Manage suppliers, locations, and team access. |
 
@@ -90,6 +91,7 @@ app/
     inventory/           Per-venue stock
     order-guides/        Order sheets (list + detail + print)
     events/              Event planning (list + detail + prep list)
+    banquets/            Banquets — BEO entry (list + detail + printable prep sheet)
     prep-orders/         Prep orders (entry, cook packet, back-entry, report + CSV)
     vendors/ venues/     Supplier & location management
     admin/users/         User & role management (admin)

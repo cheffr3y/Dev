@@ -26,6 +26,8 @@ async function main() {
   await prisma.prepOrder.deleteMany();
   await prisma.eventMenuItem.deleteMany();
   await prisma.event.deleteMany();
+  await prisma.banquetMenuItem.deleteMany();
+  await prisma.banquet.deleteMany();
   await prisma.orderGuideLine.deleteMany();
   await prisma.orderGuide.deleteMany();
   await prisma.inventoryItem.deleteMany();
@@ -276,6 +278,37 @@ async function main() {
     },
   });
 
+  // --- Banquets (transcribed BEOs) ---
+  // A customer banquet order: each food line links a recipe to the ordered
+  // headcount, which scales the kitchen prep/pull sheet.
+  await prisma.banquet.create({
+    data: {
+      name: "Miller Wedding",
+      venueId: waterfront.id,
+      date: new Date(Date.now() + 9 * 86400000),
+      timeLabel: "5:00 pm – 1:00 am",
+      guestCount: 62,
+      status: "CONFIRMED",
+      location: "Foxtown Station",
+      areas: "Opitz Hall",
+      salesManager: "Michelle Banaszak",
+      contactName: "Sarah Miller",
+      contactEmail: "contact@example.com",
+      contactPhone: "414-555-1717",
+      specialInstructions:
+        "Kings table for head table.\nWhite linen, grey napkins.\nMeal spreadsheet & placement diagram attached to the event.",
+      setupNotes:
+        "Full table setting: salad fork, dinner fork, knife, B&B with butter knife.\nSalt & pepper.\nMeal indicators on place cards with the name of the protein; kids will be obvious.",
+      menuItems: {
+        create: [
+          { recipeId: salmon.id, orderedQty: 29, unit: "servings", description: "Seared salmon — miso glaze, bok choy, black rice" },
+          { recipeId: carbonara.id, orderedQty: 31, unit: "servings", description: "Plated entrée" },
+          { recipeId: caesar.id, orderedQty: 62, unit: "servings", description: "First course, plated" },
+        ],
+      },
+    },
+  });
+
   // --- Prep orders (commissary production) ---
   // One order = one destination venue; every line inherits the order's venue.
   // Producing for two venues means two separate orders.
@@ -310,7 +343,9 @@ async function main() {
     },
   });
 
-  console.log(`Seeded: 3 venues, 3 users, ${items.length} items, 4 recipes, events incl. "${gala.name}", 2 prep orders.`);
+  console.log(
+    `Seeded: 3 venues, 3 users, ${items.length} items, 4 recipes, events incl. "${gala.name}", 1 banquet (Miller Wedding), 2 prep orders.`,
+  );
   console.log("Login with admin@culinaryops.test / password123");
 }
 

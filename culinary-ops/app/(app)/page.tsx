@@ -16,7 +16,7 @@ export default async function DashboardPage() {
   const user = await requireUser();
   const { active } = await getActiveVenue(user.homeVenueId);
 
-  const [recipeCount, itemCount, venueCount, vendorCount, lowStock, upcoming] = await Promise.all([
+  const [recipeCount, itemCount, venueCount, vendorCount, lowStock, upcoming, upcomingBanquets] = await Promise.all([
     prisma.recipe.count(),
     prisma.item.count(),
     prisma.venue.count(),
@@ -28,6 +28,12 @@ export default async function DashboardPage() {
         })
       : Promise.resolve([]),
     prisma.event.findMany({
+      where: { date: { gte: new Date() }, status: { not: "CANCELLED" } },
+      include: { venue: true, _count: { select: { menuItems: true } } },
+      orderBy: { date: "asc" },
+      take: 5,
+    }),
+    prisma.banquet.findMany({
       where: { date: { gte: new Date() }, status: { not: "CANCELLED" } },
       include: { venue: true, _count: { select: { menuItems: true } } },
       orderBy: { date: "asc" },
@@ -55,27 +61,34 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <span>Low stock {active ? `· ${active.code}` : ""}</span>
-              <Link href="/inventory" className="text-xs font-normal text-blue-600 hover:underline">
-                View inventory
+              <span>Upcoming banquets</span>
+              <Link href="/banquets" className="text-xs font-normal text-blue-600 hover:underline">
+                View all
               </Link>
             </div>
           </CardHeader>
-          {lowItems.length === 0 ? (
+          {upcomingBanquets.length === 0 ? (
             <div className="p-5">
-              <p className="text-sm text-zinc-500">Everything is at or above par.</p>
+              <EmptyState title="No upcoming banquets" hint="Transcribe a BEO from the Banquets page." />
             </div>
           ) : (
             <ul className="divide-y divide-zinc-100">
-              {lowItems.map((s) => (
-                <li key={s.id} className="flex items-center justify-between px-5 py-2.5 text-sm">
-                  <span className="text-zinc-800">{s.item.name}</span>
-                  <span className="flex items-center gap-2">
-                    <span className="text-zinc-500">
-                      {num(s.quantity)} / {num(s.par)} {s.unit}
+              {upcomingBanquets.map((b) => (
+                <li key={b.id} className="px-5 py-3 text-sm">
+                  <Link href={`/banquets/${b.id}`} className="flex items-center justify-between">
+                    <span>
+                      <span className="font-medium text-zinc-800">{b.name}</span>
+                      <span className="ml-2 text-zinc-400">
+                        {b.venue.code} · {b.guestCount} guests · {b._count.menuItems} dishes
+                      </span>
                     </span>
-                    <Badge color="red">Low</Badge>
-                  </span>
+                    <span className="flex items-center gap-2">
+                      <span className="text-zinc-500">
+                        {b.date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                      </span>
+                      <Badge color={STATUS_COLOR[b.status]}>{b.status.toLowerCase()}</Badge>
+                    </span>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -113,6 +126,38 @@ export default async function DashboardPage() {
                       <Badge color={STATUS_COLOR[e.status]}>{e.status.toLowerCase()}</Badge>
                     </span>
                   </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      </div>
+
+      <div className="mt-6">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <span>Low stock {active ? `· ${active.code}` : ""}</span>
+              <Link href="/inventory" className="text-xs font-normal text-blue-600 hover:underline">
+                View inventory
+              </Link>
+            </div>
+          </CardHeader>
+          {lowItems.length === 0 ? (
+            <div className="p-5">
+              <p className="text-sm text-zinc-500">Everything is at or above par.</p>
+            </div>
+          ) : (
+            <ul className="divide-y divide-zinc-100">
+              {lowItems.map((s) => (
+                <li key={s.id} className="flex items-center justify-between px-5 py-2.5 text-sm">
+                  <span className="text-zinc-800">{s.item.name}</span>
+                  <span className="flex items-center gap-2">
+                    <span className="text-zinc-500">
+                      {num(s.quantity)} / {num(s.par)} {s.unit}
+                    </span>
+                    <Badge color="red">Low</Badge>
+                  </span>
                 </li>
               ))}
             </ul>
