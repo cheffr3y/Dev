@@ -6,7 +6,11 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("Seeding culinary operations data...");
 
-  // Wipe in dependency order so the seed is idempotent.
+  // Wipe in dependency order so the seed is idempotent. Prep lines/orders go
+  // first — they RESTRICT-reference recipes and venues, so those can't be
+  // cleared until the production ledger is gone.
+  await prisma.prepOrderLine.deleteMany();
+  await prisma.prepOrder.deleteMany();
   await prisma.eventMenuItem.deleteMany();
   await prisma.event.deleteMany();
   await prisma.orderGuideLine.deleteMany();
