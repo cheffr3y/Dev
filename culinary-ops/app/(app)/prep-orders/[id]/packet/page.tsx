@@ -6,6 +6,7 @@ import { num, componentBatchFactor } from "@/lib/costing";
 import { convertQty, unitLabel, displayMeasure } from "@/lib/units";
 import { allergenLabels, effectiveAllergens } from "@/lib/allergens";
 import { batchScaleFlag } from "@/lib/prep";
+import { splitStep } from "@/lib/method";
 import { PrintButton } from "@/components/PrintButton";
 
 // Cook packet — one printable artifact per prep order. Each recipe is scaled to
@@ -351,12 +352,18 @@ function PacketEntry({
       {/* Method */}
       {steps.length > 0 && (
         <ol className="mt-4 space-y-1.5">
-          {steps.map((step, i) => (
-            <li key={i} className="flex gap-3 text-sm leading-relaxed text-zinc-800">
-              <span className="w-5 shrink-0 text-right font-semibold tabular-nums text-zinc-400">{i + 1}</span>
-              <span>{step}</span>
-            </li>
-          ))}
+          {steps.map((step, i) => {
+            const { action, detail } = splitStep(step);
+            return (
+              <li key={i} className="flex gap-3 text-sm leading-relaxed text-zinc-800">
+                <span className="w-5 shrink-0 text-right font-semibold tabular-nums text-zinc-400">{i + 1}</span>
+                <span>
+                  {action && <span className="font-semibold text-zinc-900">{action} — </span>}
+                  {detail}
+                </span>
+              </li>
+            );
+          })}
         </ol>
       )}
 
@@ -478,12 +485,18 @@ function SubBuild({
 
       {steps.length > 0 && (
         <ol className="mt-2 space-y-1">
-          {steps.map((step, i) => (
-            <li key={i} className="flex gap-3 text-sm leading-relaxed text-zinc-800">
-              <span className="w-5 shrink-0 text-right font-semibold tabular-nums text-zinc-400">{i + 1}</span>
-              <span>{step}</span>
-            </li>
-          ))}
+          {steps.map((step, i) => {
+            const { action, detail } = splitStep(step);
+            return (
+              <li key={i} className="flex gap-3 text-sm leading-relaxed text-zinc-800">
+                <span className="w-5 shrink-0 text-right font-semibold tabular-nums text-zinc-400">{i + 1}</span>
+                <span>
+                  {action && <span className="font-semibold text-zinc-900">{action} — </span>}
+                  {detail}
+                </span>
+              </li>
+            );
+          })}
         </ol>
       )}
 

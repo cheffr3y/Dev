@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/session";
 import { num, componentBatchFactor } from "@/lib/costing";
 import { displayMeasure } from "@/lib/units";
 import { allergenLabels, effectiveAllergens } from "@/lib/allergens";
+import { splitStep } from "@/lib/method";
 import { PrintButton } from "@/components/PrintButton";
 
 // Kitchen-facing recipe card: ingredients, method, critical food-safety data
@@ -197,14 +198,20 @@ export default async function RecipePrintPage({
           <p className="mt-3 text-sm text-zinc-400">No method recorded.</p>
         ) : (
           <ol className="mt-3 space-y-2.5">
-            {steps.map((step, i) => (
-              <li key={i} className="flex gap-3 text-sm leading-relaxed text-zinc-800">
-                <span className="w-6 shrink-0 text-right font-semibold tabular-nums text-zinc-400">
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-                <span>{step}</span>
-              </li>
-            ))}
+            {steps.map((step, i) => {
+              const { action, detail } = splitStep(step);
+              return (
+                <li key={i} className="flex gap-3 text-sm leading-relaxed text-zinc-800">
+                  <span className="w-6 shrink-0 text-right font-semibold tabular-nums text-zinc-400">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <span>
+                    {action && <span className="font-semibold text-zinc-900">{action} — </span>}
+                    {detail}
+                  </span>
+                </li>
+              );
+            })}
           </ol>
         )}
 

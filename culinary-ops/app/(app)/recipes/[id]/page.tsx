@@ -18,6 +18,7 @@ import { allergenLabels, effectiveAllergens, inheritedAllergenSources, parseAlle
 import { Badge, Button, Card, CardHeader, Field, Input, LinkButton, PageHeader, Select, Textarea } from "@/components/ui";
 import { AllergenPicker } from "@/components/AllergenPicker";
 import { MethodEditor } from "@/components/MethodEditor";
+import { splitStep } from "@/lib/method";
 import { SubRecipeForm } from "../SubRecipeForm";
 import {
   addRecipeItem,
@@ -323,14 +324,20 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
               <p className="p-4 text-sm text-zinc-400">No method recorded.</p>
             ) : (
               <ol className="space-y-4 p-5">
-                {methodSteps.map((step, i) => (
-                  <li key={i} className="flex gap-4 text-sm leading-relaxed text-zinc-700">
-                    <span className="font-display text-lg leading-none text-gold tabular-nums">
-                      {String(i + 1).padStart(2, "0")}
-                    </span>
-                    <span className="pt-0.5">{step}</span>
-                  </li>
-                ))}
+                {methodSteps.map((step, i) => {
+                  const { action, detail } = splitStep(step);
+                  return (
+                    <li key={i} className="flex gap-4 text-sm leading-relaxed text-zinc-700">
+                      <span className="font-display text-lg leading-none text-gold tabular-nums">
+                        {String(i + 1).padStart(2, "0")}
+                      </span>
+                      <span className="pt-0.5">
+                        {action && <span className="font-semibold text-ink">{action} — </span>}
+                        {detail}
+                      </span>
+                    </li>
+                  );
+                })}
               </ol>
             )}
           </Card>

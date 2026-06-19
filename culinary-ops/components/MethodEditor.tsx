@@ -2,29 +2,38 @@
 
 import { useRef, useState } from "react";
 
+import { joinStep, splitStep } from "@/lib/method";
+
 let uid = 0;
 const nextId = () => `step-${uid++}`;
 
-type Step = { id: string; text: string };
+type Step = { id: string; action: string; detail: string };
 
-// Inline, reorderable method editor. Each step renders a real <input> bound to
-// the recipe form (via `form="recipeForm"`) so the existing "Save changes"
-// button persists the method alongside the rest of the recipe details.
+// Inline, reorderable method editor. Each step has a short bold "action" label
+// (e.g. "Build Roux") plus the detail, combined into a single line that posts
+// via a hidden `step` field bound to the recipe form (via `form="recipeForm"`)
+// so the existing "Save changes" button persists the method alongside the rest
+// of the recipe details.
 export function MethodEditor({ initialSteps }: { initialSteps: string[] }) {
   const [steps, setSteps] = useState<Step[]>(() =>
-    (initialSteps.length ? initialSteps : [""]).map((text) => ({ id: nextId(), text })),
+    (initialSteps.length ? initialSteps : [""]).map((text) => {
+      const { action, detail } = splitStep(text);
+      return { id: nextId(), action, detail };
+    }),
   );
   const dragIndex = useRef<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
 
-  function update(id: string, text: string) {
-    setSteps((s) => s.map((st) => (st.id === id ? { ...st, text } : st)));
+  function update(id: string, patch: Partial<Pick<Step, "action" | "detail">>) {
+    setSteps((s) => s.map((st) => (st.id === id ? { ...st, ...patch } : st)));
   }
   function remove(id: string) {
-    setSteps((s) => (s.length > 1 ? s.filter((st) => st.id !== id) : [{ id: nextId(), text: "" }]));
+    setSteps((s) =>
+      s.length > 1 ? s.filter((st) => st.id !== id) : [{ id: nextId(), action: "", detail: "" }],
+    );
   }
   function add() {
-    setSteps((s) => [...s, { id: nextId(), text: "" }]);
+    setSteps((s) => [...s, { id: nextId(), action: "", detail: "" }]);
   }
   function move(from: number, to: number) {
     if (from === to) return;
@@ -58,28 +67,38 @@ export function MethodEditor({ initialSteps }: { initialSteps: string[] }) {
               setOverIndex(null);
             }}
             className={
-              "flex items-center gap-2 rounded-sm " +
+              "flex items-start gap-2 rounded-sm " +
               (overIndex === i ? "ring-1 ring-form-focus" : "")
             }
           >
             <span
-              className="cursor-grab select-none px-1 text-zinc-400 hover:text-zinc-600"
+              className="cursor-grab select-none px-1 pt-2 text-zinc-400 hover:text-zinc-600"
               aria-hidden
               title="Drag to reorder"
             >
               ⠿
             </span>
-            <span className="w-6 shrink-0 text-right font-mono text-xs tabular-nums text-zinc-400">
+            <span className="w-6 shrink-0 pt-2 text-right font-mono text-xs tabular-nums text-zinc-400">
               {i + 1}.
             </span>
-            <input
-              name="step"
-              form="recipeForm"
-              value={step.text}
-              onChange={(e) => update(step.id, e.target.value)}
-              placeholder={`Step ${i + 1}…`}
-              className="w-full rounded-sm border border-zinc-300 bg-canvas px-3 py-2 text-sm text-ink placeholder:text-zinc-400 focus:border-form-focus focus:outline-none focus:ring-1 focus:ring-form-focus"
-            />
+            {/* Combined value the form actually submits. */}
+            <input type="hidden" name="step" form="recipeForm" value={joinStep(step.action, step.detail)} />
+            <div className="flex w-full flex-col gap-1 sm:flex-row sm:items-stretch">
+              <input
+                value={step.action}
+                onChange={(e) => update(step.id, { action: e.target.value })}
+                placeholder="Action"
+                aria-label={`Step ${i + 1} action`}
+                className="w-full rounded-sm border border-zinc-300 bg-canvas px-3 py-2 text-sm font-semibold text-ink placeholder:font-normal placeholder:text-zinc-400 focus:border-form-focus focus:outline-none focus:ring-1 focus:ring-form-focus sm:w-40 sm:shrink-0"
+              />
+              <input
+                value={step.detail}
+                onChange={(e) => update(step.id, { detail: e.target.value })}
+                placeholder={`Step ${i + 1} details…`}
+                aria-label={`Step ${i + 1} details`}
+                className="w-full rounded-sm border border-zinc-300 bg-canvas px-3 py-2 text-sm text-ink placeholder:text-zinc-400 focus:border-form-focus focus:outline-none focus:ring-1 focus:ring-form-focus"
+              />
+            </div>
             <button
               type="button"
               onClick={() => remove(step.id)}
