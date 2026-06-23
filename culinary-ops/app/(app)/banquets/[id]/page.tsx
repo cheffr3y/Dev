@@ -52,9 +52,14 @@ export default async function BanquetDetailPage({ params }: { params: Promise<{ 
         <Link href="/banquets" className="text-sm text-blue-600 hover:underline">
           ← Banquets
         </Link>
-        <LinkButton href={`/banquets/${banquet.id}/prep-sheet`} variant="secondary">
-          Prep sheet →
-        </LinkButton>
+        <div className="flex items-center gap-2">
+          <LinkButton href={`/banquets/${banquet.id}/prep-sheet`} variant="secondary">
+            Prep sheet →
+          </LinkButton>
+          <LinkButton href={`/banquets/${banquet.id}/packet`} variant="secondary">
+            Cook packet →
+          </LinkButton>
+        </div>
       </div>
 
       <PageHeader

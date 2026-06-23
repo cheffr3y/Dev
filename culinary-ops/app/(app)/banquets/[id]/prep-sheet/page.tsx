@@ -46,7 +46,12 @@ export default async function BanquetPrepSheetPage({ params }: { params: Promise
         <Link href={`/banquets/${banquet.id}`} className="text-sm text-blue-600 hover:underline">
           ← Back to banquet
         </Link>
-        <PrintButton label="Print prep sheet" />
+        <div className="flex items-center gap-2">
+          <Link href={`/banquets/${banquet.id}/packet`} className="text-sm text-blue-600 hover:underline">
+            Cook packet
+          </Link>
+          <PrintButton label="Print prep sheet" />
+        </div>
       </div>
 
       {list.itemCount === 0 ? (
