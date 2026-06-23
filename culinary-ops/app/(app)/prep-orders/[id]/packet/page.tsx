@@ -5,13 +5,17 @@ import { requireUser } from "@/lib/session";
 import { num } from "@/lib/costing";
 import { convertQty, unitLabel } from "@/lib/units";
 import { batchScaleFlag } from "@/lib/prep";
+import { buildShoppingList, type ShoppingRecipeNode } from "@/lib/shopping";
 import { PrintButton } from "@/components/PrintButton";
+import { ShoppingListBody } from "@/components/ShoppingList";
 import { RecipeBuildBody, buildRecipeTree, recipeTreeSelect, type RecipeTreeNode } from "@/components/RecipeBuild";
 
-// Cook packet — one printable artifact per prep order. Each recipe is scaled to
-// the (combined) requested qty and lot-stamped. Cooks hand-copy the lot, made
-// date and use-by onto container labels; the system prints no label artifact.
-// The scaled recipe + nested sub-builds are rendered by the shared RecipeBuild.
+// Cook packet — one printable artifact per prep order. It opens with a shopping
+// / pull list (every raw ingredient the day needs, for the prep request) so the
+// team can gather everything first, then one page per recipe: each scaled to the
+// (combined) requested qty and lot-stamped. Cooks hand-copy the lot, made date
+// and use-by onto container labels; the system prints no label artifact. The
+// scaled recipe + nested sub-builds are rendered by the shared RecipeBuild.
 
 // forDate-derived dates are UTC-midnight; format in UTC so the day is stable.
 function fmtDate(d: Date): string {
@@ -22,7 +26,7 @@ export default async function CookPacketPage({ params }: { params: Promise<{ id:
   const { id } = await params;
   await requireUser();
 
-  const [order, allRecipes] = await Promise.all([
+  const [order, allRecipes, shoppingRecipes] = await Promise.all([
     prisma.prepOrder.findUnique({
       where: { id },
       include: {
@@ -42,6 +46,18 @@ export default async function CookPacketPage({ params }: { params: Promise<{ id:
     // Full catalog so sub-recipes can be nested to any depth (their own
     // ingredients, method and sub-builds), independent of Prisma include depth.
     prisma.recipe.findMany({ select: recipeTreeSelect }),
+    // Lightweight catalog (raw items with id/category + sub-recipe components)
+    // so the shopping list can explode sub-recipes down to purchasable items —
+    // same loading pattern the standalone shopping-list page uses.
+    prisma.recipe.findMany({
+      select: {
+        id: true,
+        yieldQty: true,
+        yieldUnit: true,
+        items: { select: { quantity: true, unit: true, item: { select: { id: true, name: true, category: true } } } },
+        components: { select: { childId: true, quantity: true, unit: true } },
+      },
+    }),
   ]);
   if (!order) notFound();
 
@@ -50,6 +66,31 @@ export default async function CookPacketPage({ params }: { params: Promise<{ id:
 
   // Only printed lines (those with a lot) belong on the packet.
   const printed = order.lines.filter((l) => l.lot);
+
+  // Shopping / pull list across the same printed batches, summed and grouped by
+  // category, with sub-recipes exploded to raw items.
+  const shoppingNodes: ShoppingRecipeNode[] = shoppingRecipes.map((r) => ({
+    id: r.id,
+    yieldQty: r.yieldQty,
+    yieldUnit: r.yieldUnit,
+    items: r.items.map((ri) => ({
+      itemId: ri.item.id,
+      name: ri.item.name,
+      category: ri.item.category,
+      quantity: ri.quantity,
+      unit: ri.unit,
+    })),
+    components: r.components,
+  }));
+  const shopping = buildShoppingList(
+    printed.map((l) => ({
+      recipeId: l.recipeId,
+      recipeName: l.recipe.name,
+      requestedQty: l.requestedQty,
+      requestedUnit: l.requestedUnit,
+    })),
+    shoppingNodes,
+  );
 
   // Group into batches by lot — one lot = one physical batch. Splits across
   // venues share a lot (one entry); a recipe printed twice has two lots (two
@@ -94,9 +135,35 @@ export default async function CookPacketPage({ params }: { params: Promise<{ id:
             {groups.size} batch{groups.size === 1 ? "" : "es"} · hand-copy each lot onto the container labels.
           </p>
 
+          {/* Prep / pull list — open the packet with everything to gather, so
+              the team can shop before building. Each recipe then starts fresh. */}
+          {shopping.itemCount > 0 && (
+            <section className="mt-8">
+              <div className="flex items-baseline justify-between border-b-2 border-zinc-900 pb-1.5">
+                <h2 className="font-display text-2xl font-medium tracking-tight text-zinc-900">Shopping / Pull List</h2>
+                <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-500">
+                  {shopping.itemCount} item{shopping.itemCount === 1 ? "" : "s"}
+                </span>
+              </div>
+              <p className="mt-1 text-sm text-zinc-500">
+                Pull or buy everything below before building · sub-recipes broken down to raw items.
+              </p>
+              <ShoppingListBody list={shopping} />
+            </section>
+          )}
+
           <div className="mt-8 space-y-10">
-            {[...groups.values()].map((lines) => (
-              <PacketEntry key={lines[0].lot} lines={lines} madeOn={madeOn} forDate={order.forDate} byId={byId} />
+            {[...groups.values()].map((lines, i) => (
+              <PacketEntry
+                key={lines[0].lot}
+                lines={lines}
+                madeOn={madeOn}
+                forDate={order.forDate}
+                byId={byId}
+                // Each recipe starts on a new page. The first only breaks when a
+                // shopping list precedes it, so it doesn't strand the header alone.
+                breakBefore={shopping.itemCount > 0 || i > 0}
+              />
             ))}
           </div>
 
@@ -131,11 +198,13 @@ function PacketEntry({
   madeOn,
   forDate,
   byId,
+  breakBefore,
 }: {
   lines: PacketLine[];
   madeOn: string;
   forDate: Date;
   byId: Map<string, RecipeTreeNode>;
+  breakBefore: boolean;
 }) {
   const recipe = lines[0].recipe;
   const node = byId.get(recipe.id);
@@ -167,7 +236,7 @@ function PacketEntry({
   const split = lines.length > 1;
 
   return (
-    <article className="break-inside-avoid border-t-2 border-zinc-900 pt-4">
+    <article className={`break-inside-avoid border-t-2 border-zinc-900 pt-4 ${breakBefore ? "break-before-page" : ""}`}>
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="font-display text-3xl font-medium tracking-tight text-zinc-900">{recipe.name}</h2>

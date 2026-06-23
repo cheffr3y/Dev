@@ -2,8 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
-import { num } from "@/lib/costing";
 import { buildShoppingList, type ShoppingRecipeNode } from "@/lib/shopping";
+import { ShoppingListBody } from "@/components/ShoppingList";
 import { PrintButton } from "@/components/PrintButton";
 
 // Shopping / pull list — the companion to the cook packet. Every raw
@@ -111,42 +111,7 @@ export default async function ShoppingListPage({ params }: { params: Promise<{ i
             {printed.length === 1 ? "" : "es"} · sub-recipes broken down to raw items.
           </p>
 
-          {list.unscaledRecipes.length > 0 && (
-            <div className="mt-4 border-2 border-amber-600 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-900">
-              ⚠ Couldn&apos;t scale {list.unscaledRecipes.join(", ")} — requested units don&apos;t convert to the base
-              yield. Amounts below assume one base batch each; verify by hand.
-            </div>
-          )}
-
-          <div className="mt-8 space-y-8">
-            {list.categories.map((cat) => (
-              <section key={cat.category} className="break-inside-avoid">
-                <h2 className="border-b-2 border-zinc-900 pb-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-900">
-                  {cat.category}
-                </h2>
-                <table className="mt-1 w-full text-sm">
-                  <tbody className="divide-y divide-zinc-100">
-                    {cat.items.map((it) => (
-                      <tr key={it.itemId}>
-                        {/* Check-off box for the shopper */}
-                        <td className="w-6 py-2 align-top">
-                          <span className="inline-block h-3.5 w-3.5 border border-zinc-400" />
-                        </td>
-                        <td className="py-2 pr-4 align-top text-zinc-900">{it.name}</td>
-                        <td className="py-2 text-right align-top font-semibold tabular-nums text-zinc-900">
-                          {it.amounts.map((a, i) => (
-                            <div key={i}>
-                              {num(a.qty)} <span className="font-normal text-zinc-600">{a.unit}</span>
-                            </div>
-                          ))}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </section>
-            ))}
-          </div>
+          <ShoppingListBody list={list} />
 
           <p className="mt-10 border-t border-zinc-200 pt-4 text-[10px] uppercase tracking-[0.14em] text-zinc-400">
             Printed {printedOn} · Quantities summed across all printed batches · Mise · Culinary Ops
