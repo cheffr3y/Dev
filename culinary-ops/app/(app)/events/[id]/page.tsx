@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireUser, hasRole } from "@/lib/session";
 import { getVenues } from "@/lib/venue";
-import { recipeCost, costPerServing, money, num } from "@/lib/costing";
+import { money, num } from "@/lib/costing";
+import { buildBanquetPlan, banquetRecipeSelect, type BanquetLine } from "@/lib/banquet";
 import { Badge, Button, Card, CardHeader, Field, Input, PageHeader, Select, StatCard, Textarea } from "@/components/ui";
 import { PrintButton } from "@/components/PrintButton";
 import {
@@ -20,43 +21,42 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
   const user = await requireUser();
   const canEdit = hasRole(user, "MANAGER");
 
-  const [event, recipes, venues] = await Promise.all([
+  const [event, recipeRows, venues] = await Promise.all([
     prisma.event.findUnique({
       where: { id },
       include: {
         venue: true,
         menuItems: {
-          include: { recipe: { include: { items: { include: { item: true } } } } },
+          include: { recipe: { select: { id: true, name: true, yieldQty: true, yieldUnit: true } } },
           orderBy: { recipe: { name: "asc" } },
         },
       },
     }),
-    prisma.recipe.findMany({ include: { items: { include: { item: true } } }, orderBy: { name: "asc" } }),
+    // Full catalog with the fields the rollup engine needs, so sub-recipes
+    // explode down to raw purchasable items — same loading pattern the banquet
+    // and prep shopping lists use.
+    prisma.recipe.findMany({ select: { ...banquetRecipeSelect, name: true, prodCode: true }, orderBy: { name: "asc" } }),
     getVenues(),
   ]);
 
   if (!event) notFound();
 
-  // Cost rollup + aggregated prep/shopping list.
-  let totalFoodCost = 0;
-  const prep = new Map<string, { name: string; unit: string; qty: number; cost: number }>();
+  // Cost rollup + aggregated prep/shopping list. Each menu line is scaled by its
+  // planned servings (interpreted in the recipe's own yield unit, so the factor
+  // is servings ÷ yield), and the shared engine explodes any sub-recipes into
+  // raw items — exactly what the banquet kitchen view does. The old rollup only
+  // summed each recipe's direct ingredients, so dishes built from sub-recipes
+  // showed $0 and contributed nothing to the prep list.
+  const lines: BanquetLine[] = event.menuItems.map((mi) => ({
+    recipeId: mi.recipeId,
+    recipeName: mi.recipe.name,
+    orderedQty: mi.plannedServings,
+    unit: mi.recipe.yieldUnit,
+  }));
+  const plan = buildBanquetPlan(lines, recipeRows);
 
-  for (const mi of event.menuItems) {
-    const r = mi.recipe;
-    const perServing = costPerServing(recipeCost(r.items), r.yieldQty);
-    totalFoodCost += perServing * mi.plannedServings;
-    const scale = r.yieldQty > 0 ? mi.plannedServings / r.yieldQty : 0;
-    for (const ri of r.items) {
-      const key = ri.itemId;
-      const prev = prep.get(key) ?? { name: ri.item.name, unit: ri.unit, qty: 0, cost: 0 };
-      prev.qty += ri.quantity * scale;
-      prev.cost += ri.quantity * scale * ri.item.unitCost;
-      prep.set(key, prev);
-    }
-  }
-  const prepList = [...prep.values()].sort((a, b) => a.name.localeCompare(b.name));
   const menuRecipeIds = new Set(event.menuItems.map((m) => m.recipeId));
-  const availableRecipes = recipes.filter((r) => !menuRecipeIds.has(r.id));
+  const availableRecipes = recipeRows.filter((r) => !menuRecipeIds.has(r.id));
 
   return (
     <div>
@@ -83,8 +83,8 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
         <StatCard label="Dishes" value={event.menuItems.length} />
         <StatCard
           label="Est. Food Cost"
-          value={money(totalFoodCost)}
-          sub={event.guestCount > 0 ? `${money(totalFoodCost / event.guestCount)} / guest` : undefined}
+          value={money(plan.totalCost)}
+          sub={event.guestCount > 0 ? `${money(plan.totalCost / event.guestCount)} / guest` : undefined}
         />
       </div>
 
@@ -115,8 +115,8 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                   </td>
                 </tr>
               )}
-              {event.menuItems.map((mi) => {
-                const perServing = costPerServing(recipeCost(mi.recipe.items), mi.recipe.yieldQty);
+              {event.menuItems.map((mi, i) => {
+                const lc = plan.lineCosts[i];
                 return (
                   <tr key={mi.id}>
                     <td className="px-4 py-2">
@@ -145,7 +145,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                         num(mi.plannedServings)
                       )}
                     </td>
-                    <td className="px-4 py-2 text-right text-zinc-700">{money(perServing * mi.plannedServings)}</td>
+                    <td className="px-4 py-2 text-right text-zinc-700">{lc ? money(lc.cost) : "—"}</td>
                     {canEdit && (
                       <td className="px-4 py-2 text-right no-print">
                         <form action={removeEventMenuItem}>
@@ -181,37 +181,46 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
         {/* Prep / shopping list */}
         <Card>
           <CardHeader>Aggregated Prep & Shopping List</CardHeader>
-          {prepList.length === 0 ? (
+          {plan.shoppingList.itemCount === 0 ? (
             <p className="p-4 text-sm text-zinc-400">Add dishes to generate the prep list.</p>
           ) : (
-            <table className="w-full text-sm">
-              <thead className="bg-zinc-50 text-left font-mono text-[11px] uppercase tracking-[0.02em] text-zinc-600">
-                <tr>
-                  <th className="px-4 py-2 font-medium">Ingredient</th>
-                  <th className="px-4 py-2 text-right font-medium">Total Qty</th>
-                  <th className="px-4 py-2 text-right font-medium">Cost</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-100">
-                {prepList.map((p) => (
-                  <tr key={p.name}>
-                    <td className="px-4 py-2 text-zinc-800">{p.name}</td>
-                    <td className="px-4 py-2 text-right text-zinc-600">
-                      {num(p.qty)} {p.unit}
-                    </td>
-                    <td className="px-4 py-2 text-right text-zinc-600">{money(p.cost)}</td>
-                  </tr>
+            <div className="p-4">
+              {plan.shoppingList.unscaledRecipes.length > 0 && (
+                <div className="mb-3 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  ⚠ Couldn&apos;t scale {plan.shoppingList.unscaledRecipes.join(", ")} — the recipe has no usable yield, so
+                  it&apos;s counted as one base batch; verify by hand.
+                </div>
+              )}
+              <div className="space-y-5">
+                {plan.shoppingList.categories.map((cat) => (
+                  <section key={cat.category}>
+                    <h3 className="border-b border-zinc-200 pb-1 font-mono text-[11px] uppercase tracking-[0.02em] text-zinc-600">
+                      {cat.category}
+                    </h3>
+                    <table className="mt-1 w-full text-sm">
+                      <tbody className="divide-y divide-zinc-100">
+                        {cat.items.map((it) => (
+                          <tr key={it.itemId}>
+                            <td className="py-1.5 pr-4 text-zinc-800">{it.name}</td>
+                            <td className="py-1.5 text-right tabular-nums text-zinc-600">
+                              {it.amounts.map((a, j) => (
+                                <div key={j}>
+                                  {num(a.qty)} <span className="text-zinc-400">{a.unit}</span>
+                                </div>
+                              ))}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </section>
                 ))}
-              </tbody>
-              <tfoot>
-                <tr className="border-t border-zinc-200 bg-zinc-50 font-medium">
-                  <td className="px-4 py-2 text-zinc-700" colSpan={2}>
-                    Total
-                  </td>
-                  <td className="px-4 py-2 text-right text-zinc-900">{money(totalFoodCost)}</td>
-                </tr>
-              </tfoot>
-            </table>
+              </div>
+              <p className="mt-4 text-xs text-zinc-400">
+                {plan.shoppingList.itemCount} ingredient{plan.shoppingList.itemCount === 1 ? "" : "s"} · sub-recipes broken
+                down to raw items · est. food cost {money(plan.totalCost)}.
+              </p>
+            </div>
           )}
         </Card>
       </div>
