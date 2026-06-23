@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireRole, requireUser } from "@/lib/session";
+import { requireRole, requireActiveUser } from "@/lib/session";
 import { buildCostMap, type RecipeCostNode } from "@/lib/costing";
 import { canConvert } from "@/lib/units";
 import { formatLot, nextLotSeq, lineCostSnapshot, BACK_ENTRY_STATUSES } from "@/lib/prep";
@@ -18,7 +18,10 @@ const orderSchema = z.object({
 });
 
 export async function createPrepOrder(formData: FormData) {
-  const user = await requireRole("MANAGER");
+  // Confirm the session's account still exists before using its id as the
+  // submittedBy foreign key — a stale JWT (e.g. after a DB reseed) would
+  // otherwise fail with P2003 on PrepOrder_submittedByUserId_fkey.
+  const user = await requireActiveUser("MANAGER");
   const d = orderSchema.parse({
     forDate: formData.get("forDate"),
     destinationVenueId: formData.get("destinationVenueId"),
@@ -225,7 +228,9 @@ export async function generatePacket(formData: FormData) {
 // --- Back-entry: capture actuals, freeze cost -----------------------------
 
 export async function saveBackEntry(formData: FormData) {
-  const user = await requireUser();
+  // enteredByUserId (and the madeBy default) come from the session id; guard
+  // against a stale JWT so back-entry can't fail on a user foreign key.
+  const user = await requireActiveUser();
   const prepOrderId = String(formData.get("prepOrderId"));
 
   const order = await prisma.prepOrder.findUnique({
