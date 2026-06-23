@@ -13,15 +13,15 @@ import {
   pct,
   num,
 } from "@/lib/costing";
-import { UNIT_OPTIONS, unitLabel, displayMeasure } from "@/lib/units";
+import { unitLabel, displayMeasure } from "@/lib/units";
 import { allergenLabels, effectiveAllergens, inheritedAllergenSources, parseAllergens } from "@/lib/allergens";
 import { Badge, Button, Card, CardHeader, Field, Input, LinkButton, PageHeader, Select, Textarea } from "@/components/ui";
 import { AllergenPicker } from "@/components/AllergenPicker";
 import { MethodEditor } from "@/components/MethodEditor";
 import { splitStep } from "@/lib/method";
 import { SubRecipeForm } from "../SubRecipeForm";
+import { AddIngredientForm } from "../AddIngredientForm";
 import {
-  addRecipeItem,
   removeRecipeItem,
   updateRecipe,
   deleteRecipe,
@@ -193,44 +193,10 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
 
             {canEdit && (
               <div className="border-t border-zinc-100 p-4">
-                <form action={addRecipeItem} className="flex flex-wrap items-end gap-2">
-                  <input type="hidden" name="recipeId" value={recipe.id} />
-                  <div className="min-w-[180px] flex-1">
-                    <Field label="Add ingredient">
-                      <Select name="itemId" required defaultValue="">
-                        <option value="" disabled>
-                          Select item…
-                        </option>
-                        {items.map((it) => (
-                          <option key={it.id} value={it.id}>
-                            {it.name} ({money(it.unitCost)}/{it.unit})
-                          </option>
-                        ))}
-                      </Select>
-                    </Field>
-                  </div>
-                  <div className="w-24">
-                    <Field label="Qty">
-                      <Input name="quantity" type="number" step="0.01" min="0" defaultValue={1} />
-                    </Field>
-                  </div>
-                  <div className="w-28">
-                    <Field label="Unit">
-                      <Select name="unit" defaultValue="each">
-                        {UNIT_OPTIONS.map((g) => (
-                          <optgroup key={g.group} label={g.group}>
-                            {g.units.map((u) => (
-                              <option key={u} value={u}>
-                                {unitLabel(u)}
-                              </option>
-                            ))}
-                          </optgroup>
-                        ))}
-                      </Select>
-                    </Field>
-                  </div>
-                  <Button type="submit">Add</Button>
-                </form>
+                <AddIngredientForm
+                  recipeId={recipe.id}
+                  items={items.map((it) => ({ id: it.id, name: it.name, unitCost: it.unitCost, unit: it.unit }))}
+                />
               </div>
             )}
           </Card>

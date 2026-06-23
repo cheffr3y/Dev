@@ -3,9 +3,10 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireUser, hasRole } from "@/lib/session";
 import { money, num } from "@/lib/costing";
-import { Button, Card, CardHeader, Field, Input, PageHeader, Select } from "@/components/ui";
+import { Button, Card, CardHeader, PageHeader } from "@/components/ui";
 import { PrintButton } from "@/components/PrintButton";
-import { addOrderGuideLine, updateOrderGuideLine, removeOrderGuideLine, deleteOrderGuide } from "../actions";
+import { updateOrderGuideLine, removeOrderGuideLine, deleteOrderGuide } from "../actions";
+import { AddItemForm } from "../AddItemForm";
 
 export default async function OrderGuideDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -136,34 +137,10 @@ export default async function OrderGuideDetailPage({ params }: { params: Promise
       {canEdit && (
         <>
           <Card className="no-print mt-4 p-4">
-            <form action={addOrderGuideLine} className="flex flex-wrap items-end gap-2">
-              <input type="hidden" name="orderGuideId" value={guide.id} />
-              <div className="min-w-[200px] flex-1">
-                <Field label="Add item">
-                  <Select name="itemId" required defaultValue="">
-                    <option value="" disabled>
-                      Select item…
-                    </option>
-                    {availableItems.map((it) => (
-                      <option key={it.id} value={it.id}>
-                        {it.name} ({it.unit})
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-              </div>
-              <div className="w-24">
-                <Field label="Par">
-                  <Input name="par" type="number" step="0.01" min="0" defaultValue={0} />
-                </Field>
-              </div>
-              <div className="w-24">
-                <Field label="Unit">
-                  <Input name="unit" defaultValue="each" />
-                </Field>
-              </div>
-              <Button type="submit">Add</Button>
-            </form>
+            <AddItemForm
+              orderGuideId={guide.id}
+              items={availableItems.map((it) => ({ id: it.id, name: it.name, unit: it.unit }))}
+            />
           </Card>
           <form action={deleteOrderGuide} className="no-print mt-3">
             <input type="hidden" name="id" value={guide.id} />

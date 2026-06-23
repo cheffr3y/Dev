@@ -2,8 +2,9 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { getActiveVenue } from "@/lib/venue";
 import { money, num } from "@/lib/costing";
-import { Badge, Button, Card, EmptyState, Field, Input, PageHeader, Select, StatCard } from "@/components/ui";
-import { addInventoryItem, updateInventory, removeInventoryItem } from "./actions";
+import { Badge, Card, EmptyState, PageHeader, StatCard } from "@/components/ui";
+import { updateInventory, removeInventoryItem } from "./actions";
+import { AddItemForm } from "./AddItemForm";
 
 export default async function InventoryPage() {
   const user = await requireUser();
@@ -46,39 +47,10 @@ export default async function InventoryPage() {
       <details className="mb-5">
         <summary className="cursor-pointer text-sm font-medium text-blue-600">+ Add item to this venue</summary>
         <Card className="mt-2 p-4">
-          <form action={addInventoryItem} className="flex flex-wrap items-end gap-2">
-            <input type="hidden" name="venueId" value={active.id} />
-            <div className="min-w-[200px] flex-1">
-              <Field label="Item">
-                <Select name="itemId" required defaultValue="">
-                  <option value="" disabled>
-                    Select item…
-                  </option>
-                  {availableItems.map((it) => (
-                    <option key={it.id} value={it.id}>
-                      {it.name} ({it.unit})
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </div>
-            <div className="w-24">
-              <Field label="On Hand">
-                <Input name="quantity" type="number" step="0.01" min="0" defaultValue={0} />
-              </Field>
-            </div>
-            <div className="w-24">
-              <Field label="Par">
-                <Input name="par" type="number" step="0.01" min="0" defaultValue={0} />
-              </Field>
-            </div>
-            <div className="w-24">
-              <Field label="Unit">
-                <Input name="unit" defaultValue="each" />
-              </Field>
-            </div>
-            <Button type="submit">Add</Button>
-          </form>
+          <AddItemForm
+            venueId={active.id}
+            items={availableItems.map((it) => ({ id: it.id, name: it.name, unit: it.unit }))}
+          />
         </Card>
       </details>
 

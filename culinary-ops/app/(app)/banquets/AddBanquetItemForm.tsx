@@ -6,7 +6,7 @@ import { Button, Field, Input, Select } from "@/components/ui";
 import { allowedUnitsFor, defaultUnitFor, unitFamily, unitLabel } from "@/lib/units";
 import { addBanquetMenuItem } from "./actions";
 
-type Recipe = { id: string; name: string; prodCode: string; yieldUnit: string };
+type Recipe = { id: string; name: string; prodCode: string; yieldQty: number; yieldUnit: string };
 
 const FAMILY_HINT: Record<string, string> = {
   volume: "Liquid — order by volume",

@@ -32,7 +32,7 @@ export default async function PrepOrderDetailPage({ params }: { params: Promise<
         },
       },
     }),
-    prisma.recipe.findMany({ select: { id: true, name: true, prodCode: true, yieldUnit: true }, orderBy: { name: "asc" } }),
+    prisma.recipe.findMany({ select: { id: true, name: true, prodCode: true, yieldQty: true, yieldUnit: true }, orderBy: { name: "asc" } }),
     getVenues(),
     getActiveVenue(user.homeVenueId),
   ]);

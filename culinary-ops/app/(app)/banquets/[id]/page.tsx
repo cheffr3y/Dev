@@ -43,7 +43,7 @@ export default async function BanquetDetailPage({ params }: { params: Promise<{ 
   }));
   const plan = buildBanquetPlan(lines, recipeRows);
 
-  const pickerRecipes = recipeRows.map((r) => ({ id: r.id, name: r.name, prodCode: r.prodCode, yieldUnit: r.yieldUnit }));
+  const pickerRecipes = recipeRows.map((r) => ({ id: r.id, name: r.name, prodCode: r.prodCode, yieldQty: r.yieldQty, yieldUnit: r.yieldUnit }));
   const hasAccount = banquet.salesManager || banquet.contactName || banquet.contactEmail || banquet.contactPhone;
 
   return (

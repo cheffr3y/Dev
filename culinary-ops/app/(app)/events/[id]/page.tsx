@@ -7,12 +7,12 @@ import { recipeCost, costPerServing, money, num } from "@/lib/costing";
 import { Badge, Button, Card, CardHeader, Field, Input, PageHeader, Select, StatCard, Textarea } from "@/components/ui";
 import { PrintButton } from "@/components/PrintButton";
 import {
-  addEventMenuItem,
   updateEventMenuItem,
   removeEventMenuItem,
   updateEvent,
   deleteEvent,
 } from "../actions";
+import { AddDishForm } from "../AddDishForm";
 import { STATUS_COLOR, EVENT_STATUSES as STATUSES, statusLabel } from "@/lib/event-status";
 
 export default async function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -163,34 +163,17 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
 
           {canEdit && (
             <div className="border-t border-zinc-100 p-4 no-print">
-              <form action={addEventMenuItem} className="flex flex-wrap items-end gap-2">
-                <input type="hidden" name="eventId" value={event.id} />
-                <div className="min-w-[180px] flex-1">
-                  <Field label="Add dish">
-                    <Select name="recipeId" required defaultValue="">
-                      <option value="" disabled>
-                        Select recipe…
-                      </option>
-                      {availableRecipes.map((r) => (
-                        <option key={r.id} value={r.id}>
-                          {r.name}
-                        </option>
-                      ))}
-                    </Select>
-                  </Field>
-                </div>
-                <div className="w-28">
-                  <Field label="Servings">
-                    <Input
-                      name="plannedServings"
-                      type="number"
-                      min="0"
-                      defaultValue={event.guestCount || 0}
-                    />
-                  </Field>
-                </div>
-                <Button type="submit">Add</Button>
-              </form>
+              <AddDishForm
+                eventId={event.id}
+                defaultServings={event.guestCount || 0}
+                recipes={availableRecipes.map((r) => ({
+                  id: r.id,
+                  name: r.name,
+                  prodCode: r.prodCode,
+                  yieldQty: r.yieldQty,
+                  yieldUnit: r.yieldUnit,
+                }))}
+              />
             </div>
           )}
         </Card>

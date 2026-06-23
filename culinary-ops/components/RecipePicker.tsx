@@ -1,120 +1,55 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
+import { ComboPicker, type ComboOption } from "./ComboPicker";
+import { num } from "@/lib/costing";
 
-type Recipe = { id: string; name: string; prodCode: string; yieldUnit?: string };
+type Recipe = { id: string; name: string; prodCode: string; yieldUnit?: string; yieldQty?: number };
 
-const LIMIT = 8;
-
-// Typeahead recipe combobox for the prep-order add-line form. Renders a search
-// field + dropdown and writes the chosen recipe id into a hidden input so the
-// surrounding server-action <form> submits it like a normal field. `onSelect`
-// lets a parent react to the chosen recipe (e.g. lock the unit to its family).
+// Typeahead recipe combobox. Thin wrapper over the shared ComboPicker that
+// formats a recipe's yield as the muted meta line (e.g. "yields 12 each") and
+// lets you search by name or prod code. Writes the chosen recipe id into a
+// hidden input so the surrounding server-action <form> submits it; `onSelect`
+// lets a parent react (e.g. lock the unit to the recipe's family).
 export function RecipePicker({
   recipes,
   name = "recipeId",
+  disabled = false,
   onSelect,
 }: {
   recipes: Recipe[];
   name?: string;
+  disabled?: boolean;
   onSelect?: (recipe: Recipe | null) => void;
 }) {
-  const [query, setQuery] = useState("");
-  const [selectedId, setSelectedId] = useState("");
-  const [open, setOpen] = useState(false);
-  const [active, setActive] = useState(0);
-  const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const byId = useMemo(() => new Map(recipes.map((r) => [r.id, r])), [recipes]);
 
-  const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const matches = q
-      ? recipes.filter((r) => r.name.toLowerCase().includes(q) || r.prodCode.toLowerCase().includes(q))
-      : recipes;
-    return matches.slice(0, LIMIT);
-  }, [query, recipes]);
-
-  const select = (r: Recipe) => {
-    setSelectedId(r.id);
-    setQuery(`${r.name} (${r.prodCode})`);
-    setOpen(false);
-    onSelect?.(r);
-  };
-
-  const onKeyDown = (e: React.KeyboardEvent) => {
-    if (!open && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
-      setOpen(true);
-      return;
-    }
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setActive((a) => Math.min(a + 1, results.length - 1));
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setActive((a) => Math.max(a - 1, 0));
-    } else if (e.key === "Enter" && open && results[active]) {
-      e.preventDefault();
-      select(results[active]);
-    } else if (e.key === "Escape") {
-      setOpen(false);
-    }
-  };
+  const options: ComboOption[] = useMemo(
+    () =>
+      recipes.map((r) => ({
+        id: r.id,
+        label: r.name,
+        meta: yieldMeta(r),
+        keywords: r.prodCode,
+      })),
+    [recipes],
+  );
 
   return (
-    <div className="relative">
-      <input type="hidden" name={name} value={selectedId} />
-      <div className="flex items-center gap-2 rounded-sm border border-zinc-300 bg-canvas px-3 focus-within:border-form-focus focus-within:ring-1 focus-within:ring-form-focus">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4 shrink-0 text-zinc-400">
-          <circle cx="11" cy="11" r="7" />
-          <path d="m20 20-3.5-3.5" strokeLinecap="round" />
-        </svg>
-        <input
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            if (selectedId) onSelect?.(null);
-            setSelectedId("");
-            setActive(0);
-            setOpen(true);
-          }}
-          onFocus={() => setOpen(true)}
-          onBlur={() => {
-            blurTimer.current = setTimeout(() => setOpen(false), 120);
-          }}
-          onKeyDown={onKeyDown}
-          placeholder="Search recipes…"
-          className="w-full bg-transparent py-2 text-sm text-ink placeholder:text-zinc-400 focus:outline-none"
-          autoComplete="off"
-        />
-      </div>
-
-      {open && results.length > 0 && (
-        <ul
-          className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-md border border-hairline bg-canvas py-1 shadow-lg"
-          onMouseDown={() => {
-            if (blurTimer.current) clearTimeout(blurTimer.current);
-          }}
-        >
-          {results.map((r, i) => (
-            <li key={r.id}>
-              <button
-                type="button"
-                onMouseEnter={() => setActive(i)}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  select(r);
-                }}
-                className={
-                  "flex w-full items-baseline gap-2 px-3 py-2 text-left text-sm transition-colors " +
-                  (i === active ? "bg-stone" : "hover:bg-cream")
-                }
-              >
-                <span className="font-medium text-ink">{r.name}</span>
-                <span className="font-mono text-[11px] text-zinc-400">({r.prodCode})</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+    <ComboPicker
+      options={options}
+      name={name}
+      placeholder="Search recipes…"
+      disabled={disabled}
+      onSelect={(o) => onSelect?.(o ? byId.get(o.id) ?? null : null)}
+    />
   );
+}
+
+// "yields 12 each" when the qty is known, "yields each" when only the unit is,
+// otherwise the prod code as a last resort so the row still carries a hint.
+function yieldMeta(r: Recipe): string | undefined {
+  if (r.yieldUnit && r.yieldQty != null) return `yields ${num(r.yieldQty)} ${r.yieldUnit}`;
+  if (r.yieldUnit) return `yields ${r.yieldUnit}`;
+  return r.prodCode ? `(${r.prodCode})` : undefined;
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { ComboPicker, type ComboOption } from "@/components/ComboPicker";
 import { Button, Field, Input, Select } from "@/components/ui";
 import { UNIT_OPTIONS, unitLabel } from "@/lib/units";
 import { money, num } from "@/lib/costing";
@@ -17,7 +18,13 @@ export function SubRecipeForm({ parentId, options }: { parentId: string; options
   const [childId, setChildId] = useState("");
   const [unit, setUnit] = useState("serving");
 
-  const selected = options.find((o) => o.id === childId);
+  const byId = useMemo(() => new Map(options.map((o) => [o.id, o])), [options]);
+  const selected = byId.get(childId);
+
+  const comboOptions: ComboOption[] = useMemo(
+    () => options.map((o) => ({ id: o.id, label: o.name, meta: `${money(o.cost)} / ${num(o.yieldQty)} ${o.yieldUnit}` })),
+    [options],
+  );
 
   // Unit dropdown: the recipe's own yield unit first (so it's the default and
   // always available even if it's a free-text unit like "servings"), then the
@@ -36,36 +43,26 @@ export function SubRecipeForm({ parentId, options }: { parentId: string; options
         <input type="hidden" name="parentId" value={parentId} />
         <div className="min-w-[180px] flex-1">
           <Field label="Add sub-recipe">
-            <Select
+            <ComboPicker
+              options={comboOptions}
               name="childId"
-              required
-              value={childId}
-              onChange={(e) => {
-                const id = e.target.value;
-                setChildId(id);
-                const opt = options.find((o) => o.id === id);
+              placeholder="Search recipes…"
+              onSelect={(o) => {
+                setChildId(o?.id ?? "");
+                const opt = o ? byId.get(o.id) : undefined;
                 if (opt) setUnit(opt.yieldUnit);
               }}
-            >
-              <option value="" disabled>
-                Select recipe…
-              </option>
-              {options.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name} ({money(o.cost)} / {num(o.yieldQty)} {o.yieldUnit})
-                </option>
-              ))}
-            </Select>
+            />
           </Field>
         </div>
         <div className="w-24">
           <Field label="Qty">
-            <Input name="quantity" type="number" step="0.01" min="0.01" defaultValue={1} required />
+            <Input name="quantity" type="number" step="0.01" min="0.01" defaultValue={1} required disabled={!selected} />
           </Field>
         </div>
         <div className="w-32">
           <Field label="Unit">
-            <Select name="unit" value={unit} onChange={(e) => setUnit(e.target.value)}>
+            <Select name="unit" value={unit} onChange={(e) => setUnit(e.target.value)} disabled={!selected}>
               {unitGroups.map((g) => (
                 <optgroup key={g.group} label={g.group}>
                   {g.units.map((u) => (
@@ -78,7 +75,9 @@ export function SubRecipeForm({ parentId, options }: { parentId: string; options
             </Select>
           </Field>
         </div>
-        <Button type="submit">Add</Button>
+        <Button type="submit" disabled={!selected}>
+          Add
+        </Button>
       </form>
       <p className="mt-2 text-xs text-zinc-400">
         {selected
