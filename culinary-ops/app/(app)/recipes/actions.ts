@@ -180,6 +180,35 @@ export async function updateRecipe(formData: FormData) {
 export async function deleteRecipe(formData: FormData) {
   await requireRole("MANAGER");
   const id = String(formData.get("id"));
+
+  // The schema deliberately RESTRICTs deleting a recipe that's part of
+  // operational/historical truth (production ledger, event/banquet plans, or
+  // another recipe's build). Count those references up front and surface a
+  // clear message instead of letting the Postgres FK violation crash the
+  // request. Ingredients, changelog, and this recipe's own sub-recipe links
+  // cascade away on their own.
+  const [prepLines, eventItems, banquetItems, usedIn] = await Promise.all([
+    prisma.prepOrderLine.count({ where: { recipeId: id } }),
+    prisma.eventMenuItem.count({ where: { recipeId: id } }),
+    prisma.banquetMenuItem.count({ where: { recipeId: id } }),
+    prisma.recipeComponent.count({ where: { childId: id } }),
+  ]);
+
+  const plural = (n: number, one: string, many = `${one}s`) =>
+    `${n} ${n === 1 ? one : many}`;
+  const blockers: string[] = [];
+  if (prepLines) blockers.push(plural(prepLines, "prep order line"));
+  if (eventItems) blockers.push(plural(eventItems, "event"));
+  if (banquetItems) blockers.push(plural(banquetItems, "banquet"));
+  if (usedIn) blockers.push(`${plural(usedIn, "recipe")} (as a sub-recipe)`);
+
+  if (blockers.length > 0) {
+    const list = new Intl.ListFormat("en", { type: "conjunction" }).format(blockers);
+    throw new Error(
+      `Can't delete this recipe — it's still used by ${list}. Remove it from those first.`,
+    );
+  }
+
   await prisma.recipe.delete({ where: { id } });
   revalidatePath("/recipes");
   redirect("/recipes");
