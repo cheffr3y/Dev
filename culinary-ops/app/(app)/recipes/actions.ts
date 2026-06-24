@@ -177,9 +177,55 @@ export async function updateRecipe(formData: FormData) {
   revalidatePath(`/recipes/${id}`);
 }
 
-export async function deleteRecipe(formData: FormData) {
+// Joins ["a", "b", "c"] into "a, b, and c" for a readable sentence.
+function joinList(parts: string[]): string {
+  if (parts.length <= 1) return parts.join("");
+  if (parts.length === 2) return `${parts[0]} and ${parts[1]}`;
+  return `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`;
+}
+
+export type DeleteRecipeState = { error?: string };
+
+// A recipe can't be deleted while it's still referenced by production history
+// (prep order lines carry frozen lots & cost snapshots), planned event/banquet
+// menus, or other recipes that use it as a sub-recipe — all enforced by
+// `onDelete: Restrict` in the schema. Rather than let Prisma throw a raw
+// foreign-key violation, check for these references first and return a clear,
+// expected error the UI can display (see Next.js error-handling guide).
+export async function deleteRecipe(
+  _prevState: DeleteRecipeState,
+  formData: FormData,
+): Promise<DeleteRecipeState> {
   await requireRole("MANAGER");
   const id = String(formData.get("id"));
+
+  const recipe = await prisma.recipe.findUnique({
+    where: { id },
+    select: {
+      name: true,
+      _count: {
+        select: { prepLines: true, eventItems: true, banquetItems: true, usedIn: true },
+      },
+    },
+  });
+  if (!recipe) return { error: "That recipe no longer exists." };
+
+  const c = recipe._count;
+  const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+  const blockers: string[] = [];
+  if (c.prepLines) blockers.push(plural(c.prepLines, "prep order line"));
+  if (c.eventItems) blockers.push(plural(c.eventItems, "event menu"));
+  if (c.banquetItems) blockers.push(plural(c.banquetItems, "banquet menu"));
+  if (c.usedIn) blockers.push(`${plural(c.usedIn, "recipe")} that use it as a sub-recipe`);
+
+  if (blockers.length > 0) {
+    return {
+      error: `Can't delete "${recipe.name}" — it's still referenced by ${joinList(blockers)}. Remove those references first.`,
+    };
+  }
+
+  // Cascades clean up this recipe's own ingredients, sub-recipe links, and
+  // changelog (all `onDelete: Cascade`).
   await prisma.recipe.delete({ where: { id } });
   revalidatePath("/recipes");
   redirect("/recipes");

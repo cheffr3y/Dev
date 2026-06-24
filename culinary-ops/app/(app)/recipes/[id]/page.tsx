@@ -21,10 +21,10 @@ import { MethodEditor } from "@/components/MethodEditor";
 import { splitStep } from "@/lib/method";
 import { SubRecipeForm } from "../SubRecipeForm";
 import { AddIngredientForm } from "../AddIngredientForm";
+import { DeleteRecipeForm } from "../DeleteRecipeForm";
 import {
   removeRecipeItem,
   updateRecipe,
-  deleteRecipe,
   removeSubRecipe,
 } from "../actions";
 
@@ -425,12 +425,7 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
                   </Button>
                 </form>
               </Card>
-              <form action={deleteRecipe}>
-                <input type="hidden" name="id" value={recipe.id} />
-                <Button type="submit" variant="danger" className="w-full">
-                  Delete recipe
-                </Button>
-              </form>
+              <DeleteRecipeForm recipeId={recipe.id} />
             </>
           ) : (
             <Card>
