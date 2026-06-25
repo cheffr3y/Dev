@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { Sidebar } from "@/components/Sidebar";
+import { MobileNav } from "@/components/MobileNav";
 import { CommandSearch } from "@/components/CommandSearch";
 import { signOutAction } from "@/lib/auth-actions";
 
@@ -45,12 +46,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
       {/* Main column */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="no-print sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-hairline bg-cream/80 px-6 py-3 backdrop-blur">
-          <div className="flex items-center gap-4">
+        <header className="no-print sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-hairline bg-cream/80 px-4 py-3 backdrop-blur md:px-6">
+          <div className="flex items-center gap-2 md:gap-4">
+            <MobileNav role={user.role} />
+            <span className="font-display text-lg leading-none text-ink md:hidden">Mise</span>
             <CommandSearch recipes={recipes} items={items} />
           </div>
-          <div className="flex items-center gap-4">
-            <div className="text-right">
+          <div className="flex items-center gap-3 md:gap-4">
+            <div className="hidden text-right sm:block">
               <p className="text-sm font-medium text-ink">{user.name}</p>
               <p className="text-[10px] uppercase tracking-[0.16em] text-zinc-400">
                 {ROLE_LABEL[user.role] ?? user.role}
@@ -64,7 +67,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
         </header>
 
-        <main className="print-full mx-auto w-full max-w-[100rem] flex-1 px-6 py-10">{children}</main>
+        <main className="print-full mx-auto w-full max-w-[100rem] flex-1 px-4 py-6 md:px-6 md:py-10">{children}</main>
       </div>
     </div>
   );

@@ -94,18 +94,20 @@ export function CommandSearch({ recipes, items }: { recipes: Recipe[]; items: It
 
   return (
     <>
-      {/* Header trigger */}
+      {/* Header trigger — collapses to an icon-only button on mobile so search
+          stays reachable without the ⌘K shortcut. */}
       <button
         type="button"
         onClick={openPalette}
-        className="hidden items-center gap-2 rounded-full border border-hairline bg-canvas px-3.5 py-1.5 text-sm text-zinc-400 transition-colors hover:border-zinc-300 hover:text-zinc-600 sm:flex"
+        aria-label="Search recipes & ingredients"
+        className="flex items-center gap-2 rounded-full border border-hairline bg-canvas px-3 py-1.5 text-sm text-zinc-400 transition-colors hover:border-zinc-300 hover:text-zinc-600 sm:px-3.5"
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4">
           <circle cx="11" cy="11" r="7" />
           <path d="m20 20-3.5-3.5" strokeLinecap="round" />
         </svg>
-        <span>Search recipes &amp; ingredients…</span>
-        <kbd className="ml-2 rounded border border-hairline bg-cream px-1.5 py-0.5 text-[10px] font-medium tracking-wide text-zinc-400">
+        <span className="hidden sm:inline">Search recipes &amp; ingredients…</span>
+        <kbd className="ml-2 hidden rounded border border-hairline bg-cream px-1.5 py-0.5 text-[10px] font-medium tracking-wide text-zinc-400 sm:inline-block">
           ⌘K
         </kbd>
       </button>
