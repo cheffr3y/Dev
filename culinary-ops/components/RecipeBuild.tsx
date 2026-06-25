@@ -97,7 +97,9 @@ export function parseSteps(instructions: string | null): string[] {
 // notes, then each sub-recipe rendered as its own nested build card. Callers
 // supply the surrounding chrome (lot box, ordered count, etc.). `compact`
 // tightens spacing for nested cards; `depth`/`stack` thread cycle-safety and
-// indentation down to the sub-builds.
+// indentation down to the sub-builds. `sharedLots` maps recipeId → lot for
+// sub-recipes that already have their own top-level batch in this packet; those
+// render as a pull-from-lot reference instead of a full inline build.
 export function RecipeBuildBody({
   node,
   byId,
@@ -105,6 +107,7 @@ export function RecipeBuildBody({
   compact,
   depth,
   stack,
+  sharedLots,
 }: {
   node: RecipeTreeNode;
   byId: Map<string, RecipeTreeNode>;
@@ -112,6 +115,7 @@ export function RecipeBuildBody({
   compact: boolean;
   depth: number;
   stack: Set<string>;
+  sharedLots?: Map<string, string>;
 }) {
   const steps = parseSteps(node.instructions);
   const allergens = allergenLabels(effectiveAllergens(node.id, byId));
@@ -156,12 +160,13 @@ export function RecipeBuildBody({
             // up), scaled by this batch — so the line reads in the child's units.
             const { batches } = componentBatchFactor(c.quantity, c.unit, child.yieldQty, child.yieldUnit);
             const m = displayMeasure(batches * child.yieldQty * totalBatches, child.yieldUnit);
+            const sharedLot = sharedLots?.get(c.childId);
             return (
               <tr key={c.id}>
                 <td className={`${cellY} pr-3 text-right font-semibold tabular-nums text-zinc-900`}>{num(m.qty)}</td>
                 <td className={`${cellY} pr-4 text-zinc-600`}>{m.label}</td>
                 <td className={`${cellY} pr-4 text-zinc-900`}>{child.name} (sub-recipe)</td>
-                <td className={`${cellY} text-zinc-500`}>see build below ↓</td>
+                <td className={`${cellY} text-zinc-500`}>{sharedLot ? `pull from lot ${sharedLot}` : "see build below ↓"}</td>
               </tr>
             );
           })}
@@ -206,7 +211,7 @@ export function RecipeBuildBody({
             if (!child) return null;
             const { batches } = componentBatchFactor(c.quantity, c.unit, child.yieldQty, child.yieldUnit);
             return (
-              <SubBuild key={c.id} node={child} byId={byId} totalBatches={batches * totalBatches} depth={depth} stack={stack} />
+              <SubBuild key={c.id} node={child} byId={byId} totalBatches={batches * totalBatches} depth={depth} stack={stack} sharedLots={sharedLots} />
             );
           })}
         </div>
@@ -218,25 +223,48 @@ export function RecipeBuildBody({
 // Recursive sub-recipe build card: the sub-recipe's header (name + the amount to
 // make) followed by its scaled body. `totalBatches` already folds in the
 // parent's scale. A stack guards against cycles (blocked at creation, defensive
-// here).
+// here). When the sub-recipe is in `sharedLots` (it already has its own
+// top-level batch in this packet), render only a pull-from-lot reference so the
+// cook doesn't rebuild what they've already made.
 export function SubBuild({
   node,
   byId,
   totalBatches,
   depth,
   stack,
+  sharedLots,
 }: {
   node: RecipeTreeNode;
   byId: Map<string, RecipeTreeNode>;
   totalBatches: number;
   depth: number;
   stack: Set<string>;
+  sharedLots?: Map<string, string>;
 }) {
   if (stack.has(node.id)) return null; // cycle guard
-  const nextStack = new Set(stack);
-  nextStack.add(node.id);
 
   const made = displayMeasure(totalBatches * node.yieldQty, node.yieldUnit);
+  const sharedLot = sharedLots?.get(node.id);
+
+  if (sharedLot) {
+    return (
+      <div className={`break-inside-avoid border-l-2 border-zinc-300 pl-4 ${depth > 0 ? "ml-2" : ""}`}>
+        <div className="flex items-baseline justify-between gap-3">
+          <h3 className="font-display text-xl font-medium tracking-tight text-zinc-500">
+            ↳ {node.name}{" "}
+            <span className="align-middle text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-400">sub-recipe</span>
+          </h3>
+          <span className="shrink-0 text-sm font-semibold text-zinc-500">
+            pull {num(made.qty)} {made.label}
+          </span>
+        </div>
+        <p className="mt-0.5 text-xs text-zinc-400">→ from lot {sharedLot}</p>
+      </div>
+    );
+  }
+
+  const nextStack = new Set(stack);
+  nextStack.add(node.id);
 
   return (
     <div className={`break-inside-avoid border-l-2 border-zinc-400 pl-4 ${depth > 0 ? "ml-2" : ""}`}>
@@ -253,7 +281,7 @@ export function SubBuild({
         {node.prodCode} · base yield {num(node.yieldQty)} {node.yieldUnit}
       </p>
 
-      <RecipeBuildBody node={node} byId={byId} totalBatches={totalBatches} compact depth={depth + 1} stack={nextStack} />
+      <RecipeBuildBody node={node} byId={byId} totalBatches={totalBatches} compact depth={depth + 1} stack={nextStack} sharedLots={sharedLots} />
     </div>
   );
 }

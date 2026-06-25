@@ -102,6 +102,14 @@ export default async function CookPacketPage({ params }: { params: Promise<{ id:
     groups.set(l.lot!, arr);
   }
 
+  // Map recipeId → lot for every top-level printed recipe. Passed into each
+  // PacketEntry so sub-builds of those recipes render a pull-from-lot reference
+  // instead of reprinting the full build for something already in this packet.
+  const sharedLots = new Map<string, string>();
+  for (const lines of groups.values()) {
+    sharedLots.set(lines[0].recipeId, lines[0].lot!);
+  }
+
   const madeOn = fmtDate(order.forDate);
   const printedOn = fmtDate(new Date());
 
@@ -160,6 +168,7 @@ export default async function CookPacketPage({ params }: { params: Promise<{ id:
                 madeOn={madeOn}
                 forDate={order.forDate}
                 byId={byId}
+                sharedLots={sharedLots}
                 // Each recipe starts on a new page. The first only breaks when a
                 // shopping list precedes it, so it doesn't strand the header alone.
                 breakBefore={shopping.itemCount > 0 || i > 0}
@@ -198,12 +207,14 @@ function PacketEntry({
   madeOn,
   forDate,
   byId,
+  sharedLots,
   breakBefore,
 }: {
   lines: PacketLine[];
   madeOn: string;
   forDate: Date;
   byId: Map<string, RecipeTreeNode>;
+  sharedLots: Map<string, string>;
   breakBefore: boolean;
 }) {
   const recipe = lines[0].recipe;
@@ -308,7 +319,7 @@ function PacketEntry({
       </div>
 
       {/* Scaled ingredients, method, allergens & nested sub-builds */}
-      {node && <RecipeBuildBody node={node} byId={byId} totalBatches={scale} compact={false} depth={0} stack={new Set()} />}
+      {node && <RecipeBuildBody node={node} byId={byId} totalBatches={scale} compact={false} depth={0} stack={new Set()} sharedLots={sharedLots} />}
 
       {/* Footer stamp — self-documenting for food-safety / consistency */}
       <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.12em] text-zinc-400">
