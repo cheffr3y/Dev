@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { num } from "@/lib/costing";
 import { convertQty, unitLabel } from "@/lib/units";
-import { batchScaleFlag } from "@/lib/prep";
 import { buildShoppingList, type ShoppingRecipeNode } from "@/lib/shopping";
 import { PrintButton } from "@/components/PrintButton";
 import { ShoppingListBody } from "@/components/ShoppingList";
@@ -231,9 +230,6 @@ function PacketEntry({
     else combinedInYield += c;
   }
   const scale = convertible && recipe.yieldQty > 0 ? combinedInYield / recipe.yieldQty : 1;
-  const flag = convertible
-    ? batchScaleFlag(combinedInYield, recipe.yieldUnit, recipe.yieldQty, recipe.yieldUnit)
-    : null;
 
   const useBy =
     recipe.holdLifeDays != null
@@ -251,8 +247,8 @@ function PacketEntry({
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="font-display text-3xl font-medium tracking-tight text-zinc-900">{recipe.name}</h2>
-          <p className="mt-0.5 text-sm text-zinc-500">
-            Batch ×{num(scale)} of {num(recipe.yieldQty)} {recipe.yieldUnit} base yield
+          <p className="mt-1 text-lg font-semibold text-zinc-900">
+            Yields {convertible ? `${num(combinedInYield)} ${unitLabel(recipe.yieldUnit)}` : "(mixed units)"}
           </p>
         </div>
         {/* Lot — large + clear for hand transcription onto labels */}
@@ -299,12 +295,7 @@ function PacketEntry({
         </div>
       )}
 
-      {/* Scaling guard */}
-      {flag && !flag.clean && (
-        <div className="mt-3 border-2 border-amber-600 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-900">
-          ⚠ {num(flag.scale)}× base batch — verify reduction / seasoning by taste, scaling is linear only.
-        </div>
-      )}
+      {/* Scaling guard — only when ordered units don't convert to the yield unit */}
       {!convertible && (
         <div className="mt-3 border-2 border-amber-600 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-900">
           ⚠ Requested units don&apos;t convert to the base yield unit — verify the batch size manually.

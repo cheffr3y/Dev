@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { num, componentBatchFactor } from "@/lib/costing";
 import { unitLabel } from "@/lib/units";
-import { batchScaleFlag } from "@/lib/prep";
 import { PrintButton } from "@/components/PrintButton";
 import { RecipeBuildBody, buildRecipeTree, recipeTreeSelect, type RecipeTreeNode } from "@/components/RecipeBuild";
 
@@ -118,15 +117,14 @@ function DishEntry({
 
   // Ordered qty → batch multiplier in the recipe's own yield unit.
   const { batches, converted } = componentBatchFactor(orderedQty, unit, node.yieldQty, node.yieldUnit);
-  const flag = converted ? batchScaleFlag(orderedQty, unit, node.yieldQty, node.yieldUnit) : null;
 
   return (
     <article className="break-inside-avoid border-t-2 border-zinc-900 pt-4">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="font-display text-3xl font-medium tracking-tight text-zinc-900">{node.name}</h2>
-          <p className="mt-0.5 text-sm text-zinc-500">
-            Batch ×{num(batches)} of {num(node.yieldQty)} {node.yieldUnit} base yield
+          <p className="mt-1 text-lg font-semibold text-zinc-900">
+            Yields {converted ? `${num(batches * node.yieldQty)} ${unitLabel(node.yieldUnit)}` : `${num(orderedQty)} ${unitLabel(unit)}`}
           </p>
           {description && <p className="mt-0.5 text-sm text-zinc-500">{description}</p>}
         </div>
@@ -139,11 +137,6 @@ function DishEntry({
         </div>
       </div>
 
-      {flag && !flag.clean && (
-        <div className="mt-3 border-2 border-amber-600 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-900">
-          ⚠ {num(flag.scale)}× base batch — verify reduction / seasoning by taste, scaling is linear only.
-        </div>
-      )}
       {!converted && (
         <div className="mt-3 border-2 border-amber-600 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-900">
           ⚠ Ordered units don&apos;t convert to the base yield unit — verify the batch size manually.
