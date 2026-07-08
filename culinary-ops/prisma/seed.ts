@@ -26,6 +26,10 @@ async function main() {
   await prisma.prepOrder.deleteMany();
   await prisma.eventMenuItem.deleteMany();
   await prisma.event.deleteMany();
+  await prisma.festivalOnHand.deleteMany();
+  await prisma.festivalMenuItem.deleteMany();
+  await prisma.festivalTent.deleteMany();
+  await prisma.festival.deleteMany();
   await prisma.banquetMenuItem.deleteMany();
   await prisma.banquet.deleteMany();
   await prisma.orderGuideLine.deleteMany();
@@ -78,7 +82,7 @@ async function main() {
       { name: "Lemons", category: "Produce", unit: "each", unitCost: 0.45, vendorId: produce.id },
       { name: "Fresh Basil", category: "Produce", unit: "lb", unitCost: 9.0, vendorId: produce.id },
       { name: "Chicken Breast, boneless", category: "Protein", unit: "lb", unitCost: 3.75, vendorId: sysco.id },
-      { name: "Ground Beef 80/20", category: "Protein", unit: "lb", unitCost: 4.25, vendorId: sysco.id },
+      { name: "Ground Beef 80/20", category: "Protein", unit: "lb", unitCost: 4.25, vendorId: sysco.id, packQty: 10, packUnit: "lb" },
       { name: "Salmon Fillet", category: "Protein", unit: "lb", unitCost: 11.5, vendorId: seafood.id },
       { name: "Shrimp 16/20", category: "Protein", unit: "lb", unitCost: 12.0, vendorId: seafood.id },
       { name: "Butter, unsalted", category: "Dairy", unit: "lb", unitCost: 3.6, vendorId: dairy.id },
@@ -90,7 +94,7 @@ async function main() {
       { name: "Kosher Salt", category: "Dry Goods", unit: "lb", unitCost: 0.8, vendorId: sysco.id },
       { name: "Black Pepper, ground", category: "Dry Goods", unit: "lb", unitCost: 7.0, vendorId: sysco.id },
       { name: "Pasta, spaghetti", category: "Dry Goods", unit: "lb", unitCost: 1.1, vendorId: sysco.id },
-      { name: "Burger Buns", category: "Bakery", unit: "each", unitCost: 0.35, vendorId: sysco.id, packSize: "8 ct pack" },
+      { name: "Burger Buns", category: "Bakery", unit: "each", unitCost: 0.35, vendorId: sysco.id, packSize: "8 ct pack", packQty: 8, packUnit: "each" },
       { name: "House Red Wine", category: "Beverage", unit: "bottle", unitCost: 8.0, vendorId: sysco.id },
     ].map((d) => prisma.item.create({ data: d })),
   );
@@ -309,6 +313,35 @@ async function main() {
     },
   });
 
+  // --- Festival (plan-to-order demo) ---
+  // Assumption-driven forecast: 5000 attendance × 35% capture, 10% buffer.
+  // One line is intentionally forecast-only (no recipe) to demo the warning.
+  const festival = await prisma.festival.create({
+    data: {
+      name: "Red White & Brews",
+      date: new Date(Date.now() + 30 * 86400000),
+      venueId: catering.id,
+      expectedAttendance: 5000,
+      captureRate: 0.35,
+      forecastConfidence: "MEDIUM",
+      weatherNotes: "Hot & sunny expected — push cold drinks and desserts.",
+      bufferPct: 0.1,
+      status: "PLANNED",
+    },
+  });
+  const [bbqTent, , dessertTent] = await Promise.all(
+    ["BBQ Tent", "Taco Tent", "Desserts"].map((name, i) =>
+      prisma.festivalTent.create({ data: { festivalId: festival.id, name, sortOrder: i } }),
+    ),
+  );
+  await prisma.festivalMenuItem.createMany({
+    data: [
+      { festivalId: festival.id, tentId: bbqTent.id, recipeId: burger.id, name: "Smash Burger", price: 12, mixPct: 0.2, sortOrder: 0 },
+      { festivalId: festival.id, tentId: bbqTent.id, name: "Brisket Sandwich", price: 15, mixPct: 0.15, sortOrder: 1 },
+      { festivalId: festival.id, tentId: dessertTent.id, recipeId: caesar.id, name: "Caesar Cup", price: 8, mixPct: 0.1, sortOrder: 0 },
+    ],
+  });
+
   // --- Prep orders (commissary production) ---
   // One order = one destination venue; every line inherits the order's venue.
   // Producing for two venues means two separate orders.
@@ -344,7 +377,7 @@ async function main() {
   });
 
   console.log(
-    `Seeded: 3 venues, 3 users, ${items.length} items, 4 recipes, events incl. "${gala.name}", 1 banquet (Miller Wedding), 2 prep orders.`,
+    `Seeded: 3 venues, 3 users, ${items.length} items, 4 recipes, events incl. "${gala.name}", 1 banquet (Miller Wedding), 1 festival (${festival.name}), 2 prep orders.`,
   );
   console.log("Login with admin@culinaryops.test / password123");
 }

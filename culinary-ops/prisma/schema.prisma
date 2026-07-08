@@ -24,6 +24,14 @@ enum EventStatus {
   CANCELLED
 }
 
+// Chef's confidence in a festival's assumption-driven forecast. With no
+// historical sales yet, forecasts are guesses; this flags how firm they are.
+enum ForecastConfidence {
+  LOW
+  MEDIUM
+  HIGH
+}
+
 // Lifecycle of a single prep-order line — one record at two points in time
 // (requested, then made). A blank line is never "skipped"; NOT_MADE is explicit.
 enum PrepLineStatus {
@@ -66,6 +74,7 @@ model Venue {
   orderGuides OrderGuide[]
   events      Event[]
   banquets    Banquet[]
+  festivals   Festival[] // festivals hinting at this venue's inventory
   prepLines   PrepOrderLine[] // production destined here
   prepOrders  PrepOrder[] // orders destined here
 }
@@ -86,39 +95,46 @@ model Vendor {
 
 // Master catalog item / ingredient / purchasable product.
 model Item {
-  id        String  @id @default(cuid())
-  name      String
-  category  String  @default("Other")
-  unit      String  @default("each") // purchase & count unit, e.g. "lb", "case", "each"
-  packSize  String? // descriptive, e.g. "6 x #10 can"
-  unitCost  Float   @default(0) // cost per `unit`
-  sku       String?
-  vendorId  String?
-  vendor    Vendor? @relation(fields: [vendorId], references: [id], onDelete: SetNull)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  name        String
+  category    String   @default("Other")
+  unit        String   @default("each") // purchase & count unit, e.g. "lb", "case", "each"
+  packSize    String? // descriptive display fallback, e.g. "6 x #10 can"
+  // Structured purchasing data for pack-rounded ordering (Festivals order guide
+  // and future auto-ordering). Additive & optional so existing rows migrate
+  // cleanly; packSize stays as the human-readable fallback.
+  packQty     Float? // qty per purchasable pack, e.g. 40
+  packUnit    String? // unit of packQty, e.g. "lb" — defaults to `unit` when null
+  yieldFactor Float    @default(1) // finished/raw ratio (e.g. 0.5 smoked brisket); raw need = need / yieldFactor
+  unitCost    Float    @default(0) // cost per `unit`
+  sku         String?
+  vendorId    String?
+  vendor      Vendor?  @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   recipeItems     RecipeItem[]
   inventoryItems  InventoryItem[]
   orderGuideLines OrderGuideLine[]
+  festivalOnHand  FestivalOnHand[]
 
   @@index([category])
 }
 
 // A recipe or build. Shared across all venues.
 model Recipe {
-  id           String   @id @default(cuid())
+  id           String  @id @default(cuid())
   name         String
-  category     String   @default("Other")
+  category     String  @default("Other")
   station      String? // e.g. "Garde Manger", "Bar", "Pastry"
-  yieldQty     Float    @default(1)
-  yieldUnit    String   @default("servings")
+  yieldQty     Float   @default(1)
+  yieldUnit    String  @default("servings")
   menuPrice    Float? // sell price per yield unit, for margin calc
   instructions String? // prep steps, plating notes
   photoUrl     String?
 
   // Production / lot identity (see lib/prep.ts)
-  prodCode     String  @unique // 3-char auto-generated code used in lot numbers
+  prodCode     String @unique // 3-char auto-generated code used in lot numbers
   holdLifeDays Int? // optional shelf life in days; drives use-by on labels
 
   // Recipe card / food-safety details (printed for line cooks)
@@ -128,13 +144,14 @@ model Recipe {
   storage       String? // storage & holding instructions
   allergens     String? // comma-separated, e.g. "dairy, gluten, tree nuts"
   criticalNotes String? // HACCP / critical control points, e.g. "Cook to 165°F internal"
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  items        RecipeItem[]
-  eventItems   EventMenuItem[]
-  banquetItems BanquetMenuItem[]
-  prepLines    PrepOrderLine[]
+  items         RecipeItem[]
+  eventItems    EventMenuItem[]
+  banquetItems  BanquetMenuItem[]
+  festivalItems FestivalMenuItem[]
+  prepLines     PrepOrderLine[]
 
   // Sub-recipes: a recipe can be built from other recipes (components).
   components RecipeComponent[] @relation("ParentRecipe")
@@ -175,13 +192,13 @@ model RecipeChange {
 }
 
 model RecipeItem {
-  id       String @id @default(cuid())
+  id       String  @id @default(cuid())
   recipeId String
-  recipe   Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  recipe   Recipe  @relation(fields: [recipeId], references: [id], onDelete: Cascade)
   itemId   String
-  item     Item   @relation(fields: [itemId], references: [id], onDelete: Restrict)
-  quantity Float  @default(0) // in the item's unit
-  unit     String @default("each")
+  item     Item    @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  quantity Float   @default(0) // in the item's unit
+  unit     String  @default("each")
   note     String?
 
   @@unique([recipeId, itemId])
@@ -246,12 +263,12 @@ model Event {
 }
 
 model EventMenuItem {
-  id              String @id @default(cuid())
+  id              String  @id @default(cuid())
   eventId         String
-  event           Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  event           Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
   recipeId        String
-  recipe          Recipe @relation(fields: [recipeId], references: [id], onDelete: Restrict)
-  plannedServings Float  @default(0)
+  recipe          Recipe  @relation(fields: [recipeId], references: [id], onDelete: Restrict)
+  plannedServings Float   @default(0)
   note            String?
 
   @@unique([eventId, recipeId])
@@ -386,4 +403,95 @@ model PrepOrderLine {
   @@index([recipeId])
   @@index([destinationVenueId])
   @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// Festivals — Plan-to-Order (V1)
+//
+// A chef plans food production and ordering for an outdoor festival with tented
+// menus (BBQ Tent, Taco Tent, Desserts). With no reliable sales history yet,
+// V1 forecasts from assumptions: attendance × capture-rate × per-item mix %,
+// with a chef override that wins when entered and a buffer % on top. Final prep
+// portions scale recipe builds and roll up into a vendor-grouped order guide
+// that applies yield factors, subtracts per-festival on-hand, and rounds up to
+// pack size. All derived numbers are computed live (lib/festival.ts) and never
+// stored. Percents are stored as fractions 0–1; the UI shows whole %.
+// ---------------------------------------------------------------------------
+model Festival {
+  id                 String             @id @default(cuid())
+  name               String
+  date               DateTime
+  // Optional hint at a venue whose on-site inventory the chef can reference;
+  // festivals are off-site so counts live in FestivalOnHand, not InventoryItem.
+  venueId            String?
+  venue              Venue?             @relation(fields: [venueId], references: [id], onDelete: SetNull)
+  expectedAttendance Int                @default(0)
+  captureRate        Float              @default(0.35) // fraction of attendance that buys food
+  forecastConfidence ForecastConfidence @default(MEDIUM)
+  weatherNotes       String?
+  bufferPct          Float              @default(0.1) // default prep buffer, fraction; per-item override wins
+  status             EventStatus        @default(PLANNED)
+  notes              String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  tents     FestivalTent[]
+  menuItems FestivalMenuItem[]
+  onHand    FestivalOnHand[]
+
+  @@index([date])
+}
+
+// A tent / station on the festival grounds. A real model (not an enum) so tents
+// rename stably, keep an order, and can later drive per-tent prints.
+model FestivalTent {
+  id         String   @id @default(cuid())
+  festivalId String
+  festival   Festival @relation(fields: [festivalId], references: [id], onDelete: Cascade)
+  name       String
+  sortOrder  Int      @default(0)
+
+  menuItems FestivalMenuItem[]
+
+  @@unique([festivalId, name])
+}
+
+// One menu line under a tent. A recipe link is optional: forecast-only rows are
+// allowed (they still project covers/revenue) but are excluded from scaled
+// builds and the order guide, with a warning. Percents are fractions 0–1.
+model FestivalMenuItem {
+  id                String       @id @default(cuid())
+  festivalId        String
+  festival          Festival     @relation(fields: [festivalId], references: [id], onDelete: Cascade)
+  tentId            String
+  tent              FestivalTent @relation(fields: [tentId], references: [id], onDelete: Cascade)
+  recipeId          String? // null = forecast-only line; excluded from builds/order guide
+  recipe            Recipe?      @relation(fields: [recipeId], references: [id], onDelete: SetNull)
+  name              String
+  price             Float        @default(0) // menu sell price per portion
+  mixPct            Float        @default(0) // fraction of food buyers choosing this item
+  chefOverride      Float? // portions; replaces the computed forecast when set
+  bufferPctOverride Float? // fraction; null = use the festival default
+  sortOrder         Int          @default(0)
+  note              String?
+
+  @@index([festivalId])
+  @@index([tentId])
+}
+
+// Per-festival on-hand count. Festivals are off-site, so the chef counts the
+// trailer / walk-in per event rather than trusting a venue's InventoryItem
+// (which is shown only as a hint column when venueId is set).
+model FestivalOnHand {
+  id         String   @id @default(cuid())
+  festivalId String
+  festival   Festival @relation(fields: [festivalId], references: [id], onDelete: Cascade)
+  itemId     String
+  item       Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  quantity   Float    @default(0)
+  unit       String   @default("each") // defaults to item.unit
+  note       String?
+  updatedAt  DateTime @updatedAt
+
+  @@unique([festivalId, itemId])
 }
