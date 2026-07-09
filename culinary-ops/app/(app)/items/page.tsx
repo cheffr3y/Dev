@@ -52,6 +52,9 @@ function ItemFields({
       <Field label="Pack Size">
         <Input name="packSize" defaultValue={item?.packSize ?? ""} placeholder="6 x #10 can" />
       </Field>
+      <Field label="Item #">
+        <Input name="sku" defaultValue={item?.sku ?? ""} placeholder="Vendor item / SKU #" />
+      </Field>
     </div>
   );
 }
@@ -119,6 +122,7 @@ export default async function ItemsPage({
               <th className="px-4 py-2.5 font-medium">Item</th>
               <th className="px-4 py-2.5 font-medium">Category</th>
               <th className="px-4 py-2.5 font-medium">Vendor</th>
+              <th className="px-4 py-2.5 font-medium">Item #</th>
               <th className="px-4 py-2.5 font-medium">Unit</th>
               <th className="px-4 py-2.5 text-right font-medium">Unit Cost</th>
               {canEdit && <th className="px-4 py-2.5"></th>}
@@ -127,7 +131,7 @@ export default async function ItemsPage({
           <tbody className="divide-y divide-zinc-100">
             {items.length === 0 && (
               <tr>
-                <td colSpan={canEdit ? 6 : 5} className="px-4 py-8 text-center text-zinc-400">
+                <td colSpan={canEdit ? 7 : 6} className="px-4 py-8 text-center text-zinc-400">
                   No items yet.
                 </td>
               </tr>
@@ -165,6 +169,7 @@ export default async function ItemsPage({
                   <Badge>{item.category}</Badge>
                 </td>
                 <td className="px-4 py-2.5 text-zinc-600">{item.vendor?.name ?? "—"}</td>
+                <td className="px-4 py-2.5 font-mono text-xs text-zinc-600">{item.sku ?? "—"}</td>
                 <td className="px-4 py-2.5 text-zinc-600">{item.unit}</td>
                 <td className="px-4 py-2.5 text-right text-zinc-800">{money(item.unitCost)}</td>
                 {canEdit && (
