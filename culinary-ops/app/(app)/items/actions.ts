@@ -36,7 +36,10 @@ function parse(formData: FormData) {
 export async function createItem(formData: FormData) {
   await requireRole("MANAGER");
   const data = parse(formData);
-  await prisma.item.create({ data });
+  // Only treat it as "priced" when a real cost was entered.
+  await prisma.item.create({
+    data: { ...data, priceUpdatedAt: data.unitCost > 0 ? new Date() : null },
+  });
   revalidatePath("/items");
 }
 
@@ -44,7 +47,14 @@ export async function updateItem(formData: FormData) {
   await requireRole("MANAGER");
   const id = String(formData.get("id"));
   const data = parse(formData);
-  await prisma.item.update({ where: { id }, data });
+  // Stamp priceUpdatedAt only when the cost actually moved, so freshness
+  // reflects the last re-quote — not an unrelated edit to name/vendor/etc.
+  const existing = await prisma.item.findUnique({ where: { id }, select: { unitCost: true } });
+  const priceChanged = existing != null && existing.unitCost !== data.unitCost;
+  await prisma.item.update({
+    where: { id },
+    data: priceChanged ? { ...data, priceUpdatedAt: new Date() } : data,
+  });
   revalidatePath("/items");
 }
 

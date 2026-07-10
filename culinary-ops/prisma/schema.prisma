@@ -106,7 +106,10 @@ model Item {
   packQty     Float? // qty per purchasable pack, e.g. 40
   packUnit    String? // unit of packQty, e.g. "lb" — defaults to `unit` when null
   yieldFactor Float    @default(1) // finished/raw ratio (e.g. 0.5 smoked brisket); raw need = need / yieldFactor
-  unitCost    Float    @default(0) // cost per `unit`
+  unitCost    Float    @default(0) // cost per `unit`; 0 = no price on file
+  // Stamped only when unitCost actually changes (not on every edit), so the
+  // catalog can show price freshness and flag stale costs for re-quoting.
+  priceUpdatedAt DateTime? // null = never priced
   sku         String?
   vendorId    String?
   vendor      Vendor?  @relation(fields: [vendorId], references: [id], onDelete: SetNull)

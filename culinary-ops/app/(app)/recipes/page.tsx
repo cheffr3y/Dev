@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireUser, hasRole } from "@/lib/session";
-import { buildCostMap, costPerServing, foodCostPct } from "@/lib/costing";
+import { buildCostMap, buildPriceGapMap, costPerServing, foodCostPct } from "@/lib/costing";
 import { Button, Card, Field, Input, PageHeader, Select } from "@/components/ui";
 import { createRecipe } from "./actions";
 import { RecipesTable } from "./RecipesTable";
@@ -21,10 +21,20 @@ export default async function RecipesPage() {
 
   // Cost map includes nested sub-recipes (built across the whole catalog).
   const costMap = buildCostMap(recipes);
+  // Price gaps anywhere in each recipe's tree (nested sub-recipes included) —
+  // its cost is only trustworthy when there are no unpriced/stale ingredients.
+  const gapMap = buildPriceGapMap(
+    recipes.map((r) => ({
+      id: r.id,
+      items: r.items.map((ri) => ({ itemId: ri.item.id, unitCost: ri.item.unitCost, priceUpdatedAt: ri.item.priceUpdatedAt })),
+      components: r.components,
+    })),
+  );
 
   const rows = recipes.map((r) => {
     const cost = costMap.get(r.id) ?? 0;
     const perServing = costPerServing(cost, r.yieldQty);
+    const gap = gapMap.get(r.id);
     return {
       id: r.id,
       name: r.name,
@@ -34,6 +44,8 @@ export default async function RecipesPage() {
       perServing,
       menuPrice: r.menuPrice,
       fcp: foodCostPct(perServing, r.menuPrice),
+      unpriced: gap?.unpriced.size ?? 0,
+      stale: gap?.stale.size ?? 0,
     };
   });
 

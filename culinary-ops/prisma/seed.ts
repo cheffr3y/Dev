@@ -96,7 +96,21 @@ async function main() {
       { name: "Pasta, spaghetti", category: "Dry Goods", unit: "lb", unitCost: 1.1, vendorId: sysco.id },
       { name: "Burger Buns", category: "Bakery", unit: "each", unitCost: 0.35, vendorId: sysco.id, packSize: "8 ct pack", packQty: 8, packUnit: "each" },
       { name: "House Red Wine", category: "Beverage", unit: "bottle", unitCost: 8.0, vendorId: sysco.id },
-    ].map((d) => prisma.item.create({ data: d })),
+      // No price on file yet — demoes the "missing price" catalog flag.
+      { name: "Truffle Oil (needs quote)", category: "Dry Goods", unit: "bottle", unitCost: 0, vendorId: sysco.id },
+    ].map((d) => {
+      // Stamp price freshness so the catalog demoes all three states: pantry
+      // staples went un-requoted long enough to read as stale; everything else
+      // is freshly priced; a $0 item reads as "no price".
+      const staleNames = new Set(["Olive Oil, EV", "Kosher Salt", "Black Pepper, ground"]);
+      const priceUpdatedAt =
+        d.unitCost > 0
+          ? staleNames.has(d.name)
+            ? new Date(Date.now() - 140 * 86400000)
+            : new Date(Date.now() - 5 * 86400000)
+          : null;
+      return prisma.item.create({ data: { ...d, priceUpdatedAt } });
+    }),
   );
 
   const byName = (n: string) => {

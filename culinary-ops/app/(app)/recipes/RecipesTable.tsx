@@ -16,6 +16,8 @@ export type RecipeRow = {
   perServing: number;
   menuPrice: number | null;
   fcp: number | null;
+  unpriced: number; // ingredients in the tree with no price on file
+  stale: number; // priced ingredients not re-costed within the window
 };
 
 export function RecipesTable({ rows }: { rows: RecipeRow[] }) {
@@ -123,7 +125,25 @@ export function RecipesTable({ rows }: { rows: RecipeRow[] }) {
                   <td className="px-6 py-4">
                     <Badge>{r.category}</Badge>
                   </td>
-                  <td className="px-6 py-4 text-right text-zinc-600">{money(r.cost)}</td>
+                  <td className="px-6 py-4 text-right text-zinc-600">
+                    {money(r.cost)}
+                    {r.unpriced > 0 && (
+                      <span
+                        className="ml-1.5 text-xs font-medium text-red-600"
+                        title={`${r.unpriced} ingredient${r.unpriced === 1 ? "" : "s"} with no price — cost understated`}
+                      >
+                        ⚠{r.unpriced}
+                      </span>
+                    )}
+                    {r.stale > 0 && (
+                      <span
+                        className="ml-1.5 text-xs font-medium text-amber-600"
+                        title={`${r.stale} ingredient${r.stale === 1 ? "" : "s"} not re-costed recently`}
+                      >
+                        ⌛{r.stale}
+                      </span>
+                    )}
+                  </td>
                   <td className="px-6 py-4 text-right text-zinc-600">{money(r.perServing)}</td>
                   <td className="px-6 py-4 text-right text-zinc-600">{r.menuPrice ? money(r.menuPrice) : "—"}</td>
                   <td className="px-6 py-4 text-right">

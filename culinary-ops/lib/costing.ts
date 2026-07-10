@@ -97,6 +97,93 @@ export function costPerServing(totalCost: number, yieldQty: number): number {
   return totalCost / yieldQty;
 }
 
+// --- Price integrity -------------------------------------------------------
+//
+// A theoretical food cost is only as honest as its prices. Two gaps make it
+// silently understated: an ingredient with no price on file (unitCost 0), and
+// a price so old it no longer reflects what the vendor charges. These helpers
+// surface both so the number can be trusted.
+
+// An ingredient counts as unpriced when it has no cost on file.
+export function isUnpriced(unitCost: number | null | undefined): boolean {
+  return !(unitCost != null && unitCost > 0);
+}
+
+// Prices not re-costed within this many days are treated as stale and flagged
+// for re-quoting. One knob for the whole app's "recently costed" assurance.
+export const PRICE_STALE_DAYS = 90;
+
+export type PriceFreshness = { label: string; stale: boolean; unpriced: boolean };
+
+// Turn a priceUpdatedAt (and its cost) into a human freshness read: "no price"
+// (understates cost), "needs re-cost" (priced but never stamped, so recency
+// can't be confirmed), stale (older than the window), or fresh. `now` is
+// injectable for stable tests. Stale + unpriced both mean "needs attention".
+export function priceFreshness(
+  priceUpdatedAt: Date | null | undefined,
+  unitCost: number | null | undefined,
+  now: Date = new Date(),
+): PriceFreshness {
+  if (isUnpriced(unitCost)) return { label: "no price", stale: false, unpriced: true };
+  // Priced but never re-costed in-system — can't confirm it's recent, so treat
+  // it as needing attention (the point of starting cost tracking).
+  if (!priceUpdatedAt) return { label: "needs re-cost", stale: true, unpriced: false };
+  const days = Math.floor((now.getTime() - priceUpdatedAt.getTime()) / 86400000);
+  const stale = days >= PRICE_STALE_DAYS;
+  let ago: string;
+  if (days <= 0) ago = "today";
+  else if (days < 30) ago = `${days}d ago`;
+  else if (days < 365) ago = `${Math.floor(days / 30)}mo ago`;
+  else ago = `${Math.floor(days / 365)}y ago`;
+  return { label: `priced ${ago}`, stale, unpriced: false };
+}
+
+// A recipe reduced to just what price-coverage needs — item identity, cost, and
+// when it was last priced, plus its sub-recipe links so gaps propagate up.
+export type RecipePriceNode = {
+  id: string;
+  items: { itemId: string; unitCost: number; priceUpdatedAt: Date | null }[];
+  components: { childId: string }[];
+};
+
+// Ingredients in a recipe tree that need cost attention: `unpriced` (no cost on
+// file — the recipe cost is understated) and `stale` (priced but not re-costed
+// within PRICE_STALE_DAYS, or never stamped).
+export type PriceGap = { unpriced: Set<string>; stale: Set<string> };
+
+// recipeId -> the price gaps reachable ANYWHERE in its tree: its own ingredients
+// plus every nested sub-recipe's, to any depth. This is what makes "ensure all
+// items are recently costed" hold for a mother recipe, not just its top layer.
+// Mirrors buildCostMap's cycle guard; cycles contribute nothing.
+export function buildPriceGapMap(recipes: RecipePriceNode[], now: Date = new Date()): Map<string, PriceGap> {
+  const byId = new Map(recipes.map((r) => [r.id, r]));
+  const cache = new Map<string, PriceGap>();
+
+  function walk(id: string, stack: Set<string>): PriceGap {
+    const cached = cache.get(id);
+    if (cached) return cached;
+    const node = byId.get(id);
+    if (!node || stack.has(id)) return { unpriced: new Set(), stale: new Set() };
+    stack.add(id);
+    const gap: PriceGap = { unpriced: new Set(), stale: new Set() };
+    for (const ri of node.items) {
+      if (isUnpriced(ri.unitCost)) gap.unpriced.add(ri.itemId);
+      else if (priceFreshness(ri.priceUpdatedAt, ri.unitCost, now).stale) gap.stale.add(ri.itemId);
+    }
+    for (const c of node.components) {
+      const cg = walk(c.childId, stack);
+      for (const x of cg.unpriced) gap.unpriced.add(x);
+      for (const x of cg.stale) gap.stale.add(x);
+    }
+    stack.delete(id);
+    cache.set(id, gap);
+    return gap;
+  }
+
+  for (const r of recipes) walk(r.id, new Set());
+  return cache;
+}
+
 // Food cost % = ingredient cost per serving / menu price.
 export function foodCostPct(costPerServing: number, menuPrice?: number | null): number | null {
   if (!menuPrice || menuPrice <= 0) return null;

@@ -1,10 +1,32 @@
 import { prisma } from "@/lib/prisma";
 import { requireUser, hasRole } from "@/lib/session";
-import { money } from "@/lib/costing";
+import { money, priceFreshness, PRICE_STALE_DAYS } from "@/lib/costing";
 import { Badge, Button, Card, Field, Input, PageHeader, Select } from "@/components/ui";
 import { createItem, updateItem, deleteItem } from "./actions";
 
-const CATEGORIES = ["Produce", "Protein", "Dairy", "Dry Goods", "Bakery", "Beverage", "Other"];
+// Purchasing categories, ordered roughly walk-in → dry storage → non-food.
+// Free-form in the DB, so this is just the picker/filter list; existing values
+// are preserved. Categories also group the pull list & order guide.
+const CATEGORIES = [
+  "Produce",
+  "Protein",
+  "Poultry",
+  "Seafood",
+  "Dairy",
+  "Frozen",
+  "Bakery",
+  "Dry Goods",
+  "Grains & Pasta",
+  "Canned & Jarred",
+  "Oils & Vinegars",
+  "Spices & Seasonings",
+  "Condiments & Sauces",
+  "Baking",
+  "Beverage",
+  "Paper & Disposables",
+  "Cleaning & Chemicals",
+  "Other",
+];
 
 function ItemFields({
   vendors,
@@ -62,20 +84,41 @@ function ItemFields({
 export default async function ItemsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string }>;
+  searchParams: Promise<{ category?: string; flag?: string }>;
 }) {
   const user = await requireUser();
   const canEdit = hasRole(user, "MANAGER");
-  const { category } = await searchParams;
+  const { category, flag } = await searchParams;
 
   const [items, vendors] = await Promise.all([
-    prisma.item.findMany({
-      where: category ? { category } : undefined,
-      include: { vendor: true },
-      orderBy: [{ category: "asc" }, { name: "asc" }],
-    }),
+    // Load the whole catalog so price-coverage counts are global, then filter
+    // in memory — the master list is small and this keeps the counts honest.
+    prisma.item.findMany({ include: { vendor: true }, orderBy: [{ category: "asc" }, { name: "asc" }] }),
     prisma.vendor.findMany({ orderBy: { name: "asc" } }),
   ]);
+
+  const now = new Date();
+  const withFreshness = items.map((item) => ({ item, freshness: priceFreshness(item.priceUpdatedAt, item.unitCost, now) }));
+  const missingCount = withFreshness.filter((x) => x.freshness.unpriced).length;
+  const staleCount = withFreshness.filter((x) => x.freshness.stale).length;
+
+  const visible = withFreshness.filter(({ item, freshness }) => {
+    if (category && item.category !== category) return false;
+    if (flag === "missing" && !freshness.unpriced) return false;
+    if (flag === "stale" && !freshness.stale) return false;
+    return true;
+  });
+
+  // Build a catalog href preserving the other active filter.
+  const hrefWith = (next: { category?: string | null; flag?: string | null }) => {
+    const params = new URLSearchParams();
+    const cat = next.category === undefined ? category : next.category;
+    const fl = next.flag === undefined ? flag : next.flag;
+    if (cat) params.set("category", cat);
+    if (fl) params.set("flag", fl);
+    const qs = params.toString();
+    return qs ? `/items?${qs}` : "/items";
+  };
 
   return (
     <div>
@@ -84,10 +127,32 @@ export default async function ItemsPage({
         subtitle="Master list of purchasable items, costs, and vendors."
       />
 
+      {/* Price coverage — theo food cost is only as honest as these prices. */}
+      {(missingCount > 0 || staleCount > 0) && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
+          <span className="font-medium">Price coverage</span>
+          {missingCount > 0 && (
+            <a href={hrefWith({ flag: flag === "missing" ? null : "missing" })} className="rounded-full bg-white/70 px-2.5 py-0.5 text-xs font-medium text-red-700 ring-1 ring-red-200 hover:bg-white">
+              {missingCount} missing a price →
+            </a>
+          )}
+          {staleCount > 0 && (
+            <a href={hrefWith({ flag: flag === "stale" ? null : "stale" })} className="rounded-full bg-white/70 px-2.5 py-0.5 text-xs font-medium text-amber-800 ring-1 ring-amber-200 hover:bg-white">
+              {staleCount} stale (&gt;{PRICE_STALE_DAYS}d) →
+            </a>
+          )}
+          {flag && (
+            <a href={hrefWith({ flag: null })} className="text-xs text-amber-700 underline">
+              clear filter
+            </a>
+          )}
+        </div>
+      )}
+
       {/* Category filter */}
       <div className="mb-4 flex flex-wrap gap-2 text-sm">
         <a
-          href="/items"
+          href={hrefWith({ category: null })}
           className={`rounded-full px-3 py-1 ${!category ? "bg-zinc-900 text-white" : "bg-white text-zinc-600 border border-zinc-200"}`}
         >
           All
@@ -95,7 +160,7 @@ export default async function ItemsPage({
         {CATEGORIES.map((c) => (
           <a
             key={c}
-            href={`/items?category=${encodeURIComponent(c)}`}
+            href={hrefWith({ category: c })}
             className={`rounded-full px-3 py-1 ${category === c ? "bg-zinc-900 text-white" : "bg-white text-zinc-600 border border-zinc-200"}`}
           >
             {c}
@@ -125,18 +190,19 @@ export default async function ItemsPage({
               <th className="px-4 py-2.5 font-medium">Item #</th>
               <th className="px-4 py-2.5 font-medium">Unit</th>
               <th className="px-4 py-2.5 text-right font-medium">Unit Cost</th>
+              <th className="px-4 py-2.5 font-medium">Price age</th>
               {canEdit && <th className="px-4 py-2.5"></th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100">
-            {items.length === 0 && (
+            {visible.length === 0 && (
               <tr>
-                <td colSpan={canEdit ? 7 : 6} className="px-4 py-8 text-center text-zinc-400">
-                  No items yet.
+                <td colSpan={canEdit ? 8 : 7} className="px-4 py-8 text-center text-zinc-400">
+                  {items.length === 0 ? "No items yet." : "No items match your filters."}
                 </td>
               </tr>
             )}
-            {items.map((item) => (
+            {visible.map(({ item, freshness }) => (
               <tr key={item.id} className="align-top">
                 <td className="px-4 py-2.5 font-medium text-zinc-800">
                   {item.name}
@@ -171,7 +237,18 @@ export default async function ItemsPage({
                 <td className="px-4 py-2.5 text-zinc-600">{item.vendor?.name ?? "—"}</td>
                 <td className="px-4 py-2.5 font-mono text-xs text-zinc-600">{item.sku ?? "—"}</td>
                 <td className="px-4 py-2.5 text-zinc-600">{item.unit}</td>
-                <td className="px-4 py-2.5 text-right text-zinc-800">{money(item.unitCost)}</td>
+                <td className={`px-4 py-2.5 text-right ${freshness.unpriced ? "text-red-600" : "text-zinc-800"}`}>
+                  {freshness.unpriced ? "—" : money(item.unitCost)}
+                </td>
+                <td className="px-4 py-2.5 text-xs">
+                  {freshness.unpriced ? (
+                    <Badge color="red">no price</Badge>
+                  ) : freshness.stale ? (
+                    <Badge color="amber">{freshness.label}</Badge>
+                  ) : (
+                    <span className="text-zinc-500">{freshness.label}</span>
+                  )}
+                </td>
                 {canEdit && (
                   <td className="px-4 py-2.5 text-right">
                     <form action={deleteItem}>
