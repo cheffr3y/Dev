@@ -32,6 +32,24 @@ enum ForecastConfidence {
   HIGH
 }
 
+// ---------------------------------------------------------------------------
+// Overwatch Performance Tracker ("OW Module") — see spec.
+// Isolated personal-use namespace: every model is prefixed `Ow` and every row
+// is scoped to a `userId`. Reference data (heroes, maps, counter matrix) lives
+// in lib/ow/data/ as typed TS constants, NOT database tables.
+// ---------------------------------------------------------------------------
+enum OwRole {
+  TANK
+  DPS
+  SUPPORT
+}
+
+enum OwResult {
+  WIN
+  LOSS
+  DRAW
+}
+
 // Lifecycle of a single prep-order line — one record at two points in time
 // (requested, then made). A blank line is never "skipped"; NOT_MADE is explicit.
 enum PrepLineStatus {
@@ -58,6 +76,10 @@ model User {
   prepOrders       PrepOrder[]
   prepLinesMade    PrepOrderLine[] @relation("PrepMadeBy")
   prepLinesEntered PrepOrderLine[] @relation("PrepEnteredBy")
+
+  // Overwatch performance tracker (personal module)
+  owMatches  OwMatch[]
+  owSessions OwSession[]
 }
 
 model Venue {
@@ -494,4 +516,52 @@ model FestivalOnHand {
   updatedAt  DateTime @updatedAt
 
   @@unique([festivalId, itemId])
+}
+
+// ---------------------------------------------------------------------------
+// Overwatch Performance Tracker — data model
+//
+// Personal, single-user competitive tracker. Matches are logged manually
+// (no Blizzard API). A session groups a run of matches; auto-session logic in
+// the logger opens a new one when a match is logged >90 min after the previous.
+// hero / map / enemyComp values are ids from the reference data in lib/ow/data/.
+// ---------------------------------------------------------------------------
+model OwSession {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+  focusGoal String? // e.g. "Die fewer than 8 times per match"
+  notes     String?
+  matches   OwMatch[]
+
+  @@index([userId, startedAt])
+}
+
+model OwMatch {
+  id        String     @id @default(cuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId String?
+  session   OwSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  playedAt  DateTime   @default(now())
+  role      OwRole
+  hero      String // hero id from lib/ow/data/heroes.ts
+  heroSwaps String[]   @default([]) // additional heroes played this match, optional
+  map       String // map id from lib/ow/data/maps.ts
+  result    OwResult
+
+  // Self-ratings, 1-5
+  ratePositioning Int
+  rateUltUsage    Int
+  rateTilt        Int // 1 = calm, 5 = fully tilted
+
+  deaths    Int? // optional, only if Jeff wants to track it
+  enemyComp String[] @default([]) // enemy hero ids if logged (feeds counter-engine learning later)
+  notes     String?
+
+  @@index([userId, playedAt])
+  @@index([userId, hero])
+  @@index([userId, map])
 }

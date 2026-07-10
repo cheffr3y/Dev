@@ -39,3 +39,10 @@ services:
         scope: RUN_AND_BUILD_TIME
         type: SECRET
         value: REPLACE_WITH_A_LONG_RANDOM_STRING
+      # Optional — enables the "Deeper analysis" AI button in the Overwatch
+      # counter-pick tool. Leave unset to run the module without AI; only used
+      # at runtime, server-side. Get a key at console.anthropic.com.
+      - key: ANTHROPIC_API_KEY
+        scope: RUN_TIME
+        type: SECRET
+        value: REPLACE_WITH_ANTHROPIC_API_KEY_OR_LEAVE_BLANK
