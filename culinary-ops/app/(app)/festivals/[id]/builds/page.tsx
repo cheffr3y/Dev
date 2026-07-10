@@ -2,12 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
-import { money, num } from "@/lib/costing";
+import { money, num, priceGapNames } from "@/lib/costing";
 import { unitLabel } from "@/lib/units";
 import { buildForecast } from "@/lib/festival";
 import { buildDayPlan, banquetRecipeSelect, type BanquetParty } from "@/lib/banquet";
 import { Badge, Card, CardHeader, PageHeader } from "@/components/ui";
 import { PrintButton } from "@/components/PrintButton";
+import { PriceIntegrityNotice } from "@/components/PriceIntegrityNotice";
 import { FestivalTabs } from "../FestivalTabs";
 
 // Scaled builds for the festival: every linked menu item's final prep portions
@@ -65,6 +66,19 @@ export default async function FestivalBuildsPage({ params }: { params: Promise<{
   const subs = plan.recipeRollup.filter((r) => r.isSubRecipe);
   const printedOn = new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 
+  // Price-check across the dishes actually being built (sub-recipes included).
+  const nameByItemId = new Map<string, string>();
+  for (const r of recipeRows) for (const ri of r.items) nameByItemId.set(ri.item.id, ri.item.name);
+  const priceGaps = priceGapNames(
+    recipeRows.map((r) => ({
+      id: r.id,
+      items: r.items.map((ri) => ({ itemId: ri.item.id, unitCost: ri.item.unitCost, priceUpdatedAt: ri.item.priceUpdatedAt })),
+      components: r.components,
+    })),
+    linked.map((mi) => mi.recipeId!),
+    nameByItemId,
+  );
+
   return (
     <div>
       <div className="no-print mb-4 flex items-center justify-between">
@@ -80,6 +94,8 @@ export default async function FestivalBuildsPage({ params }: { params: Promise<{
       />
 
       <FestivalTabs festivalId={festival.id} />
+
+      <PriceIntegrityNotice unpriced={priceGaps.unpriced} stale={priceGaps.stale} className="mb-4" />
 
       {(plan.shoppingList.unscaledRecipes.length > 0 || unlinked.length > 0) && (
         <div className="mb-4 space-y-2">

@@ -7,6 +7,7 @@ import { unitLabel } from "@/lib/units";
 import { buildForecast } from "@/lib/festival";
 import { buildDayPlan, banquetRecipeSelect, type BanquetParty } from "@/lib/banquet";
 import { PrintButton } from "@/components/PrintButton";
+import { PriceIntegrityNotice } from "@/components/PriceIntegrityNotice";
 import { FestivalTabs } from "../FestivalTabs";
 
 function fmtDate(d: Date): string {
@@ -136,26 +137,7 @@ export default async function FestivalPrepSheetPage({ params }: { params: Promis
               Counted as one base batch each; verify by hand.
             </div>
           )}
-          {unpricedNames.length > 0 && (
-            <div className="mt-3 border-2 border-red-600 bg-red-50 px-4 py-2 text-sm font-semibold text-red-800">
-              ⚠ Est. food cost is understated — no price on file for {unpricedNames.length} ingredient
-              {unpricedNames.length === 1 ? "" : "s"}: {unpricedNames.join(", ")}. Price them in the{" "}
-              <Link href="/items?flag=missing" className="underline">
-                Catalog
-              </Link>
-              .
-            </div>
-          )}
-          {staleNames.length > 0 && (
-            <div className="mt-3 border border-amber-400 bg-amber-50 px-4 py-2 text-sm text-amber-900">
-              ⌛ {staleNames.length} ingredient{staleNames.length === 1 ? "" : "s"} haven&apos;t been re-costed recently
-              (verify before trusting the cost): {staleNames.join(", ")}.{" "}
-              <Link href="/items?flag=stale" className="underline">
-                Review in Catalog
-              </Link>
-              .
-            </div>
-          )}
+          <PriceIntegrityNotice unpriced={unpricedNames} stale={staleNames} className="mt-3" />
           {unlinked.length > 0 && (
             <div className="mt-3 border border-amber-300 bg-amber-50 px-4 py-2 text-xs text-amber-800">
               Forecast-only (no recipe linked, not in this sheet): {unlinked.map((mi) => mi.name).join(", ")}.
@@ -230,9 +212,6 @@ export default async function FestivalPrepSheetPage({ params }: { params: Promis
                         <td className="py-2 pr-4 align-top text-zinc-900">
                           {it.name}
                           {unpriced.has(it.itemId) && <span className="ml-1 text-xs font-medium text-red-600">(no price)</span>}
-                          {!unpriced.has(it.itemId) && stale.has(it.itemId) && (
-                            <span className="ml-1 text-xs font-medium text-amber-600">(stale price)</span>
-                          )}
                         </td>
                         <td className="py-2 text-right align-top font-semibold tabular-nums text-zinc-900">
                           {it.amounts.map((a, i) => (

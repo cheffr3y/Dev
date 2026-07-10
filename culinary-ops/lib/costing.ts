@@ -113,21 +113,22 @@ export function isUnpriced(unitCost: number | null | undefined): boolean {
 // for re-quoting. One knob for the whole app's "recently costed" assurance.
 export const PRICE_STALE_DAYS = 90;
 
-export type PriceFreshness = { label: string; stale: boolean; unpriced: boolean };
+export type PriceFreshness = { label: string; stale: boolean; unpriced: boolean; untracked: boolean };
 
 // Turn a priceUpdatedAt (and its cost) into a human freshness read: "no price"
-// (understates cost), "needs re-cost" (priced but never stamped, so recency
-// can't be confirmed), stale (older than the window), or fresh. `now` is
-// injectable for stable tests. Stale + unpriced both mean "needs attention".
+// (understates cost), "not tracked" (priced but never stamped — informational,
+// NOT an alarm, so a fresh install doesn't flag the whole catalog), stale
+// (a real date older than the window), or fresh. `now` is injectable for tests.
+// Only `unpriced` and `stale` are actionable "needs attention" states.
 export function priceFreshness(
   priceUpdatedAt: Date | null | undefined,
   unitCost: number | null | undefined,
   now: Date = new Date(),
 ): PriceFreshness {
-  if (isUnpriced(unitCost)) return { label: "no price", stale: false, unpriced: true };
-  // Priced but never re-costed in-system — can't confirm it's recent, so treat
-  // it as needing attention (the point of starting cost tracking).
-  if (!priceUpdatedAt) return { label: "needs re-cost", stale: true, unpriced: false };
+  if (isUnpriced(unitCost)) return { label: "no price", stale: false, unpriced: true, untracked: false };
+  // Priced but never re-costed in-system. We can't confirm its age, but flagging
+  // every legacy item as stale is noise — treat it as neutral "not tracked yet".
+  if (!priceUpdatedAt) return { label: "not tracked", stale: false, unpriced: false, untracked: true };
   const days = Math.floor((now.getTime() - priceUpdatedAt.getTime()) / 86400000);
   const stale = days >= PRICE_STALE_DAYS;
   let ago: string;
@@ -135,7 +136,7 @@ export function priceFreshness(
   else if (days < 30) ago = `${days}d ago`;
   else if (days < 365) ago = `${Math.floor(days / 30)}mo ago`;
   else ago = `${Math.floor(days / 365)}y ago`;
-  return { label: `priced ${ago}`, stale, unpriced: false };
+  return { label: `priced ${ago}`, stale, unpriced: false, untracked: false };
 }
 
 // A recipe reduced to just what price-coverage needs — item identity, cost, and
@@ -182,6 +183,28 @@ export function buildPriceGapMap(recipes: RecipePriceNode[], now: Date = new Dat
 
   for (const r of recipes) walk(r.id, new Set());
   return cache;
+}
+
+// Union the price gaps of the given root recipes (dishes actually being made)
+// and resolve item ids to sorted names — the one call a prep/print surface
+// needs to drive a price-check notice. `nameByItemId` supplies display names.
+export function priceGapNames(
+  recipes: RecipePriceNode[],
+  rootIds: Iterable<string>,
+  nameByItemId: Map<string, string>,
+  now: Date = new Date(),
+): { unpriced: string[]; stale: string[] } {
+  const gapMap = buildPriceGapMap(recipes, now);
+  const unpriced = new Set<string>();
+  const stale = new Set<string>();
+  for (const id of rootIds) {
+    const g = gapMap.get(id);
+    if (!g) continue;
+    for (const x of g.unpriced) unpriced.add(x);
+    for (const x of g.stale) stale.add(x);
+  }
+  const names = (s: Set<string>) => [...s].map((i) => nameByItemId.get(i) ?? i).sort((a, b) => a.localeCompare(b));
+  return { unpriced: names(unpriced), stale: names(stale) };
 }
 
 // Food cost % = ingredient cost per serving / menu price.

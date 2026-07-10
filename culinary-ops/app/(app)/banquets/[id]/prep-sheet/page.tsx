@@ -2,10 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
-import { num } from "@/lib/costing";
+import { num, priceGapNames } from "@/lib/costing";
 import { unitLabel } from "@/lib/units";
 import { buildBanquetPlan, banquetRecipeSelect, type BanquetLine } from "@/lib/banquet";
 import { PrintButton } from "@/components/PrintButton";
+import { PriceIntegrityNotice } from "@/components/PriceIntegrityNotice";
 
 function fmtDate(d: Date): string {
   return d.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
@@ -37,6 +38,19 @@ export default async function BanquetPrepSheetPage({ params }: { params: Promise
     unit: mi.unit,
   }));
   const { shoppingList: list } = buildBanquetPlan(lines, recipeRows);
+
+  // Price-check across the dishes being cooked (sub-recipes included).
+  const nameByItemId = new Map<string, string>();
+  for (const r of recipeRows) for (const ri of r.items) nameByItemId.set(ri.item.id, ri.item.name);
+  const priceGaps = priceGapNames(
+    recipeRows.map((r) => ({
+      id: r.id,
+      items: r.items.map((ri) => ({ itemId: ri.item.id, unitCost: ri.item.unitCost, priceUpdatedAt: ri.item.priceUpdatedAt })),
+      components: r.components,
+    })),
+    lines.map((l) => l.recipeId),
+    nameByItemId,
+  );
 
   const printedOn = new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 
@@ -82,6 +96,8 @@ export default async function BanquetPrepSheetPage({ params }: { params: Promise
               Amounts below assume one base batch each; verify by hand.
             </div>
           )}
+
+          <PriceIntegrityNotice unpriced={priceGaps.unpriced} stale={priceGaps.stale} className="mt-4" />
 
           {/* Dish summary — what each ordered count works out to. */}
           <section className="mt-8 break-inside-avoid">
