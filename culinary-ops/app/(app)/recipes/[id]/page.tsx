@@ -27,8 +27,7 @@ import {
   deleteRecipe,
   removeSubRecipe,
 } from "../actions";
-
-const CATEGORIES = ["Starter", "Entrée", "Side", "Dessert", "Sauce", "Prep/Build", "Beverage", "Other"];
+import { RECIPE_CATEGORIES } from "@/lib/categories";
 
 function parseSteps(instructions: string | null): string[] {
   return (instructions ?? "")
@@ -359,7 +358,7 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
                     </Field>
                     <Field label="Category">
                       <Select name="category" defaultValue={recipe.category}>
-                        {CATEGORIES.map((c) => (
+                        {RECIPE_CATEGORIES.map((c) => (
                           <option key={c}>{c}</option>
                         ))}
                       </Select>

@@ -1,0 +1,23 @@
+// Single source of truth for recipe categories — menu courses first,
+// then kitchen prep/component categories, then catch-alls.
+export const RECIPE_CATEGORIES = [
+  "Starter",
+  "Entrée",
+  "Side",
+  "Salad",
+  "Soup",
+  "Dessert",
+  "Sauce",
+  "Dressing/Vinaigrette",
+  "Marinade/Brine",
+  "Stock/Broth",
+  "Seasoning/Rub",
+  "Protein Fab",
+  "Garnish",
+  "Pickle/Ferment",
+  "Dough/Batter",
+  "Bread/Baked",
+  "Prep/Build",
+  "Beverage",
+  "Other",
+];

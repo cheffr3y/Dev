@@ -4,8 +4,7 @@ import { buildCostMap, buildPriceGapMap, costPerServing, foodCostPct } from "@/l
 import { Button, Card, Field, Input, PageHeader, Select } from "@/components/ui";
 import { createRecipe } from "./actions";
 import { RecipesTable } from "./RecipesTable";
-
-const CATEGORIES = ["Starter", "Entrée", "Side", "Dessert", "Sauce", "Prep/Build", "Beverage", "Other"];
+import { RECIPE_CATEGORIES } from "@/lib/categories";
 
 export default async function RecipesPage() {
   const user = await requireUser();
@@ -67,7 +66,7 @@ export default async function RecipesPage() {
                 </Field>
                 <Field label="Category">
                   <Select name="category" defaultValue="Entrée">
-                    {CATEGORIES.map((c) => (
+                    {RECIPE_CATEGORIES.map((c) => (
                       <option key={c}>{c}</option>
                     ))}
                   </Select>
