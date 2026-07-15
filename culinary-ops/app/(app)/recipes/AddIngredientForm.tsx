@@ -65,6 +65,11 @@ export function AddIngredientForm({ recipeId, items }: { recipeId: string; items
           </Select>
         </Field>
       </div>
+      <div className="min-w-[150px] flex-1">
+        <Field label="Prep / note">
+          <Input name="note" placeholder="diced, room temp… (optional)" disabled={!picked} />
+        </Field>
+      </div>
       <Button type="submit" disabled={!picked}>
         Add
       </Button>

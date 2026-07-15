@@ -52,6 +52,7 @@ export default async function RecipePrintPage({
   const batch = Math.min(Math.max(Number(x) || 1, 0.25), 100);
   const steps = parseSteps(recipe.instructions);
   const totalMinutes = (recipe.prepMinutes ?? 0) + (recipe.cookMinutes ?? 0);
+  const hasNotes = recipe.items.some((ri) => ri.note);
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -119,23 +120,26 @@ export default async function RecipePrintPage({
           </div>
         )}
 
-        {/* Ingredients */}
+        {/* Ingredients. The Prep/Note column only prints when a line actually
+            has a note, so blank cards give the space back to the ingredients.
+            Zebra rows keep the eye on-line on kitchen printouts (globals.css
+            sets print-color-adjust so the shading survives printing). */}
         <h2 className="mt-8 border-b border-zinc-200 pb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-900">
           Ingredients
         </h2>
         <table className="mt-1 w-full text-sm">
           <thead>
             <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-zinc-400">
-              <th className="w-20 py-2 pr-3 text-right font-medium">Qty</th>
+              <th className="w-20 py-2 pl-2 pr-3 text-right font-medium">Qty</th>
               <th className="w-16 py-2 pr-4 font-medium">Unit</th>
               <th className="py-2 pr-4 font-medium">Ingredient</th>
-              <th className="py-2 font-medium">Prep / Note</th>
+              {hasNotes && <th className="w-2/5 py-2 pr-2 font-medium">Prep / Note</th>}
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-100">
+          <tbody>
             {recipe.items.length === 0 && (
               <tr>
-                <td colSpan={4} className="py-4 text-center text-zinc-400">
+                <td colSpan={hasNotes ? 4 : 3} className="py-4 text-center text-zinc-400">
                   No ingredients recorded.
                 </td>
               </tr>
@@ -143,13 +147,13 @@ export default async function RecipePrintPage({
             {recipe.items.map((ri) => {
               const m = displayMeasure(ri.quantity * batch, ri.unit);
               return (
-              <tr key={ri.id}>
-                <td className="py-2 pr-3 text-right font-semibold tabular-nums text-zinc-900">
+              <tr key={ri.id} className="even:bg-zinc-100/80">
+                <td className="py-2 pl-2 pr-3 text-right font-semibold tabular-nums text-zinc-900">
                   {num(m.qty)}
                 </td>
                 <td className="py-2 pr-4 text-zinc-600">{m.label}</td>
                 <td className="py-2 pr-4 text-zinc-900">{ri.item.name}</td>
-                <td className="py-2 text-zinc-500">{ri.note ?? ""}</td>
+                {hasNotes && <td className="py-2 pr-2 text-zinc-500">{ri.note ?? ""}</td>}
               </tr>
               );
             })}
@@ -165,22 +169,22 @@ export default async function RecipePrintPage({
             <table className="mt-1 w-full text-sm">
               <thead>
                 <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-zinc-400">
-                  <th className="w-20 py-2 pr-3 text-right font-medium">Qty</th>
+                  <th className="w-20 py-2 pl-2 pr-3 text-right font-medium">Qty</th>
                   <th className="w-16 py-2 pr-4 font-medium">Unit</th>
                   <th className="py-2 pr-4 font-medium">Recipe</th>
-                  <th className="py-2 font-medium">Prep / Note</th>
+                  <th className="w-2/5 py-2 pr-2 font-medium">Prep / Note</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-100">
+              <tbody>
                 {recipe.components.map((c) => {
                   const { batches } = componentBatchFactor(c.quantity, c.unit, c.child.yieldQty, c.child.yieldUnit);
                   const m = displayMeasure(batches * c.child.yieldQty * batch, c.child.yieldUnit);
                   return (
-                    <tr key={c.id}>
-                      <td className="py-2 pr-3 text-right font-semibold tabular-nums text-zinc-900">{num(m.qty)}</td>
+                    <tr key={c.id} className="even:bg-zinc-100/80">
+                      <td className="py-2 pl-2 pr-3 text-right font-semibold tabular-nums text-zinc-900">{num(m.qty)}</td>
                       <td className="py-2 pr-4 text-zinc-600">{m.label}</td>
                       <td className="py-2 pr-4 text-zinc-900">{c.child.name}</td>
-                      <td className="py-2 text-zinc-500">prepare separately</td>
+                      <td className="py-2 pr-2 text-zinc-500">{c.note ?? "prepare separately"}</td>
                     </tr>
                   );
                 })}

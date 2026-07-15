@@ -184,6 +184,7 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
                     <tr key={ri.id}>
                       <td className="px-4 py-2 text-zinc-800">
                         {ri.item.name}
+                        {ri.note && <span className="ml-2 text-xs text-zinc-400">{ri.note}</span>}
                         {!lc.converted && (
                           <span
                             className="ml-2 align-middle"

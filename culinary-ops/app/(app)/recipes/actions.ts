@@ -253,6 +253,7 @@ const lineSchema = z.object({
   itemId: z.string().min(1, "Pick an item"),
   quantity: z.coerce.number().min(0).default(0),
   unit: z.string().trim().min(1).default("each"),
+  note: z.string().trim().optional(),
 });
 
 export async function addRecipeItem(formData: FormData) {
@@ -262,6 +263,7 @@ export async function addRecipeItem(formData: FormData) {
     itemId: formData.get("itemId"),
     quantity: formData.get("quantity") || 0,
     unit: formData.get("unit") || "each",
+    note: formData.get("note") || undefined,
   });
   const existing = await prisma.recipeItem.findUnique({
     where: { recipeId_itemId: { recipeId: d.recipeId, itemId: d.itemId } },
@@ -269,10 +271,10 @@ export async function addRecipeItem(formData: FormData) {
   const item = await prisma.item.findUnique({ where: { id: d.itemId } });
   await prisma.recipeItem.upsert({
     where: { recipeId_itemId: { recipeId: d.recipeId, itemId: d.itemId } },
-    create: d,
-    update: { quantity: d.quantity, unit: d.unit },
+    create: { ...d, note: d.note || null },
+    update: { quantity: d.quantity, unit: d.unit, note: d.note || null },
   });
-  const label = `${item?.name ?? "ingredient"} (${d.quantity} ${unitLabel(d.unit)})`;
+  const label = `${item?.name ?? "ingredient"} (${d.quantity} ${unitLabel(d.unit)})${d.note ? ` — ${d.note}` : ""}`;
   await logChange(
     d.recipeId,
     user,
