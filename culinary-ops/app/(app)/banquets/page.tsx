@@ -76,6 +76,22 @@ export default async function BanquetsPage() {
 
 type BanquetListItem = Parameters<typeof BanquetCard>[0]["banquet"];
 
+function isoDate(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+function startOfUtcWeek(d: Date): Date {
+  const start = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  const day = start.getUTCDay();
+  const daysSinceMonday = day === 0 ? 6 : day - 1;
+  start.setUTCDate(start.getUTCDate() - daysSinceMonday);
+  return start;
+}
+
+function fmtWeekStart(d: Date): string {
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+}
+
 // Group a banquet list by calendar date (UTC, matching how dates are stored)
 // so a chef sees the whole day at once. When a date holds more than one event,
 // surface a "Day prep" link to the combined make-once rollup.
@@ -107,11 +123,16 @@ function DaySections({ heading, banquets, className }: { heading: string; banque
                   })}
                   {group.length > 1 && <span className="ml-2 text-xs font-normal text-zinc-400">{group.length} events</span>}
                 </h3>
-                {group.length > 1 && (
-                  <Link href={`/banquets/day/${key}`} className="text-xs font-medium text-blue-600 hover:underline">
-                    Day prep →
+                <div className="flex items-center gap-3">
+                  <Link href={`/banquets/week/${isoDate(startOfUtcWeek(date))}`} className="text-xs font-medium text-blue-600 hover:underline">
+                    Week prep - {fmtWeekStart(startOfUtcWeek(date))}
                   </Link>
-                )}
+                  {group.length > 1 && (
+                    <Link href={`/banquets/day/${key}`} className="text-xs font-medium text-blue-600 hover:underline">
+                      Day prep →
+                    </Link>
+                  )}
+                </div>
               </div>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 {group.map((b) => (
