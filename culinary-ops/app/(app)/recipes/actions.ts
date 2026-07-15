@@ -86,14 +86,46 @@ function parseRecipe(formData: FormData) {
 
 // --- Changelog -----------------------------------------------------------
 
+// Edits by the same user landing within this window count as one editing
+// session → one recipe version. A new session bumps Recipe.version.
+const SESSION_WINDOW_MS = 30 * 60 * 1000;
+
 async function logChange(
   recipeId: string,
   user: AppUser,
   summary: string,
   detail?: string,
 ) {
-  await prisma.recipeChange.create({
-    data: { recipeId, summary, detail: detail || null, userId: user.id, userName: user.name || null },
+  await prisma.$transaction(async (tx) => {
+    const recipe = await tx.recipe.findUnique({
+      where: { id: recipeId },
+      select: { version: true },
+    });
+    if (!recipe) return;
+    const last = await tx.recipeChange.findFirst({
+      where: { recipeId },
+      orderBy: { createdAt: "desc" },
+      select: { createdAt: true, userId: true },
+    });
+    const sameSession =
+      last != null &&
+      last.userId === user.id &&
+      Date.now() - last.createdAt.getTime() <= SESSION_WINDOW_MS;
+    // First-ever entry (recipe creation) stays at the initial version.
+    const version = last == null || sameSession ? recipe.version : recipe.version + 1;
+    // Always touch the recipe so updatedAt (printed on cards) tracks
+    // ingredient/sub-recipe edits, not just detail-form saves.
+    await tx.recipe.update({ where: { id: recipeId }, data: { version } });
+    await tx.recipeChange.create({
+      data: {
+        recipeId,
+        summary,
+        detail: detail || null,
+        version,
+        userId: user.id,
+        userName: user.name || null,
+      },
+    });
   });
 }
 

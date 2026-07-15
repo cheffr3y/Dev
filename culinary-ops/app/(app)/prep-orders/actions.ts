@@ -99,7 +99,7 @@ export async function addPrepLine(formData: FormData) {
 
   const recipe = await prisma.recipe.findUnique({
     where: { id: d.recipeId },
-    select: { yieldUnit: true, _count: { select: { changes: true } } },
+    select: { yieldUnit: true, version: true },
   });
   if (!recipe) throw new Error("Recipe not found.");
 
@@ -115,8 +115,8 @@ export async function addPrepLine(formData: FormData) {
     data: {
       prepOrderId: d.prepOrderId,
       recipeId: d.recipeId,
-      // Snapshot the recipe version (changelog depth, min 1) as printed.
-      recipeVersion: Math.max(1, recipe._count.changes),
+      // Snapshot the recipe's edit version as printed on the packet.
+      recipeVersion: recipe.version,
       destinationVenueId: order.destinationVenueId,
       requestedQty: d.requestedQty,
       requestedUnit: d.requestedUnit,

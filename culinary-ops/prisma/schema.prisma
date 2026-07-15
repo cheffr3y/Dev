@@ -140,6 +140,11 @@ model Recipe {
   prodCode     String @unique // 3-char auto-generated code used in lot numbers
   holdLifeDays Int? // optional shelf life in days; drives use-by on labels
 
+  // Monotonic edit version, printed on recipe cards so the line can confirm a
+  // card is current. One editing session (same user, edits < 30 min apart)
+  // counts as one version; bumped in logChange (app/(app)/recipes/actions.ts).
+  version Int @default(1)
+
   // Recipe card / food-safety details (printed for line cooks)
   prepMinutes   Int? // active prep time
   cookMinutes   Int? // cook / bake time
@@ -187,6 +192,7 @@ model RecipeChange {
   recipe    Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
   summary   String // short headline, e.g. "Edited details"
   detail    String? // newline-separated field-level changes
+  version   Int      @default(1) // recipe version this change belongs to (groups a session's edits)
   userId    String?
   userName  String? // snapshot of editor name at the time
   createdAt DateTime @default(now())

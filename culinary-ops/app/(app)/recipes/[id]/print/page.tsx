@@ -7,6 +7,7 @@ import { displayMeasure } from "@/lib/units";
 import { allergenLabels, effectiveAllergens } from "@/lib/allergens";
 import { splitStep } from "@/lib/method";
 import { PrintButton } from "@/components/PrintButton";
+import { LocalTime } from "@/components/LocalTime";
 
 // Kitchen-facing recipe card: ingredients, method, critical food-safety data
 // and storage — no costs or margins. `?x=N` scales quantities for batches.
@@ -51,8 +52,6 @@ export default async function RecipePrintPage({
   const batch = Math.min(Math.max(Number(x) || 1, 0.25), 100);
   const steps = parseSteps(recipe.instructions);
   const totalMinutes = (recipe.prepMinutes ?? 0) + (recipe.cookMinutes ?? 0);
-  const printedOn = new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
-  const updatedOn = recipe.updatedAt.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -85,7 +84,7 @@ export default async function RecipePrintPage({
         {/* Masthead */}
         <div className="flex items-baseline justify-between text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-500">
           <span>Mise · Culinary Ops</span>
-          <span>Standardized Recipe</span>
+          <span>Standardized Recipe · v{recipe.version}</span>
         </div>
 
         <h1 className="mt-3 font-display text-5xl font-medium tracking-tight text-zinc-900">{recipe.name}</h1>
@@ -254,7 +253,8 @@ export default async function RecipePrintPage({
           ))}
         </div>
         <p className="mt-4 text-[10px] uppercase tracking-[0.14em] text-zinc-400">
-          Printed {printedOn} · Recipe updated {updatedOn}
+          Printed <LocalTime date={new Date()} mode="date" /> · Recipe v{recipe.version}, updated{" "}
+          <LocalTime date={recipe.updatedAt} mode="date" />
           {batch !== 1 ? ` · quantities scaled ×${num(batch)}` : ""}
         </p>
       </div>

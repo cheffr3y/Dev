@@ -28,6 +28,40 @@ import {
   removeSubRecipe,
 } from "../actions";
 import { RECIPE_CATEGORIES } from "@/lib/categories";
+import { LocalTime } from "@/components/LocalTime";
+
+// One changelog row per recipe version: all the change entries recorded in
+// that editing session, newest session first (input is already createdAt desc).
+type ChangeEntry = {
+  id: string;
+  summary: string;
+  detail: string | null;
+  version: number;
+  userName: string | null;
+  createdAt: Date;
+};
+
+function groupChangesByVersion(changes: ChangeEntry[]) {
+  const groups: { version: number; entries: ChangeEntry[] }[] = [];
+  for (const c of changes) {
+    const g = groups[groups.length - 1];
+    if (g && g.version === c.version) g.entries.push(c);
+    else groups.push({ version: c.version, entries: [c] });
+  }
+  return groups;
+}
+
+// Sum a session up into one headline, e.g. "Added 4 ingredients · Edited details".
+function summarizeSession(entries: ChangeEntry[]): string {
+  if (entries.length === 1) return entries[0].summary;
+  const counts = new Map<string, number>();
+  for (const e of entries) counts.set(e.summary, (counts.get(e.summary) ?? 0) + 1);
+  return Array.from(counts, ([summary, n]) => {
+    if (n === 1) return summary;
+    const m = summary.match(/^(Added|Updated|Removed) (ingredient|sub-recipe)$/);
+    return m ? `${m[1]} ${n} ${m[2]}s` : summary;
+  }).join(" · ");
+}
 
 function parseSteps(instructions: string | null): string[] {
   return (instructions ?? "")
@@ -101,7 +135,7 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
       </div>
       <PageHeader
         title={recipe.name}
-        subtitle={`${recipe.prodCode} · ${recipe.category}${recipe.station ? ` · ${recipe.station}` : ""} · yields ${num(recipe.yieldQty)} ${recipe.yieldUnit}`}
+        subtitle={`${recipe.prodCode} · v${recipe.version} · ${recipe.category}${recipe.station ? ` · ${recipe.station}` : ""} · yields ${num(recipe.yieldQty)} ${recipe.yieldUnit}`}
         action={
           <LinkButton href={`/recipes/${recipe.id}/print`} variant="gold">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4">
@@ -307,37 +341,50 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
             )}
           </Card>
 
-          {/* Changelog */}
+          {/* Changelog — one row per version (editing session) */}
           <Card>
             <CardHeader>Changelog</CardHeader>
             {recipe.changes.length === 0 ? (
               <p className="p-4 text-sm text-zinc-400">No changes recorded yet.</p>
             ) : (
               <ul className="divide-y divide-zinc-100">
-                {recipe.changes.map((c) => (
-                  <li key={c.id} className="flex gap-3 px-4 py-3">
-                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-gold" aria-hidden />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-                        <p className="text-sm font-medium text-zinc-800">{c.summary}</p>
-                        <p className="font-mono text-[11px] uppercase tracking-[0.02em] text-zinc-400">
-                          {c.createdAt.toLocaleString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            hour: "numeric",
-                            minute: "2-digit",
-                          })}
-                        </p>
+                {groupChangesByVersion(recipe.changes).map((g) => {
+                  const latest = g.entries[0];
+                  const editors = Array.from(
+                    new Set(g.entries.map((e) => e.userName).filter(Boolean)),
+                  ) as string[];
+                  return (
+                    <li key={`${g.version}-${latest.id}`} className="flex items-start gap-3 px-4 py-3">
+                      <Badge>v{g.version}</Badge>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+                          <p className="text-sm font-medium text-zinc-800">{summarizeSession(g.entries)}</p>
+                          <p className="font-mono text-[11px] uppercase tracking-[0.02em] text-zinc-400">
+                            <LocalTime date={latest.createdAt} />
+                          </p>
+                        </div>
+                        {g.entries.length === 1 ? (
+                          latest.detail && (
+                            <p className="mt-0.5 whitespace-pre-wrap text-xs leading-relaxed text-zinc-500">
+                              {latest.detail}
+                            </p>
+                          )
+                        ) : (
+                          <ul className="mt-1 space-y-0.5">
+                            {g.entries.map((e) => (
+                              <li key={e.id} className="whitespace-pre-wrap text-xs leading-relaxed text-zinc-500">
+                                {e.detail ? (e.detail.includes("\n") ? `${e.summary}:\n${e.detail}` : `${e.summary} — ${e.detail}`) : e.summary}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        {editors.length > 0 && (
+                          <p className="mt-0.5 text-[11px] text-zinc-400">by {editors.join(", ")}</p>
+                        )}
                       </div>
-                      {c.detail && (
-                        <p className="mt-0.5 whitespace-pre-wrap text-xs leading-relaxed text-zinc-500">
-                          {c.detail}
-                        </p>
-                      )}
-                      {c.userName && <p className="mt-0.5 text-[11px] text-zinc-400">by {c.userName}</p>}
-                    </div>
-                  </li>
-                ))}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </Card>

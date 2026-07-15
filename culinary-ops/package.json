@@ -10,6 +10,7 @@
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "db:migrate-legacy": "tsx scripts/migrate-from-foxtownhq.ts",
+    "db:backfill-versions": "tsx scripts/backfill-recipe-versions.ts",
     "db:studio": "prisma studio",
     "postinstall": "prisma generate"
   },
