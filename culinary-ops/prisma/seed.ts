@@ -41,6 +41,10 @@ async function main() {
   await prisma.recipe.deleteMany();
   await prisma.item.deleteMany();
   await prisma.vendor.deleteMany();
+  await prisma.shift.deleteMany();
+  await prisma.cook.deleteMany();
+  await prisma.dayNote.deleteMany();
+  await prisma.scheduleNote.deleteMany();
   await prisma.user.deleteMany();
   await prisma.venue.deleteMany();
 
@@ -390,8 +394,66 @@ async function main() {
     },
   });
 
+  // --- Kitchen roster & a sample week (Schedule module) ---
+  // Seed against the current week's Monday (UTC) so the schedule opens with data.
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const today = new Date();
+  const monday = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+  monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7));
+  const dayOf = (idx: number) => new Date(monday.getTime() + idx * DAY_MS);
+
+  // week[i] is Mon..Sun: null = unscheduled, "OFF" = day off,
+  // [start, end] or [start, end, role] = a working shift (24h "HH:MM").
+  type Cell = null | "OFF" | [string, string] | [string, string, string];
+  const roster: Array<{ name: string; role: string; phone?: string; week: Cell[] }> = [
+    { name: "Marco Reyes", role: "Lead", phone: "555-0110", week: [["08:00", "16:00"], ["08:00", "16:00"], ["08:00", "16:00"], ["08:00", "16:00"], ["08:00", "16:00"], "OFF", "OFF"] },
+    { name: "Dana Okafor", role: "Sauté", week: ["OFF", ["10:00", "18:00"], ["10:00", "18:00"], ["10:00", "18:00"], ["10:00", "18:00"], ["12:00", "20:00"], null] },
+    { name: "Priya Nair", role: "Grill", week: [["14:00", "22:00"], null, ["14:00", "22:00"], ["14:00", "22:00"], ["14:00", "22:00"], ["14:00", "22:00"], null] },
+    { name: "Luis Tran", role: "Line", week: [["09:00", "17:00"], ["09:00", "17:00"], ["09:00", "17:00"], ["09:00", "17:00"], ["09:00", "17:00"], "OFF", "OFF"] },
+    { name: "Bea Fontaine", role: "Prep", week: [["06:00", "14:00", "AM Prep"], ["06:00", "14:00", "AM Prep"], ["06:00", "14:00", "AM Prep"], ["06:00", "14:00", "AM Prep"], ["06:00", "14:00", "AM Prep"], "OFF", "OFF"] },
+    { name: "Omar Haddad", role: "Fry", week: [null, null, ["16:00", "23:00"], ["16:00", "23:00"], ["16:00", "23:00"], ["16:00", "23:00"], ["12:00", "20:00"]] },
+    { name: "Nadia Klein", role: "Garde Manger", week: [["11:00", "19:00"], ["11:00", "19:00"], null, ["11:00", "19:00"], ["11:00", "19:00"], ["11:00", "19:00"], null] },
+    { name: "Theo Marsh", role: "Dish", week: [null, null, ["17:00", "23:00"], null, ["17:00", "23:00"], ["16:00", "23:00"], ["12:00", "18:00"]] },
+  ];
+
+  for (let i = 0; i < roster.length; i++) {
+    const p = roster[i];
+    const cook = await prisma.cook.create({
+      data: { venueId: downtown.id, name: p.name, role: p.role, phone: p.phone ?? null, sortOrder: i },
+    });
+    const shiftData: Array<{ cookId: string; date: Date; kind: "WORKING" | "OFF"; start?: string; end?: string; role?: string }> = [];
+    p.week.forEach((cell, idx) => {
+      if (cell == null) return;
+      if (cell === "OFF") {
+        shiftData.push({ cookId: cook.id, date: dayOf(idx), kind: "OFF" });
+        return;
+      }
+      shiftData.push({ cookId: cook.id, date: dayOf(idx), kind: "WORKING", start: cell[0], end: cell[1], role: cell[2] });
+    });
+    if (shiftData.length > 0) await prisma.shift.createMany({ data: shiftData });
+  }
+
+  await prisma.dayNote.createMany({
+    data: [
+      { venueId: downtown.id, date: dayOf(3), body: "Produce delivery 7:00 AM — use East dock." },
+      { venueId: downtown.id, date: dayOf(4), body: "86 the halibut until Sat AM delivery." },
+      { venueId: downtown.id, date: dayOf(5), body: "Smith wedding — full venue, 6:00 PM. All hands." },
+    ],
+  });
+
+  await prisma.scheduleNote.create({
+    data: {
+      venueId: downtown.id,
+      weekStart: monday,
+      body:
+        "1. Quarterly inventory starts Monday AM — file all shift reports by Sunday night.\n" +
+        "2. Dress code for Saturday's wedding: clean, pressed chef whites.\n" +
+        "3. Welcome Theo to the dish station — help him get his footing.",
+    },
+  });
+
   console.log(
-    `Seeded: 3 venues, 3 users, ${items.length} items, 4 recipes, events incl. "${gala.name}", 1 banquet (Miller Wedding), 1 festival (${festival.name}), 2 prep orders.`,
+    `Seeded: 3 venues, 3 users, ${items.length} items, 4 recipes, events incl. "${gala.name}", 1 banquet (Miller Wedding), 1 festival (${festival.name}), 2 prep orders, 8 cooks + this week's schedule.`,
   );
   console.log("Login with admin@culinaryops.test / password123");
 }

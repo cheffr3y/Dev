@@ -32,6 +32,14 @@ enum ForecastConfidence {
   HIGH
 }
 
+// A scheduled shift is either time worked or an explicit day OFF. A cook with
+// no Shift row for a day is simply unscheduled (blank); OFF is a deliberate mark
+// (e.g. requested off / rest day) that still prints so the roster reads complete.
+enum ShiftKind {
+  WORKING
+  OFF
+}
+
 // Lifecycle of a single prep-order line — one record at two points in time
 // (requested, then made). A blank line is never "skipped"; NOT_MADE is explicit.
 enum PrepLineStatus {
@@ -77,6 +85,9 @@ model Venue {
   festivals   Festival[] // festivals hinting at this venue's inventory
   prepLines   PrepOrderLine[] // production destined here
   prepOrders  PrepOrder[] // orders destined here
+  cooks         Cook[] // kitchen roster scheduled at this venue
+  dayNotes      DayNote[] // per-day schedule notes (events, deliveries…)
+  scheduleNotes ScheduleNote[] // per-week posted announcements
 }
 
 model Vendor {
@@ -503,4 +514,80 @@ model FestivalOnHand {
   updatedAt  DateTime @updatedAt
 
   @@unique([festivalId, itemId])
+}
+
+// ---------------------------------------------------------------------------
+// Weekly Kitchen Schedule
+//
+// A per-venue roster of cooks and their Mon–Sun shifts, plus per-day notes
+// (events, deliveries) and a per-week announcement block. Everything rolls up
+// into a printable, postable weekly schedule. Weeks are derived from dates
+// (Monday-anchored, UTC) — there is no week header entity, matching how
+// Banquets derive their weekly rollup.
+// ---------------------------------------------------------------------------
+
+// A member of the kitchen roster who gets scheduled. Distinct from User: cooks
+// are people on the line, not app login accounts. Scoped to a venue.
+model Cook {
+  id        String   @id @default(cuid())
+  venueId   String
+  venue     Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  name      String
+  role      String? // default station shown under the name, e.g. "Line", "Prep Lead"
+  phone     String? // optional — handy on a posted schedule
+  active    Boolean  @default(true) // inactive cooks drop off new weeks but keep history
+  sortOrder Int      @default(0) // row order on the grid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  shifts Shift[]
+
+  @@index([venueId])
+}
+
+// One cook's shift on one day. At most one shift per cook per day (a kitchen
+// week is one shift/day/cook). start/end are "HH:MM" 24h strings — null on an
+// OFF day. role overrides the cook's default station for that shift.
+model Shift {
+  id        String    @id @default(cuid())
+  cookId    String
+  cook      Cook      @relation(fields: [cookId], references: [id], onDelete: Cascade)
+  date      DateTime // calendar day, UTC midnight (matches Banquet.date)
+  kind      ShiftKind @default(WORKING)
+  start     String? // "HH:MM" 24h, null for OFF
+  end       String? // "HH:MM" 24h, null for OFF
+  role      String? // per-shift station, overrides Cook.role
+  note      String? // short cell note, e.g. "close", "AM prep only"
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([cookId, date])
+  @@index([date])
+}
+
+// A note pinned to a single day of the schedule (events, deliveries, VIPs).
+// One per venue per day; upserted, deleted when cleared.
+model DayNote {
+  id        String   @id @default(cuid())
+  venueId   String
+  venue     Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  date      DateTime
+  body      String
+  updatedAt DateTime @updatedAt
+
+  @@unique([venueId, date])
+  @@index([venueId, date])
+}
+
+// The week's posted announcements block (dress code, inventory day, etc.).
+// Keyed by the Monday that starts the week. One per venue per week.
+model ScheduleNote {
+  id        String   @id @default(cuid())
+  venueId   String
+  venue     Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  weekStart DateTime
+  body      String
+  updatedAt DateTime @updatedAt
+
+  @@unique([venueId, weekStart])
 }

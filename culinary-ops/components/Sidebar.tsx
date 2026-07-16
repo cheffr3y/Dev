@@ -7,6 +7,7 @@ import { cn } from "./ui";
 
 type IconKey =
   | "dashboard"
+  | "schedule"
   | "recipes"
   | "events"
   | "banquets"
@@ -26,6 +27,7 @@ const SECTIONS: Array<{ heading: string; items: NavItem[] }> = [
     heading: "Operations",
     items: [
       { href: "/", label: "Dashboard", icon: "dashboard" },
+      { href: "/schedule", label: "Schedule", icon: "schedule" },
       { href: "/recipes", label: "Recipes & Builds", icon: "recipes" },
       { href: "/banquets", label: "Banquets", icon: "banquets" },
       { href: "/events", label: "Events", icon: "events" },
@@ -60,6 +62,13 @@ function Icon({ name }: { name: IconKey }) {
         <rect x="14" y="3" width="7" height="7" rx="1" />
         <rect x="3" y="14" width="7" height="7" rx="1" />
         <rect x="14" y="14" width="7" height="7" rx="1" />
+      </>
+    ),
+    schedule: (
+      <>
+        <rect x="3" y="4" width="18" height="17" rx="2" />
+        <path d="M3 9h18M8 2v4M16 2v4" />
+        <path d="M12 13v3l2 1" />
       </>
     ),
     recipes: (
