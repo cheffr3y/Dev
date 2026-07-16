@@ -6,12 +6,22 @@ import { componentBatchFactor, num } from "@/lib/costing";
 import { buildForecast, type ForecastRow } from "@/lib/festival";
 import { unitLabel } from "@/lib/units";
 import { PrintButton } from "@/components/PrintButton";
-import { RecipeBuildBody, buildRecipeTree, recipeTreeSelect, type RecipeTreeNode } from "@/components/RecipeBuild";
+import { LocalTime } from "@/components/LocalTime";
+import {
+  RecipeBuildBody,
+  SharedBuildCard,
+  buildRecipeTree,
+  consolidateSharedSubBuilds,
+  recipeTreeSelect,
+  type RecipeTreeNode,
+} from "@/components/RecipeBuild";
 import { FestivalTabs } from "../FestivalTabs";
 
 // Printable recipe guide for a festival. The Builds tab answers "how much do
 // we make?" in summary form; this page answers "what is the scaled recipe?"
-// with full ingredient/method bodies and nested sub-builds.
+// with full ingredient/method bodies and nested sub-builds. Sub-recipes used
+// by more than one dish are consolidated into a make-first Shared Builds
+// section so the guide never prints the same build twice.
 
 type MenuUse = {
   menuName: string;
@@ -110,7 +120,12 @@ export default async function FestivalRecipeGuidePage({ params }: { params: Prom
   }
 
   const entries = [...entriesByRecipe.values()].sort((a, b) => a.node.name.localeCompare(b.node.name));
-  const printedOn = new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+  // Sub-recipes used by more than one dish become one "make once" build each,
+  // printed up front; the dishes below pull from them instead of rebuilding.
+  const { shared, sharedRefs } = consolidateSharedSubBuilds(
+    entries.map((e) => ({ node: e.node, totalBatches: e.totalBatches })),
+    byId,
+  );
   const projectedCovers = Math.round(festival.expectedAttendance * festival.captureRate);
 
   return (
@@ -149,8 +164,11 @@ export default async function FestivalRecipeGuidePage({ params }: { params: Prom
             {projectedCovers.toLocaleString()} projected covers
           </p>
           <p className="mt-1 text-sm text-zinc-500">
-            {entries.length} scaled recipe{entries.length === 1 ? "" : "s"} · final prep portions include forecast,
-            chef overrides, and buffer · sub-recipes built inline.
+            {entries.length} scaled recipe{entries.length === 1 ? "" : "s"}
+            {shared.length > 0
+              ? ` · ${shared.length} shared build${shared.length === 1 ? "" : "s"} made once up front`
+              : ""}{" "}
+            · final prep portions include forecast, chef overrides, and buffer.
           </p>
 
           {unlinked.length > 0 && (
@@ -165,9 +183,32 @@ export default async function FestivalRecipeGuidePage({ params }: { params: Prom
             </div>
           )}
 
+          {shared.length > 0 && (
+            <section className="mt-8">
+              <div className="border-b-2 border-zinc-900 pb-1.5">
+                <h2 className="font-display text-2xl font-medium tracking-tight text-zinc-900">
+                  Shared Builds — Make These First
+                </h2>
+              </div>
+              <p className="mt-1 text-sm text-zinc-500">
+                Each build below feeds more than one dish. Make the full amount once; the dishes pull from it.
+              </p>
+              <div className="mt-6 space-y-12">
+                {shared.map((b) => (
+                  <SharedBuildCard key={b.node.id} build={b} byId={byId} sharedRefs={sharedRefs} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {shared.length > 0 && (
+            <div className="mt-12 border-b-2 border-zinc-900 pb-1.5">
+              <h2 className="font-display text-2xl font-medium tracking-tight text-zinc-900">Dishes</h2>
+            </div>
+          )}
           <div className="mt-8 space-y-12">
             {entries.map((entry) => (
-              <RecipeGuideEntry key={entry.node.id} entry={entry} byId={byId} />
+              <RecipeGuideEntry key={entry.node.id} entry={entry} byId={byId} sharedRefs={sharedRefs} />
             ))}
           </div>
 
@@ -193,7 +234,8 @@ export default async function FestivalRecipeGuidePage({ params }: { params: Prom
           )}
 
           <p className="mt-10 border-t border-zinc-200 pt-4 text-[10px] uppercase tracking-[0.14em] text-zinc-400">
-            Printed {printedOn} · Scaled from final prep portions (forecast + buffer) · Mise · Culinary Ops
+            Printed <LocalTime date={new Date()} mode="date" /> · Scaled from final prep portions (forecast + buffer) ·
+            Mise · Culinary Ops
           </p>
         </div>
       )}
@@ -201,7 +243,15 @@ export default async function FestivalRecipeGuidePage({ params }: { params: Prom
   );
 }
 
-function RecipeGuideEntry({ entry, byId }: { entry: GuideEntry; byId: Map<string, RecipeTreeNode> }) {
+function RecipeGuideEntry({
+  entry,
+  byId,
+  sharedRefs,
+}: {
+  entry: GuideEntry;
+  byId: Map<string, RecipeTreeNode>;
+  sharedRefs: Map<string, string>;
+}) {
   const { node } = entry;
 
   return (
@@ -216,7 +266,8 @@ function RecipeGuideEntry({ entry, byId }: { entry: GuideEntry; byId: Map<string
               : `${num(entry.totalQty)} ${unitLabel(node.yieldUnit)}`}
           </p>
           <p className="mt-0.5 text-xs text-zinc-500">
-            {node.prodCode} · base yield {num(node.yieldQty)} {unitLabel(node.yieldUnit)} · scale x{num(entry.totalBatches)}
+            {node.prodCode} · v{node.version} · base yield {num(node.yieldQty)} {unitLabel(node.yieldUnit)} · scale x
+            {num(entry.totalBatches)}
           </p>
         </div>
         <div className="shrink-0 border-2 border-zinc-900 px-4 py-2 text-right">
@@ -259,7 +310,15 @@ function RecipeGuideEntry({ entry, byId }: { entry: GuideEntry; byId: Map<string
         </div>
       )}
 
-      <RecipeBuildBody node={node} byId={byId} totalBatches={entry.totalBatches} compact={false} depth={0} stack={new Set()} />
+      <RecipeBuildBody
+        node={node}
+        byId={byId}
+        totalBatches={entry.totalBatches}
+        compact={false}
+        depth={0}
+        stack={new Set()}
+        sharedRefs={sharedRefs}
+      />
     </article>
   );
 }

@@ -5,11 +5,21 @@ import { requireUser } from "@/lib/session";
 import { num, componentBatchFactor } from "@/lib/costing";
 import { unitLabel } from "@/lib/units";
 import { PrintButton } from "@/components/PrintButton";
-import { RecipeBuildBody, buildRecipeTree, recipeTreeSelect, type RecipeTreeNode } from "@/components/RecipeBuild";
+import { LocalTime } from "@/components/LocalTime";
+import {
+  RecipeBuildBody,
+  SharedBuildCard,
+  buildRecipeTree,
+  consolidateSharedSubBuilds,
+  recipeTreeSelect,
+  type RecipeTreeNode,
+} from "@/components/RecipeBuild";
 
 // Banquet cook packet — one printable artifact per banquet. Every dish on the
 // BEO is scaled to its ordered count, with sub-recipes built inline to any
-// depth. The companion to the prep sheet (which aggregates the raw pull list):
+// depth. Sub-recipes used by more than one dish are consolidated into a
+// make-first Shared Builds section so the packet never prints the same build
+// twice. The companion to the prep sheet (which aggregates the raw pull list):
 // this is what the line actually cooks from.
 
 function fmtDate(d: Date): string {
@@ -38,7 +48,19 @@ export default async function BanquetCookPacketPage({ params }: { params: Promis
   if (!banquet) notFound();
 
   const byId = buildRecipeTree(recipeRows);
-  const printedOn = new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+
+  // Batch math per dish happens up front so shared sub-recipe demand can be
+  // totalled across the whole packet before anything renders.
+  const dishes = banquet.menuItems.flatMap((mi) => {
+    const node = byId.get(mi.recipeId);
+    if (!node) return [];
+    const { batches, converted } = componentBatchFactor(mi.orderedQty, mi.unit, node.yieldQty, node.yieldUnit);
+    return [{ menuItem: mi, node, batches, converted }];
+  });
+  const { shared, sharedRefs } = consolidateSharedSubBuilds(
+    dishes.map((d) => ({ node: d.node, totalBatches: d.batches })),
+    byId,
+  );
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -72,25 +94,55 @@ export default async function BanquetCookPacketPage({ params }: { params: Promis
             {banquet.guestCount > 0 ? ` · ${banquet.guestCount} guests` : ""}
           </p>
           <p className="mt-1 text-sm text-zinc-500">
-            {banquet.menuItems.length} dish{banquet.menuItems.length === 1 ? "" : "es"} · scaled to ordered counts ·
-            sub-recipes built inline.
+            {banquet.menuItems.length} dish{banquet.menuItems.length === 1 ? "" : "es"}
+            {shared.length > 0
+              ? ` · ${shared.length} shared build${shared.length === 1 ? "" : "s"} made once up front`
+              : ""}{" "}
+            · scaled to ordered counts.
           </p>
 
+          {shared.length > 0 && (
+            <section className="mt-8">
+              <div className="border-b-2 border-zinc-900 pb-1.5">
+                <h2 className="font-display text-2xl font-medium tracking-tight text-zinc-900">
+                  Shared Builds — Make These First
+                </h2>
+              </div>
+              <p className="mt-1 text-sm text-zinc-500">
+                Each build below feeds more than one dish. Make the full amount once; the dishes pull from it.
+              </p>
+              <div className="mt-6 space-y-10">
+                {shared.map((b) => (
+                  <SharedBuildCard key={b.node.id} build={b} byId={byId} sharedRefs={sharedRefs} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {shared.length > 0 && (
+            <div className="mt-12 border-b-2 border-zinc-900 pb-1.5">
+              <h2 className="font-display text-2xl font-medium tracking-tight text-zinc-900">Dishes</h2>
+            </div>
+          )}
           <div className="mt-8 space-y-10">
-            {banquet.menuItems.map((mi) => (
+            {dishes.map((d) => (
               <DishEntry
-                key={mi.id}
-                recipeId={mi.recipeId}
-                description={mi.description}
-                orderedQty={mi.orderedQty}
-                unit={mi.unit}
+                key={d.menuItem.id}
+                node={d.node}
+                batches={d.batches}
+                converted={d.converted}
+                description={d.menuItem.description}
+                orderedQty={d.menuItem.orderedQty}
+                unit={d.menuItem.unit}
                 byId={byId}
+                sharedRefs={sharedRefs}
               />
             ))}
           </div>
 
           <p className="mt-10 border-t border-zinc-200 pt-4 text-[10px] uppercase tracking-[0.14em] text-zinc-400">
-            Printed {printedOn} · Each dish scaled to its ordered count · Mise · Culinary Ops
+            Printed <LocalTime date={new Date()} mode="date" /> · Each dish scaled to its ordered count · Mise ·
+            Culinary Ops
           </p>
         </div>
       )}
@@ -100,24 +152,24 @@ export default async function BanquetCookPacketPage({ params }: { params: Promis
 
 // One BEO food line, scaled to its ordered count and built out with sub-recipes.
 function DishEntry({
-  recipeId,
+  node,
+  batches,
+  converted,
   description,
   orderedQty,
   unit,
   byId,
+  sharedRefs,
 }: {
-  recipeId: string;
+  node: RecipeTreeNode;
+  batches: number;
+  converted: boolean;
   description: string | null;
   orderedQty: number;
   unit: string;
   byId: Map<string, RecipeTreeNode>;
+  sharedRefs: Map<string, string>;
 }) {
-  const node = byId.get(recipeId);
-  if (!node) return null;
-
-  // Ordered qty → batch multiplier in the recipe's own yield unit.
-  const { batches, converted } = componentBatchFactor(orderedQty, unit, node.yieldQty, node.yieldUnit);
-
   return (
     <article className="break-inside-avoid border-t-2 border-zinc-900 pt-4">
       <div className="flex items-start justify-between gap-4">
@@ -143,10 +195,18 @@ function DishEntry({
         </div>
       )}
 
-      <RecipeBuildBody node={node} byId={byId} totalBatches={batches} compact={false} depth={0} stack={new Set()} />
+      <RecipeBuildBody
+        node={node}
+        byId={byId}
+        totalBatches={batches}
+        compact={false}
+        depth={0}
+        stack={new Set()}
+        sharedRefs={sharedRefs}
+      />
 
       <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.12em] text-zinc-400">
-        {node.name} · {node.prodCode} · ordered {num(orderedQty)} {unitLabel(unit)}
+        {node.name} · {node.prodCode} · v{node.version} · ordered {num(orderedQty)} {unitLabel(unit)}
       </p>
     </article>
   );

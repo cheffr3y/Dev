@@ -6,6 +6,7 @@ import { num } from "@/lib/costing";
 import { convertQty, unitLabel } from "@/lib/units";
 import { buildShoppingList, type ShoppingRecipeNode } from "@/lib/shopping";
 import { PrintButton } from "@/components/PrintButton";
+import { LocalTime } from "@/components/LocalTime";
 import { ShoppingListBody } from "@/components/ShoppingList";
 import { RecipeBuildBody, buildRecipeTree, recipeTreeSelect, type RecipeTreeNode } from "@/components/RecipeBuild";
 
@@ -101,16 +102,15 @@ export default async function CookPacketPage({ params }: { params: Promise<{ id:
     groups.set(l.lot!, arr);
   }
 
-  // Map recipeId → lot for every top-level printed recipe. Passed into each
+  // Map recipeId → "lot X" for every top-level printed recipe. Passed into each
   // PacketEntry so sub-builds of those recipes render a pull-from-lot reference
   // instead of reprinting the full build for something already in this packet.
-  const sharedLots = new Map<string, string>();
+  const sharedRefs = new Map<string, string>();
   for (const lines of groups.values()) {
-    sharedLots.set(lines[0].recipeId, lines[0].lot!);
+    sharedRefs.set(lines[0].recipeId, `lot ${lines[0].lot!}`);
   }
 
   const madeOn = fmtDate(order.forDate);
-  const printedOn = fmtDate(new Date());
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -167,7 +167,7 @@ export default async function CookPacketPage({ params }: { params: Promise<{ id:
                 madeOn={madeOn}
                 forDate={order.forDate}
                 byId={byId}
-                sharedLots={sharedLots}
+                sharedRefs={sharedRefs}
                 // Each recipe starts on a new page. The first only breaks when a
                 // shopping list precedes it, so it doesn't strand the header alone.
                 breakBefore={shopping.itemCount > 0 || i > 0}
@@ -176,7 +176,8 @@ export default async function CookPacketPage({ params }: { params: Promise<{ id:
           </div>
 
           <p className="mt-10 border-t border-zinc-200 pt-4 text-[10px] uppercase tracking-[0.14em] text-zinc-400">
-            Printed {printedOn} · Lots assigned at first print and frozen · Mise · Culinary Ops
+            Printed <LocalTime date={new Date()} mode="date" /> · Lots assigned at first print and frozen · Mise ·
+            Culinary Ops
           </p>
         </div>
       )}
@@ -206,14 +207,14 @@ function PacketEntry({
   madeOn,
   forDate,
   byId,
-  sharedLots,
+  sharedRefs,
   breakBefore,
 }: {
   lines: PacketLine[];
   madeOn: string;
   forDate: Date;
   byId: Map<string, RecipeTreeNode>;
-  sharedLots: Map<string, string>;
+  sharedRefs: Map<string, string>;
   breakBefore: boolean;
 }) {
   const recipe = lines[0].recipe;
@@ -310,7 +311,7 @@ function PacketEntry({
       </div>
 
       {/* Scaled ingredients, method, allergens & nested sub-builds */}
-      {node && <RecipeBuildBody node={node} byId={byId} totalBatches={scale} compact={false} depth={0} stack={new Set()} sharedLots={sharedLots} />}
+      {node && <RecipeBuildBody node={node} byId={byId} totalBatches={scale} compact={false} depth={0} stack={new Set()} sharedRefs={sharedRefs} />}
 
       {/* Footer stamp — self-documenting for food-safety / consistency */}
       <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.12em] text-zinc-400">
