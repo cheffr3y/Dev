@@ -8,16 +8,25 @@ import { cn } from "@/components/ui";
 import {
   WEEKDAYS,
   addDays,
+  computeTotals,
   dateFromParam,
   fmtHours,
-  fmtTimeRange,
   fmtWeekRange,
   isoDate,
-  shiftHours,
   startOfUtcWeek,
   thisWeekStart,
   weekDays,
+  weekNumberLabel,
 } from "@/lib/schedule";
+import {
+  DayHeadContent,
+  EmployeeCellContent,
+  PrintFooter,
+  ScheduleColgroup,
+  ShiftCellContent,
+  type CookLite,
+  type DayLite,
+} from "../../schedule-ui";
 
 export default async function SchedulePrintPage({ params }: { params: Promise<{ week: string }> }) {
   const { week } = await params;
@@ -53,9 +62,10 @@ export default async function SchedulePrintPage({ params }: { params: Promise<{ 
     }),
   ]);
 
-  const shiftAt = new Map(shiftRows.map((s) => [`${s.cookId}|${isoDate(s.date)}`, s]));
+  const cookList: CookLite[] = cooks;
+  const shiftAt = new Map(shiftRows.map((s) => [`${s.cookId}|${isoDate(s.date)}`, { ...s, date: isoDate(s.date) }]));
   const noteAt = new Map(dayNoteRows.map((n) => [isoDate(n.date), n.body]));
-  const days = weekDays(weekStart).map((d, i) => ({
+  const days: DayLite[] = weekDays(weekStart).map((d, i) => ({
     iso: isoDate(d),
     short: WEEKDAYS[i].short,
     dayNum: d.getUTCDate(),
@@ -63,128 +73,123 @@ export default async function SchedulePrintPage({ params }: { params: Promise<{ 
   }));
 
   const cellFor = (cookId: string, iso: string) => shiftAt.get(`${cookId}|${iso}`) ?? null;
-  const cookHours = (cookId: string) =>
-    days.reduce((sum, d) => {
-      const s = cellFor(cookId, d.iso);
-      return sum + shiftHours(s?.start, s?.end);
-    }, 0);
-  const dayHours = (iso: string) =>
-    cooks.reduce((sum, c) => {
-      const s = cellFor(c.id, iso);
-      return sum + shiftHours(s?.start, s?.end);
-    }, 0);
-  const weekTotal = days.reduce((sum, d) => sum + dayHours(d.iso), 0);
+  const { dayTotals, cookTotals, weekTotal } = computeTotals(cookList, days, cellFor);
+  const hasAnyDayNote = dayNoteRows.some((n) => n.body.trim());
+  const weekRange = fmtWeekRange(weekStart);
 
-  const th = "border border-zinc-300 px-2 py-1.5 text-center align-middle";
-  const td = "border border-zinc-300 px-2 py-1.5 align-top text-center";
+  const cell = "border border-[--sched-border-strong] px-1.5 py-1 align-middle";
 
   return (
     <div className="print-full">
+      {/* Route-scoped landscape page — only present while this print view is
+          mounted, so recipe/prep prints keep the global portrait @page. */}
+      <style>{"@media print { @page { size: letter landscape; margin: 0.4in; } }"}</style>
       <div className="no-print mb-4 flex items-center justify-between gap-3">
         <Link href={`/schedule/${isoDate(weekStart)}`} className="text-sm text-blue-600 hover:underline">
           ← Back to editor
         </Link>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-zinc-500">Tip: print in landscape for the full week.</span>
+          <span className="text-xs text-zinc-500">Prints as US Letter landscape.</span>
           <PrintButton label="Print / save PDF" />
         </div>
       </div>
 
-      <div className="print-sheet mx-auto max-w-[100rem] rounded-lg border border-hairline bg-canvas p-6">
-        <header className="mb-4 flex flex-wrap items-end justify-between gap-2 border-b border-zinc-300 pb-3">
+      <div className="schedule-print print-sheet mx-auto max-w-[100rem] rounded-[--sched-radius] border border-[--sched-border] bg-canvas p-6">
+        <header className="mb-3 flex flex-wrap items-end justify-between gap-x-4 gap-y-1 border-b border-[--sched-border-strong] pb-2">
           <div>
-            <h1 className="font-display text-3xl leading-none tracking-tight text-ink">Kitchen Schedule</h1>
-            <p className="mt-1 text-sm text-zinc-600">{venue.name}</p>
+            <h1 className="font-display text-2xl leading-none tracking-tight text-ink">Kitchen Schedule</h1>
+            <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.08em] text-zinc-600">{venue.name}</p>
           </div>
-          <p className="font-mono text-sm uppercase tracking-[0.02em] text-zinc-600">{fmtWeekRange(weekStart)}</p>
+          <div className="text-right">
+            <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-gold">{weekNumberLabel(weekStart)}</p>
+            <p className="mt-0.5 font-display text-base leading-none text-ink">{weekRange}</p>
+          </div>
         </header>
 
-        {cooks.length === 0 ? (
+        {cookList.length === 0 ? (
           <p className="py-8 text-center text-sm text-zinc-400">No cooks on the roster for this venue.</p>
         ) : (
-          <table className="w-full border-collapse text-sm">
+          <table className="w-full table-fixed border-collapse text-[13px]">
+            <ScheduleColgroup days={days} />
+            <caption className="sr-only">
+              Weekly kitchen schedule for {venue.name}, {weekRange}.
+            </caption>
             <thead>
-              <tr className="bg-zinc-50">
-                <th className={cn(th, "text-left font-mono text-[11px] uppercase tracking-[0.02em] text-zinc-600")}>Cook</th>
+              <tr className="sched-fill-header">
+                <th scope="col" className={cn(cell, "text-left font-mono text-[10px] uppercase tracking-[0.08em] text-zinc-600")}>
+                  Cook
+                </th>
                 {days.map((d) => (
-                  <th key={d.iso} className={cn(th, d.weekend && "bg-pale-gold/50")}>
-                    <div className="font-mono text-[11px] uppercase tracking-[0.02em] text-zinc-600">{d.short}</div>
-                    <div className="font-display text-base text-ink">{d.dayNum}</div>
+                  <th key={d.iso} scope="col" className={cn(cell, "text-center", d.weekend && "sched-fill-weekend")}>
+                    <DayHeadContent day={d} />
                   </th>
                 ))}
-                <th className={cn(th, "font-mono text-[11px] uppercase tracking-[0.02em] text-zinc-600")}>Hrs</th>
+                <th scope="col" className={cn(cell, "text-right font-mono text-[10px] uppercase tracking-[0.08em] text-zinc-600")}>
+                  Hrs
+                </th>
               </tr>
             </thead>
             <tbody>
-              {cooks.map((cook) => (
-                <tr key={cook.id} className="even:bg-zinc-50/60">
-                  <th className={cn(td, "text-left")}>
-                    <div className="font-medium text-ink">{cook.name}</div>
-                    {cook.role && <div className="text-[11px] text-zinc-500">{cook.role}</div>}
+              {cookList.map((cook) => (
+                <tr key={cook.id}>
+                  <th scope="row" className={cn(cell, "text-left")}>
+                    <EmployeeCellContent cook={cook} />
                   </th>
-                  {days.map((d) => {
-                    const s = cellFor(cook.id, d.iso);
-                    return (
-                      <td key={d.iso} className={cn(td, d.weekend && "bg-pale-gold/20")}>
-                        {!s ? (
-                          <span className="text-zinc-300">·</span>
-                        ) : s.kind === "OFF" ? (
-                          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-zinc-400">Off</span>
-                        ) : (
-                          <>
-                            <div className="font-semibold tabular-nums text-ink">{fmtTimeRange(s.start, s.end) || "—"}</div>
-                            {s.role && <div className="text-[11px] text-gold">{s.role}</div>}
-                            {s.note && <div className="text-[11px] text-zinc-500">{s.note}</div>}
-                          </>
-                        )}
-                      </td>
-                    );
-                  })}
-                  <td className={cn(td, "tabular-nums font-semibold")}>{cookHours(cook.id) > 0 ? fmtHours(cookHours(cook.id)) : "—"}</td>
+                  {days.map((d) => (
+                    <td key={d.iso} className={cn(cell, "text-center", d.weekend && "sched-fill-weekend")}>
+                      <ShiftCellContent shift={cellFor(cook.id, d.iso)} defaultRole={cook.role} variant="print" />
+                    </td>
+                  ))}
+                  <td className={cn(cell, "text-right font-semibold tabular-nums")}>
+                    {(cookTotals.get(cook.id) ?? 0) > 0 ? fmtHours(cookTotals.get(cook.id) ?? 0) : "—"}
+                  </td>
                 </tr>
               ))}
 
-              <tr>
-                <th className={cn(td, "text-left font-mono text-[11px] uppercase tracking-[0.02em] text-zinc-600")}>Daily notes</th>
-                {days.map((d) => (
-                  <td key={d.iso} className={cn(td, "text-left align-top", d.weekend && "bg-pale-gold/20")}>
-                    {noteAt.get(d.iso) ? (
-                      <span className="whitespace-pre-wrap text-[11px] leading-snug text-zinc-600">{noteAt.get(d.iso)}</span>
-                    ) : (
-                      <span className="text-zinc-300">·</span>
-                    )}
-                  </td>
-                ))}
-                <td className={td} />
-              </tr>
+              {hasAnyDayNote && (
+                <tr>
+                  <th scope="row" className={cn(cell, "text-left font-mono text-[10px] uppercase tracking-[0.08em] text-zinc-600")}>
+                    Daily notes
+                  </th>
+                  {days.map((d) => (
+                    <td key={d.iso} className={cn(cell, "text-left", d.weekend && "sched-fill-weekend")}>
+                      {noteAt.get(d.iso) && (
+                        <span className="whitespace-pre-wrap text-[10px] leading-snug text-zinc-600">{noteAt.get(d.iso)}</span>
+                      )}
+                    </td>
+                  ))}
+                  <td className={cn(cell, "sched-fill-totals")} />
+                </tr>
+              )}
             </tbody>
             <tfoot>
-              <tr className="bg-zinc-50">
-                <th className={cn(td, "text-left font-mono text-[11px] uppercase tracking-[0.02em] text-zinc-600")}>Day hours</th>
-                {days.map((d) => (
-                  <td key={d.iso} className={cn(td, "tabular-nums text-zinc-600", d.weekend && "bg-pale-gold/30")}>
-                    {dayHours(d.iso) > 0 ? fmtHours(dayHours(d.iso)) : "—"}
+              <tr className="sched-fill-totals">
+                <th scope="row" className={cn(cell, "text-left font-mono text-[10px] uppercase tracking-[0.08em] text-zinc-600")}>
+                  Day hours
+                </th>
+                {dayTotals.map((h, i) => (
+                  <td key={days[i].iso} className={cn(cell, "text-center font-medium tabular-nums text-zinc-700", days[i].weekend && "sched-fill-weekend")}>
+                    {h > 0 ? fmtHours(h) : "—"}
                   </td>
                 ))}
-                <td className={cn(td, "tabular-nums font-semibold text-ink")}>{fmtHours(weekTotal)}</td>
+                <td className={cn(cell, "text-right font-semibold tabular-nums text-ink")}>{fmtHours(weekTotal)}</td>
               </tr>
             </tfoot>
           </table>
         )}
 
-        {weekNote?.body && (
-          <section className="mt-5 break-inside-avoid">
-            <h2 className="mb-1 font-mono text-xs uppercase tracking-[0.02em] text-zinc-600">Announcements</h2>
-            <p className="whitespace-pre-wrap rounded-md border border-zinc-300 bg-zinc-50 px-4 py-3 text-sm leading-relaxed text-zinc-700">
-              {weekNote.body}
-            </p>
-          </section>
-        )}
+        <div className="print-tight">
+          {weekNote?.body && (
+            <section className="break-avoid mt-5">
+              <h2 className="mb-1 font-mono text-[11px] uppercase tracking-[0.08em] text-zinc-600">Weekly announcements</h2>
+              <p className="whitespace-pre-wrap rounded-md border border-[--sched-border-strong] bg-[--sched-fill-header] px-4 py-3 text-sm leading-relaxed text-zinc-700">
+                {weekNote.body}
+              </p>
+            </section>
+          )}
 
-        <p className="mt-6 text-[10px] uppercase tracking-[0.14em] text-zinc-400">
-          {venue.name} · Week of {fmtWeekRange(weekStart)} · Printed{" "}
-          {new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })} · Mise — Culinary Ops
-        </p>
+          <PrintFooter venueName={venue.name} weekRange={weekRange} />
+        </div>
       </div>
     </div>
   );

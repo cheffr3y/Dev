@@ -86,6 +86,27 @@ export function fmtWeekRange(weekStart: Date): string {
   return `${startLabel} – ${endLabel}, ${end.getUTCFullYear()}`;
 }
 
+// ISO-8601 week number (1–53). Weeks are Monday-anchored — matching this app's
+// week model — and the week owning the year's first Thursday is week 1.
+export function isoWeekNumber(weekStart: Date): number {
+  // weekStart is already a Monday; shift to that week's Thursday and count
+  // whole weeks from the first Thursday of that ISO year.
+  const thursday = addDays(weekStart, 3);
+  const year = thursday.getUTCFullYear();
+  const firstThursday = (() => {
+    const jan1 = new Date(Date.UTC(year, 0, 1));
+    const dow = jan1.getUTCDay() || 7; // Mon=1 … Sun=7
+    // The Thursday of the ISO week containing Jan 1.
+    return addDays(jan1, 4 - dow);
+  })();
+  return 1 + Math.round((thursday.getTime() - firstThursday.getTime()) / (7 * DAY_MS));
+}
+
+// Compact uppercase label for the header, e.g. "Week 30".
+export function weekNumberLabel(weekStart: Date): string {
+  return `Week ${isoWeekNumber(weekStart)}`;
+}
+
 // "HH:MM" (24h) → a compact posted-schedule label, e.g. "8a", "4:30p", "12p".
 export function fmtTime(hhmm: string | null | undefined): string {
   if (!hhmm) return "";
@@ -129,4 +150,31 @@ export function shiftHours(start: string | null | undefined, end: string | null 
 // Trim to at most one decimal without a trailing ".0" — "8", "7.5".
 export function fmtHours(hours: number): string {
   return (Math.round(hours * 10) / 10).toString();
+}
+
+// The minimum a cell needs for totals: start/end drive hours; OFF and blanks
+// contribute nothing. Kept structural so both the grid and print pass the same
+// records in and read the same numbers out.
+type HourSource = { start?: string | null; end?: string | null } | null | undefined;
+
+// One pass over the week produces every total the schedule shows: per-day
+// (the footer row), per-cook (the Hrs column), and the grand weekly total.
+// Both the editor grid and the print sheet call this so their numbers can never
+// drift apart. `shiftFor(cookId, iso)` returns that cell's shift, or null.
+export function computeTotals<C extends { id: string }, D extends { iso: string }>(
+  cooks: C[],
+  days: D[],
+  shiftFor: (cookId: string, iso: string) => HourSource,
+): { dayTotals: number[]; cookTotals: Map<string, number>; weekTotal: number } {
+  const dayTotals = days.map((d) =>
+    cooks.reduce((sum, c) => sum + shiftHours(shiftFor(c.id, d.iso)?.start, shiftFor(c.id, d.iso)?.end), 0),
+  );
+  const cookTotals = new Map(
+    cooks.map((c) => [
+      c.id,
+      days.reduce((sum, d) => sum + shiftHours(shiftFor(c.id, d.iso)?.start, shiftFor(c.id, d.iso)?.end), 0),
+    ]),
+  );
+  const weekTotal = dayTotals.reduce((a, b) => a + b, 0);
+  return { dayTotals, cookTotals, weekTotal };
 }

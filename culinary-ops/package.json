@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "node --import tsx --test \"lib/schedule.test.ts\" \"app/(app)/schedule/schedule-ui.test.tsx\"",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "db:migrate-legacy": "tsx scripts/migrate-from-foxtownhq.ts",

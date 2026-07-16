@@ -14,6 +14,7 @@ import {
   startOfUtcWeek,
   thisWeekStart,
   weekDays,
+  weekNumberLabel,
 } from "@/lib/schedule";
 import { ScheduleGrid, type CookLite, type DayLite, type ShiftLite } from "../ScheduleGrid";
 import { WeekNoteEditor } from "../WeekNoteEditor";
@@ -37,7 +38,7 @@ export default async function ScheduleWeekPage({ params }: { params: Promise<{ w
   if (!active) {
     return (
       <div>
-        <PageHeader title="Weekly Schedule" />
+        <PageHeader title="Kitchen Schedule" />
         <EmptyState title="No venue yet" hint="Create a venue before building a schedule." />
       </div>
     );
@@ -132,7 +133,16 @@ export default async function ScheduleWeekPage({ params }: { params: Promise<{ w
         </div>
       </div>
 
-      <PageHeader title="Weekly Schedule" subtitle={`${active.name} · ${fmtWeekRange(weekStart)}`} />
+      <header className="mb-4 flex flex-wrap items-end justify-between gap-x-4 gap-y-2 border-b border-[--sched-border] pb-3">
+        <div>
+          <h1 className="font-display text-3xl leading-none tracking-tight text-ink md:text-4xl">Kitchen Schedule</h1>
+          <p className="mt-1.5 font-mono text-[11px] uppercase tracking-[0.08em] text-zinc-500">{active.name}</p>
+        </div>
+        <div className="text-left sm:text-right">
+          <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-gold">{weekNumberLabel(weekStart)}</p>
+          <p className="mt-0.5 font-display text-lg leading-none text-ink">{fmtWeekRange(weekStart)}</p>
+        </div>
+      </header>
 
       {cookList.length === 0 ? (
         <EmptyState
@@ -152,7 +162,7 @@ export default async function ScheduleWeekPage({ params }: { params: Promise<{ w
           />
           {canEdit && (
             <p className="mt-2 text-xs text-zinc-500">
-              Tap any cell to set a cook’s hours, station, or day off. Times over midnight (e.g. 6p–2a) count as overnight.
+              Select any cell to set a cook’s hours, station, or day off. Times over midnight (e.g. 6p–2a) count as overnight.
             </p>
           )}
         </>

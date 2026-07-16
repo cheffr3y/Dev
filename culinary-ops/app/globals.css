@@ -4,6 +4,37 @@
   /* Off-white / cream workspace, near-black ink. */
   --background: #f9f9f8;
   --foreground: #1a1a1a;
+
+  /*
+   * Weekly-schedule design tokens. One source of truth for the editor, the
+   * posted view, and the printed sheet so the three never drift. Values alias
+   * the shared "French Laundry" palette above rather than inventing new hues —
+   * every fill stays a light warm neutral that survives grayscale printing.
+   */
+  --sched-bg-page: #f9f9f8; /* workspace behind the card */
+  --sched-bg-card: #ffffff; /* the schedule surface */
+  --sched-text: #1a1a1a; /* primary — names, shift times, week total */
+  --sched-text-secondary: #57554f; /* stations, day labels */
+  --sched-text-muted: #9a9892; /* off, hints, footer */
+  --sched-border: #e5e5e5; /* standard hairline */
+  --sched-border-strong: #d6d4cf; /* header underline, print grid */
+  --sched-fill-header: #f7f6f4; /* column-header + anchor column */
+  --sched-fill-weekend: #f6f1e7; /* understated warm tint, Sat/Sun */
+  --sched-fill-totals: #f2f0eb; /* totals row/column */
+  --sched-fill-active: #faf7f1; /* subtle inset behind a working shift */
+  --sched-radius: 0.5rem; /* card corner */
+  --sched-space-sm: 0.375rem;
+  --sched-space-md: 0.75rem;
+  --sched-space-lg: 1.25rem;
+  --sched-cell-pad-y: 0.5rem;
+  --sched-cell-pad-x: 0.5rem;
+  --sched-print-gap: 0.32in; /* margin between print sections */
+
+  /* Fixed table proportions — equal day columns are enforced here, shared by
+     every view via <ScheduleColgroup>. Cook 18% + 7×(76/7)% + Hrs 6% = 100%. */
+  --sched-col-cook: 18%;
+  --sched-col-day: 10.857%;
+  --sched-col-hrs: 6%;
 }
 
 @theme inline {
@@ -122,5 +153,63 @@ body {
     background: #fff;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
+  }
+}
+
+/* ── Weekly schedule — shared token-driven classes ─────────────────────────
+   Applied identically by the editor grid, the posted view, and the print
+   sheet so their look is defined once. Fills reference the --sched-* tokens. */
+.sched-fill-header {
+  background: var(--sched-fill-header);
+}
+.sched-fill-weekend {
+  background: var(--sched-fill-weekend);
+}
+.sched-fill-totals {
+  background: var(--sched-fill-totals);
+}
+.sched-fill-active {
+  background: var(--sched-fill-active);
+}
+/* The anchor (cook) column stays put during horizontal scroll on screen. */
+.sched-sticky {
+  position: sticky;
+  left: 0;
+  z-index: 10;
+}
+
+/* ── Print: a dedicated US-Letter landscape sheet ─────────────────────────
+   The schedule print route injects a route-scoped `@page { size: letter
+   landscape }` (see its <style>), so recipe/prep prints keep the global
+   portrait @page while the schedule prints wide. */
+@media print {
+  /* Sticky is a screen affordance only — never in print. */
+  .schedule-print .sched-sticky {
+    position: static !important;
+  }
+  /* Flatten decoration; lean on clean hairline grid lines instead. */
+  .schedule-print table {
+    width: 100% !important;
+    border-collapse: collapse;
+  }
+  .schedule-print th,
+  .schedule-print td {
+    border: 1px solid var(--sched-border-strong) !important;
+  }
+  /* Repeat the header on any overflow page; never split a cook across pages. */
+  .schedule-print thead {
+    display: table-header-group;
+  }
+  .schedule-print tfoot {
+    display: table-footer-group;
+  }
+  .schedule-print tr,
+  .schedule-print .break-avoid {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  /* Keep the announcements/footer with the grid, no orphan blank page. */
+  .schedule-print .print-tight > * {
+    margin-top: var(--sched-print-gap);
   }
 }

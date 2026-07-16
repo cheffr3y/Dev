@@ -1,29 +1,32 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { cn } from "@/components/ui";
-import { fmtHours, fmtTimeRange, shiftHours } from "@/lib/schedule";
+import { computeTotals, fmtHours, shiftHours } from "@/lib/schedule";
 import { clearShift, upsertShift } from "./actions";
 import { DayNoteEditor } from "./DayNoteEditor";
+import {
+  DayHeadContent,
+  EmployeeCellContent,
+  ScheduleColgroup,
+  ShiftCellContent,
+  type CookLite,
+  type DayLite,
+  type ShiftLite,
+} from "./schedule-ui";
 
-export type CookLite = { id: string; name: string; role: string | null };
-export type ShiftLite = {
-  cookId: string;
-  date: string; // YYYY-MM-DD
-  kind: "WORKING" | "OFF";
-  start: string | null;
-  end: string | null;
-  role: string | null;
-  note: string | null;
-};
-export type DayLite = {
-  iso: string;
-  short: string; // "Mon"
-  dayNum: number; // 23
-  weekend: boolean;
-};
+// Re-exported so existing importers (the week page) keep their import path.
+export type { CookLite, DayLite, ShiftLite } from "./schedule-ui";
 
 type Editing = { cook: CookLite; day: DayLite; shift: ShiftLite | null };
+
+// A short list of common line shifts, offered as one-tap presets in the editor.
+const SHIFT_PRESETS: Array<{ label: string; start: string; end: string }> = [
+  { label: "7a–3p", start: "07:00", end: "15:00" },
+  { label: "8a–4p", start: "08:00", end: "16:00" },
+  { label: "9a–5p", start: "09:00", end: "17:00" },
+  { label: "10a–6p", start: "10:00", end: "18:00" },
+];
 
 export function ScheduleGrid({
   venueId,
@@ -43,94 +46,139 @@ export function ScheduleGrid({
   roleSuggestions: string[];
 }) {
   const [editing, setEditing] = useState<Editing | null>(null);
+  const lastFocused = useRef<HTMLElement | null>(null);
 
-  const shiftAt = new Map<string, ShiftLite>();
-  for (const s of shifts) shiftAt.set(`${s.cookId}|${s.date}`, s);
-  const noteAt = new Map(dayNotes.map((n) => [n.iso, n.body]));
+  const shiftAt = useMemo(() => {
+    const m = new Map<string, ShiftLite>();
+    for (const s of shifts) m.set(`${s.cookId}|${s.date}`, s);
+    return m;
+  }, [shifts]);
+  const noteAt = useMemo(() => new Map(dayNotes.map((n) => [n.iso, n.body])), [dayNotes]);
 
-  const dayTotals = days.map((d) =>
-    cooks.reduce((sum, c) => sum + shiftHours(shiftAt.get(`${c.id}|${d.iso}`)?.start, shiftAt.get(`${c.id}|${d.iso}`)?.end), 0),
+  const { dayTotals, cookTotals, weekTotal } = useMemo(
+    () => computeTotals(cooks, days, (cookId, iso) => shiftAt.get(`${cookId}|${iso}`)),
+    [cooks, days, shiftAt],
   );
-  const cookTotals = new Map(
-    cooks.map((c) => [c.id, days.reduce((sum, d) => sum + shiftHours(shiftAt.get(`${c.id}|${d.iso}`)?.start, shiftAt.get(`${c.id}|${d.iso}`)?.end), 0)]),
-  );
-  const weekTotal = dayTotals.reduce((a, b) => a + b, 0);
+
+  const hasAnyDayNote = dayNotes.some((n) => n.body.trim());
+  const showNotesRow = canEdit || hasAnyDayNote;
+
+  function openEditor(next: Editing, trigger: HTMLElement) {
+    lastFocused.current = trigger;
+    setEditing(next);
+  }
+  function closeEditor() {
+    setEditing(null);
+    // Return focus to the cell that opened the dialog.
+    lastFocused.current?.focus();
+  }
 
   return (
     <>
-      <div className="overflow-x-auto rounded-lg border border-hairline bg-canvas shadow-[0_1px_2px_rgba(26,26,26,0.04)]">
-        <table className="w-full min-w-[880px] border-collapse text-sm">
+      <div className="overflow-x-auto rounded-[--sched-radius] border border-[--sched-border] bg-canvas shadow-[0_1px_2px_rgba(26,26,26,0.04)]">
+        <table className="w-full min-w-[900px] table-fixed border-collapse text-sm">
+          <ScheduleColgroup days={days} />
+          <caption className="sr-only">
+            Weekly kitchen schedule. Rows list each cook; columns are the seven days of the week with a
+            weekly hours total.
+          </caption>
           <thead>
-            <tr className="border-b border-hairline bg-zinc-50">
-              <th className="sticky left-0 z-10 bg-zinc-50 px-4 py-3 text-left font-mono text-[11px] font-medium uppercase tracking-[0.02em] text-zinc-600">
+            <tr className="sched-fill-header border-b-2 border-[--sched-border-strong]">
+              <th
+                scope="col"
+                className="sched-sticky sched-fill-header px-4 py-2.5 text-left font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-zinc-500"
+              >
                 Cook
               </th>
               {days.map((d) => (
                 <th
                   key={d.iso}
-                  className={cn(
-                    "px-2 py-2 text-center font-mono text-[11px] font-medium uppercase tracking-[0.02em]",
-                    d.weekend ? "bg-pale-gold/40 text-gold" : "text-zinc-600",
-                  )}
+                  scope="col"
+                  className={cn("px-1.5 py-2 text-center", d.weekend && "sched-fill-weekend")}
                 >
-                  <div>{d.short}</div>
-                  <div className="mt-0.5 font-display text-base text-ink">{d.dayNum}</div>
+                  <DayHeadContent day={d} />
                 </th>
               ))}
-              <th className="px-3 py-2 text-right font-mono text-[11px] font-medium uppercase tracking-[0.02em] text-zinc-600">
+              <th
+                scope="col"
+                className="px-2 py-2 text-right font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-zinc-500"
+              >
                 Hrs
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-hairline">
+
+          <tbody className="divide-y divide-[--sched-border]">
             {cooks.map((cook) => (
               <tr key={cook.id} className="group/row">
-                <th className="sticky left-0 z-10 bg-canvas px-4 py-2 text-left align-top group-hover/row:bg-zinc-50">
-                  <div className="font-medium text-ink">{cook.name}</div>
-                  {cook.role && <div className="mt-0.5 text-xs text-zinc-500">{cook.role}</div>}
+                <th
+                  scope="row"
+                  className="sched-sticky sched-fill-header px-4 py-2 text-left align-middle"
+                >
+                  <EmployeeCellContent cook={cook} />
                 </th>
                 {days.map((d) => {
                   const shift = shiftAt.get(`${cook.id}|${d.iso}`) ?? null;
                   return (
-                    <td key={d.iso} className={cn("p-0 align-top", d.weekend && "bg-pale-gold/20")}>
+                    <td key={d.iso} className={cn("p-0 align-middle", d.weekend && "sched-fill-weekend")}>
                       <ShiftCell
+                        cook={cook}
+                        day={d}
                         shift={shift}
                         canEdit={canEdit}
-                        onClick={canEdit ? () => setEditing({ cook, day: d, shift }) : undefined}
+                        onOpen={(el) => openEditor({ cook, day: d, shift }, el)}
                       />
                     </td>
                   );
                 })}
-                <td className="px-3 py-2 text-right align-middle tabular-nums text-zinc-700">
-                  {(cookTotals.get(cook.id) ?? 0) > 0 ? <span className="font-semibold">{fmtHours(cookTotals.get(cook.id) ?? 0)}</span> : <span className="text-zinc-300">—</span>}
+                <td className="px-2 py-2 text-right align-middle tabular-nums">
+                  {(cookTotals.get(cook.id) ?? 0) > 0 ? (
+                    <span className="font-semibold text-ink">{fmtHours(cookTotals.get(cook.id) ?? 0)}</span>
+                  ) : (
+                    <span className="text-zinc-300">—</span>
+                  )}
                 </td>
               </tr>
             ))}
 
-            {/* Per-day notes: events, deliveries, VIPs. */}
-            <tr className="border-t-2 border-hairline">
-              <th className="sticky left-0 z-10 bg-zinc-50 px-4 py-2 text-left align-top font-mono text-[11px] font-medium uppercase tracking-[0.02em] text-zinc-600">
-                Daily notes
-              </th>
-              {days.map((d) => (
-                <td key={d.iso} className={cn("p-1.5 align-top", d.weekend && "bg-pale-gold/20")}>
-                  <DayNoteEditor venueId={venueId} dateIso={d.iso} initialBody={noteAt.get(d.iso) ?? ""} canEdit={canEdit} />
-                </td>
-              ))}
-              <td className="bg-zinc-50" />
-            </tr>
+            {/* Day-specific notes: one controlled cell per day (events, deliveries, VIPs). */}
+            {showNotesRow && (
+              <tr className="border-t-2 border-[--sched-border-strong]">
+                <th
+                  scope="row"
+                  className="sched-sticky sched-fill-header px-4 py-2 text-left align-top font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-zinc-500"
+                >
+                  Daily notes
+                </th>
+                {days.map((d) => (
+                  <td key={d.iso} className={cn("p-1 align-top", d.weekend && "sched-fill-weekend")}>
+                    <DayNoteEditor venueId={venueId} dateIso={d.iso} initialBody={noteAt.get(d.iso) ?? ""} canEdit={canEdit} />
+                  </td>
+                ))}
+                <td className="sched-fill-totals" />
+              </tr>
+            )}
           </tbody>
+
           <tfoot>
-            <tr className="border-t border-hairline bg-zinc-50">
-              <th className="sticky left-0 z-10 bg-zinc-50 px-4 py-2 text-left font-mono text-[11px] font-medium uppercase tracking-[0.02em] text-zinc-600">
+            <tr className="sched-fill-totals border-t-2 border-[--sched-border-strong]">
+              <th
+                scope="row"
+                className="sched-sticky sched-fill-totals px-4 py-2.5 text-left font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-zinc-600"
+              >
                 Day hours
               </th>
               {dayTotals.map((h, i) => (
-                <td key={days[i].iso} className={cn("px-2 py-2 text-center tabular-nums text-zinc-600", days[i].weekend && "bg-pale-gold/30")}>
-                  {h > 0 ? fmtHours(h) : "—"}
+                <td
+                  key={days[i].iso}
+                  className={cn("px-1.5 py-2.5 text-center font-medium tabular-nums text-zinc-700", days[i].weekend && "sched-fill-weekend")}
+                >
+                  {h > 0 ? fmtHours(h) : <span className="text-zinc-300">—</span>}
                 </td>
               ))}
-              <td className="px-3 py-2 text-right tabular-nums font-semibold text-ink">{fmtHours(weekTotal)}</td>
+              <td className="px-2 py-2.5 text-right align-middle">
+                <span className="font-display text-base tabular-nums text-ink">{fmtHours(weekTotal)}</span>
+              </td>
             </tr>
           </tfoot>
         </table>
@@ -141,46 +189,64 @@ export function ScheduleGrid({
           key={`${editing.cook.id}|${editing.day.iso}`}
           editing={editing}
           roleSuggestions={roleSuggestions}
-          onClose={() => setEditing(null)}
+          onClose={closeEditor}
         />
       )}
     </>
   );
 }
 
-function ShiftCell({ shift, canEdit, onClick }: { shift: ShiftLite | null; canEdit: boolean; onClick?: () => void }) {
-  const inner = (() => {
-    if (!shift) {
-      return <span className={cn("text-zinc-300", canEdit && "group-hover/cell:text-zinc-400")}>{canEdit ? "+" : ""}</span>;
-    }
-    if (shift.kind === "OFF") {
-      return (
-        <span className="inline-flex flex-col items-center">
-          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-zinc-400">Off</span>
-          {shift.note && <span className="mt-0.5 text-[11px] text-zinc-400">{shift.note}</span>}
-        </span>
-      );
-    }
-    return (
-      <span className="flex flex-col items-center">
-        <span className="font-semibold tabular-nums text-ink">{fmtTimeRange(shift.start, shift.end) || "—"}</span>
-        {shift.role && <span className="mt-0.5 text-[11px] text-gold">{shift.role}</span>}
-        {shift.note && <span className="mt-0.5 text-[11px] text-zinc-500">{shift.note}</span>}
-      </span>
-    );
-  })();
+// ── One grid cell ───────────────────────────────────────────────────────────
+function ShiftCell({
+  cook,
+  day,
+  shift,
+  canEdit,
+  onOpen,
+}: {
+  cook: CookLite;
+  day: DayLite;
+  shift: ShiftLite | null;
+  canEdit: boolean;
+  onOpen: (trigger: HTMLElement) => void;
+}) {
+  const base = "flex min-h-[3.25rem] w-full items-center justify-center px-1.5 py-2 text-center";
 
-  const classes = "group/cell flex min-h-[3.25rem] w-full items-center justify-center px-2 py-2 text-center transition-colors";
-  if (canEdit) {
+  // Posted / read-only: a working shift or OFF renders; an empty cell is blank.
+  if (!canEdit) {
     return (
-      <button type="button" onClick={onClick} className={cn(classes, "cursor-pointer hover:bg-pale-gold/50")}>
-        {inner}
-      </button>
+      <div className={base}>
+        <ShiftCellContent shift={shift} defaultRole={cook.role} variant="screen" />
+      </div>
     );
   }
-  return <div className={classes}>{inner}</div>;
+
+  // Editor: the whole cell is a button. Empty cells stay quiet until hover/focus.
+  const label = shift
+    ? `Edit ${cook.name}'s shift on ${day.short} ${day.dayNum}`
+    : `Add a shift for ${cook.name} on ${day.short} ${day.dayNum}`;
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      onClick={(e) => onOpen(e.currentTarget)}
+      className={cn(
+        base,
+        "group/cell cursor-pointer rounded-[4px] transition-colors hover:bg-[--sched-fill-active] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-inset",
+      )}
+    >
+      {shift ? (
+        <ShiftCellContent shift={shift} defaultRole={cook.role} variant="screen" />
+      ) : (
+        <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-transparent transition-colors group-hover/cell:text-zinc-400 group-focus-visible/cell:text-zinc-400">
+          Add shift
+        </span>
+      )}
+    </button>
+  );
 }
 
+// ── Editor dialog ───────────────────────────────────────────────────────────
 function ShiftEditor({
   editing,
   roleSuggestions,
@@ -191,12 +257,110 @@ function ShiftEditor({
   onClose: () => void;
 }) {
   const { cook, day, shift } = editing;
+
   const [kind, setKind] = useState<"WORKING" | "OFF">(shift?.kind ?? "WORKING");
+  const [start, setStart] = useState(shift?.start ?? "");
+  const [end, setEnd] = useState(shift?.end ?? "");
+  const [role, setRole] = useState(shift?.role ?? "");
+  const [note, setNote] = useState(shift?.note ?? "");
+  const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  function onSave(formData: FormData) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const firstFieldRef = useRef<HTMLButtonElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // Snapshot of the opening state — used to detect unsaved edits.
+  const initial = useRef(JSON.stringify({ kind: shift?.kind ?? "WORKING", start: shift?.start ?? "", end: shift?.end ?? "", role: shift?.role ?? "", note: shift?.note ?? "" }));
+  const isDirty = () => JSON.stringify({ kind, start, end, role, note }) !== initial.current;
+
+  const dateLabel = new Date(`${day.iso}T00:00:00.000Z`).toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+
+  // Live shift duration once both times are valid (respects overnight math).
+  const duration = kind === "WORKING" && start && end ? shiftHours(start, end) : 0;
+  const isOvernight = kind === "WORKING" && start && end && end <= start;
+
+  function requestClose() {
+    if (isDirty() && !window.confirm("Discard unsaved changes to this shift?")) return;
+    onClose();
+  }
+
+  // Focus first control, lock scroll, trap Tab, and wire Esc / Cmd+Enter.
+  useEffect(() => {
+    firstFieldRef.current?.focus();
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        requestClose();
+        return;
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+        e.preventDefault();
+        formRef.current?.requestSubmit();
+        return;
+      }
+      if (e.key === "Tab" && dialogRef.current) {
+        const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = prevOverflow;
+    };
+    // requestClose reads live state via refs/closures recreated each render; the
+    // listener is stable enough for a dialog whose identity is keyed per cell.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function validate(): string | null {
+    if (kind !== "WORKING") return null;
+    const bothBlank = !start && !end;
+    if (bothBlank) return null; // clearing the cell is allowed
+    if (!start || !end) return "Add both a start and an end time.";
+    return null;
+  }
+
+  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const problem = validate();
+    if (problem) {
+      setError(problem);
+      return;
+    }
+    setError(null);
+    const fd = new FormData();
+    fd.set("cookId", cook.id);
+    fd.set("date", day.iso);
+    fd.set("kind", kind);
+    if (kind === "WORKING") {
+      fd.set("start", start);
+      fd.set("end", end);
+      fd.set("role", role);
+    }
+    fd.set("note", note);
     startTransition(async () => {
-      await upsertShift(formData);
+      await upsertShift(fd);
       onClose();
     });
   }
@@ -211,42 +375,56 @@ function ShiftEditor({
     });
   }
 
-  const dateLabel = new Date(`${day.iso}T00:00:00.000Z`).toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    timeZone: "UTC",
-  });
+  const timeField =
+    "w-full rounded-sm border border-zinc-300 bg-canvas px-3 py-2 text-sm text-ink focus:border-form-focus focus:outline-none focus:ring-1 focus:ring-form-focus";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 p-4" onClick={onClose}>
-      <div className="w-full max-w-md rounded-lg border border-hairline bg-canvas p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-ink/30 p-4"
+      onClick={requestClose}
+    >
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="shift-editor-title"
+        className="w-full max-w-md rounded-[--sched-radius] border border-[--sched-border] bg-canvas p-5 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
-            <h2 className="font-display text-xl text-ink">{cook.name}</h2>
-            <p className="mt-0.5 font-mono text-xs uppercase tracking-[0.02em] text-zinc-500">{dateLabel}</p>
+            <h2 id="shift-editor-title" className="font-display text-xl leading-tight text-ink">
+              {cook.name}
+            </h2>
+            <p className="mt-0.5 font-mono text-[11px] uppercase tracking-[0.08em] text-zinc-500">{dateLabel}</p>
           </div>
-          <button type="button" onClick={onClose} className="rounded-full p-1 text-zinc-400 hover:bg-zinc-100 hover:text-ink" aria-label="Close">
+          <button
+            type="button"
+            onClick={requestClose}
+            className="rounded-full p-1 text-zinc-400 hover:bg-zinc-100 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+            aria-label="Close"
+          >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-5 w-5">
               <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
             </svg>
           </button>
         </div>
 
-        <form action={onSave} className="space-y-4">
-          <input type="hidden" name="cookId" value={cook.id} />
-          <input type="hidden" name="date" value={day.iso} />
-          <input type="hidden" name="kind" value={kind} />
-
-          {/* Working / OFF toggle */}
-          <div className="inline-flex rounded-full border border-hairline p-0.5">
-            {(["WORKING", "OFF"] as const).map((k) => (
+        <form ref={formRef} onSubmit={onSubmit} className="space-y-4">
+          {/* Working / Off — a two-option toggle with proper pressed semantics. */}
+          <div role="group" aria-label="Shift type" className="inline-flex rounded-full border border-[--sched-border] p-0.5">
+            {(["WORKING", "OFF"] as const).map((k, i) => (
               <button
                 key={k}
+                ref={i === 0 ? firstFieldRef : undefined}
                 type="button"
-                onClick={() => setKind(k)}
+                aria-pressed={kind === k}
+                onClick={() => {
+                  setKind(k);
+                  setError(null);
+                }}
                 className={cn(
-                  "rounded-full px-4 py-1 text-sm font-medium transition-colors",
+                  "rounded-full px-4 py-1 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
                   kind === k ? "bg-primary text-white" : "text-zinc-500 hover:text-ink",
                 )}
               >
@@ -259,30 +437,65 @@ function ShiftEditor({
             <>
               <div className="grid grid-cols-2 gap-3">
                 <label className="block">
-                  <span className="mb-1 block font-mono text-xs uppercase tracking-[0.02em] text-zinc-600">Start</span>
+                  <span className="mb-1 block font-mono text-[11px] uppercase tracking-[0.06em] text-zinc-600">Start time</span>
                   <input
                     type="time"
-                    name="start"
-                    defaultValue={shift?.start ?? ""}
-                    className="w-full rounded-sm border border-zinc-300 bg-canvas px-3 py-2 text-sm text-ink focus:border-form-focus focus:outline-none focus:ring-1 focus:ring-form-focus"
+                    aria-label="Shift start time"
+                    value={start}
+                    onChange={(e) => {
+                      setStart(e.target.value);
+                      setError(null);
+                    }}
+                    className={timeField}
                   />
                 </label>
                 <label className="block">
-                  <span className="mb-1 block font-mono text-xs uppercase tracking-[0.02em] text-zinc-600">End</span>
+                  <span className="mb-1 block font-mono text-[11px] uppercase tracking-[0.06em] text-zinc-600">End time</span>
                   <input
                     type="time"
-                    name="end"
-                    defaultValue={shift?.end ?? ""}
-                    className="w-full rounded-sm border border-zinc-300 bg-canvas px-3 py-2 text-sm text-ink focus:border-form-focus focus:outline-none focus:ring-1 focus:ring-form-focus"
+                    aria-label="Shift end time"
+                    value={end}
+                    onChange={(e) => {
+                      setEnd(e.target.value);
+                      setError(null);
+                    }}
+                    className={timeField}
                   />
                 </label>
               </div>
+
+              {/* Quick presets — subtle, single row. */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-zinc-400">Quick set</span>
+                {SHIFT_PRESETS.map((p) => (
+                  <button
+                    key={p.label}
+                    type="button"
+                    onClick={() => {
+                      setStart(p.start);
+                      setEnd(p.end);
+                      setError(null);
+                    }}
+                    className="rounded-full border border-[--sched-border] px-2.5 py-0.5 text-xs text-zinc-600 transition-colors hover:border-ink hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+
+              {duration > 0 && (
+                <p className="text-xs text-zinc-500">
+                  Duration <span className="font-semibold tabular-nums text-ink">{fmtHours(duration)}h</span>
+                  {isOvernight && <span className="text-zinc-400"> · overnight</span>}
+                </p>
+              )}
+
               <label className="block">
-                <span className="mb-1 block font-mono text-xs uppercase tracking-[0.02em] text-zinc-600">Station / role</span>
+                <span className="mb-1 block font-mono text-[11px] uppercase tracking-[0.06em] text-zinc-600">Station / role</span>
                 <input
-                  name="role"
                   list="role-suggestions"
-                  defaultValue={shift?.role ?? ""}
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
                   placeholder={cook.role ?? "e.g. Grill, Prep, Lead"}
                   className="w-full rounded-sm border border-zinc-300 bg-canvas px-3 py-2 text-sm text-ink placeholder:text-zinc-400 focus:border-form-focus focus:outline-none focus:ring-1 focus:ring-form-focus"
                 />
@@ -298,33 +511,49 @@ function ShiftEditor({
           )}
 
           <label className="block">
-            <span className="mb-1 block font-mono text-xs uppercase tracking-[0.02em] text-zinc-600">
+            <span className="mb-1 block font-mono text-[11px] uppercase tracking-[0.06em] text-zinc-600">
               Note {kind === "OFF" ? "(reason, optional)" : "(optional)"}
             </span>
             <input
-              name="note"
-              defaultValue={shift?.note ?? ""}
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
               placeholder={kind === "OFF" ? "e.g. requested off, vacation" : "e.g. close, AM prep only"}
               className="w-full rounded-sm border border-zinc-300 bg-canvas px-3 py-2 text-sm text-ink placeholder:text-zinc-400 focus:border-form-focus focus:outline-none focus:ring-1 focus:ring-form-focus"
             />
           </label>
 
+          {error && (
+            <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
+              {error}
+            </p>
+          )}
+
           <div className="flex items-center justify-between gap-2 pt-1">
             {shift ? (
-              <button type="button" onClick={onClear} disabled={pending} className="text-sm font-medium text-red-600 hover:underline disabled:opacity-50">
+              <button
+                type="button"
+                onClick={onClear}
+                disabled={pending}
+                className="text-sm font-medium text-red-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50"
+              >
                 Clear shift
               </button>
             ) : (
               <span />
             )}
             <div className="flex items-center gap-2">
-              <button type="button" onClick={onClose} className="rounded-full border border-hairline px-4 py-2 text-sm font-medium text-zinc-600 hover:border-ink hover:text-ink">
+              <button
+                type="button"
+                onClick={requestClose}
+                className="rounded-full border border-[--sched-border] px-4 py-2 text-sm font-medium text-zinc-600 hover:border-ink hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+              >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={pending}
-                className="rounded-full bg-primary px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:opacity-50"
+                title="Save (⌘/Ctrl + Enter)"
+                className="rounded-full bg-primary px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50"
               >
                 {pending ? "Saving…" : "Save"}
               </button>
