@@ -146,21 +146,6 @@ export default async function SchedulePrintPage({ params }: { params: Promise<{ 
                 </tr>
               ))}
 
-              {hasAnyDayNote && (
-                <tr>
-                  <th scope="row" className={cn(cell, "text-left font-mono text-[10px] uppercase tracking-[0.08em] text-zinc-600")}>
-                    Daily notes
-                  </th>
-                  {days.map((d) => (
-                    <td key={d.iso} className={cn(cell, "text-left", d.weekend && "sched-fill-weekend")}>
-                      {noteAt.get(d.iso) && (
-                        <span className="whitespace-pre-wrap text-[10px] leading-snug text-zinc-600">{noteAt.get(d.iso)}</span>
-                      )}
-                    </td>
-                  ))}
-                  <td className={cn(cell, "sched-fill-totals")} />
-                </tr>
-              )}
             </tbody>
             <tfoot>
               <tr className="sched-fill-totals">
@@ -179,6 +164,39 @@ export default async function SchedulePrintPage({ params }: { params: Promise<{ 
         )}
 
         <div className="print-tight">
+          {hasAnyDayNote && (
+            <section className="break-avoid mt-4" aria-labelledby="daily-notes-heading">
+              <h2
+                id="daily-notes-heading"
+                className="mb-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.1em] text-zinc-600"
+              >
+                Daily notes
+              </h2>
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(8.5rem,1fr))] gap-1.5">
+                {days.map((d) => {
+                  const note = noteAt.get(d.iso)?.trim();
+                  if (!note) return null;
+
+                  return (
+                    <article
+                      key={d.iso}
+                      className={cn(
+                        "rounded-sm border border-[--sched-border-strong] bg-[--sched-fill-header] px-2.5 py-2",
+                        d.weekend && "sched-fill-weekend",
+                      )}
+                    >
+                      <h3 className="mb-1 flex items-baseline gap-1.5 border-b border-[--sched-border] pb-1 font-mono uppercase tracking-[0.08em]">
+                        <span className="text-[9px] font-semibold text-zinc-600">{d.short}</span>
+                        <span className="font-display text-sm leading-none text-ink">{d.dayNum}</span>
+                      </h3>
+                      <p className="whitespace-pre-wrap text-[10px] leading-[1.4] text-zinc-700">{note}</p>
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
           {weekNote?.body && (
             <section className="break-avoid mt-5">
               <h2 className="mb-1 font-mono text-[11px] uppercase tracking-[0.08em] text-zinc-600">Weekly announcements</h2>
