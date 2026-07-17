@@ -26,7 +26,9 @@ export type DayLite = {
   dayNum: number; // 20
   weekend: boolean;
 };
-export type DayNoteLite = {
+// One structured event on a day (a delivery, off-site, VIP party). A day can
+// hold several of these — see DayEventsContent / the editor.
+export type DayEventLite = {
   eventName: string | null;
   people: number | null;
   time: string | null;
@@ -34,30 +36,47 @@ export type DayNoteLite = {
   body: string | null;
 };
 
-export function hasDayNote(note: DayNoteLite | null | undefined): boolean {
-  return Boolean(note && (note.eventName || note.people !== null || note.time || note.location || note.body));
+export function hasDayEvent(event: DayEventLite | null | undefined): boolean {
+  return Boolean(event && (event.eventName || event.people !== null || event.time || event.location || event.body));
 }
 
-// A fixed information order keeps event notes scannable even in narrow day
-// columns: name, headcount, time, location, then any operational detail.
-export function DayNoteContent({ note }: { note: DayNoteLite | null | undefined }) {
-  if (!hasDayNote(note) || !note) return null;
+// A single event, in a fixed information order that stays scannable even in a
+// narrow day column: name, headcount, time, location, then operational detail.
+export function DayEventContent({ event }: { event: DayEventLite | null | undefined }) {
+  if (!hasDayEvent(event) || !event) return null;
 
   return (
-    <div className="space-y-1 text-left">
-      {note.eventName && <p className="font-semibold leading-tight text-ink">{note.eventName}</p>}
+    <div className="space-y-0.5 text-left">
+      {event.eventName && <p className="font-semibold leading-tight text-ink">{event.eventName}</p>}
       <dl className="space-y-0.5 text-[10px] leading-tight text-zinc-600">
-        {note.people !== null && (
-          <div><dt className="sr-only">People</dt><dd>{note.people.toLocaleString()} people</dd></div>
+        {event.people !== null && (
+          <div><dt className="sr-only">People</dt><dd>{event.people.toLocaleString()} people</dd></div>
         )}
-        {note.time && (
-          <div><dt className="sr-only">Time</dt><dd>{note.time}</dd></div>
+        {event.time && (
+          <div><dt className="sr-only">Time</dt><dd>{event.time}</dd></div>
         )}
-        {note.location && (
-          <div><dt className="sr-only">Location</dt><dd>{note.location}</dd></div>
+        {event.location && (
+          <div><dt className="sr-only">Location</dt><dd>{event.location}</dd></div>
         )}
       </dl>
-      {note.body && <p className="whitespace-pre-wrap border-t border-[--sched-border] pt-1 text-[10px] leading-snug text-zinc-500">{note.body}</p>}
+      {event.body && <p className="whitespace-pre-wrap border-t border-[--sched-border] pt-1 text-[10px] leading-snug text-zinc-500">{event.body}</p>}
+    </div>
+  );
+}
+
+// A day's full set of events, stacked with a hairline between them. Renders
+// nothing when the day is empty so posted/print cells stay blank. Shared by the
+// grid's read-only cells and the print sheet.
+export function DayEventsContent({ events }: { events: DayEventLite[] }) {
+  const shown = events.filter(hasDayEvent);
+  if (shown.length === 0) return null;
+  return (
+    <div className="space-y-1">
+      {shown.map((event, i) => (
+        <div key={i} className={cn(i > 0 && "border-t border-[--sched-border-strong] pt-1")}>
+          <DayEventContent event={event} />
+        </div>
+      ))}
     </div>
   );
 }
@@ -164,20 +183,16 @@ export function ShiftCellContent({
 
 // ── Print footer ────────────────────────────────────────────────────────────
 export function PrintFooter({
-  venueName,
   weekRange,
   productName = "Mise — Culinary Ops",
 }: {
-  venueName: string;
   weekRange: string;
   productName?: string;
 }) {
   const printed = new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
   return (
     <p className="mt-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-[--sched-border] pt-2 text-[10px] uppercase tracking-[0.12em] text-zinc-400">
-      <span>
-        {venueName} · {weekRange}
-      </span>
+      <span>{weekRange}</span>
       <span>
         Printed {printed} · {productName}
       </span>

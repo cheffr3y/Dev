@@ -20,12 +20,13 @@ import {
 } from "@/lib/schedule";
 import {
   DayHeadContent,
-  DayNoteContent,
+  DayEventsContent,
   EmployeeCellContent,
   PrintFooter,
   ScheduleColgroup,
   ShiftCellContent,
   type CookLite,
+  type DayEventLite,
   type DayLite,
 } from "../../schedule-ui";
 
@@ -43,7 +44,7 @@ export default async function SchedulePrintPage({ params }: { params: Promise<{ 
   const { active: venue } = await getActiveVenue(user.homeVenueId);
   if (!venue) redirect(`/schedule/${isoDate(weekStart)}`);
 
-  const [cooks, shiftRows, dayNoteRows, weekNote] = await Promise.all([
+  const [cooks, shiftRows, dayEventRows, weekNote] = await Promise.all([
     prisma.cook.findMany({
       where: { venueId: venue.id, active: true },
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
@@ -53,8 +54,9 @@ export default async function SchedulePrintPage({ params }: { params: Promise<{ 
       where: { date: { gte: weekStart, lt: weekEnd }, cook: { venueId: venue.id } },
       select: { cookId: true, date: true, kind: true, start: true, end: true, role: true, note: true },
     }),
-    prisma.dayNote.findMany({
+    prisma.dayEvent.findMany({
       where: { venueId: venue.id, date: { gte: weekStart, lt: weekEnd } },
+      orderBy: [{ date: "asc" }, { sortOrder: "asc" }],
       select: { date: true, eventName: true, people: true, time: true, location: true, body: true },
     }),
     prisma.scheduleNote.findUnique({
@@ -65,7 +67,11 @@ export default async function SchedulePrintPage({ params }: { params: Promise<{ 
 
   const cookList: CookLite[] = cooks;
   const shiftAt = new Map(shiftRows.map((s) => [`${s.cookId}|${isoDate(s.date)}`, { ...s, date: isoDate(s.date) }]));
-  const noteAt = new Map(dayNoteRows.map(({ date, ...note }) => [isoDate(date), note]));
+  const eventsByIso = new Map<string, DayEventLite[]>();
+  for (const { date, ...event } of dayEventRows) {
+    const iso = isoDate(date);
+    (eventsByIso.get(iso) ?? eventsByIso.set(iso, []).get(iso)!).push(event);
+  }
   const days: DayLite[] = weekDays(weekStart).map((d, i) => ({
     iso: isoDate(d),
     short: WEEKDAYS[i].short,
@@ -75,7 +81,7 @@ export default async function SchedulePrintPage({ params }: { params: Promise<{ 
 
   const cellFor = (cookId: string, iso: string) => shiftAt.get(`${cookId}|${iso}`) ?? null;
   const { dayTotals, cookTotals, weekTotal } = computeTotals(cookList, days, cellFor);
-  const hasAnyDayNote = dayNoteRows.length > 0;
+  const hasAnyEvent = dayEventRows.length > 0;
   const weekRange = fmtWeekRange(weekStart);
 
   const cell = "border border-[--sched-border-strong] px-1.5 py-1 align-middle";
@@ -97,10 +103,7 @@ export default async function SchedulePrintPage({ params }: { params: Promise<{ 
 
       <div className="schedule-print print-sheet mx-auto max-w-[100rem] rounded-[--sched-radius] border border-[--sched-border] bg-canvas p-6">
         <header className="mb-3 flex flex-wrap items-end justify-between gap-x-4 gap-y-1 border-b border-[--sched-border-strong] pb-2">
-          <div>
-            <h1 className="font-display text-2xl leading-none tracking-tight text-ink">Kitchen Schedule</h1>
-            <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.08em] text-zinc-600">{venue.name}</p>
-          </div>
+          <h1 className="font-display text-2xl leading-none tracking-tight text-ink">Kitchen Schedule</h1>
           <div className="text-right">
             <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-gold">{weekNumberLabel(weekStart)}</p>
             <p className="mt-0.5 font-display text-base leading-none text-ink">{weekRange}</p>
@@ -108,13 +111,11 @@ export default async function SchedulePrintPage({ params }: { params: Promise<{ 
         </header>
 
         {cookList.length === 0 ? (
-          <p className="py-8 text-center text-sm text-zinc-400">No cooks on the roster for this venue.</p>
+          <p className="py-8 text-center text-sm text-zinc-400">No cooks on the roster yet.</p>
         ) : (
           <table className="w-full table-fixed border-collapse text-[13px]">
             <ScheduleColgroup days={days} />
-            <caption className="sr-only">
-              Weekly kitchen schedule for {venue.name}, {weekRange}.
-            </caption>
+            <caption className="sr-only">Weekly kitchen schedule, {weekRange}.</caption>
             <thead>
               <tr className="sched-fill-header">
                 <th scope="col" className={cn(cell, "text-left font-mono text-[10px] uppercase tracking-[0.08em] text-zinc-600")}>
@@ -147,14 +148,14 @@ export default async function SchedulePrintPage({ params }: { params: Promise<{ 
                 </tr>
               ))}
 
-              {hasAnyDayNote && (
+              {hasAnyEvent && (
                 <tr className="border-t-2 border-[--sched-border-strong]">
                   <th scope="row" className={cn(cell, "text-left align-top font-mono text-[10px] uppercase tracking-[0.08em] text-zinc-600")}>
-                    Daily notes
+                    Daily events
                   </th>
                   {days.map((d) => (
                     <td key={d.iso} className={cn(cell, "text-left align-top", d.weekend && "sched-fill-weekend")}>
-                      <DayNoteContent note={noteAt.get(d.iso)} />
+                      <DayEventsContent events={eventsByIso.get(d.iso) ?? []} />
                     </td>
                   ))}
                   <td className={cn(cell, "sched-fill-totals")} />
@@ -180,15 +181,15 @@ export default async function SchedulePrintPage({ params }: { params: Promise<{ 
 
         <div className="print-tight">
           {weekNote?.body && (
-            <section className="break-avoid mt-5">
+            <section className="break-avoid">
               <h2 className="mb-1 font-mono text-[11px] uppercase tracking-[0.08em] text-zinc-600">Weekly announcements</h2>
-              <p className="whitespace-pre-wrap rounded-md border border-[--sched-border-strong] bg-[--sched-fill-header] px-4 py-3 text-sm leading-relaxed text-zinc-700">
+              <p className="whitespace-pre-wrap rounded-md border border-[--sched-border-strong] bg-[--sched-fill-header] px-3 py-2 text-[13px] leading-snug text-zinc-700">
                 {weekNote.body}
               </p>
             </section>
           )}
 
-          <PrintFooter venueName={venue.name} weekRange={weekRange} />
+          <PrintFooter weekRange={weekRange} />
         </div>
       </div>
     </div>

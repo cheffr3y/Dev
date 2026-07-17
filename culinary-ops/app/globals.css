@@ -28,7 +28,7 @@
   --sched-space-lg: 1.25rem;
   --sched-cell-pad-y: 0.5rem;
   --sched-cell-pad-x: 0.5rem;
-  --sched-print-gap: 0.32in; /* margin between print sections */
+  --sched-print-gap: 0.16in; /* margin between print sections */
 
   /* Fixed table proportions — equal day columns are enforced here, shared by
      every view via <ScheduleColgroup>. Cook 18% + 7×(76/7)% + Hrs 6% = 100%. */
@@ -195,6 +195,16 @@ body {
   .schedule-print th,
   .schedule-print td {
     border: 1px solid var(--sched-border-strong) !important;
+  }
+  /* Compact the rows on paper so fuller rosters + multi-event days still fit one
+     page before spilling to a second (which degrades gracefully below). */
+  .schedule-print thead th,
+  .schedule-print tbody th,
+  .schedule-print tbody td,
+  .schedule-print tfoot td,
+  .schedule-print tfoot th {
+    padding-top: 2px;
+    padding-bottom: 2px;
   }
   /* Repeat the header on any overflow page; never split a cook across pages. */
   .schedule-print thead {

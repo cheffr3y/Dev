@@ -2,8 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
+  DayEventsContent,
   DayHeadContent,
-  DayNoteContent,
   ScheduleColgroup,
   ShiftCellContent,
   type DayLite,
@@ -75,10 +75,10 @@ test("ScheduleColgroup: seven equal day columns between cook and hours", () => {
   assert.match(html, /--sched-col-hrs/);
 });
 
-test("DayNoteContent: renders event details in a standardized order", () => {
+test("DayEventsContent: renders one event's details in a standardized order", () => {
   const html = renderToStaticMarkup(
-    <DayNoteContent
-      note={{ eventName: "Celebration of life", people: 50, time: "1–3pm", location: "Annex", body: "Apps only" }}
+    <DayEventsContent
+      events={[{ eventName: "Celebration of life", people: 50, time: "1–3pm", location: "Annex", body: "Apps only" }]}
     />,
   );
   const values = ["Celebration of life", "50 people", "1–3pm", "Annex", "Apps only"];
@@ -88,9 +88,27 @@ test("DayNoteContent: renders event details in a standardized order", () => {
   }
 });
 
-test("DayNoteContent: an empty day remains blank", () => {
+test("DayEventsContent: renders several events in order, empty ones dropped", () => {
   const html = renderToStaticMarkup(
-    <DayNoteContent note={{ eventName: null, people: null, time: null, location: null, body: null }} />,
+    <DayEventsContent
+      events={[
+        { eventName: "Night Market", people: null, time: "5–9pm", location: "Off site", body: null },
+        { eventName: null, people: null, time: null, location: null, body: null }, // empty → skipped
+        { eventName: "Blood Cancer Pickup", people: 400, time: "12–4pm", location: null, body: "Apps only" },
+      ]}
+    />,
   );
-  assert.equal(html, "");
+  assert.match(html, /Night Market/);
+  assert.match(html, /Blood Cancer Pickup/);
+  assert.ok(html.indexOf("Night Market") < html.indexOf("Blood Cancer Pickup"));
+});
+
+test("DayEventsContent: a day with no events remains blank", () => {
+  assert.equal(renderToStaticMarkup(<DayEventsContent events={[]} />), "");
+  assert.equal(
+    renderToStaticMarkup(
+      <DayEventsContent events={[{ eventName: null, people: null, time: null, location: null, body: null }]} />,
+    ),
+    "",
+  );
 });

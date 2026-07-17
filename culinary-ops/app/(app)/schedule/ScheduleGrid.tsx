@@ -11,7 +11,7 @@ import {
   ScheduleColgroup,
   ShiftCellContent,
   type CookLite,
-  type DayNoteLite,
+  type DayEventLite,
   type DayLite,
   type ShiftLite,
 } from "./schedule-ui";
@@ -35,7 +35,7 @@ export function ScheduleGrid({
   cooks,
   shifts,
   days,
-  dayNotes,
+  dayEvents,
   roleSuggestions,
 }: {
   venueId: string;
@@ -43,7 +43,7 @@ export function ScheduleGrid({
   cooks: CookLite[];
   shifts: ShiftLite[];
   days: DayLite[];
-  dayNotes: Array<{ iso: string; note: DayNoteLite }>;
+  dayEvents: Array<{ iso: string; events: DayEventLite[] }>;
   roleSuggestions: string[];
 }) {
   const [editing, setEditing] = useState<Editing | null>(null);
@@ -54,15 +54,15 @@ export function ScheduleGrid({
     for (const s of shifts) m.set(`${s.cookId}|${s.date}`, s);
     return m;
   }, [shifts]);
-  const noteAt = useMemo(() => new Map(dayNotes.map((n) => [n.iso, n.note])), [dayNotes]);
+  const eventsAt = useMemo(() => new Map(dayEvents.map((n) => [n.iso, n.events])), [dayEvents]);
 
   const { dayTotals, cookTotals, weekTotal } = useMemo(
     () => computeTotals(cooks, days, (cookId, iso) => shiftAt.get(`${cookId}|${iso}`)),
     [cooks, days, shiftAt],
   );
 
-  const hasAnyDayNote = dayNotes.length > 0;
-  const showNotesRow = canEdit || hasAnyDayNote;
+  const hasAnyEvent = dayEvents.some((d) => d.events.length > 0);
+  const showNotesRow = canEdit || hasAnyEvent;
 
   function openEditor(next: Editing, trigger: HTMLElement) {
     lastFocused.current = trigger;
@@ -153,7 +153,7 @@ export function ScheduleGrid({
                 </th>
                 {days.map((d) => (
                   <td key={d.iso} className={cn("p-1 align-top", d.weekend && "sched-fill-weekend")}>
-                    <DayNoteEditor venueId={venueId} dateIso={d.iso} initialNote={noteAt.get(d.iso) ?? null} canEdit={canEdit} />
+                    <DayNoteEditor venueId={venueId} dateIso={d.iso} initialEvents={eventsAt.get(d.iso) ?? []} canEdit={canEdit} />
                   </td>
                 ))}
                 <td className="sched-fill-totals" />

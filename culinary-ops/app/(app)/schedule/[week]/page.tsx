@@ -17,6 +17,7 @@ import {
   weekNumberLabel,
 } from "@/lib/schedule";
 import { ScheduleGrid, type CookLite, type DayLite, type ShiftLite } from "../ScheduleGrid";
+import type { DayEventLite } from "../schedule-ui";
 import { WeekNoteEditor } from "../WeekNoteEditor";
 import { copyPreviousWeek } from "../actions";
 
@@ -44,7 +45,7 @@ export default async function ScheduleWeekPage({ params }: { params: Promise<{ w
     );
   }
 
-  const [cooks, shiftRows, dayNoteRows, weekNote] = await Promise.all([
+  const [cooks, shiftRows, dayEventRows, weekNote] = await Promise.all([
     prisma.cook.findMany({
       where: { venueId: active.id, active: true },
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
@@ -54,8 +55,9 @@ export default async function ScheduleWeekPage({ params }: { params: Promise<{ w
       where: { date: { gte: weekStart, lt: weekEnd }, cook: { venueId: active.id } },
       select: { cookId: true, date: true, kind: true, start: true, end: true, role: true, note: true },
     }),
-    prisma.dayNote.findMany({
+    prisma.dayEvent.findMany({
       where: { venueId: active.id, date: { gte: weekStart, lt: weekEnd } },
+      orderBy: [{ date: "asc" }, { sortOrder: "asc" }],
       select: { date: true, eventName: true, people: true, time: true, location: true, body: true },
     }),
     prisma.scheduleNote.findUnique({
@@ -80,7 +82,13 @@ export default async function ScheduleWeekPage({ params }: { params: Promise<{ w
     dayNum: d.getUTCDate(),
     weekend: i >= 5,
   }));
-  const dayNotes = dayNoteRows.map(({ date, ...note }) => ({ iso: isoDate(date), note }));
+  // Group the week's events by day (already ordered by date, then sortOrder).
+  const eventsByIso = new Map<string, DayEventLite[]>();
+  for (const { date, ...event } of dayEventRows) {
+    const iso = isoDate(date);
+    (eventsByIso.get(iso) ?? eventsByIso.set(iso, []).get(iso)!).push(event);
+  }
+  const dayEvents = days.map((d) => ({ iso: d.iso, events: eventsByIso.get(d.iso) ?? [] }));
 
   const isCurrentWeek = weekIso === isoDate(thisWeekStart());
 
@@ -134,10 +142,7 @@ export default async function ScheduleWeekPage({ params }: { params: Promise<{ w
       </div>
 
       <header className="mb-4 flex flex-wrap items-end justify-between gap-x-4 gap-y-2 border-b border-[--sched-border] pb-3">
-        <div>
-          <h1 className="font-display text-3xl leading-none tracking-tight text-ink md:text-4xl">Kitchen Schedule</h1>
-          <p className="mt-1.5 font-mono text-[11px] uppercase tracking-[0.08em] text-zinc-500">{active.name}</p>
-        </div>
+        <h1 className="font-display text-3xl leading-none tracking-tight text-ink md:text-4xl">Kitchen Schedule</h1>
         <div className="text-left sm:text-right">
           <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-gold">{weekNumberLabel(weekStart)}</p>
           <p className="mt-0.5 font-display text-lg leading-none text-ink">{fmtWeekRange(weekStart)}</p>
@@ -157,7 +162,7 @@ export default async function ScheduleWeekPage({ params }: { params: Promise<{ w
             cooks={cookList}
             shifts={shifts}
             days={days}
-            dayNotes={dayNotes}
+            dayEvents={dayEvents}
             roleSuggestions={[...ROLE_SUGGESTIONS]}
           />
           {canEdit && (

@@ -202,48 +202,57 @@ export async function copyPreviousWeek(formData: FormData) {
   revalidateWeekOf(weekStart);
 }
 
-// --- Notes ----------------------------------------------------------------
+// --- Day events ------------------------------------------------------------
 
-const dayNoteSchema = z.object({
-  venueId: z.string().min(1),
-  date: z.string().regex(DAY, "Invalid date"),
-  eventName: z.string().trim().optional(),
-  people: z.coerce.number().int().nonnegative().optional(),
-  time: z.string().trim().optional(),
-  location: z.string().trim().optional(),
-  body: z.string().trim().optional(),
+const dayEventSchema = z.object({
+  eventName: z.string().trim().optional().nullable(),
+  people: z.coerce.number().int().nonnegative().optional().nullable(),
+  time: z.string().trim().optional().nullable(),
+  location: z.string().trim().optional().nullable(),
+  body: z.string().trim().optional().nullable(),
 });
 
-// Upsert a day's structured event/note; clearing every field removes it.
-export async function upsertDayNote(formData: FormData) {
+const setDayEventsSchema = z.object({
+  venueId: z.string().min(1),
+  date: z.string().regex(DAY, "Invalid date"),
+  events: z.array(dayEventSchema),
+});
+
+export type DayEventInput = z.input<typeof dayEventSchema>;
+
+function isEmptyEvent(e: z.infer<typeof dayEventSchema>): boolean {
+  return !e.eventName && (e.people === undefined || e.people === null) && !e.time && !e.location && !e.body;
+}
+
+// Replace a day's whole set of events in one shot. The editor always sends the
+// full list, so we rewrite atomically: drop the day's events, then recreate the
+// non-empty ones in order. Simpler and race-free versus per-row diffing, and it
+// naturally handles adds, edits, reorders, and removals.
+export async function setDayEvents(input: { venueId: string; date: string; events: DayEventInput[] }) {
   await requireRole("MANAGER");
-  const d = dayNoteSchema.parse({
-    venueId: formData.get("venueId"),
-    date: formData.get("date"),
-    eventName: formData.get("eventName") || undefined,
-    people: formData.get("people") || undefined,
-    time: formData.get("time") || undefined,
-    location: formData.get("location") || undefined,
-    body: formData.get("body") || undefined,
-  });
+  const d = setDayEventsSchema.parse(input);
   const date = dayToDate(d.date);
-  const isEmpty = !d.eventName && d.people === undefined && !d.time && !d.location && !d.body;
-  if (isEmpty) {
-    await prisma.dayNote.deleteMany({ where: { venueId: d.venueId, date } });
-  } else {
-    const data = {
-      eventName: d.eventName || null,
-      people: d.people ?? null,
-      time: d.time || null,
-      location: d.location || null,
-      body: d.body || null,
-    };
-    await prisma.dayNote.upsert({
-      where: { venueId_date: { venueId: d.venueId, date } },
-      create: { venueId: d.venueId, date, ...data },
-      update: data,
-    });
-  }
+
+  const kept = d.events.filter((e) => !isEmptyEvent(e));
+
+  await prisma.$transaction([
+    prisma.dayEvent.deleteMany({ where: { venueId: d.venueId, date } }),
+    ...kept.map((e, i) =>
+      prisma.dayEvent.create({
+        data: {
+          venueId: d.venueId,
+          date,
+          eventName: e.eventName?.trim() || null,
+          people: e.people ?? null,
+          time: e.time?.trim() || null,
+          location: e.location?.trim() || null,
+          body: e.body?.trim() || null,
+          sortOrder: i,
+        },
+      }),
+    ),
+  ]);
+
   revalidateWeekOf(date);
 }
 

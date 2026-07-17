@@ -86,7 +86,8 @@ model Venue {
   prepLines   PrepOrderLine[] // production destined here
   prepOrders  PrepOrder[] // orders destined here
   cooks         Cook[] // kitchen roster scheduled at this venue
-  dayNotes      DayNote[] // per-day schedule notes (events, deliveries…)
+  dayNotes      DayNote[] // DEPRECATED — superseded by dayEvents; kept for backfill/rollback
+  dayEvents     DayEvent[] // per-day schedule events (deliveries, off-sites, VIPs…)
   scheduleNotes ScheduleNote[] // per-week posted announcements
 }
 
@@ -565,8 +566,9 @@ model Shift {
   @@index([date])
 }
 
-// A note pinned to a single day of the schedule (events, deliveries, VIPs).
-// One per venue per day; upserted, deleted when cleared.
+// DEPRECATED: superseded by DayEvent (which allows several events per day).
+// Kept in place so the backfill can migrate its rows and so a bad deploy can be
+// rolled back without data loss. Safe to drop once DayEvent is confirmed live.
 model DayNote {
   id        String   @id @default(cuid())
   venueId   String
@@ -580,6 +582,26 @@ model DayNote {
   updatedAt DateTime @updatedAt
 
   @@unique([venueId, date])
+  @@index([venueId, date])
+}
+
+// One event on a single day of the schedule (a delivery, off-site, VIP party).
+// A day can hold several, ordered by sortOrder. Replaces DayNote's one-per-day
+// limit; the whole day's set is rewritten on each save (see setDayEvents).
+model DayEvent {
+  id        String   @id @default(cuid())
+  venueId   String
+  venue     Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  date      DateTime
+  eventName String?
+  people    Int?
+  time      String?
+  location  String?
+  body      String? // free-text operational detail
+  sortOrder Int      @default(0) // order within the day
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([venueId, date])
 }
 
