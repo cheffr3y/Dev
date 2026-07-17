@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
   DayHeadContent,
+  DayNoteContent,
   ScheduleColgroup,
   ShiftCellContent,
   type DayLite,
@@ -72,4 +73,24 @@ test("ScheduleColgroup: seven equal day columns between cook and hours", () => {
   assert.equal(dayCols, 7);
   assert.match(html, /--sched-col-cook/);
   assert.match(html, /--sched-col-hrs/);
+});
+
+test("DayNoteContent: renders event details in a standardized order", () => {
+  const html = renderToStaticMarkup(
+    <DayNoteContent
+      note={{ eventName: "Celebration of life", people: 50, time: "1–3pm", location: "Annex", body: "Apps only" }}
+    />,
+  );
+  const values = ["Celebration of life", "50 people", "1–3pm", "Annex", "Apps only"];
+  for (const value of values) assert.match(html, new RegExp(value));
+  for (let i = 1; i < values.length; i += 1) {
+    assert.ok(html.indexOf(values[i - 1]) < html.indexOf(values[i]));
+  }
+});
+
+test("DayNoteContent: an empty day remains blank", () => {
+  const html = renderToStaticMarkup(
+    <DayNoteContent note={{ eventName: null, people: null, time: null, location: null, body: null }} />,
+  );
+  assert.equal(html, "");
 });

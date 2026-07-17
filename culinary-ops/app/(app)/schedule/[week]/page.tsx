@@ -56,7 +56,7 @@ export default async function ScheduleWeekPage({ params }: { params: Promise<{ w
     }),
     prisma.dayNote.findMany({
       where: { venueId: active.id, date: { gte: weekStart, lt: weekEnd } },
-      select: { date: true, body: true },
+      select: { date: true, eventName: true, people: true, time: true, location: true, body: true },
     }),
     prisma.scheduleNote.findUnique({
       where: { venueId_weekStart: { venueId: active.id, weekStart } },
@@ -80,7 +80,7 @@ export default async function ScheduleWeekPage({ params }: { params: Promise<{ w
     dayNum: d.getUTCDate(),
     weekend: i >= 5,
   }));
-  const dayNotes = dayNoteRows.map((n) => ({ iso: isoDate(n.date), body: n.body }));
+  const dayNotes = dayNoteRows.map(({ date, ...note }) => ({ iso: isoDate(date), note }));
 
   const isCurrentWeek = weekIso === isoDate(thisWeekStart());
 

@@ -207,25 +207,41 @@ export async function copyPreviousWeek(formData: FormData) {
 const dayNoteSchema = z.object({
   venueId: z.string().min(1),
   date: z.string().regex(DAY, "Invalid date"),
+  eventName: z.string().trim().optional(),
+  people: z.coerce.number().int().nonnegative().optional(),
+  time: z.string().trim().optional(),
+  location: z.string().trim().optional(),
   body: z.string().trim().optional(),
 });
 
-// Upsert a day's note; an empty body clears it.
+// Upsert a day's structured event/note; clearing every field removes it.
 export async function upsertDayNote(formData: FormData) {
   await requireRole("MANAGER");
   const d = dayNoteSchema.parse({
     venueId: formData.get("venueId"),
     date: formData.get("date"),
+    eventName: formData.get("eventName") || undefined,
+    people: formData.get("people") || undefined,
+    time: formData.get("time") || undefined,
+    location: formData.get("location") || undefined,
     body: formData.get("body") || undefined,
   });
   const date = dayToDate(d.date);
-  if (!d.body) {
+  const isEmpty = !d.eventName && d.people === undefined && !d.time && !d.location && !d.body;
+  if (isEmpty) {
     await prisma.dayNote.deleteMany({ where: { venueId: d.venueId, date } });
   } else {
+    const data = {
+      eventName: d.eventName || null,
+      people: d.people ?? null,
+      time: d.time || null,
+      location: d.location || null,
+      body: d.body || null,
+    };
     await prisma.dayNote.upsert({
       where: { venueId_date: { venueId: d.venueId, date } },
-      create: { venueId: d.venueId, date, body: d.body },
-      update: { body: d.body },
+      create: { venueId: d.venueId, date, ...data },
+      update: data,
     });
   }
   revalidateWeekOf(date);

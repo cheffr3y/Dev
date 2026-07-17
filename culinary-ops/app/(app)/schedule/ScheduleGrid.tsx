@@ -11,6 +11,7 @@ import {
   ScheduleColgroup,
   ShiftCellContent,
   type CookLite,
+  type DayNoteLite,
   type DayLite,
   type ShiftLite,
 } from "./schedule-ui";
@@ -42,7 +43,7 @@ export function ScheduleGrid({
   cooks: CookLite[];
   shifts: ShiftLite[];
   days: DayLite[];
-  dayNotes: Array<{ iso: string; body: string }>;
+  dayNotes: Array<{ iso: string; note: DayNoteLite }>;
   roleSuggestions: string[];
 }) {
   const [editing, setEditing] = useState<Editing | null>(null);
@@ -53,14 +54,14 @@ export function ScheduleGrid({
     for (const s of shifts) m.set(`${s.cookId}|${s.date}`, s);
     return m;
   }, [shifts]);
-  const noteAt = useMemo(() => new Map(dayNotes.map((n) => [n.iso, n.body])), [dayNotes]);
+  const noteAt = useMemo(() => new Map(dayNotes.map((n) => [n.iso, n.note])), [dayNotes]);
 
   const { dayTotals, cookTotals, weekTotal } = useMemo(
     () => computeTotals(cooks, days, (cookId, iso) => shiftAt.get(`${cookId}|${iso}`)),
     [cooks, days, shiftAt],
   );
 
-  const hasAnyDayNote = dayNotes.some((n) => n.body.trim());
+  const hasAnyDayNote = dayNotes.length > 0;
   const showNotesRow = canEdit || hasAnyDayNote;
 
   function openEditor(next: Editing, trigger: HTMLElement) {
@@ -152,7 +153,7 @@ export function ScheduleGrid({
                 </th>
                 {days.map((d) => (
                   <td key={d.iso} className={cn("p-1 align-top", d.weekend && "sched-fill-weekend")}>
-                    <DayNoteEditor venueId={venueId} dateIso={d.iso} initialBody={noteAt.get(d.iso) ?? ""} canEdit={canEdit} />
+                    <DayNoteEditor venueId={venueId} dateIso={d.iso} initialNote={noteAt.get(d.iso) ?? null} canEdit={canEdit} />
                   </td>
                 ))}
                 <td className="sched-fill-totals" />

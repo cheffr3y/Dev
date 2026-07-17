@@ -26,6 +26,41 @@ export type DayLite = {
   dayNum: number; // 20
   weekend: boolean;
 };
+export type DayNoteLite = {
+  eventName: string | null;
+  people: number | null;
+  time: string | null;
+  location: string | null;
+  body: string | null;
+};
+
+export function hasDayNote(note: DayNoteLite | null | undefined): boolean {
+  return Boolean(note && (note.eventName || note.people !== null || note.time || note.location || note.body));
+}
+
+// A fixed information order keeps event notes scannable even in narrow day
+// columns: name, headcount, time, location, then any operational detail.
+export function DayNoteContent({ note }: { note: DayNoteLite | null | undefined }) {
+  if (!hasDayNote(note) || !note) return null;
+
+  return (
+    <div className="space-y-1 text-left">
+      {note.eventName && <p className="font-semibold leading-tight text-ink">{note.eventName}</p>}
+      <dl className="space-y-0.5 text-[10px] leading-tight text-zinc-600">
+        {note.people !== null && (
+          <div><dt className="sr-only">People</dt><dd>{note.people.toLocaleString()} people</dd></div>
+        )}
+        {note.time && (
+          <div><dt className="sr-only">Time</dt><dd>{note.time}</dd></div>
+        )}
+        {note.location && (
+          <div><dt className="sr-only">Location</dt><dd>{note.location}</dd></div>
+        )}
+      </dl>
+      {note.body && <p className="whitespace-pre-wrap border-t border-[--sched-border] pt-1 text-[10px] leading-snug text-zinc-500">{note.body}</p>}
+    </div>
+  );
+}
 
 // ── Fixed column proportions ───────────────────────────────────────────────
 // A single <colgroup> drives cook / day / hours widths for every view, so the

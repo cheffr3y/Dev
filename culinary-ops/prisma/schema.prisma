@@ -572,7 +572,11 @@ model DayNote {
   venueId   String
   venue     Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
   date      DateTime
-  body      String
+  eventName String?
+  people    Int?
+  time      String?
+  location  String?
+  body      String?
   updatedAt DateTime @updatedAt
 
   @@unique([venueId, date])
