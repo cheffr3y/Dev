@@ -1,5 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { CUSTOM_QUESTIONS } from "./trivia-custom";
+import { FALLBACK_QUESTIONS } from "./trivia-fallback";
 import {
   ANSWER_GRACE_MS,
   CODE_ALPHABET,
@@ -230,3 +232,38 @@ test("buildStateView: LOBBY shows no question at all", () => {
   assert.equal(v.you?.hasAnswered, true);
   assert.equal(v.serverNow, "2026-07-20T12:00:05.000Z");
 });
+
+// ── hand-edited question files ──────────────────────────────────────────────
+// trivia-custom.ts is meant to be edited by hand; these checks catch the easy
+// mistakes (empty fields, too many answers, the correct answer duplicated
+// among the wrong ones) before they reach a live game.
+for (const [name, pool] of [
+  ["CUSTOM_QUESTIONS", CUSTOM_QUESTIONS],
+  ["FALLBACK_QUESTIONS", FALLBACK_QUESTIONS],
+] as const) {
+  test(`${name}: every entry is a well-formed question`, () => {
+    assert.ok(pool.length > 0, "pool must not be empty");
+    for (const q of pool) {
+      const label = `"${q.question.slice(0, 50)}"`;
+      assert.ok(q.question.trim().length > 0, "question text missing");
+      assert.ok(q.correct_answer.trim().length > 0, `${label}: correct_answer missing`);
+      assert.ok(
+        q.incorrect_answers.length >= 1 && q.incorrect_answers.length <= 3,
+        `${label}: needs 1–3 incorrect_answers`,
+      );
+      assert.ok(
+        q.incorrect_answers.every((a) => a.trim().length > 0),
+        `${label}: blank incorrect answer`,
+      );
+      assert.ok(
+        !q.incorrect_answers.includes(q.correct_answer),
+        `${label}: correct answer repeated in incorrect_answers`,
+      );
+      assert.equal(
+        new Set([q.correct_answer, ...q.incorrect_answers]).size,
+        q.incorrect_answers.length + 1,
+        `${label}: duplicate answers`,
+      );
+    }
+  });
+}

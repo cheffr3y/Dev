@@ -13,21 +13,41 @@ import {
   questionClock,
   shuffleAnswers,
 } from "@/lib/trivia-engine";
+import { CUSTOM_QUESTIONS } from "@/lib/trivia-custom";
 import { FALLBACK_QUESTIONS, type RawQuestion } from "@/lib/trivia-fallback";
 
-// Curated OpenTDB categories (ids are stable; https://opentdb.com/api_category.php).
+// The category the players write themselves in lib/trivia-custom.ts. Not an
+// OpenTDB id — getQuestions branches on it and never calls the API.
+export const CUSTOM_CATEGORY_ID = -1;
+
+// The full OpenTDB category list (ids are stable; https://opentdb.com/api_category.php).
 // A static list avoids a third-party call on every page load.
 export const TRIVIA_CATEGORIES = [
+  { id: CUSTOM_CATEGORY_ID, name: "House Questions" },
   { id: 9, name: "General Knowledge" },
+  { id: 10, name: "Books" },
   { id: 11, name: "Film" },
   { id: 12, name: "Music" },
+  { id: 13, name: "Musicals & Theatres" },
   { id: 14, name: "Television" },
   { id: 15, name: "Video Games" },
+  { id: 16, name: "Board Games" },
   { id: 17, name: "Science & Nature" },
+  { id: 18, name: "Computers" },
+  { id: 19, name: "Mathematics" },
+  { id: 20, name: "Mythology" },
   { id: 21, name: "Sports" },
   { id: 22, name: "Geography" },
   { id: 23, name: "History" },
+  { id: 24, name: "Politics" },
+  { id: 25, name: "Art" },
+  { id: 26, name: "Celebrities" },
   { id: 27, name: "Animals" },
+  { id: 28, name: "Vehicles" },
+  { id: 29, name: "Comics" },
+  { id: 30, name: "Science: Gadgets" },
+  { id: 31, name: "Anime & Manga" },
+  { id: 32, name: "Cartoons & Animations" },
 ] as const;
 
 export const TRIVIA_DIFFICULTIES = ["easy", "medium", "hard"] as const;
@@ -83,7 +103,20 @@ async function fetchOpenTdb(params: {
   }
 }
 
-// Fetch questions for a new game. Tries the requested category/difficulty,
+// Shuffle a local question pool and take up to `amount`, so back-to-back
+// games from the same pool still differ. A pool smaller than `amount` just
+// yields a shorter game (createGame stores the actual count).
+function samplePool(pool: readonly RawQuestion[], amount: number): RawQuestion[] {
+  const copy = [...pool];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy.slice(0, amount);
+}
+
+// Fetch questions for a new game. "House Questions" comes from the local
+// custom file. Otherwise tries OpenTDB with the requested category/difficulty,
 // then relaxes the category (OpenTDB code 1 = not enough questions there),
 // and finally falls back to the built-in set so creation never fails.
 export async function getQuestions(params: {
@@ -91,6 +124,10 @@ export async function getQuestions(params: {
   categoryId?: number | null;
   difficulty?: string | null;
 }): Promise<{ questions: RawQuestion[]; usedFallback: boolean }> {
+  if (params.categoryId === CUSTOM_CATEGORY_ID) {
+    return { questions: samplePool(CUSTOM_QUESTIONS, params.amount), usedFallback: false };
+  }
+
   const primary = await fetchOpenTdb(params);
   if (primary) return { questions: primary, usedFallback: false };
 
@@ -99,13 +136,7 @@ export async function getQuestions(params: {
     if (relaxed) return { questions: relaxed, usedFallback: false };
   }
 
-  // Shuffle the fallback set so back-to-back outage games still differ.
-  const pool = [...FALLBACK_QUESTIONS];
-  for (let i = pool.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [pool[i], pool[j]] = [pool[j], pool[i]];
-  }
-  return { questions: pool.slice(0, params.amount), usedFallback: true };
+  return { questions: samplePool(FALLBACK_QUESTIONS, params.amount), usedFallback: true };
 }
 
 // ── Game creation ───────────────────────────────────────────────────────────
