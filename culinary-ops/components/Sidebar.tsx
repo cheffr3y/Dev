@@ -18,7 +18,8 @@ type IconKey =
   | "catalog"
   | "vendors"
   | "venues"
-  | "users";
+  | "users"
+  | "trivia";
 
 type NavItem = { href: string; label: string; icon: IconKey };
 
@@ -43,6 +44,10 @@ const SECTIONS: Array<{ heading: string; items: NavItem[] }> = [
       { href: "/items", label: "Catalog", icon: "catalog" },
       { href: "/vendors", label: "Vendors", icon: "vendors" },
     ],
+  },
+  {
+    heading: "Break Room",
+    items: [{ href: "/trivia", label: "Trivia", icon: "trivia" }],
   },
 ];
 
@@ -141,6 +146,13 @@ function Icon({ name }: { name: IconKey }) {
       <>
         <circle cx="12" cy="8" r="3.5" />
         <path d="M5 20a7 7 0 0 1 14 0" />
+      </>
+    ),
+    trivia: (
+      <>
+        <path d="M9 9a3 3 0 1 1 4 2.8c-.9.3-1 1-1 1.7" />
+        <circle cx="12" cy="12" r="9.5" />
+        <path d="M12 17h.01" />
       </>
     ),
   };

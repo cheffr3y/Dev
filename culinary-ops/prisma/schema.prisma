@@ -66,6 +66,8 @@ model User {
   prepOrders       PrepOrder[]
   prepLinesMade    PrepOrderLine[] @relation("PrepMadeBy")
   prepLinesEntered PrepOrderLine[] @relation("PrepEnteredBy")
+
+  triviaGames TriviaGame[]
 }
 
 model Venue {
@@ -77,14 +79,14 @@ model Venue {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users       User[]
-  inventory   InventoryItem[]
-  orderGuides OrderGuide[]
-  events      Event[]
-  banquets    Banquet[]
-  festivals   Festival[] // festivals hinting at this venue's inventory
-  prepLines   PrepOrderLine[] // production destined here
-  prepOrders  PrepOrder[] // orders destined here
+  users         User[]
+  inventory     InventoryItem[]
+  orderGuides   OrderGuide[]
+  events        Event[]
+  banquets      Banquet[]
+  festivals     Festival[] // festivals hinting at this venue's inventory
+  prepLines     PrepOrderLine[] // production destined here
+  prepOrders    PrepOrder[] // orders destined here
   cooks         Cook[] // kitchen roster scheduled at this venue
   dayNotes      DayNote[] // DEPRECATED — superseded by dayEvents; kept for backfill/rollback
   dayEvents     DayEvent[] // per-day schedule events (deliveries, off-sites, VIPs…)
@@ -107,26 +109,26 @@ model Vendor {
 
 // Master catalog item / ingredient / purchasable product.
 model Item {
-  id          String   @id @default(cuid())
-  name        String
-  category    String   @default("Other")
-  unit        String   @default("each") // purchase & count unit, e.g. "lb", "case", "each"
-  packSize    String? // descriptive display fallback, e.g. "6 x #10 can"
+  id             String    @id @default(cuid())
+  name           String
+  category       String    @default("Other")
+  unit           String    @default("each") // purchase & count unit, e.g. "lb", "case", "each"
+  packSize       String? // descriptive display fallback, e.g. "6 x #10 can"
   // Structured purchasing data for pack-rounded ordering (Festivals order guide
   // and future auto-ordering). Additive & optional so existing rows migrate
   // cleanly; packSize stays as the human-readable fallback.
-  packQty     Float? // qty per purchasable pack, e.g. 40
-  packUnit    String? // unit of packQty, e.g. "lb" — defaults to `unit` when null
-  yieldFactor Float    @default(1) // finished/raw ratio (e.g. 0.5 smoked brisket); raw need = need / yieldFactor
-  unitCost    Float    @default(0) // cost per `unit`; 0 = no price on file
+  packQty        Float? // qty per purchasable pack, e.g. 40
+  packUnit       String? // unit of packQty, e.g. "lb" — defaults to `unit` when null
+  yieldFactor    Float     @default(1) // finished/raw ratio (e.g. 0.5 smoked brisket); raw need = need / yieldFactor
+  unitCost       Float     @default(0) // cost per `unit`; 0 = no price on file
   // Stamped only when unitCost actually changes (not on every edit), so the
   // catalog can show price freshness and flag stale costs for re-quoting.
   priceUpdatedAt DateTime? // null = never priced
-  sku         String?
-  vendorId    String?
-  vendor      Vendor?  @relation(fields: [vendorId], references: [id], onDelete: SetNull)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  sku            String?
+  vendorId       String?
+  vendor         Vendor?   @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   recipeItems     RecipeItem[]
   inventoryItems  InventoryItem[]
@@ -616,4 +618,91 @@ model ScheduleNote {
   updatedAt DateTime @updatedAt
 
   @@unique([venueId, weekStart])
+}
+
+// ---------------------------------------------------------------------------
+// Trivia — live two-player head-to-head game. The host is a logged-in User;
+// the guest joins by room code with no account and is identified only by a
+// per-player secret token. Timing is server-authoritative: all deadlines are
+// stored timestamps, clients merely render countdowns and poll for state.
+// ---------------------------------------------------------------------------
+
+enum TriviaGameStatus {
+  LOBBY // created, waiting for the second player / host start
+  IN_QUESTION // a question is live; countdown running
+  REVEAL // answer + round scores shown between questions
+  FINISHED
+  ABANDONED // ended early by host, or swept after going stale
+}
+
+model TriviaGame {
+  id                String           @id @default(cuid())
+  code              String           @unique // short join code, e.g. "K7QF" (no 0/O/1/I)
+  hostUserId        String?
+  hostUser          User?            @relation(fields: [hostUserId], references: [id], onDelete: SetNull)
+  status            TriviaGameStatus @default(LOBBY)
+  categoryId        Int? // OpenTDB category id; null = any category
+  categoryName      String?
+  difficulty        String? // "easy" | "medium" | "hard" | null = any
+  questionCount     Int              @default(10)
+  questionSecs      Int              @default(20)
+  currentIndex      Int              @default(0)
+  // Server-authoritative clocks — clients never decide when time is up.
+  questionStartedAt DateTime?
+  questionDeadline  DateTime?
+  revealDeadline    DateTime?
+  rematchCode       String? // set when a rematch game exists; both clients follow it
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  questions TriviaQuestion[]
+  players   TriviaPlayer[]
+
+  @@index([status, updatedAt]) // stale-game sweep
+}
+
+model TriviaQuestion {
+  id           String     @id @default(cuid())
+  gameId       String
+  game         TriviaGame @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  index        Int
+  category     String
+  difficulty   String
+  prompt       String
+  answers      String[] // pre-shuffled at creation
+  correctIndex Int // never serialized to clients until REVEAL
+
+  playerAnswers TriviaAnswer[]
+
+  @@unique([gameId, index])
+}
+
+model TriviaPlayer {
+  id         String     @id @default(cuid())
+  gameId     String
+  game       TriviaGame @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  name       String
+  isHost     Boolean    @default(false)
+  token      String     @unique // random secret; proves identity across polls
+  score      Int        @default(0)
+  lastSeenAt DateTime   @default(now())
+
+  answers TriviaAnswer[]
+
+  @@index([gameId])
+}
+
+model TriviaAnswer {
+  id          String         @id @default(cuid())
+  playerId    String
+  player      TriviaPlayer   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  questionId  String
+  question    TriviaQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  answerIndex Int
+  isCorrect   Boolean
+  elapsedMs   Int // server-measured: answeredAt - questionStartedAt
+  points      Int
+  createdAt   DateTime       @default(now())
+
+  @@unique([playerId, questionId]) // no double answers
 }

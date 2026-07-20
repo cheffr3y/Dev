@@ -8,7 +8,14 @@ export const authConfig = {
   callbacks: {
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
-      const isLoginPage = nextUrl.pathname.startsWith("/login");
+      const { pathname } = nextUrl;
+      // Public trivia surface: the guest plays by room code with no account.
+      // These handlers only ever touch Trivia* data, scoped by code + player
+      // token — everything else in the app still requires a session.
+      if (pathname.startsWith("/play") || pathname.startsWith("/api/trivia")) {
+        return true;
+      }
+      const isLoginPage = pathname.startsWith("/login");
       if (isLoginPage) {
         if (isLoggedIn) return Response.redirect(new URL("/", nextUrl));
         return true;
