@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
 
@@ -18,6 +18,14 @@ const sans = Inter({
 export const metadata: Metadata = {
   title: "Mise — Culinary Operations",
   description: "Recipes, inventory, order guides, and event planning across every venue.",
+};
+
+// viewport-fit=cover lets the mobile nav drawer pad itself with
+// env(safe-area-inset-*) on notched phones.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

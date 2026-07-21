@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser, hasRole } from "@/lib/session";
 import { getVenues } from "@/lib/venue";
 import { Badge, Button, Card, EmptyState, Field, Input, PageHeader, Select, Textarea } from "@/components/ui";
+import { EventsTabs } from "@/components/EventsTabs";
 import { createFestival } from "./actions";
 import { STATUS_COLOR } from "@/lib/event-status";
 
@@ -26,6 +27,7 @@ export default async function FestivalsPage() {
   return (
     <div>
       <PageHeader title="Festivals" subtitle="Forecast, scale, and order for tented festival menus." />
+      <EventsTabs current="festivals" />
 
       {canEdit && (
         <details className="mb-5">

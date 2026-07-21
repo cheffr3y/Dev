@@ -1,85 +1,152 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "./Sidebar";
+import { Brand } from "./Brand";
+import { cn } from "./ui";
+
+const noopSubscribe = () => () => {};
 
 // Mobile nav: a hamburger that slides the charcoal sidebar in from the left.
 // The desktop sidebar stays hidden on small screens, so this is the only way
-// to reach the nav there.
+// to reach the nav there. The drawer stays mounted so it can animate both
+// open and close; `inert` keeps it out of the tab order while hidden. It is
+// portaled to <body> because the header's backdrop-blur makes the header the
+// containing block for fixed descendants, which would clip the overlay.
 export function MobileNav({ role }: { role: string }) {
   const [open, setOpen] = useState(false);
+  const mounted = useSyncExternalStore(
+    noopSubscribe,
+    () => true,
+    () => false,
+  );
   const pathname = usePathname();
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
-  // Close on navigation so tapping a link dismisses the drawer.
-  useEffect(() => {
+  // Close on navigation so tapping a link dismisses the drawer (state
+  // adjusted during render, per the React "derive state from props" pattern).
+  const [prevPathname, setPrevPathname] = useState(pathname);
+  if (prevPathname !== pathname) {
+    setPrevPathname(pathname);
     setOpen(false);
-  }, [pathname]);
+  }
 
-  // Lock body scroll + allow Escape to close while open.
+  // While open: lock body scroll, close on Escape, keep Tab inside the panel.
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") {
+        setOpen(false);
+        return;
+      }
+      if (e.key !== "Tab" || !panelRef.current) return;
+      const focusables =
+        panelRef.current.querySelectorAll<HTMLElement>("a[href], button");
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const current = document.activeElement;
+      if (e.shiftKey && (current === first || current === panelRef.current)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && current === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     window.addEventListener("keydown", onKey);
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    const trigger = triggerRef.current;
+    panelRef.current?.focus();
     return () => {
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = prevOverflow;
+      trigger?.focus();
     };
   }, [open]);
 
   return (
     <>
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Open navigation"
-        className="-ml-1 rounded-md p-2 text-zinc-600 hover:bg-stone hover:text-ink md:hidden"
+        className="-ml-1 inline-flex h-11 w-11 items-center justify-center rounded-md text-zinc-600 hover:bg-stone hover:text-ink md:hidden"
       >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="h-5 w-5">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          className="h-5 w-5"
+        >
           <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
         </svg>
       </button>
 
-      {open && (
-        <div className="fixed inset-0 z-50 md:hidden">
-          <button
-            type="button"
-            aria-label="Close navigation"
-            onClick={() => setOpen(false)}
-            className="absolute inset-0 bg-charcoal/40 backdrop-blur-sm"
-          />
-          <div className="relative flex h-full w-64 max-w-[80vw] flex-col bg-charcoal px-3 py-5 shadow-2xl">
-            <div className="mb-9 flex items-center justify-between px-2">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-md bg-stone font-display text-lg text-charcoal">
-                  M
-                </div>
-                <div>
-                  <p className="font-display text-base leading-none text-white">Mise</p>
-                  <p className="mt-1 text-[10px] uppercase tracking-[0.18em] text-white/40">Culinary Ops</p>
-                </div>
+      {mounted &&
+        createPortal(
+          <div
+            className={cn(
+              "fixed inset-0 z-50 transition-[visibility] duration-200 motion-reduce:transition-none md:hidden",
+              open ? "visible" : "invisible delay-200 motion-reduce:delay-0",
+            )}
+            aria-hidden={!open}
+            inert={!open}
+          >
+            <button
+              type="button"
+              aria-label="Close navigation"
+              onClick={() => setOpen(false)}
+              tabIndex={-1}
+              className={cn(
+                "absolute inset-0 bg-charcoal/40 backdrop-blur-sm transition-opacity duration-200 motion-reduce:transition-none",
+                open ? "opacity-100" : "opacity-0",
+              )}
+            />
+            <div
+              ref={panelRef}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Navigation"
+              tabIndex={-1}
+              className={cn(
+                "relative flex h-full w-64 max-w-[80vw] flex-col bg-charcoal shadow-2xl outline-none transition-transform duration-200 ease-out motion-reduce:transition-none",
+                "pt-[calc(1.25rem+env(safe-area-inset-top))] pb-[calc(1.25rem+env(safe-area-inset-bottom))] pl-[calc(0.75rem+env(safe-area-inset-left))] pr-3",
+                open ? "translate-x-0" : "-translate-x-full",
+              )}
+            >
+              <div className="mb-9 flex items-center justify-between px-2">
+                <Brand />
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  aria-label="Close navigation"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-md text-white/50 hover:bg-white/10 hover:text-white"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    className="h-5 w-5"
+                  >
+                    <path d="M6 6l12 12M18 6 6 18" strokeLinecap="round" />
+                  </svg>
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                aria-label="Close navigation"
-                className="rounded-md p-1.5 text-white/50 hover:bg-white/10 hover:text-white"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-5 w-5">
-                  <path d="M6 6l12 12M18 6 6 18" strokeLinecap="round" />
-                </svg>
-              </button>
+              <div className="flex-1 overflow-y-auto">
+                <Sidebar role={role} />
+              </div>
             </div>
-            <div className="flex-1 overflow-y-auto">
-              <Sidebar role={role} />
-            </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </>
   );
 }
