@@ -2,7 +2,8 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireUser, hasRole } from "@/lib/session";
 import { getVenues, getActiveVenue } from "@/lib/venue";
-import { Badge, Button, Card, EmptyState, Field, Input, PageHeader, Select } from "@/components/ui";
+import { isoDate, startOfUtcWeek, addDays, fmtWeekRange } from "@/lib/banquet-week";
+import { Badge, Button, Card, EmptyState, Field, Input, LinkButton, PageHeader, Select } from "@/components/ui";
 import { EventsTabs } from "@/components/EventsTabs";
 import { createBanquet } from "./actions";
 import { STATUS_COLOR } from "@/lib/event-status";
@@ -23,10 +24,46 @@ export default async function BanquetsPage() {
   const upcoming = banquets.filter((b) => b.date >= now);
   const past = banquets.filter((b) => b.date < now);
 
+  // The week the kitchen is currently in — the once-a-week print spot. Falls
+  // forward to the next week that has events so the buttons always point at
+  // something printable.
+  const thisWeekStart = startOfUtcWeek(now);
+  const printWeekStart =
+    banquets.some((b) => b.date >= thisWeekStart && b.date < addDays(thisWeekStart, 7))
+      ? thisWeekStart
+      : upcoming.length > 0
+        ? startOfUtcWeek(upcoming[0].date)
+        : null;
+  const printWeekCount = printWeekStart
+    ? banquets.filter((b) => b.date >= printWeekStart && b.date < addDays(printWeekStart, 7)).length
+    : 0;
+
   return (
     <div>
       <PageHeader title="Banquets" subtitle="Transcribe BEOs and scale every dish to the ordered count." />
       <EventsTabs current="banquets" />
+
+      {printWeekStart && (
+        <Card className="mb-5 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="font-medium text-zinc-900">
+                {printWeekStart.getTime() === thisWeekStart.getTime() ? "This week's prints" : "Next event week's prints"}
+              </h2>
+              <p className="text-sm text-zinc-500">
+                {fmtWeekRange(printWeekStart)} · {printWeekCount} event{printWeekCount === 1 ? "" : "s"}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <LinkButton href={`/banquets/week/${isoDate(printWeekStart)}/shopping-list`}>Shopping list</LinkButton>
+              <LinkButton href={`/banquets/week/${isoDate(printWeekStart)}/packet`}>Cook packet</LinkButton>
+              <Link href={`/banquets/week/${isoDate(printWeekStart)}`} className="text-sm text-blue-600 hover:underline">
+                Full week prep
+              </Link>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {canEdit && (
         <details className="mb-5">
@@ -77,18 +114,6 @@ export default async function BanquetsPage() {
 }
 
 type BanquetListItem = Parameters<typeof BanquetCard>[0]["banquet"];
-
-function isoDate(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
-
-function startOfUtcWeek(d: Date): Date {
-  const start = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-  const day = start.getUTCDay();
-  const daysSinceMonday = day === 0 ? 6 : day - 1;
-  start.setUTCDate(start.getUTCDate() - daysSinceMonday);
-  return start;
-}
 
 function fmtWeekStart(d: Date): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });

@@ -5,11 +5,10 @@ import { requireUser } from "@/lib/session";
 import { money, num } from "@/lib/costing";
 import { unitLabel } from "@/lib/units";
 import { buildDayPlan, banquetRecipeSelect, type BanquetParty } from "@/lib/banquet";
+import { dateFromParam, startOfUtcWeek, addDays, isoDate, fmtShortDate, fmtWeekRange } from "@/lib/banquet-week";
 import type { ShoppingList } from "@/lib/shopping";
 import { Badge, Card, CardHeader, LinkButton, PageHeader, StatCard } from "@/components/ui";
 import { PrintButton } from "@/components/PrintButton";
-
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 type BanquetForWeek = {
   id: string;
@@ -35,29 +34,6 @@ type DaySheet = {
   plan: DayPlan;
 };
 
-function isoDate(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
-
-function addDays(d: Date, days: number): Date {
-  return new Date(d.getTime() + days * DAY_MS);
-}
-
-function dateFromParam(raw: string): Date | null {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
-  const d = new Date(`${raw}T00:00:00.000Z`);
-  if (Number.isNaN(d.getTime())) return null;
-  return isoDate(d) === raw ? d : null;
-}
-
-function startOfUtcWeek(d: Date): Date {
-  const start = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-  const day = start.getUTCDay();
-  const daysSinceMonday = day === 0 ? 6 : day - 1;
-  start.setUTCDate(start.getUTCDate() - daysSinceMonday);
-  return start;
-}
-
 function fmtLongDate(d: Date): string {
   return d.toLocaleDateString("en-US", {
     weekday: "long",
@@ -66,14 +42,6 @@ function fmtLongDate(d: Date): string {
     year: "numeric",
     timeZone: "UTC",
   });
-}
-
-function fmtShortDate(d: Date): string {
-  return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
-}
-
-function fmtWeekRange(start: Date): string {
-  return `${fmtShortDate(start)} - ${fmtShortDate(addDays(start, 6))}, ${start.getUTCFullYear()}`;
 }
 
 function partiesFromBanquets(banquets: BanquetForWeek[]): BanquetParty[] {
@@ -157,6 +125,12 @@ export default async function BanquetWeekPage({ params }: { params: Promise<{ da
           <Link href={`/banquets/week/${isoDate(addDays(start, 7))}`} className="text-sm text-blue-600 hover:underline">
             Next week
           </Link>
+          <LinkButton href={`/banquets/week/${isoDate(start)}/shopping-list`} variant="secondary">
+            Shopping list
+          </LinkButton>
+          <LinkButton href={`/banquets/week/${isoDate(start)}/packet`} variant="secondary">
+            Cook packet
+          </LinkButton>
           <PrintButton label="Print week prep" />
         </div>
       </div>
