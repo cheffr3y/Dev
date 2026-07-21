@@ -10,8 +10,6 @@ type IconKey =
   | "schedule"
   | "recipes"
   | "events"
-  | "banquets"
-  | "festivals"
   | "prep"
   | "inventory"
   | "orders"
@@ -21,7 +19,9 @@ type IconKey =
   | "users"
   | "trivia";
 
-type NavItem = { href: string; label: string; icon: IconKey };
+// `match` lists extra path prefixes that keep the item highlighted — the
+// merged Events entry stays lit while browsing banquets or festivals.
+type NavItem = { href: string; label: string; icon: IconKey; match?: string[] };
 
 const SECTIONS: Array<{ heading: string; items: NavItem[] }> = [
   {
@@ -30,9 +30,12 @@ const SECTIONS: Array<{ heading: string; items: NavItem[] }> = [
       { href: "/", label: "Dashboard", icon: "dashboard" },
       { href: "/schedule", label: "Schedule", icon: "schedule" },
       { href: "/recipes", label: "Recipes & Builds", icon: "recipes" },
-      { href: "/banquets", label: "Banquets", icon: "banquets" },
-      { href: "/events", label: "Events", icon: "events" },
-      { href: "/festivals", label: "Festivals", icon: "festivals" },
+      {
+        href: "/events",
+        label: "Events",
+        icon: "events",
+        match: ["/events", "/banquets", "/festivals"],
+      },
       { href: "/prep-orders", label: "Prep Orders", icon: "prep" },
     ],
   },
@@ -86,19 +89,6 @@ function Icon({ name }: { name: IconKey }) {
       <>
         <rect x="3" y="5" width="18" height="16" rx="2" />
         <path d="M3 9h18M8 3v4M16 3v4" />
-      </>
-    ),
-    banquets: (
-      <>
-        <path d="M3 18h18" />
-        <path d="M5 18a7 7 0 0 1 14 0" />
-        <path d="M12 7V4M10.5 4h3" />
-      </>
-    ),
-    festivals: (
-      <>
-        <path d="M12 3 3 17h18L12 3Z" />
-        <path d="M12 3v14M3 17l3 4M21 17l-3 4" />
       </>
     ),
     prep: (
@@ -181,8 +171,9 @@ export function Sidebar({ role }: { role: string }) {
     sections.push({ heading: ADMIN_SECTION.heading, items });
   }
 
-  const isActive = (href: string) =>
-    href === "/" ? pathname === "/" : pathname.startsWith(href);
+  const matchesPath = (p: string) => pathname === p || pathname.startsWith(p + "/");
+  const isActive = (item: NavItem) =>
+    item.href === "/" ? pathname === "/" : (item.match ?? [item.href]).some(matchesPath);
 
   return (
     <nav className="flex flex-col gap-7">
@@ -193,13 +184,13 @@ export function Sidebar({ role }: { role: string }) {
           </p>
           <ul className="space-y-0.5">
             {section.items.map((item) => {
-              const active = isActive(item.href);
+              const active = isActive(item);
               return (
                 <li key={item.href}>
                   <Link
                     href={item.href}
                     className={cn(
-                      "group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                      "group relative flex items-center gap-3 rounded-md px-3 py-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold/60 md:py-2",
                       active
                         ? "bg-white/10 font-medium text-white"
                         : "text-white/55 hover:bg-white/5 hover:text-white/90",
@@ -208,7 +199,12 @@ export function Sidebar({ role }: { role: string }) {
                     {active && (
                       <span className="absolute left-0 top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-full bg-gold" />
                     )}
-                    <span className={active ? "text-gold-soft" : "text-white/45 group-hover:text-white/70"}>
+                    <span
+                      className={cn(
+                        "transition-colors",
+                        active ? "text-gold-soft" : "text-white/45 group-hover:text-white/70",
+                      )}
+                    >
                       <Icon name={item.icon} />
                     </span>
                     {item.label}

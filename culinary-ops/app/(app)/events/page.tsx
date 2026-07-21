@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser, hasRole } from "@/lib/session";
 import { getVenues, getActiveVenue } from "@/lib/venue";
 import { Badge, Button, Card, EmptyState, Field, Input, PageHeader, Select, Textarea } from "@/components/ui";
+import { EventsTabs } from "@/components/EventsTabs";
 import { createEvent } from "./actions";
 import { STATUS_COLOR, EVENT_STATUSES as STATUSES, statusLabel } from "@/lib/event-status";
 
@@ -25,6 +26,7 @@ export default async function EventsPage() {
   return (
     <div>
       <PageHeader title="Events" subtitle="Plan menus, headcounts, and prep across venues." />
+      <EventsTabs current="events" />
 
       {canEdit && (
         <details className="mb-5">

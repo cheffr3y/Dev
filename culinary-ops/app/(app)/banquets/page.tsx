@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser, hasRole } from "@/lib/session";
 import { getVenues, getActiveVenue } from "@/lib/venue";
 import { Badge, Button, Card, EmptyState, Field, Input, PageHeader, Select } from "@/components/ui";
+import { EventsTabs } from "@/components/EventsTabs";
 import { createBanquet } from "./actions";
 import { STATUS_COLOR } from "@/lib/event-status";
 
@@ -25,6 +26,7 @@ export default async function BanquetsPage() {
   return (
     <div>
       <PageHeader title="Banquets" subtitle="Transcribe BEOs and scale every dish to the ordered count." />
+      <EventsTabs current="banquets" />
 
       {canEdit && (
         <details className="mb-5">
