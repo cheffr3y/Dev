@@ -104,162 +104,166 @@ export default async function FestivalMenuPage({ params }: { params: Promise<{ i
             { prep: 0, revenue: 0 },
           );
           return (
-            <Card key={tent.id} className="overflow-x-auto">
+            <Card key={tent.id}>
               <CardHeader>{tent.name}</CardHeader>
-              <table className="w-full text-sm">
-                <thead className="bg-zinc-50 text-left font-mono text-[11px] uppercase tracking-[0.02em] text-zinc-600">
-                  <tr>
-                    <th className="px-4 py-2 font-medium">Item</th>
-                    <th className="px-3 py-2 text-right font-medium">Price</th>
-                    <th className="px-3 py-2 text-right font-medium">Mix %</th>
-                    <th className="px-3 py-2 text-right font-medium">Forecast</th>
-                    <th className="px-3 py-2 text-right font-medium">Override</th>
-                    <th className="px-3 py-2 text-right font-medium">Buffer %</th>
-                    <th className="px-3 py-2 text-right font-medium">Final Prep</th>
-                    <th className="px-3 py-2 text-right font-medium">Proj. Revenue</th>
-                    {canEdit && <th className="no-print"></th>}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-100">
-                  {tent.menuItems.length === 0 && (
+              {/* overflow-x-auto lives on this wrapper, not the Card — on the
+                  Card it would also clip the RecipePicker dropdown below it. */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-zinc-50 text-left font-mono text-[11px] uppercase tracking-[0.02em] text-zinc-600">
                     <tr>
-                      <td colSpan={canEdit ? 9 : 8} className="px-4 py-5 text-center text-zinc-400">
-                        No items in this tent yet.
-                      </td>
+                      <th className="px-4 py-2 font-medium">Item</th>
+                      <th className="px-3 py-2 text-right font-medium">Price</th>
+                      <th className="px-3 py-2 text-right font-medium">Mix %</th>
+                      <th className="px-3 py-2 text-right font-medium">Forecast</th>
+                      <th className="px-3 py-2 text-right font-medium">Override</th>
+                      <th className="px-3 py-2 text-right font-medium">Buffer %</th>
+                      <th className="px-3 py-2 text-right font-medium">Final Prep</th>
+                      <th className="px-3 py-2 text-right font-medium">Proj. Revenue</th>
+                      {canEdit && <th className="no-print"></th>}
                     </tr>
-                  )}
-                  {tentRows.map(({ mi, fc }) => (
-                    <tr key={mi.id} className="align-top">
-                      <td className="px-4 py-2">
-                        <span className="font-medium text-zinc-800">{mi.name}</span>
-                        {mi.recipe ? (
-                          <Link href={`/recipes/${mi.recipe.id}`} className="ml-2 text-xs text-blue-600 hover:underline no-print">
-                            {mi.recipe.name}
-                          </Link>
-                        ) : (
-                          <span className="ml-2 inline-flex items-center">
-                            <Badge color="amber">no recipe linked</Badge>
-                          </span>
-                        )}
-                        {canEdit && !mi.recipe && (
-                          <details className="mt-1 no-print">
-                            <summary className="cursor-pointer text-xs text-blue-600">link recipe</summary>
-                            <form action={linkRecipeToMenuItem} className="mt-1 flex max-w-xs items-center gap-1">
+                  </thead>
+                  <tbody className="divide-y divide-zinc-100">
+                    {tent.menuItems.length === 0 && (
+                      <tr>
+                        <td colSpan={canEdit ? 9 : 8} className="px-4 py-5 text-center text-zinc-400">
+                          No items in this tent yet.
+                        </td>
+                      </tr>
+                    )}
+                    {tentRows.map(({ mi, fc }) => (
+                      <tr key={mi.id} className="align-top">
+                        <td className="px-4 py-2">
+                          <span className="font-medium text-zinc-800">{mi.name}</span>
+                          {mi.recipe ? (
+                            <Link href={`/recipes/${mi.recipe.id}`} className="ml-2 text-xs text-blue-600 hover:underline no-print">
+                              {mi.recipe.name}
+                            </Link>
+                          ) : (
+                            <span className="ml-2 inline-flex items-center">
+                              <Badge color="amber">no recipe linked</Badge>
+                            </span>
+                          )}
+                          {canEdit && !mi.recipe && (
+                            <details className="mt-1 no-print">
+                              <summary className="cursor-pointer text-xs text-blue-600">link recipe</summary>
+                              <form action={linkRecipeToMenuItem} className="mt-1 flex max-w-xs items-center gap-1">
+                                <input type="hidden" name="id" value={mi.id} />
+                                <input type="hidden" name="festivalId" value={festival.id} />
+                                <div className="flex-1">
+                                  <RecipePicker recipes={recipes} />
+                                </div>
+                                <button className="rounded border border-zinc-300 px-1.5 py-0.5 text-xs hover:bg-zinc-100">✓</button>
+                              </form>
+                            </details>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          {canEdit ? (
+                            <CellForm id={mi.id} festivalId={festival.id}>
+                              <input
+                                name="price"
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                defaultValue={num(mi.price)}
+                                className={`w-16 ${INPUT_CELL}`}
+                              />
+                            </CellForm>
+                          ) : (
+                            <span className={CALC_CELL}>{money(mi.price)}</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          {canEdit ? (
+                            <CellForm id={mi.id} festivalId={festival.id}>
+                              <input
+                                name="mixPct"
+                                type="number"
+                                step="0.5"
+                                min="0"
+                                max="100"
+                                defaultValue={num(mi.mixPct * 100)}
+                                className={`w-14 ${INPUT_CELL}`}
+                              />
+                            </CellForm>
+                          ) : (
+                            <span className={CALC_CELL}>{num(mi.mixPct * 100)}%</span>
+                          )}
+                        </td>
+                        <td className={`px-3 py-2 text-right ${CALC_CELL}`}>{fc.forecastPortions.toLocaleString()}</td>
+                        <td className="px-3 py-2 text-right">
+                          {canEdit ? (
+                            <CellForm id={mi.id} festivalId={festival.id}>
+                              <input
+                                name="chefOverride"
+                                type="number"
+                                step="1"
+                                min="0"
+                                defaultValue={mi.chefOverride ?? ""}
+                                placeholder="—"
+                                className={`w-16 ${INPUT_CELL}`}
+                              />
+                            </CellForm>
+                          ) : (
+                            <span className={CALC_CELL}>{mi.chefOverride != null ? num(mi.chefOverride) : "—"}</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          {canEdit ? (
+                            <CellForm id={mi.id} festivalId={festival.id}>
+                              <input
+                                name="bufferPctOverride"
+                                type="number"
+                                step="1"
+                                min="0"
+                                max="100"
+                                defaultValue={mi.bufferPctOverride != null ? num(mi.bufferPctOverride * 100) : ""}
+                                placeholder={String(defaultBufferWhole)}
+                                className={`w-14 ${INPUT_CELL}`}
+                              />
+                            </CellForm>
+                          ) : (
+                            <span className={CALC_CELL}>
+                              {num((mi.bufferPctOverride ?? festival.bufferPct) * 100)}%
+                            </span>
+                          )}
+                        </td>
+                        <td className={`px-3 py-2 text-right ${RESULT_CELL}`}>
+                          {fc.finalPrepPortions.toLocaleString()}
+                          {fc.overridden && (
+                            <span className="ml-1 align-middle text-[10px] font-normal text-amber-600" title="Chef override in effect">
+                              ●
+                            </span>
+                          )}
+                        </td>
+                        <td className={`px-3 py-2 text-right ${CALC_CELL}`}>{money(fc.projRevenue)}</td>
+                        {canEdit && (
+                          <td className="px-3 py-2 text-right no-print">
+                            <form action={removeFestivalMenuItem}>
                               <input type="hidden" name="id" value={mi.id} />
                               <input type="hidden" name="festivalId" value={festival.id} />
-                              <div className="flex-1">
-                                <RecipePicker recipes={recipes} />
-                              </div>
-                              <button className="rounded border border-zinc-300 px-1.5 py-0.5 text-xs hover:bg-zinc-100">✓</button>
+                              <button className="text-xs text-red-500 hover:underline">remove</button>
                             </form>
-                          </details>
+                          </td>
                         )}
-                      </td>
-                      <td className="px-3 py-2 text-right">
-                        {canEdit ? (
-                          <CellForm id={mi.id} festivalId={festival.id}>
-                            <input
-                              name="price"
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              defaultValue={num(mi.price)}
-                              className={`w-16 ${INPUT_CELL}`}
-                            />
-                          </CellForm>
-                        ) : (
-                          <span className={CALC_CELL}>{money(mi.price)}</span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2 text-right">
-                        {canEdit ? (
-                          <CellForm id={mi.id} festivalId={festival.id}>
-                            <input
-                              name="mixPct"
-                              type="number"
-                              step="0.5"
-                              min="0"
-                              max="100"
-                              defaultValue={num(mi.mixPct * 100)}
-                              className={`w-14 ${INPUT_CELL}`}
-                            />
-                          </CellForm>
-                        ) : (
-                          <span className={CALC_CELL}>{num(mi.mixPct * 100)}%</span>
-                        )}
-                      </td>
-                      <td className={`px-3 py-2 text-right ${CALC_CELL}`}>{fc.forecastPortions.toLocaleString()}</td>
-                      <td className="px-3 py-2 text-right">
-                        {canEdit ? (
-                          <CellForm id={mi.id} festivalId={festival.id}>
-                            <input
-                              name="chefOverride"
-                              type="number"
-                              step="1"
-                              min="0"
-                              defaultValue={mi.chefOverride ?? ""}
-                              placeholder="—"
-                              className={`w-16 ${INPUT_CELL}`}
-                            />
-                          </CellForm>
-                        ) : (
-                          <span className={CALC_CELL}>{mi.chefOverride != null ? num(mi.chefOverride) : "—"}</span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2 text-right">
-                        {canEdit ? (
-                          <CellForm id={mi.id} festivalId={festival.id}>
-                            <input
-                              name="bufferPctOverride"
-                              type="number"
-                              step="1"
-                              min="0"
-                              max="100"
-                              defaultValue={mi.bufferPctOverride != null ? num(mi.bufferPctOverride * 100) : ""}
-                              placeholder={String(defaultBufferWhole)}
-                              className={`w-14 ${INPUT_CELL}`}
-                            />
-                          </CellForm>
-                        ) : (
-                          <span className={CALC_CELL}>
-                            {num((mi.bufferPctOverride ?? festival.bufferPct) * 100)}%
-                          </span>
-                        )}
-                      </td>
-                      <td className={`px-3 py-2 text-right ${RESULT_CELL}`}>
-                        {fc.finalPrepPortions.toLocaleString()}
-                        {fc.overridden && (
-                          <span className="ml-1 align-middle text-[10px] font-normal text-amber-600" title="Chef override in effect">
-                            ●
-                          </span>
-                        )}
-                      </td>
-                      <td className={`px-3 py-2 text-right ${CALC_CELL}`}>{money(fc.projRevenue)}</td>
-                      {canEdit && (
-                        <td className="px-3 py-2 text-right no-print">
-                          <form action={removeFestivalMenuItem}>
-                            <input type="hidden" name="id" value={mi.id} />
-                            <input type="hidden" name="festivalId" value={festival.id} />
-                            <button className="text-xs text-red-500 hover:underline">remove</button>
-                          </form>
+                      </tr>
+                    ))}
+                  </tbody>
+                  {tent.menuItems.length > 0 && (
+                    <tfoot>
+                      <tr className="border-t border-zinc-200 bg-zinc-50 text-sm">
+                        <td className="px-4 py-2 font-medium text-zinc-700" colSpan={6}>
+                          {tent.name} totals
                         </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-                {tent.menuItems.length > 0 && (
-                  <tfoot>
-                    <tr className="border-t border-zinc-200 bg-zinc-50 text-sm">
-                      <td className="px-4 py-2 font-medium text-zinc-700" colSpan={6}>
-                        {tent.name} totals
-                      </td>
-                      <td className={`px-3 py-2 text-right ${RESULT_CELL}`}>{tentTotals.prep.toLocaleString()}</td>
-                      <td className={`px-3 py-2 text-right font-medium ${CALC_CELL}`}>{money(tentTotals.revenue)}</td>
-                      {canEdit && <td className="no-print"></td>}
-                    </tr>
-                  </tfoot>
-                )}
-              </table>
+                        <td className={`px-3 py-2 text-right ${RESULT_CELL}`}>{tentTotals.prep.toLocaleString()}</td>
+                        <td className={`px-3 py-2 text-right font-medium ${CALC_CELL}`}>{money(tentTotals.revenue)}</td>
+                        {canEdit && <td className="no-print"></td>}
+                      </tr>
+                    </tfoot>
+                  )}
+                </table>
+              </div>
               {canEdit && (
                 <div className="border-t border-zinc-100 p-4 no-print">
                   <AddMenuItemForm festivalId={festival.id} tentId={tent.id} recipes={recipes} />
