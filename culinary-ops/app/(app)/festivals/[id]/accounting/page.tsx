@@ -5,7 +5,7 @@ import { requireUser, hasRole } from "@/lib/session";
 import { buildForecast } from "@/lib/festival";
 import { banquetRecipeSelect, buildBanquetPlan, type BanquetLine } from "@/lib/banquet";
 import { money, num, priceGapNames } from "@/lib/costing";
-import { Badge, Card, CardHeader, PageHeader } from "@/components/ui";
+import { Badge, Card, CardHeader, LinkButton, PageHeader } from "@/components/ui";
 import { PriceIntegrityNotice } from "@/components/PriceIntegrityNotice";
 import { STATUS_COLOR } from "@/lib/event-status";
 import { FestivalTabs } from "../FestivalTabs";
@@ -80,7 +80,14 @@ export default async function FestivalAccountingPage({ params }: { params: Promi
       <PageHeader
         title="Accounting"
         subtitle={`${festival.name} · live proposal cost-out from menu, recipes & sub-recipes`}
-        action={<Badge color={STATUS_COLOR[festival.status]}>{festival.status.toLowerCase()}</Badge>}
+        action={
+          <div className="flex items-center gap-2">
+            <Badge color={STATUS_COLOR[festival.status]}>{festival.status.toLowerCase()}</Badge>
+            <LinkButton href={`/festivals/${festival.id}/proposal`} variant="gold">
+              View proposal →
+            </LinkButton>
+          </div>
+        }
       />
       <FestivalTabs festivalId={festival.id} />
 
