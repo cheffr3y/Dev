@@ -93,6 +93,12 @@ export default async function FestivalOverviewPage({ params }: { params: Promise
     },
     {
       n: 4,
+      label: "Accounting",
+      href: `${base}/accounting`,
+      hint: linked.length > 0 ? `${money(plan.totalCost)} recipe food cost · add labor & fees` : "link recipes first",
+    },
+    {
+      n: 5,
       label: "Order Guide",
       href: `${base}/order-guide`,
       hint: linked.length > 0 ? `est. ${money(plan.totalCost)} food cost` : "link recipes first",
@@ -125,7 +131,7 @@ export default async function FestivalOverviewPage({ params }: { params: Promise
       {/* Start Here — the plan-to-order flow */}
       <Card className="mb-6">
         <CardHeader>Start here — plan to order</CardHeader>
-        <ol className="grid grid-cols-1 divide-y divide-zinc-100 sm:grid-cols-4 sm:divide-x sm:divide-y-0">
+        <ol className="grid grid-cols-1 divide-y divide-zinc-100 sm:grid-cols-5 sm:divide-x sm:divide-y-0">
           {steps.map((s) => (
             <li key={s.n}>
               <Link href={s.href} className="block px-5 py-4 transition-colors hover:bg-zinc-50">

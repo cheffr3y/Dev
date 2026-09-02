@@ -457,6 +457,18 @@ model Festival {
   forecastConfidence ForecastConfidence @default(MEDIUM)
   weatherNotes       String?
   bufferPct          Float              @default(0.1) // default prep buffer, fraction; per-item override wins
+  // Proposal / accounting assumptions. Food cost and revenue remain live
+  // calculations from the menu and linked recipe trees; these are the event
+  // costs that cannot be inferred from recipes.
+  laborHours         Float              @default(0)
+  laborRate          Float              @default(0)
+  boothFee           Float              @default(0)
+  equipmentCost      Float              @default(0)
+  disposablesCost    Float              @default(0)
+  transportCost      Float              @default(0)
+  otherCost          Float              @default(0)
+  salesFeePct        Float              @default(0) // card/commission fees as a fraction of revenue
+  targetMarginPct    Float              @default(0.2) // desired net margin as a fraction of revenue
   status             EventStatus        @default(PLANNED)
   notes              String?
   createdAt          DateTime           @default(now())

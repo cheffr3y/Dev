@@ -209,6 +209,55 @@ export async function linkRecipeToMenuItem(formData: FormData) {
   revalidatePath(`/festivals/${d.festivalId}/menu`);
 }
 
+// --- Accounting assumptions -------------------------------------------------
+
+const nonnegativeMoney = z.coerce.number().min(0).default(0);
+
+export async function updateFestivalAccounting(formData: FormData) {
+  await requireRole("MANAGER");
+  const d = z
+    .object({
+      festivalId: z.string().min(1),
+      laborHours: nonnegativeMoney,
+      laborRate: nonnegativeMoney,
+      boothFee: nonnegativeMoney,
+      equipmentCost: nonnegativeMoney,
+      disposablesCost: nonnegativeMoney,
+      transportCost: nonnegativeMoney,
+      otherCost: nonnegativeMoney,
+      salesFeePct: wholePct,
+      targetMarginPct: wholePct,
+    })
+    .parse({
+      festivalId: formData.get("festivalId"),
+      laborHours: formData.get("laborHours") || 0,
+      laborRate: formData.get("laborRate") || 0,
+      boothFee: formData.get("boothFee") || 0,
+      equipmentCost: formData.get("equipmentCost") || 0,
+      disposablesCost: formData.get("disposablesCost") || 0,
+      transportCost: formData.get("transportCost") || 0,
+      otherCost: formData.get("otherCost") || 0,
+      salesFeePct: formData.get("salesFeePct") || 0,
+      targetMarginPct: formData.get("targetMarginPct") || 0,
+    });
+
+  await prisma.festival.update({
+    where: { id: d.festivalId },
+    data: {
+      laborHours: d.laborHours,
+      laborRate: d.laborRate,
+      boothFee: d.boothFee,
+      equipmentCost: d.equipmentCost,
+      disposablesCost: d.disposablesCost,
+      transportCost: d.transportCost,
+      otherCost: d.otherCost,
+      salesFeePct: d.salesFeePct,
+      targetMarginPct: d.targetMarginPct,
+    },
+  });
+  revalidatePath(`/festivals/${d.festivalId}/accounting`);
+}
+
 // --- On-hand counts -----------------------------------------------------------
 
 const onHandSchema = z.object({

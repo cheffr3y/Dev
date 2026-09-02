@@ -12,6 +12,7 @@ export function FestivalTabs({ festivalId }: { festivalId: string }) {
     { href: base, label: "Overview" },
     { href: `${base}/menu`, label: "Menu & Forecast" },
     { href: `${base}/builds`, label: "Builds" },
+    { href: `${base}/accounting`, label: "Accounting" },
     { href: `${base}/recipe-guide`, label: "Recipe Guide" },
     { href: `${base}/prep-sheet`, label: "Prep Sheet" },
     { href: `${base}/order-guide`, label: "Order Guide" },

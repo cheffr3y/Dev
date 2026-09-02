@@ -16,6 +16,7 @@ Built with Next.js (App Router), TypeScript, Prisma, and PostgreSQL. Role-based 
 | **Inventory** | Per-venue on-hand counts vs. par levels, low-stock highlighting, and inventory value. |
 | **Order Guides** | Per-venue / per-vendor order sheets. Computes **order quantity = par − on-hand** and an estimated order total. Print-friendly. |
 | **Events** | Plan events with a menu of recipes scaled to servings. Rolls up estimated food cost and a single **aggregated prep & shopping list** across all dishes. Print-friendly. |
+| **Festivals** | Forecast sales from attendance and menu mix, scale recipes and nested sub-recipes, build prep/order guides, and produce a live **proposal P&L** with labor, fees, event expenses, break-even revenue, and target-margin pricing. |
 | **Banquets** | Transcribe a **Banquet Event Order (BEO)**: the header (contact, service window, room, special instructions, setup) plus food lines that link each recipe to its **ordered count**. Every dish scales by the ordered amount into one **aggregated prep / pull sheet** (sub-recipes exploded to raw items, summed by category), with a printable kitchen prep sheet. Customer pricing & beverage/additional charges are out of scope — this is the kitchen side of the BEO. |
 | **Prep Orders** | Commissary production ledger: a chef requests recipes per destination venue for a date → printable **lot-stamped cook packet** → **back-entry** of actuals (made-by / entered-by / status) → a **cost-transfer report** with accounting-ready Excel export. |
 | **Vendors / Venues / Users** | Manage suppliers, locations, and team access. |
@@ -124,7 +125,7 @@ Designed to deploy cleanly to **Vercel** with a hosted Postgres (Neon, Supabase,
 
 1. Push this repo to GitHub and import it in Vercel.
 2. Set env vars `DATABASE_URL` and `AUTH_SECRET`.
-3. Vercel runs `prisma generate` via the `postinstall` hook; run `npm run db:push` once against your database to create tables.
+3. The `postinstall` hook generates Prisma Client. Hosts that launch with `npm start` also run the non-destructive schema sync automatically through `prestart`; Prisma stops startup rather than accepting a data-loss warning. For hosts that do not run `npm start` (including serverless build-only deployments), run `npm run db:push` after schema changes.
 
 ### Migrating from the legacy foxtownhq app
 Replacing an existing foxtownhq deployment and want to keep its recipes, items,
