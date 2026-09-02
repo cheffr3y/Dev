@@ -12,6 +12,7 @@ const itemSchema = z.object({
   packSize: z.string().trim().optional(),
   unitCost: z.coerce.number().min(0).default(0),
   sku: z.string().trim().optional(),
+  gcode: z.string().trim().optional(),
   vendorId: z.string().trim().optional(),
 });
 
@@ -23,6 +24,7 @@ function parse(formData: FormData) {
     packSize: formData.get("packSize") || undefined,
     unitCost: formData.get("unitCost") || 0,
     sku: formData.get("sku") || undefined,
+    gcode: formData.get("gcode") || undefined,
     vendorId: formData.get("vendorId") || undefined,
   });
   return {
@@ -30,6 +32,7 @@ function parse(formData: FormData) {
     vendorId: data.vendorId || null,
     packSize: data.packSize || null,
     sku: data.sku || null,
+    gcode: data.gcode || null,
   };
 }
 

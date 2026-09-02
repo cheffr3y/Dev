@@ -125,6 +125,7 @@ model Item {
   // catalog can show price freshness and flag stale costs for re-quoting.
   priceUpdatedAt DateTime? // null = never priced
   sku            String?
+  gcode          String? // Acumatica inventory GCODE for the raw item
   vendorId       String?
   vendor         Vendor?   @relation(fields: [vendorId], references: [id], onDelete: SetNull)
   createdAt      DateTime  @default(now())
@@ -419,6 +420,9 @@ model PrepOrderLine {
   // Cost snapshots — frozen when produced, never recomputed against live Catalog.
   unitCostSnapshot Float? // Mise cost per recipe yield unit at time of production
   allocatedCost    Float? // this line's cost share (proportional to qty for splits)
+  // Raw-ingredient detail frozen alongside the totals for accounting audit.
+  // JSON keeps the historical item name/GCODE/price even if Catalog changes.
+  costBreakdownSnapshot Json?
 
   notes String? // line-level, queryable
 

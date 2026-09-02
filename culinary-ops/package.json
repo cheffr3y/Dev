@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --import tsx --test \"lib/schedule.test.ts\" \"lib/trivia-engine.test.ts\" \"app/(app)/schedule/schedule-ui.test.tsx\"",
+    "test": "node --import tsx --test \"lib/schedule.test.ts\" \"lib/trivia-engine.test.ts\" \"lib/prep-accounting.test.ts\" \"app/(app)/schedule/schedule-ui.test.tsx\"",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "db:migrate-legacy": "tsx scripts/migrate-from-foxtownhq.ts",

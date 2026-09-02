@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { num } from "@/lib/costing";
+import { prepReportDates } from "@/lib/prep-report";
 
 // CSV handoff of the cost-transfer report. One row per produced line so
 // accounting can pivot by venue/item and apply Acumatica pricing to the
@@ -16,15 +17,9 @@ export async function GET(request: Request) {
   if (!user) return new Response("Unauthorized", { status: 401 });
 
   const { searchParams } = new URL(request.url);
-  const from = searchParams.get("from");
-  const to = searchParams.get("to");
+  const range = prepReportDates(searchParams.get("from"), searchParams.get("to"));
   const venueId = searchParams.get("venue") || "";
-
-  const today = new Date();
-  const weekAgo = new Date();
-  weekAgo.setDate(weekAgo.getDate() - 7);
-  const fromDate = new Date(`${from || weekAgo.toISOString().slice(0, 10)}T00:00:00Z`);
-  const toDate = new Date(`${to || today.toISOString().slice(0, 10)}T23:59:59Z`);
+  const { fromDate, toDate } = range;
 
   const lines = await prisma.prepOrderLine.findMany({
     where: {

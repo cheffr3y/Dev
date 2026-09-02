@@ -7,17 +7,11 @@ import { convertQty, unitLabel } from "@/lib/units";
 import { Badge, Button, Card, CardHeader, Field, Input, PageHeader, Select } from "@/components/ui";
 import { PrintButton } from "@/components/PrintButton";
 import { prepStatusLabel, PREP_STATUS_COLOR, type PrepStatus } from "@/lib/prep";
+import { prepReportDates } from "@/lib/prep-report";
 
-// The artifact handed to accounting. Quantity per item per destination venue is
+// The artifact handed to accounting. Completed recipe quantity per destination venue is
 // the contract; Mise cost is a clearly-labeled, non-authoritative sanity check.
 // Accounting applies their own Acumatica pricing to these quantities.
-
-function defaultRange() {
-  const to = new Date();
-  const from = new Date();
-  from.setDate(from.getDate() - 7); // weekly cadence (assumed)
-  return { from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10) };
-}
 
 export default async function CostTransferReportPage({
   searchParams,
@@ -26,13 +20,9 @@ export default async function CostTransferReportPage({
 }) {
   await requireUser();
   const sp = await searchParams;
-  const def = defaultRange();
-  const from = sp.from || def.from;
-  const to = sp.to || def.to;
+  const range = prepReportDates(sp.from, sp.to);
+  const { from, to, fromDate, toDate } = range;
   const venueId = sp.venue || "";
-
-  const fromDate = new Date(`${from}T00:00:00Z`);
-  const toDate = new Date(`${to}T23:59:59Z`);
 
   const [venues, lines] = await Promise.all([
     getVenues(),
@@ -97,6 +87,13 @@ export default async function CostTransferReportPage({
         </Link>
         <div className="flex items-center gap-2">
           <Link
+            href={`/prep-orders/report/export-xlsx?${exportQuery}`}
+            className="inline-flex items-center gap-1.5 rounded-full bg-ink px-5 py-2 text-sm font-medium tracking-wide text-white transition-colors hover:bg-zinc-700"
+            prefetch={false}
+          >
+            Export Excel
+          </Link>
+          <Link
             href={`/prep-orders/report/export?${exportQuery}`}
             className="inline-flex items-center gap-1.5 rounded-full border border-hairline bg-canvas px-5 py-2 text-sm font-medium tracking-wide text-ink transition-colors hover:border-ink"
             prefetch={false}
@@ -107,7 +104,7 @@ export default async function CostTransferReportPage({
         </div>
       </div>
 
-      <PageHeader title="Cost-Transfer Report" subtitle="Quantity per item per destination venue — the contract with accounting." />
+      <PageHeader title="Cost-Transfer Report" subtitle="Completed recipe quantities and frozen costs by destination venue." />
 
       {/* Filters */}
       <Card className="no-print mb-6 p-4">

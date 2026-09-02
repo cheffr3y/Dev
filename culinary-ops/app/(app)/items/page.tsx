@@ -40,6 +40,7 @@ function ItemFields({
     packSize: string | null;
     unitCost: number;
     sku: string | null;
+    gcode: string | null;
     vendorId: string | null;
   };
 }) {
@@ -76,6 +77,9 @@ function ItemFields({
       </Field>
       <Field label="Item #">
         <Input name="sku" defaultValue={item?.sku ?? ""} placeholder="Vendor item / SKU #" />
+      </Field>
+      <Field label="Acumatica GCODE">
+        <Input name="gcode" defaultValue={item?.gcode ?? ""} placeholder="GCODE" />
       </Field>
     </div>
   );
@@ -188,6 +192,7 @@ export default async function ItemsPage({
               <th className="px-4 py-2.5 font-medium">Category</th>
               <th className="px-4 py-2.5 font-medium">Vendor</th>
               <th className="px-4 py-2.5 font-medium">Item #</th>
+              <th className="px-4 py-2.5 font-medium">GCODE</th>
               <th className="px-4 py-2.5 font-medium">Unit</th>
               <th className="px-4 py-2.5 text-right font-medium">Unit Cost</th>
               <th className="px-4 py-2.5 font-medium">Price age</th>
@@ -197,7 +202,7 @@ export default async function ItemsPage({
           <tbody className="divide-y divide-zinc-100">
             {visible.length === 0 && (
               <tr>
-                <td colSpan={canEdit ? 8 : 7} className="px-4 py-8 text-center text-zinc-400">
+                <td colSpan={canEdit ? 9 : 8} className="px-4 py-8 text-center text-zinc-400">
                   {items.length === 0 ? "No items yet." : "No items match your filters."}
                 </td>
               </tr>
@@ -221,6 +226,7 @@ export default async function ItemsPage({
                             packSize: item.packSize,
                             unitCost: item.unitCost,
                             sku: item.sku,
+                            gcode: item.gcode,
                             vendorId: item.vendorId,
                           }}
                         />
@@ -236,6 +242,7 @@ export default async function ItemsPage({
                 </td>
                 <td className="px-4 py-2.5 text-zinc-600">{item.vendor?.name ?? "—"}</td>
                 <td className="px-4 py-2.5 font-mono text-xs text-zinc-600">{item.sku ?? "—"}</td>
+                <td className="px-4 py-2.5 font-mono text-xs text-zinc-700">{item.gcode ?? "—"}</td>
                 <td className="px-4 py-2.5 text-zinc-600">{item.unit}</td>
                 <td className={`px-4 py-2.5 text-right ${freshness.unpriced ? "text-red-600" : "text-zinc-800"}`}>
                   {freshness.unpriced ? "—" : money(item.unitCost)}

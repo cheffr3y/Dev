@@ -3,11 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireRole, requireActiveUser } from "@/lib/session";
 import { buildCostMap, type RecipeCostNode } from "@/lib/costing";
 import { canConvert } from "@/lib/units";
 import { formatLot, nextLotSeq, lineCostSnapshot, BACK_ENTRY_STATUSES } from "@/lib/prep";
+import { buildPrepCostDetail, makePrepCostDetailSnapshot, type CostDetailRecipeNode } from "@/lib/prep-cost-detail";
 
 // --- Order header ---------------------------------------------------------
 
@@ -245,7 +247,14 @@ export async function saveBackEntry(formData: FormData) {
       id: true,
       yieldQty: true,
       yieldUnit: true,
-      items: { select: { quantity: true, unit: true, item: { select: { unitCost: true, unit: true } } } },
+      items: {
+        select: {
+          itemId: true,
+          quantity: true,
+          unit: true,
+          item: { select: { name: true, category: true, unitCost: true, unit: true, sku: true, gcode: true } },
+        },
+      },
       components: { select: { childId: true, quantity: true, unit: true } },
     },
   });
@@ -278,6 +287,7 @@ export async function saveBackEntry(formData: FormData) {
           enteredAt: now,
           unitCostSnapshot: null,
           allocatedCost: null,
+          costBreakdownSnapshot: Prisma.DbNull,
           notes,
         },
       });
@@ -298,6 +308,12 @@ export async function saveBackEntry(formData: FormData) {
       qty: actualQty,
       unit: actualUnit,
     });
+    const costDetail = buildPrepCostDetail(
+      line.recipeId,
+      actualQty,
+      actualUnit,
+      recipeNodes as CostDetailRecipeNode[],
+    );
 
     await prisma.prepOrderLine.update({
       where: { id: line.id },
@@ -311,6 +327,7 @@ export async function saveBackEntry(formData: FormData) {
         enteredAt: now,
         unitCostSnapshot: snap.unitCostSnapshot,
         allocatedCost: snap.allocatedCost,
+        costBreakdownSnapshot: makePrepCostDetailSnapshot(costDetail, now),
         notes,
       },
     });
