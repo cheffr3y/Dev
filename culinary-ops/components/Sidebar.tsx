@@ -163,7 +163,7 @@ function Icon({ name }: { name: IconKey }) {
   );
 }
 
-export function Sidebar({ role }: { role: string }) {
+export function Sidebar({ role, collapsed = false, onNavigate }: { role: string; collapsed?: boolean; onNavigate?: () => void }) {
   const pathname = usePathname();
   const sections = [...SECTIONS];
   if (role === "ADMIN" || role === "MANAGER") {
@@ -176,10 +176,10 @@ export function Sidebar({ role }: { role: string }) {
     item.href === "/" ? pathname === "/" : (item.match ?? [item.href]).some(matchesPath);
 
   return (
-    <nav className="flex flex-col gap-7">
+    <nav aria-label="Main navigation" className={cn("flex flex-col", collapsed ? "gap-3" : "gap-5")}>
       {sections.map((section) => (
-        <div key={section.heading}>
-          <p className="mb-2.5 px-3 text-[10px] uppercase tracking-[0.2em] text-white/35">
+        <div key={section.heading} className={collapsed ? "border-t border-white/10 pt-3 first:border-0 first:pt-0" : undefined}>
+          <p className={collapsed ? "sr-only" : "mb-2 px-3 text-[10px] font-medium uppercase tracking-[0.16em] text-white/45"}>
             {section.heading}
           </p>
           <ul className="space-y-0.5">
@@ -189,11 +189,16 @@ export function Sidebar({ role }: { role: string }) {
                 <li key={item.href}>
                   <Link
                     href={item.href}
+                    onClick={onNavigate}
+                    aria-current={active ? "page" : undefined}
+                    aria-label={collapsed ? item.label : undefined}
+                    title={collapsed ? item.label : undefined}
                     className={cn(
-                      "group relative flex items-center gap-3 rounded-md px-3 py-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold/60 md:py-2",
+                      "group relative flex min-h-11 items-center rounded-lg text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold/60",
+                      collapsed ? "justify-center px-0" : "gap-3 px-3",
                       active
-                        ? "bg-white/10 font-medium text-white"
-                        : "text-white/55 hover:bg-white/5 hover:text-white/90",
+                        ? "bg-gold/10 font-medium text-white ring-1 ring-inset ring-gold/20"
+                        : "text-white/65 hover:bg-white/5 hover:text-white/90",
                     )}
                   >
                     {active && (
@@ -201,13 +206,13 @@ export function Sidebar({ role }: { role: string }) {
                     )}
                     <span
                       className={cn(
-                        "transition-colors",
+                        "shrink-0 transition-colors",
                         active ? "text-gold-soft" : "text-white/45 group-hover:text-white/70",
                       )}
                     >
                       <Icon name={item.icon} />
                     </span>
-                    {item.label}
+                    <span className={collapsed ? "sr-only" : "whitespace-nowrap"}>{item.label}</span>
                   </Link>
                 </li>
               );

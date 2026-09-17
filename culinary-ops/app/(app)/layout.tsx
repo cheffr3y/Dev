@@ -1,8 +1,7 @@
 import { requireUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { Sidebar } from "@/components/Sidebar";
+import { DesktopSidebar } from "@/components/DesktopSidebar";
 import { MobileNav } from "@/components/MobileNav";
-import { Brand } from "@/components/Brand";
 import { CommandSearch } from "@/components/CommandSearch";
 import { signOutAction } from "@/lib/auth-actions";
 
@@ -28,14 +27,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex min-h-screen bg-cream">
       {/* Sidebar */}
-      <aside className="no-print sticky top-0 hidden h-screen w-60 shrink-0 flex-col bg-charcoal px-3 py-5 md:flex">
-        <div className="mb-9 px-2">
-          <Brand />
-        </div>
-        <div className="flex-1 overflow-y-auto">
-          <Sidebar role={user.role} />
-        </div>
-      </aside>
+      <DesktopSidebar role={user.role} />
 
       {/* Main column */}
       <div className="flex min-w-0 flex-1 flex-col">

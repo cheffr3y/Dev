@@ -37,6 +37,11 @@ export function MobileNav({ role }: { role: string }) {
   // While open: lock body scroll, close on Escape, keep Tab inside the panel.
   useEffect(() => {
     if (!open) return;
+    const desktop = window.matchMedia("(min-width: 768px)");
+    const closeOnDesktop = () => {
+      if (desktop.matches) setOpen(false);
+    };
+    desktop.addEventListener("change", closeOnDesktop);
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setOpen(false);
@@ -63,6 +68,7 @@ export function MobileNav({ role }: { role: string }) {
     const trigger = triggerRef.current;
     panelRef.current?.focus();
     return () => {
+      desktop.removeEventListener("change", closeOnDesktop);
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = prevOverflow;
       trigger?.focus();
@@ -76,6 +82,8 @@ export function MobileNav({ role }: { role: string }) {
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Open navigation"
+        aria-expanded={open}
+        aria-controls="mobile-navigation"
         className="-ml-1 inline-flex h-11 w-11 items-center justify-center rounded-md text-zinc-600 hover:bg-stone hover:text-ink md:hidden"
       >
         <svg
@@ -111,17 +119,18 @@ export function MobileNav({ role }: { role: string }) {
             />
             <div
               ref={panelRef}
+              id="mobile-navigation"
               role="dialog"
               aria-modal="true"
               aria-label="Navigation"
               tabIndex={-1}
               className={cn(
-                "relative flex h-full w-64 max-w-[80vw] flex-col bg-charcoal shadow-2xl outline-none transition-transform duration-200 ease-out motion-reduce:transition-none",
+                "relative flex h-full w-72 max-w-[85vw] flex-col bg-charcoal shadow-2xl outline-none transition-transform duration-200 ease-out motion-reduce:transition-none",
                 "pt-[calc(1.25rem+env(safe-area-inset-top))] pb-[calc(1.25rem+env(safe-area-inset-bottom))] pl-[calc(0.75rem+env(safe-area-inset-left))] pr-3",
                 open ? "translate-x-0" : "-translate-x-full",
               )}
             >
-              <div className="mb-9 flex items-center justify-between px-2">
+              <div className="mb-6 flex items-center justify-between border-b border-white/10 px-2 pb-5">
                 <Brand />
                 <button
                   type="button"
@@ -140,8 +149,8 @@ export function MobileNav({ role }: { role: string }) {
                   </svg>
                 </button>
               </div>
-              <div className="flex-1 overflow-y-auto">
-                <Sidebar role={role} />
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+                <Sidebar role={role} onNavigate={() => setOpen(false)} />
               </div>
             </div>
           </div>,
