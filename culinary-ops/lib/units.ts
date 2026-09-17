@@ -92,7 +92,7 @@ export function unitLabel(raw: string): string {
 // weight rolls into g → oz → lb (under an ounce drops to grams). Count and
 // unrecognized units pass through unchanged. This is display-only — the stored
 // quantity/unit (and any costing that depends on it) are left untouched.
-export function displayMeasure(qty: number, unit: string): { qty: number; label: string } {
+export function displayMeasure(qty: number, unit: string, weightInGrams = false): { qty: number; label: string } {
   const def = resolve(unit);
   if (!def) return { qty, label: unit };
 
@@ -105,6 +105,7 @@ export function displayMeasure(qty: number, unit: string): { qty: number; label:
 
   if (def.family === "weight") {
     const oz = qty * def.factor; // base unit = oz
+    if (weightInGrams) return { qty: oz / UNITS.gram.factor, label: "g" };
     if (oz >= UNITS.lb.factor) return { qty: oz / UNITS.lb.factor, label: UNITS.lb.label };
     if (oz < UNITS.oz.factor) return { qty: oz / UNITS.gram.factor, label: UNITS.gram.label };
     return { qty: oz, label: UNITS.oz.label };

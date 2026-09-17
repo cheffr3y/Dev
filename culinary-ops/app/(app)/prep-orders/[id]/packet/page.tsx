@@ -22,7 +22,13 @@ function fmtDate(d: Date): string {
   return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" });
 }
 
-export default async function CookPacketPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function CookPacketPage({ params, searchParams }: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ weights?: string | string[]; shopping?: string | string[] }>;
+}) {
+  const options = await searchParams;
+  const weightInGrams = options.weights === "grams";
+  const includeShopping = options.shopping === "yes";
   const { id } = await params;
   await requireUser();
 
@@ -126,6 +132,24 @@ export default async function CookPacketPage({ params }: { params: Promise<{ id:
         </div>
       </div>
 
+      <form key={`${weightInGrams}-${includeShopping}`} method="get" className="no-print mb-5 rounded-xl border border-zinc-200 bg-white p-4 text-sm">
+        <div className="flex flex-wrap items-center gap-4">
+          <label className="flex items-center gap-2">
+            Recipe weights
+            <select name="weights" defaultValue={weightInGrams ? "grams" : "usual"} className="rounded border border-zinc-300 px-2 py-1">
+              <option value="usual">Usual units (lb / oz)</option>
+              <option value="grams">Grams (g)</option>
+            </select>
+          </label>
+          <label className="flex items-center gap-2">
+            <input type="checkbox" name="shopping" value="yes" defaultChecked={includeShopping} />
+            Include shopping / pull list
+          </label>
+          <button type="submit" className="rounded-full border border-zinc-300 px-4 py-2 font-medium">Update packet</button>
+        </div>
+        <p className="mt-2 text-xs text-zinc-500">Choose options and update the packet before printing. Grams converts weight measurements, including sub-recipes. Volume and count measurements keep their usual units.</p>
+      </form>
+
       {printed.length === 0 ? (
         <div className="rounded-xl border border-dashed border-zinc-300 bg-zinc-50 px-6 py-12 text-center">
           <p className="text-sm font-medium text-zinc-600">No printed lines yet.</p>
@@ -144,7 +168,7 @@ export default async function CookPacketPage({ params }: { params: Promise<{ id:
 
           {/* Prep / pull list — open the packet with everything to gather, so
               the team can shop before building. Each recipe then starts fresh. */}
-          {shopping.itemCount > 0 && (
+          {includeShopping && shopping.itemCount > 0 && (
             <section className="mt-8">
               <div className="flex items-baseline justify-between border-b-2 border-zinc-900 pb-1.5">
                 <h2 className="font-display text-2xl font-medium tracking-tight text-zinc-900">Shopping / Pull List</h2>
@@ -170,10 +194,13 @@ export default async function CookPacketPage({ params }: { params: Promise<{ id:
                 sharedRefs={sharedRefs}
                 // Each recipe starts on a new page. The first only breaks when a
                 // shopping list precedes it, so it doesn't strand the header alone.
-                breakBefore={shopping.itemCount > 0 || i > 0}
+                breakBefore={(includeShopping && shopping.itemCount > 0) || i > 0}
+                weightInGrams={weightInGrams}
               />
             ))}
           </div>
+
+          <PrepPacketLog lines={printed} madeOn={madeOn} />
 
           <p className="mt-10 border-t border-zinc-200 pt-4 text-[10px] uppercase tracking-[0.14em] text-zinc-400">
             Printed <LocalTime date={new Date()} mode="date" /> · Lots assigned at first print and frozen · Mise ·
@@ -209,6 +236,7 @@ function PacketEntry({
   byId,
   sharedRefs,
   breakBefore,
+  weightInGrams,
 }: {
   lines: PacketLine[];
   madeOn: string;
@@ -216,6 +244,7 @@ function PacketEntry({
   byId: Map<string, RecipeTreeNode>;
   sharedRefs: Map<string, string>;
   breakBefore: boolean;
+  weightInGrams: boolean;
 }) {
   const recipe = lines[0].recipe;
   const node = byId.get(recipe.id);
@@ -311,7 +340,7 @@ function PacketEntry({
       </div>
 
       {/* Scaled ingredients, method, allergens & nested sub-builds */}
-      {node && <RecipeBuildBody node={node} byId={byId} totalBatches={scale} compact={false} depth={0} stack={new Set()} sharedRefs={sharedRefs} />}
+      {node && <RecipeBuildBody node={node} byId={byId} totalBatches={scale} compact={false} depth={0} stack={new Set()} sharedRefs={sharedRefs} weightInGrams={weightInGrams} />}
 
       {/* Footer stamp — self-documenting for food-safety / consistency */}
       <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.12em] text-zinc-400">
@@ -327,5 +356,48 @@ function LabelCell({ label, value }: { label: string; value: string }) {
       <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-400">{label}</p>
       <p className="font-semibold text-zinc-900">{value}</p>
     </div>
+  );
+}
+
+// One row per destination matches back-entry, including split allocations.
+function PrepPacketLog({ lines, madeOn }: { lines: PacketLine[]; madeOn: string }) {
+  return (
+    <section className="mt-10 break-before-page">
+      <h2 className="font-display text-3xl font-medium text-zinc-900">Prep Accountability Log</h2>
+      <p className="mt-1 text-sm text-zinc-600">Production {madeOn} · Record actual yield with units for each destination.</p>
+      <table className="mt-5 w-full table-fixed border-collapse text-xs text-zinc-900">
+        <thead className="table-header-group">
+          <tr className="bg-zinc-100 text-left">
+            <th className="w-[27%] border border-zinc-400 p-2">Item / lot / destination</th>
+            <th className="w-[15%] border border-zinc-400 p-2">Planned prep</th>
+            <th className="w-[17%] border border-zinc-400 p-2">Prepared by</th>
+            <th className="w-[18%] border border-zinc-400 p-2">Actual yield + unit</th>
+            <th className="w-[23%] border border-zinc-400 p-2">Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {lines.map((line) => (
+            <tr key={line.id} className="h-24 break-inside-avoid align-top">
+              <td className="break-words border border-zinc-400 p-2">
+                <p className="font-semibold">{line.recipe.name}</p>
+                <p className="mt-1 font-mono">{line.lot}</p>
+                <p className="mt-1">{line.destinationVenue.name}</p>
+              </td>
+              <td className="border border-zinc-400 p-2 font-semibold">{num(line.requestedQty)} {unitLabel(line.requestedUnit)}</td>
+              <td className="border border-zinc-400 p-2">&nbsp;</td>
+              <td className="border border-zinc-400 p-2">&nbsp;</td>
+              <td className="border border-zinc-400 p-2">&nbsp;</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="mt-8 break-inside-avoid text-sm text-zinc-900">
+        <p className="font-semibold">Chef review</p>
+        <div className="mt-8 flex gap-6">
+          <p className="flex-1 border-t border-zinc-600 pt-2">Chef review signature</p>
+          <p className="w-36 border-t border-zinc-600 pt-2">Date / time</p>
+        </div>
+      </div>
+    </section>
   );
 }

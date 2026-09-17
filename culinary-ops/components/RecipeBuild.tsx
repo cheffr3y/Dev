@@ -231,6 +231,7 @@ export function RecipeBuildBody({
   depth,
   stack,
   sharedRefs,
+  weightInGrams = false,
 }: {
   node: RecipeTreeNode;
   byId: Map<string, RecipeTreeNode>;
@@ -239,6 +240,7 @@ export function RecipeBuildBody({
   depth: number;
   stack: Set<string>;
   sharedRefs?: Map<string, string>;
+  weightInGrams?: boolean;
 }) {
   const steps = parseSteps(node.instructions);
   const allergens = allergenLabels(effectiveAllergens(node.id, byId));
@@ -272,7 +274,7 @@ export function RecipeBuildBody({
           {node.items.map((ri) => {
             // Roll the scaled amount up into its natural unit (oz→lb, sub-oz→g,
             // fl oz→qt→gal) so cooks read "3 lb" not "48 oz".
-            const m = displayMeasure(ri.quantity * totalBatches, ri.unit);
+            const m = displayMeasure(ri.quantity * totalBatches, ri.unit, weightInGrams);
             return (
               <tr key={ri.id} className="even:bg-zinc-100/80">
                 <td className={`${cellY} pl-2 pr-3 text-right font-semibold tabular-nums text-zinc-900`}>{num(m.qty)}</td>
@@ -288,7 +290,7 @@ export function RecipeBuildBody({
             // Show the sub-recipe amount in the child's own yield unit (rolled
             // up), scaled by this batch — so the line reads in the child's units.
             const { batches } = componentBatchFactor(c.quantity, c.unit, child.yieldQty, child.yieldUnit);
-            const m = displayMeasure(batches * child.yieldQty * totalBatches, child.yieldUnit);
+            const m = displayMeasure(batches * child.yieldQty * totalBatches, child.yieldUnit, weightInGrams);
             const sharedRef = sharedRefs?.get(c.childId);
             return (
               <tr key={c.id} className="even:bg-zinc-100/80">
@@ -342,7 +344,7 @@ export function RecipeBuildBody({
             if (!child) return null;
             const { batches } = componentBatchFactor(c.quantity, c.unit, child.yieldQty, child.yieldUnit);
             return (
-              <SubBuild key={c.id} node={child} byId={byId} totalBatches={batches * totalBatches} depth={depth} stack={stack} sharedRefs={sharedRefs} />
+              <SubBuild key={c.id} node={child} byId={byId} totalBatches={batches * totalBatches} depth={depth} stack={stack} sharedRefs={sharedRefs} weightInGrams={weightInGrams} />
             );
           })}
         </div>
@@ -365,6 +367,7 @@ export function SubBuild({
   depth,
   stack,
   sharedRefs,
+  weightInGrams = false,
 }: {
   node: RecipeTreeNode;
   byId: Map<string, RecipeTreeNode>;
@@ -372,10 +375,11 @@ export function SubBuild({
   depth: number;
   stack: Set<string>;
   sharedRefs?: Map<string, string>;
+  weightInGrams?: boolean;
 }) {
   if (stack.has(node.id)) return null; // cycle guard
 
-  const made = displayMeasure(totalBatches * node.yieldQty, node.yieldUnit);
+  const made = displayMeasure(totalBatches * node.yieldQty, node.yieldUnit, weightInGrams);
   const sharedRef = sharedRefs?.get(node.id);
 
   if (sharedRef) {
@@ -413,7 +417,7 @@ export function SubBuild({
         {node.prodCode} · v{node.version} · base yield {num(node.yieldQty)} {node.yieldUnit}
       </p>
 
-      <RecipeBuildBody node={node} byId={byId} totalBatches={totalBatches} compact depth={depth + 1} stack={nextStack} sharedRefs={sharedRefs} />
+      <RecipeBuildBody node={node} byId={byId} totalBatches={totalBatches} compact depth={depth + 1} stack={nextStack} sharedRefs={sharedRefs} weightInGrams={weightInGrams} />
     </div>
   );
 }
