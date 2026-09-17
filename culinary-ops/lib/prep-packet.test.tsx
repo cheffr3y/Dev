@@ -34,3 +34,23 @@ test("grams reaches nested builds and shared pull amounts without changing defau
   assert.match(shared, /lot TEST/);
   assert.doesNotMatch(shared, /Flour/);
 });
+
+test("cooling log groups destination splits by lot and preserves separate batches", async () => {
+  const { PrepCoolingLog } = await import("../components/PrepCoolingLog");
+  const line = { id: "a", lot: "LOT-A", recipe: { name: "Soup" }, requestedQty: 2,
+    requestedUnit: "quart", destinationVenue: { name: "Main" } };
+  const html = renderToStaticMarkup(<PrepCoolingLog madeOn="Sep 17, 2026" lines={[
+    line,
+    { ...line, id: "b", destinationVenue: { name: "Annex" } },
+    { ...line, id: "c", lot: "LOT-B" },
+    { ...line, id: "d", lot: null, recipe: { name: "Unprinted" } },
+  ]} />);
+  assert.equal((html.match(/<article/g) ?? []).length, 2);
+  assert.match(html, /2 qt → Main · 2 qt → Annex/);
+  assert.doesNotMatch(html, /Unprinted/);
+  assert.match(html, /135°F to 70°F or below within 2 hours/);
+  assert.match(html, /41°F or below within 6 hours total from 135°F/);
+  assert.match(html, /Due: start \+ 6 hours/);
+  assert.match(html, /Chef cooling review signature/);
+  assert.equal(renderToStaticMarkup(<PrepCoolingLog madeOn="Sep 17, 2026" lines={[]} />), "");
+});

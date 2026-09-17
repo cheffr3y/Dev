@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/session";
 import { num } from "@/lib/costing";
 import { convertQty, unitLabel } from "@/lib/units";
 import { buildShoppingList, type ShoppingRecipeNode } from "@/lib/shopping";
+import { PrepCoolingLog } from "@/components/PrepCoolingLog";
 import { PrintButton } from "@/components/PrintButton";
 import { LocalTime } from "@/components/LocalTime";
 import { ShoppingListBody } from "@/components/ShoppingList";
@@ -24,11 +25,12 @@ function fmtDate(d: Date): string {
 
 export default async function CookPacketPage({ params, searchParams }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ weights?: string | string[]; shopping?: string | string[] }>;
+  searchParams: Promise<{ weights?: string | string[]; shopping?: string | string[]; cooling?: string | string[] }>;
 }) {
   const options = await searchParams;
   const weightInGrams = options.weights === "grams";
   const includeShopping = options.shopping === "yes";
+  const includeCooling = options.cooling !== "no";
   const { id } = await params;
   await requireUser();
 
@@ -132,7 +134,7 @@ export default async function CookPacketPage({ params, searchParams }: {
         </div>
       </div>
 
-      <form key={`${weightInGrams}-${includeShopping}`} method="get" className="no-print mb-5 rounded-xl border border-zinc-200 bg-white p-4 text-sm">
+      <form key={`${weightInGrams}-${includeShopping}-${includeCooling}`} method="get" className="no-print mb-5 rounded-xl border border-zinc-200 bg-white p-4 text-sm">
         <div className="flex flex-wrap items-center gap-4">
           <label className="flex items-center gap-2">
             Recipe weights
@@ -144,6 +146,13 @@ export default async function CookPacketPage({ params, searchParams }: {
           <label className="flex items-center gap-2">
             <input type="checkbox" name="shopping" value="yes" defaultChecked={includeShopping} />
             Include shopping / pull list
+          </label>
+          <label className="flex items-center gap-2">
+            Cooling log
+            <select name="cooling" defaultValue={includeCooling ? "yes" : "no"} className="rounded border border-zinc-300 px-2 py-1">
+              <option value="yes">Include</option>
+              <option value="no">Omit</option>
+            </select>
           </label>
           <button type="submit" className="rounded-full border border-zinc-300 px-4 py-2 font-medium">Update packet</button>
         </div>
@@ -201,6 +210,7 @@ export default async function CookPacketPage({ params, searchParams }: {
           </div>
 
           <PrepPacketLog lines={printed} madeOn={madeOn} />
+          {includeCooling && <PrepCoolingLog lines={printed} madeOn={madeOn} />}
 
           <p className="mt-10 border-t border-zinc-200 pt-4 text-[10px] uppercase tracking-[0.14em] text-zinc-400">
             Printed <LocalTime date={new Date()} mode="date" /> · Lots assigned at first print and frozen · Mise ·
