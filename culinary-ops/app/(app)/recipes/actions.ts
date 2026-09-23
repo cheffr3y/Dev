@@ -20,6 +20,7 @@ const recipeSchema = z.object({
   instructions: z.string().trim().optional(),
   prepMinutes: z.coerce.number().int().min(0).optional(),
   cookMinutes: z.coerce.number().int().min(0).optional(),
+  productionPersonMinutes: z.coerce.number().min(0).optional(),
   shelfLife: z.string().trim().optional(),
   storage: z.string().trim().optional(),
   allergens: z.string().trim().optional(),
@@ -60,6 +61,7 @@ function parseRecipe(formData: FormData) {
     instructions: readInstructions(formData),
     prepMinutes: formData.get("prepMinutes") || undefined,
     cookMinutes: formData.get("cookMinutes") || undefined,
+    productionPersonMinutes: formData.get("productionPersonMinutes") || undefined,
     shelfLife: formData.get("shelfLife") || undefined,
     storage: formData.get("storage") || undefined,
     allergens: readAllergens(formData),
@@ -76,6 +78,7 @@ function parseRecipe(formData: FormData) {
     instructions: d.instructions || null,
     prepMinutes: d.prepMinutes ?? null,
     cookMinutes: d.cookMinutes ?? null,
+    productionPersonMinutes: d.productionPersonMinutes ?? null,
     shelfLife: d.shelfLife || null,
     storage: d.storage || null,
     allergens: d.allergens || null,
@@ -140,6 +143,7 @@ const FIELD_LABELS: Record<string, string> = {
   instructions: "Method",
   prepMinutes: "Prep time",
   cookMinutes: "Cook time",
+  productionPersonMinutes: "Production person-minutes",
   shelfLife: "Shelf life",
   storage: "Storage",
   allergens: "Allergens",
@@ -219,8 +223,9 @@ export async function deleteRecipe(formData: FormData) {
   // clear message instead of letting the Postgres FK violation crash the
   // request. Ingredients, changelog, and this recipe's own sub-recipe links
   // cascade away on their own.
-  const [prepLines, eventItems, banquetItems, usedIn] = await Promise.all([
+  const [prepLines, productionBatches, eventItems, banquetItems, usedIn] = await Promise.all([
     prisma.prepOrderLine.count({ where: { recipeId: id } }),
+    prisma.productionBatch.count({ where: { recipeId: id } }),
     prisma.eventMenuItem.count({ where: { recipeId: id } }),
     prisma.banquetMenuItem.count({ where: { recipeId: id } }),
     prisma.recipeComponent.count({ where: { childId: id } }),
@@ -230,6 +235,7 @@ export async function deleteRecipe(formData: FormData) {
     `${n} ${n === 1 ? one : many}`;
   const blockers: string[] = [];
   if (prepLines) blockers.push(plural(prepLines, "prep order line"));
+  if (productionBatches) blockers.push(plural(productionBatches, "production batch", "production batches"));
   if (eventItems) blockers.push(plural(eventItems, "event"));
   if (banquetItems) blockers.push(plural(banquetItems, "banquet"));
   if (usedIn) blockers.push(`${plural(usedIn, "recipe")} (as a sub-recipe)`);

@@ -51,6 +51,28 @@ enum PrepLineStatus {
   NOT_MADE // explicitly skipped (out of ingredient / time)
 }
 
+enum ProductionBatchStatus {
+  OPEN
+  FINALIZED
+}
+
+enum TransferSourceType {
+  PLANNED
+  STOCK_PICKUP
+  CORRECTION
+}
+
+enum SupplyTreatment {
+  VENUE_SUPPLIED
+  BORROWED_OWED
+}
+
+enum StockAdjustmentType {
+  WASTE
+  RETURN
+  CORRECTION
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -63,9 +85,13 @@ model User {
   updatedAt    DateTime @updatedAt
 
   // Prep / production ledger
-  prepOrders       PrepOrder[]
-  prepLinesMade    PrepOrderLine[] @relation("PrepMadeBy")
-  prepLinesEntered PrepOrderLine[] @relation("PrepEnteredBy")
+  prepOrders        PrepOrder[]
+  prepLinesMade     PrepOrderLine[]           @relation("PrepMadeBy")
+  prepLinesEntered  PrepOrderLine[]           @relation("PrepEnteredBy")
+  productionBatches ProductionBatch[]
+  stockTransfers    StockTransfer[]
+  stockAdjustments  FinishedStockAdjustment[]
+  dailyCloseouts    ProductionCloseout[]
 
   triviaGames TriviaGame[]
 }
@@ -79,18 +105,20 @@ model Venue {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users         User[]
-  inventory     InventoryItem[]
-  orderGuides   OrderGuide[]
-  events        Event[]
-  banquets      Banquet[]
-  festivals     Festival[] // festivals hinting at this venue's inventory
-  prepLines     PrepOrderLine[] // production destined here
-  prepOrders    PrepOrder[] // orders destined here
-  cooks         Cook[] // kitchen roster scheduled at this venue
-  dayNotes      DayNote[] // DEPRECATED — superseded by dayEvents; kept for backfill/rollback
-  dayEvents     DayEvent[] // per-day schedule events (deliveries, off-sites, VIPs…)
-  scheduleNotes ScheduleNote[] // per-week posted announcements
+  users              User[]
+  inventory          InventoryItem[]
+  orderGuides        OrderGuide[]
+  events             Event[]
+  banquets           Banquet[]
+  festivals          Festival[] // festivals hinting at this venue's inventory
+  prepLines          PrepOrderLine[] // production destined here
+  prepOrders         PrepOrder[] // orders destined here
+  cooks              Cook[] // kitchen roster scheduled at this venue
+  dayNotes           DayNote[] // DEPRECATED — superseded by dayEvents; kept for backfill/rollback
+  dayEvents          DayEvent[] // per-day schedule events (deliveries, off-sites, VIPs…)
+  scheduleNotes      ScheduleNote[] // per-week posted announcements
+  stockTransfers     StockTransfer[]
+  suppliedExclusions TransferExclusion[] @relation("SupplyingVenue")
 }
 
 model Vendor {
@@ -161,20 +189,24 @@ model Recipe {
   version Int @default(1)
 
   // Recipe card / food-safety details (printed for line cooks)
-  prepMinutes   Int? // active prep time
-  cookMinutes   Int? // cook / bake time
-  shelfLife     String? // e.g. "3 days refrigerated"
-  storage       String? // storage & holding instructions
-  allergens     String? // comma-separated, e.g. "dairy, gluten, tree nuts"
-  criticalNotes String? // HACCP / critical control points, e.g. "Cook to 165°F internal"
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  prepMinutes             Int? // active prep time
+  cookMinutes             Int? // cook / bake time
+  // Hands-on labor estimate for one standard recipe yield. This is person-
+  // minutes (two people for 30 minutes = 60), not elapsed clock time.
+  productionPersonMinutes Int?
+  shelfLife               String? // e.g. "3 days refrigerated"
+  storage                 String? // storage & holding instructions
+  allergens               String? // comma-separated, e.g. "dairy, gluten, tree nuts"
+  criticalNotes           String? // HACCP / critical control points, e.g. "Cook to 165°F internal"
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 
-  items         RecipeItem[]
-  eventItems    EventMenuItem[]
-  banquetItems  BanquetMenuItem[]
-  festivalItems FestivalMenuItem[]
-  prepLines     PrepOrderLine[]
+  items             RecipeItem[]
+  eventItems        EventMenuItem[]
+  banquetItems      BanquetMenuItem[]
+  festivalItems     FestivalMenuItem[]
+  prepLines         PrepOrderLine[]
+  productionBatches ProductionBatch[]
 
   // Sub-recipes: a recipe can be built from other recipes (components).
   components RecipeComponent[] @relation("ParentRecipe")
@@ -418,11 +450,16 @@ model PrepOrderLine {
   enteredAt       DateTime?
 
   // Cost snapshots — frozen when produced, never recomputed against live Catalog.
-  unitCostSnapshot Float? // Mise cost per recipe yield unit at time of production
-  allocatedCost    Float? // this line's cost share (proportional to qty for splits)
+  unitCostSnapshot      Float? // Mise cost per recipe yield unit at time of production
+  allocatedCost         Float? // this line's cost share (proportional to qty for splits)
   // Raw-ingredient detail frozen alongside the totals for accounting audit.
   // JSON keeps the historical item name/GCODE/price even if Catalog changes.
   costBreakdownSnapshot Json?
+
+  // New production/transfer ledger linkage. Deliberately nullable: historical
+  // completed lines are not fabricated into batches during rollout.
+  productionBatchId String?
+  productionBatch   ProductionBatch? @relation(fields: [productionBatchId], references: [id], onDelete: SetNull)
 
   notes String? // line-level, queryable
 
@@ -430,6 +467,175 @@ model PrepOrderLine {
   @@index([recipeId])
   @@index([destinationVenueId])
   @@index([status])
+  @@index([productionBatchId])
+}
+
+// ---------------------------------------------------------------------------
+// Finished Production, Stock & Cost Transfers
+//
+// Additive to the prep-order ledger. A batch records production and frozen
+// costs; transfers consume finished stock later and are the only venue charge.
+// ---------------------------------------------------------------------------
+
+model ProductionBatch {
+  id                   String                @id @default(cuid())
+  stableId             String                @unique @default(cuid())
+  recipeId             String
+  recipe               Recipe                @relation(fields: [recipeId], references: [id], onDelete: Restrict)
+  lot                  String                @unique
+  producedOn           DateTime
+  outputQty            Float
+  outputUnit           String
+  status               ProductionBatchStatus @default(OPEN)
+  openingStock         Boolean               @default(false)
+  estimatedOpeningCost Boolean               @default(false)
+
+  foodCostSnapshot           Float?
+  foodCostDetailSnapshot     Json?
+  standardProductionMinutes  Float?
+  actualProductionMinutes    Float?
+  productionMinutesSource    String    @default("STANDARD")
+  productionLaborRate        Float     @default(20.666666666666668)
+  productionLaborCost        Float     @default(0)
+  dishwasherMinutes          Float     @default(0)
+  dishwasherLaborRate        Float     @default(18)
+  dishwasherLaborCost        Float     @default(0)
+  dishwasherAllocationMethod String?
+  finalizedAt                DateTime?
+  notes                      String?
+  enteredByUserId            String
+  enteredBy                  User      @relation(fields: [enteredByUserId], references: [id], onDelete: Restrict)
+  createdAt                  DateTime  @default(now())
+  updatedAt                  DateTime  @updatedAt
+
+  prepLines   PrepOrderLine[]
+  transfers   StockTransfer[]
+  adjustments FinishedStockAdjustment[]
+
+  @@index([recipeId, producedOn])
+  @@index([producedOn, status])
+}
+
+model StockTransfer {
+  id                       String             @id @default(cuid())
+  stableId                 String             @unique @default(cuid())
+  batchId                  String
+  batch                    ProductionBatch    @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  venueId                  String
+  venue                    Venue              @relation(fields: [venueId], references: [id], onDelete: Restrict)
+  transferDate             DateTime
+  quantity                 Float
+  unit                     String
+  sourceType               TransferSourceType
+  foodCostBeforeExclusions Float
+  excludedFoodCost         Float              @default(0)
+  netFoodCost              Float
+  productionLaborCost      Float
+  dishwasherLaborCost      Float
+  totalTransferCost        Float
+  productionMinutes        Float              @default(0)
+  dishwasherMinutes        Float              @default(0)
+  finalizedAt              DateTime?
+  correctionOfId           String?
+  correctionOf             StockTransfer?     @relation("TransferCorrections", fields: [correctionOfId], references: [id], onDelete: Restrict)
+  corrections              StockTransfer[]    @relation("TransferCorrections")
+  notes                    String?
+  enteredByUserId          String
+  enteredBy                User               @relation(fields: [enteredByUserId], references: [id], onDelete: Restrict)
+  createdAt                DateTime           @default(now())
+
+  exclusions       TransferExclusion[]
+  reportInclusions TransferReportInclusion[]
+
+  @@index([transferDate, venueId])
+  @@index([batchId])
+  @@index([correctionOfId])
+}
+
+model TransferExclusion {
+  id                     String          @id @default(cuid())
+  transferId             String
+  transfer               StockTransfer   @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  itemId                 String?
+  itemName               String
+  gcode                  String?
+  quantity               Float
+  unit                   String
+  capturedUnitPrice      Float?
+  excludedFoodCost       Float
+  supplyingVenueId       String
+  supplyingVenue         Venue           @relation("SupplyingVenue", fields: [supplyingVenueId], references: [id], onDelete: Restrict)
+  reason                 String
+  treatment              SupplyTreatment
+  excludeFood            Boolean         @default(true)
+  excludeProductionLabor Boolean         @default(false)
+  excludeDishwasherLabor Boolean         @default(false)
+  resolvedAt             DateTime?
+  resolutionNotes        String?
+  createdAt              DateTime        @default(now())
+
+  @@index([transferId])
+  @@index([treatment, resolvedAt])
+}
+
+model FinishedStockAdjustment {
+  id              String                    @id @default(cuid())
+  stableId        String                    @unique @default(cuid())
+  batchId         String
+  batch           ProductionBatch           @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  date            DateTime
+  type            StockAdjustmentType
+  // Signed quantity in the batch output unit: waste is normally negative,
+  // return positive, and correction explicit either way.
+  quantity        Float
+  unit            String
+  reason          String
+  correctionOfId  String?
+  correctionOf    FinishedStockAdjustment?  @relation("StockAdjustmentCorrections", fields: [correctionOfId], references: [id], onDelete: Restrict)
+  corrections     FinishedStockAdjustment[] @relation("StockAdjustmentCorrections")
+  enteredByUserId String
+  enteredBy       User                      @relation(fields: [enteredByUserId], references: [id], onDelete: Restrict)
+  createdAt       DateTime                  @default(now())
+
+  @@index([batchId, date])
+  @@index([correctionOfId])
+}
+
+model ProductionCloseout {
+  id                     String    @id @default(cuid())
+  businessDate           DateTime  @unique
+  dishwasherMinutes      Float?
+  dishwasherRate         Float?
+  allocationBasisMinutes Float?
+  dishwasherCost         Float?
+  allocationSnapshot     Json?
+  finalizedAt            DateTime?
+  finalizedByUserId      String
+  finalizedBy            User      @relation(fields: [finalizedByUserId], references: [id], onDelete: Restrict)
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+}
+
+model TransferReportRun {
+  id         String                    @id @default(cuid())
+  stableId   String                    @unique @default(cuid())
+  fromDate   DateTime
+  toDate     DateTime
+  venueId    String?
+  createdAt  DateTime                  @default(now())
+  inclusions TransferReportInclusion[]
+
+  @@index([fromDate, toDate])
+}
+
+model TransferReportInclusion {
+  reportRunId String
+  reportRun   TransferReportRun @relation(fields: [reportRunId], references: [id], onDelete: Cascade)
+  transferId  String
+  transfer    StockTransfer     @relation(fields: [transferId], references: [id], onDelete: Restrict)
+
+  @@id([reportRunId, transferId])
+  @@index([transferId])
 }
 
 // ---------------------------------------------------------------------------

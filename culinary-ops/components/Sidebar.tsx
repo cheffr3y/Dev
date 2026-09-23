@@ -37,6 +37,7 @@ const SECTIONS: Array<{ heading: string; items: NavItem[] }> = [
         match: ["/events", "/banquets", "/festivals"],
       },
       { href: "/prep-orders", label: "Prep Orders", icon: "prep" },
+      { href: "/production", label: "Daily Production", icon: "prep" },
     ],
   },
   {

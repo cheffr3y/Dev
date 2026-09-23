@@ -3,297 +3,43 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { getVenues } from "@/lib/venue";
 import { money, num } from "@/lib/costing";
-import { convertQty, unitLabel } from "@/lib/units";
-import { Badge, Button, Card, CardHeader, Field, Input, PageHeader, Select } from "@/components/ui";
+import { unitLabel } from "@/lib/units";
+import { Button, Card, CardHeader, Field, Input, PageHeader, Select } from "@/components/ui";
 import { PrintButton } from "@/components/PrintButton";
-import { prepStatusLabel, PREP_STATUS_COLOR, type PrepStatus } from "@/lib/prep";
 import { prepReportDates } from "@/lib/prep-report";
 
-// The artifact handed to accounting. Completed recipe quantity per destination venue is
-// the contract; Mise cost is a clearly-labeled, non-authoritative sanity check.
-// Accounting applies their own Acumatica pricing to these quantities.
-
-export default async function CostTransferReportPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ from?: string; to?: string; venue?: string }>;
-}) {
+export default async function CostTransferReportPage({ searchParams }: { searchParams: Promise<{ from?: string; to?: string; venue?: string }> }) {
   await requireUser();
   const sp = await searchParams;
-  const range = prepReportDates(sp.from, sp.to);
-  const { from, to, fromDate, toDate } = range;
+  const { from, to, fromDate, toDate } = prepReportDates(sp.from, sp.to);
   const venueId = sp.venue || "";
-
-  const [venues, lines] = await Promise.all([
+  const [venues, transfers, legacyCount] = await Promise.all([
     getVenues(),
-    prisma.prepOrderLine.findMany({
-      where: {
-        status: { in: ["MADE", "SHORT"] }, // produced & transferred
-        ...(venueId ? { destinationVenueId: venueId } : {}),
-        prepOrder: { forDate: { gte: fromDate, lte: toDate } },
-      },
-      include: {
-        recipe: { select: { name: true, prodCode: true, yieldUnit: true } },
-        destinationVenue: { select: { id: true, name: true, code: true } },
-        prepOrder: { select: { forDate: true } },
-        madeBy: { select: { name: true } },
-      },
-      orderBy: [{ destinationVenue: { name: "asc" } }, { recipe: { name: "asc" } }, { prepOrder: { forDate: "asc" } }],
+    prisma.stockTransfer.findMany({
+      where: { transferDate: { gte: fromDate, lte: toDate }, ...(venueId ? { venueId } : {}) },
+      include: { venue: true, batch: { include: { recipe: true } }, exclusions: true },
+      orderBy: [{ venue: { name: "asc" } }, { transferDate: "asc" }, { stableId: "asc" }],
     }),
+    prisma.prepOrderLine.count({ where: { status: { in: ["MADE", "SHORT"] }, productionBatchId: null, prepOrder: { forDate: { gte: fromDate, lte: toDate } }, ...(venueId ? { destinationVenueId: venueId } : {}) } }),
   ]);
-
-  // Rollup: venue → (recipe + unit) → summed qty + cost.
-  type Roll = { recipe: string; prodCode: string; unit: string; qty: number; cost: number; lines: number };
-  const byVenue = new Map<string, { name: string; rows: Map<string, Roll> }>();
-  for (const l of lines) {
-    const v = byVenue.get(l.destinationVenue.id) ?? { name: l.destinationVenue.name, rows: new Map() };
-    const unit = l.actualUnit ?? l.requestedUnit;
-    const key = `${l.recipeId}|${unit}`;
-    const row = v.rows.get(key) ?? { recipe: l.recipe.name, prodCode: l.recipe.prodCode, unit, qty: 0, cost: 0, lines: 0 };
-    row.qty += l.actualQty ?? 0;
-    row.cost += l.allocatedCost ?? 0;
-    row.lines += 1;
-    v.rows.set(key, row);
-    byVenue.set(l.destinationVenue.id, v);
+  const byVenue = new Map<string, { name: string; foodGross: number; excluded: number; foodNet: number; production: number; dishwasher: number; total: number }>();
+  for (const transfer of transfers) {
+    const row = byVenue.get(transfer.venueId) ?? { name: transfer.venue.name, foodGross: 0, excluded: 0, foodNet: 0, production: 0, dishwasher: 0, total: 0 };
+    row.foodGross += transfer.foodCostBeforeExclusions;
+    row.excluded += transfer.excludedFoodCost;
+    row.foodNet += transfer.netFoodCost;
+    row.production += transfer.productionLaborCost;
+    row.dishwasher += transfer.dishwasherLaborCost;
+    row.total += transfer.totalTransferCost;
+    byVenue.set(transfer.venueId, row);
   }
-
-  const grandCost = lines.reduce((s, l) => s + (l.allocatedCost ?? 0), 0);
-
-  // Yield insight: requested vs actual per recipe (converted to yield unit).
-  type Yield = { recipe: string; prodCode: string; unit: string; requested: number; actual: number; convertible: boolean };
-  const yields = new Map<string, Yield>();
-  for (const l of lines) {
-    const y =
-      yields.get(l.recipeId) ??
-      { recipe: l.recipe.name, prodCode: l.recipe.prodCode, unit: l.recipe.yieldUnit, requested: 0, actual: 0, convertible: true };
-    const req = convertQty(l.requestedQty, l.requestedUnit, l.recipe.yieldUnit);
-    const act = convertQty(l.actualQty ?? 0, l.actualUnit ?? l.requestedUnit, l.recipe.yieldUnit);
-    if (req == null || act == null) y.convertible = false;
-    else {
-      y.requested += req;
-      y.actual += act;
-    }
-    yields.set(l.recipeId, y);
-  }
-  const yieldRows = [...yields.values()].filter((y) => y.convertible && y.requested > 0);
-
   const exportQuery = new URLSearchParams({ from, to, ...(venueId ? { venue: venueId } : {}) }).toString();
-
-  return (
-    <div>
-      <div className="no-print mb-4 flex items-center justify-between">
-        <Link href="/prep-orders" className="text-sm text-blue-600 hover:underline">
-          ← Prep orders
-        </Link>
-        <div className="flex items-center gap-2">
-          <Link
-            href={`/prep-orders/report/export-xlsx?${exportQuery}`}
-            className="inline-flex items-center gap-1.5 rounded-full bg-ink px-5 py-2 text-sm font-medium tracking-wide text-white transition-colors hover:bg-zinc-700"
-            prefetch={false}
-          >
-            Export Excel
-          </Link>
-          <Link
-            href={`/prep-orders/report/export?${exportQuery}`}
-            className="inline-flex items-center gap-1.5 rounded-full border border-hairline bg-canvas px-5 py-2 text-sm font-medium tracking-wide text-ink transition-colors hover:border-ink"
-            prefetch={false}
-          >
-            Export CSV
-          </Link>
-          <PrintButton label="Print report" />
-        </div>
-      </div>
-
-      <PageHeader title="Cost-Transfer Report" subtitle="Completed recipe quantities and frozen costs by destination venue." />
-
-      {/* Filters */}
-      <Card className="no-print mb-6 p-4">
-        <form className="flex flex-wrap items-end gap-3">
-          <div className="w-44">
-            <Field label="From">
-              <Input name="from" type="date" defaultValue={from} />
-            </Field>
-          </div>
-          <div className="w-44">
-            <Field label="To">
-              <Input name="to" type="date" defaultValue={to} />
-            </Field>
-          </div>
-          <div className="w-48">
-            <Field label="Venue">
-              <Select name="venue" defaultValue={venueId}>
-                <option value="">All venues</option>
-                {venues.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.name}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </div>
-          <Button type="submit" variant="secondary">
-            Apply
-          </Button>
-        </form>
-      </Card>
-
-      <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
-        <span className="font-semibold">Quantity is the source of truth.</span> The cost column is{" "}
-        <span className="font-semibold">estimated — Mise basis, not authoritative</span>. Accounting applies Acumatica
-        pricing to these quantities.
-      </div>
-
-      {byVenue.size === 0 ? (
-        <Card className="p-8 text-center text-sm text-zinc-400">
-          No produced lines in this range. Adjust the filters above.
-        </Card>
-      ) : (
-        <div className="space-y-6">
-          {[...byVenue.values()].map((v) => {
-            const rows = [...v.rows.values()].sort((a, b) => a.recipe.localeCompare(b.recipe));
-            const venueCost = rows.reduce((s, r) => s + r.cost, 0);
-            return (
-              <Card key={v.name}>
-                <CardHeader>{v.name}</CardHeader>
-                <table className="w-full text-sm">
-                  <thead className="bg-zinc-50 text-left font-mono text-[11px] uppercase tracking-[0.02em] text-zinc-600">
-                    <tr>
-                      <th className="px-4 py-2 font-medium">Item</th>
-                      <th className="px-4 py-2 font-medium">Code</th>
-                      <th className="px-4 py-2 text-right font-medium">Quantity</th>
-                      <th className="px-4 py-2 text-right font-medium">Est. Mise cost</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-zinc-100">
-                    {rows.map((r) => (
-                      <tr key={`${r.recipe}-${r.unit}`}>
-                        <td className="px-4 py-2 text-zinc-800">{r.recipe}</td>
-                        <td className="px-4 py-2 font-mono text-[12px] text-zinc-500">{r.prodCode}</td>
-                        <td className="px-4 py-2 text-right font-semibold tabular-nums text-zinc-900">
-                          {num(r.qty)} {unitLabel(r.unit)}
-                        </td>
-                        <td className="px-4 py-2 text-right tabular-nums text-zinc-500">{money(r.cost)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr className="border-t border-zinc-200 bg-zinc-50 font-medium">
-                      <td className="px-4 py-2 text-zinc-700" colSpan={3}>
-                        {v.name} estimated total
-                      </td>
-                      <td className="px-4 py-2 text-right text-zinc-900">{money(venueCost)}</td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </Card>
-            );
-          })}
-
-          <div className="rounded-lg bg-stone p-5">
-            <p className="font-mono text-xs uppercase tracking-[0.02em] text-zinc-600">Grand estimated Mise cost (all venues)</p>
-            <p className="mt-2 font-display text-3xl tracking-tight text-ink">{money(grandCost)}</p>
-            <p className="mt-1 text-xs text-zinc-500">Estimate only — accounting rebuilds authoritative cost in Acumatica.</p>
-          </div>
-        </div>
-      )}
-
-      {/* Per-line drill-down (audit) */}
-      {lines.length > 0 && (
-        <details className="mt-8">
-          <summary className="cursor-pointer font-mono text-xs uppercase tracking-[0.02em] text-zinc-600">
-            Per-line drill-down ({lines.length} lines)
-          </summary>
-          <Card className="mt-2 overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-zinc-50 text-left font-mono text-[11px] uppercase tracking-[0.02em] text-zinc-600">
-                <tr>
-                  <th className="px-3 py-2 font-medium">Date</th>
-                  <th className="px-3 py-2 font-medium">Venue</th>
-                  <th className="px-3 py-2 font-medium">Recipe</th>
-                  <th className="px-3 py-2 font-medium">Lot</th>
-                  <th className="px-3 py-2 text-right font-medium">Req.</th>
-                  <th className="px-3 py-2 text-right font-medium">Actual</th>
-                  <th className="px-3 py-2 font-medium">Status</th>
-                  <th className="px-3 py-2 font-medium">Made by</th>
-                  <th className="px-3 py-2 text-right font-medium">Est. cost</th>
-                  <th className="px-3 py-2 font-medium">Notes</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-100">
-                {lines.map((l) => (
-                  <tr key={l.id}>
-                    <td className="px-3 py-2 text-zinc-600">
-                      {l.prepOrder.forDate.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })}
-                    </td>
-                    <td className="px-3 py-2 text-zinc-700">{l.destinationVenue.code}</td>
-                    <td className="px-3 py-2 text-zinc-800">{l.recipe.name}</td>
-                    <td className="px-3 py-2 font-mono text-[12px] text-zinc-500">{l.lot}</td>
-                    <td className="px-3 py-2 text-right tabular-nums text-zinc-500">
-                      {num(l.requestedQty)} {unitLabel(l.requestedUnit)}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums text-zinc-800">
-                      {l.actualQty != null ? `${num(l.actualQty)} ${unitLabel(l.actualUnit ?? "")}` : "—"}
-                    </td>
-                    <td className="px-3 py-2">
-                      <Badge color={PREP_STATUS_COLOR[l.status as PrepStatus]}>{prepStatusLabel(l.status)}</Badge>
-                    </td>
-                    <td className="px-3 py-2 text-zinc-600">{l.madeBy?.name ?? "—"}</td>
-                    <td className="px-3 py-2 text-right tabular-nums text-zinc-500">{money(l.allocatedCost ?? 0)}</td>
-                    <td className="px-3 py-2 text-zinc-500">{l.notes ?? ""}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Card>
-        </details>
-      )}
-
-      {/* Yield insight */}
-      {yieldRows.length > 0 && (
-        <Card className="mt-8">
-          <CardHeader>Yield Insight · requested vs actual</CardHeader>
-          <p className="px-4 pt-3 text-xs text-zinc-500">
-            Persistent deltas flag recipes whose stated yield may be wrong. Line notes (drill-down above) explain why.
-          </p>
-          <table className="w-full text-sm">
-            <thead className="bg-zinc-50 text-left font-mono text-[11px] uppercase tracking-[0.02em] text-zinc-600">
-              <tr>
-                <th className="px-4 py-2 font-medium">Recipe</th>
-                <th className="px-4 py-2 text-right font-medium">Requested</th>
-                <th className="px-4 py-2 text-right font-medium">Actual</th>
-                <th className="px-4 py-2 text-right font-medium">Delta</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100">
-              {yieldRows
-                .sort((a, b) => Math.abs(b.actual - b.requested) - Math.abs(a.actual - a.requested))
-                .map((y) => {
-                  const delta = y.actual - y.requested;
-                  const pctDelta = (delta / y.requested) * 100;
-                  const off = Math.abs(pctDelta) >= 10;
-                  return (
-                    <tr key={y.recipe}>
-                      <td className="px-4 py-2 text-zinc-800">
-                        {y.recipe} <span className="font-mono text-[11px] text-zinc-400">{y.prodCode}</span>
-                      </td>
-                      <td className="px-4 py-2 text-right tabular-nums text-zinc-600">
-                        {num(y.requested)} {unitLabel(y.unit)}
-                      </td>
-                      <td className="px-4 py-2 text-right tabular-nums text-zinc-600">
-                        {num(y.actual)} {unitLabel(y.unit)}
-                      </td>
-                      <td className={`px-4 py-2 text-right tabular-nums font-medium ${off ? "text-red-600" : "text-zinc-500"}`}>
-                        {delta >= 0 ? "+" : ""}
-                        {num(delta)} ({pctDelta >= 0 ? "+" : ""}
-                        {pctDelta.toFixed(0)}%)
-                      </td>
-                    </tr>
-                  );
-                })}
-            </tbody>
-          </table>
-        </Card>
-      )}
-    </div>
-  );
+  return <div>
+    <div className="no-print mb-4 flex items-center justify-between"><Link href="/production" className="text-sm text-blue-600 hover:underline">← Daily production</Link><div className="flex gap-2"><Link href={`/prep-orders/report/export-xlsx?${exportQuery}`} className="rounded-full bg-ink px-5 py-2 text-sm font-medium text-white" prefetch={false}>Export Excel</Link><Link href={`/prep-orders/report/export?${exportQuery}`} className="rounded-full border border-hairline bg-canvas px-5 py-2 text-sm" prefetch={false}>Export CSV</Link><PrintButton label="Print report" /></div></div>
+    <PageHeader title="Cost-Transfer Report" subtitle="Venue charges by transfer date · Acumatica remains authoritative" />
+    <Card className="no-print mb-6 p-4"><form className="flex flex-wrap items-end gap-3"><Field label="From"><Input name="from" type="date" defaultValue={from}/></Field><Field label="To"><Input name="to" type="date" defaultValue={to}/></Field><Field label="Venue"><Select name="venue" defaultValue={venueId}><option value="">All venues</option>{venues.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}</Select></Field><Button type="submit" variant="secondary">Apply</Button></form></Card>
+    {legacyCount > 0 && <div className="mb-5 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900"><strong>{legacyCount} legacy completed prep line{legacyCount === 1 ? "" : "s"}</strong> in this production-date range are preserved in the Excel legacy sheet and are not treated as transfers. Confirm current-day lines from Daily Production when appropriate; do not backfill historical labor.</div>}
+    <Card><CardHeader>Venue summary</CardHeader>{byVenue.size === 0 ? <p className="p-8 text-center text-sm text-zinc-400">No transfers in this date range.</p> : <div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-zinc-50 text-left font-mono text-[11px] uppercase text-zinc-600"><tr><th className="px-3 py-2">Venue</th><th className="px-3 py-2 text-right">Food before</th><th className="px-3 py-2 text-right">Excluded food</th><th className="px-3 py-2 text-right">Net food</th><th className="px-3 py-2 text-right">Production labor</th><th className="px-3 py-2 text-right">Dishwasher labor</th><th className="px-3 py-2 text-right">Total transfer</th></tr></thead><tbody className="divide-y divide-zinc-100">{[...byVenue.values()].map((v) => <tr key={v.name}><td className="px-3 py-2 font-medium">{v.name}</td><td className="px-3 py-2 text-right">{money(v.foodGross)}</td><td className="px-3 py-2 text-right">{money(v.excluded)}</td><td className="px-3 py-2 text-right">{money(v.foodNet)}</td><td className="px-3 py-2 text-right">{money(v.production)}</td><td className="px-3 py-2 text-right">{money(v.dishwasher)}</td><td className="px-3 py-2 text-right font-semibold">{money(v.total)}</td></tr>)}</tbody></table></div>}</Card>
+    <Card className="mt-6"><CardHeader>Transfer detail</CardHeader><div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-zinc-50 text-left font-mono text-[11px] uppercase text-zinc-600"><tr><th className="px-3 py-2">ID / date</th><th className="px-3 py-2">Venue</th><th className="px-3 py-2">Item / lot</th><th className="px-3 py-2 text-right">Quantity</th><th className="px-3 py-2">Source</th><th className="px-3 py-2 text-right">Food</th><th className="px-3 py-2 text-right">Prod</th><th className="px-3 py-2 text-right">Dish</th><th className="px-3 py-2 text-right">Total</th></tr></thead><tbody className="divide-y divide-zinc-100">{transfers.map((t) => <tr key={t.id}><td className="px-3 py-2"><p className="font-mono text-xs">{t.stableId}</p><p className="text-zinc-500">{t.transferDate.toISOString().slice(0,10)}</p></td><td className="px-3 py-2">{t.venue.code}</td><td className="px-3 py-2">{t.batch.recipe.name}<p className="font-mono text-xs text-zinc-500">{t.batch.lot}</p></td><td className="px-3 py-2 text-right">{num(t.quantity)} {unitLabel(t.unit)}</td><td className="px-3 py-2">{t.sourceType.replaceAll("_", " ").toLowerCase()}</td><td className="px-3 py-2 text-right">{money(t.netFoodCost)}</td><td className="px-3 py-2 text-right">{money(t.productionLaborCost)}</td><td className="px-3 py-2 text-right">{money(t.dishwasherLaborCost)}</td><td className="px-3 py-2 text-right font-semibold">{money(t.totalTransferCost)}</td></tr>)}</tbody></table></div></Card>
+  </div>;
 }

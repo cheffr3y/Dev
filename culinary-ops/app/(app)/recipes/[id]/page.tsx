@@ -431,12 +431,15 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
                   </Section>
 
                   <Section title="Timing">
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                       <Field label="Prep (min)">
                         <Input name="prepMinutes" type="number" min="0" defaultValue={recipe.prepMinutes ?? ""} placeholder="—" />
                       </Field>
                       <Field label="Cook (min)">
                         <Input name="cookMinutes" type="number" min="0" defaultValue={recipe.cookMinutes ?? ""} placeholder="—" />
+                      </Field>
+                      <Field label="Production person-min" hint="Standard hands-on estimate per recipe yield.">
+                        <Input name="productionPersonMinutes" type="number" min="0" step="0.1" defaultValue={recipe.productionPersonMinutes ?? ""} placeholder="—" />
                       </Field>
                     </div>
                   </Section>
@@ -488,6 +491,7 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
                 <DetailRow label="Yield" value={`${num(recipe.yieldQty)} ${recipe.yieldUnit}`} />
                 <DetailRow label="Prep" value={recipe.prepMinutes != null ? `${recipe.prepMinutes} min` : null} />
                 <DetailRow label="Cook" value={recipe.cookMinutes != null ? `${recipe.cookMinutes} min` : null} />
+                <DetailRow label="Production labor" value={recipe.productionPersonMinutes != null ? `${num(recipe.productionPersonMinutes)} person-min / standard yield` : null} />
                 <DetailRow label="Allergens" value={allergenLabels(effectiveAllergenKeys) || null} multiline />
                 <DetailRow label="Storage" value={recipe.storage} multiline />
                 <DetailRow label="Shelf life" value={recipe.shelfLife} />
