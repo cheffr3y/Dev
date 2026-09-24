@@ -15,11 +15,13 @@ export function RecipePicker({
   recipes,
   name = "recipeId",
   disabled = false,
+  defaultId = "",
   onSelect,
 }: {
   recipes: Recipe[];
   name?: string;
   disabled?: boolean;
+  defaultId?: string;
   onSelect?: (recipe: Recipe | null) => void;
 }) {
   const byId = useMemo(() => new Map(recipes.map((r) => [r.id, r])), [recipes]);
@@ -41,6 +43,7 @@ export function RecipePicker({
       name={name}
       placeholder="Search recipes…"
       disabled={disabled}
+      defaultId={defaultId}
       onSelect={(o) => onSelect?.(o ? byId.get(o.id) ?? null : null)}
     />
   );

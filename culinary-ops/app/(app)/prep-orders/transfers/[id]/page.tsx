@@ -26,6 +26,7 @@ export default async function TransferPage({
       select: {
         id: true,
         name: true,
+        prodCode: true,
         yieldQty: true,
         yieldUnit: true,
         productionPersonMinutes: true,

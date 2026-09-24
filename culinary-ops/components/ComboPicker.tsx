@@ -104,7 +104,10 @@ export function ComboPicker({
             setActive(0);
             setOpen(true);
           }}
-          onFocus={() => setOpen(true)}
+          onFocus={(e) => {
+            e.currentTarget.select();
+            setOpen(true);
+          }}
           onBlur={() => {
             blurTimer.current = setTimeout(() => setOpen(false), 120);
           }}

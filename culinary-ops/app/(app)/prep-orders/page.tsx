@@ -59,6 +59,7 @@ export default async function PrepToday({
       select: {
         id: true,
         name: true,
+        prodCode: true,
         yieldQty: true,
         yieldUnit: true,
         productionPersonMinutes: true,

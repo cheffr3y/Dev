@@ -2,12 +2,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Field, Input, Select } from "@/components/ui";
+import { RecipePicker } from "@/components/RecipePicker";
 import { submitPrepOperation } from "./workflow-actions";
 import { convertQty } from "@/lib/units";
 import type { Supply } from "@/lib/prep-costing";
 type Recipe = {
   id: string;
   name: string;
+  prodCode: string;
   yieldQty: number;
   yieldUnit: string;
   productionPersonMinutes: number | null;
@@ -336,11 +338,11 @@ export function EntryForm({
     >
       <div className="grid gap-4 sm:grid-cols-3">
         <Field label="Recipe / item">
-          <Select
-            required
-            value={recipeId}
-            onChange={(e) => {
-              setRecipeId(e.target.value);
+          <RecipePicker
+            recipes={recipes}
+            defaultId={recipeId}
+            onSelect={(recipe) => {
+              setRecipeId(recipe?.id ?? "");
               setQuantity("");
               setQuantities({});
               setOmitted({});
@@ -350,13 +352,7 @@ export function EntryForm({
               setSupplies([]);
               setRequestSupplies({});
             }}
-          >
-            {recipes.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name}
-              </option>
-            ))}
-          </Select>
+          />
         </Field>
         <Field
           label={
@@ -593,7 +589,7 @@ export function EntryForm({
           {error}
         </p>
       )}
-      <Button disabled={busy}>
+      <Button disabled={busy || !r}>
         {busy
           ? "Saving…"
           : correction
