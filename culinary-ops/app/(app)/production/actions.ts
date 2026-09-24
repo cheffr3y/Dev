@@ -90,8 +90,8 @@ export async function recordProduction(formData: FormData) {
       notes: d.notes || null, enteredByUserId: user.id,
     },
   });
-  revalidatePath("/production");
-  redirect(`/production?date=${d.producedOn}`);
+  revalidatePath("/prep-orders/daily");
+  redirect(`/prep-orders/daily?date=${d.producedOn}`);
 }
 
 // Confirm an existing completed prep lot into the new ledger. This is explicit
@@ -165,7 +165,7 @@ export async function capturePrepLot(formData: FormData) {
     }
     await tx.prepOrderLine.updateMany({ where: { id: { in: lines.map((line) => line.id) } }, data: { productionBatchId: batch.id } });
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
-  revalidatePath("/production");
+  revalidatePath("/prep-orders/daily");
   revalidatePath("/prep-orders/report");
 }
 
@@ -209,9 +209,9 @@ export async function recordTransfer(formData: FormData) {
       correctionOfId: correctionOf?.id ?? null, notes: d.notes || null, enteredByUserId: user.id,
     } });
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
-  revalidatePath("/production");
+  revalidatePath("/prep-orders/daily");
   revalidatePath("/prep-orders/report");
-  redirect(`/production?date=${d.transferDate}`);
+  redirect(`/prep-orders/daily?date=${d.transferDate}`);
 }
 
 export async function addTransferExclusion(formData: FormData) {
@@ -253,14 +253,14 @@ export async function addTransferExclusion(formData: FormData) {
       totalTransferCost: netFoodCost + productionLaborCost + dishwasherLaborCost,
     } });
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
-  revalidatePath("/production");
+  revalidatePath("/prep-orders/daily");
 }
 
 export async function resolveBorrow(formData: FormData) {
   await requireRole("MANAGER");
   const id = String(formData.get("id"));
   await prisma.transferExclusion.update({ where: { id }, data: { resolvedAt: new Date(), resolutionNotes: String(formData.get("resolutionNotes") || "") || null } });
-  revalidatePath("/production");
+  revalidatePath("/prep-orders/daily");
 }
 
 export async function addStockAdjustment(formData: FormData) {
@@ -287,7 +287,7 @@ export async function addStockAdjustment(formData: FormData) {
     if (kind === "CORRECTION" && correctionOfStableId && !correctionOf) throw new Error("The stock adjustment ID being corrected was not found.");
     await tx.finishedStockAdjustment.create({ data: { batchId, date: date(adjustmentDate), type: kind, quantity, unit, reason, correctionOfId: correctionOf?.id ?? null, enteredByUserId: user.id } });
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
-  revalidatePath("/production");
+  revalidatePath("/prep-orders/daily");
 }
 
 export async function finalizeCloseout(formData: FormData) {
@@ -336,6 +336,6 @@ export async function finalizeCloseout(formData: FormData) {
       finalizedAt: new Date(), finalizedByUserId: user.id,
     } });
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
-  revalidatePath("/production");
-  redirect(`/production?date=${businessDate}`);
+  revalidatePath("/prep-orders/daily");
+  redirect(`/prep-orders/daily?date=${businessDate}`);
 }

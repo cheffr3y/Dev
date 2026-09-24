@@ -92,11 +92,10 @@ export default async function PrepOrdersPage() {
       <PageHeader
         title="Prep Orders"
         subtitle="Commissary production — request, print, produce, transfer."
-        action={
-          <LinkButton href="/prep-orders/report" variant="secondary">
-            Cost-transfer report →
-          </LinkButton>
-        }
+        action={<div className="flex flex-wrap gap-2">
+          <LinkButton href="/prep-orders/daily" variant="gold">Daily prep & pickups →</LinkButton>
+          <LinkButton href="/prep-orders/report" variant="secondary">Cost-transfer report →</LinkButton>
+        </div>}
       />
 
       {canCreate && (
