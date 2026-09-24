@@ -5,7 +5,6 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "prestart": "prisma db push --skip-generate",
     "start": "next start",
     "lint": "eslint",
     "test": "node --import tsx --test \"lib/schedule.test.ts\" \"lib/trivia-engine.test.ts\" \"lib/prep-accounting.test.ts\" \"lib/production.test.ts\" \"lib/prep-packet.test.tsx\" \"lib/festival-accounting.test.ts\" \"app/(app)/schedule/schedule-ui.test.tsx\"",

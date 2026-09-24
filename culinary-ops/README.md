@@ -133,7 +133,7 @@ Designed to deploy cleanly to **Vercel** with a hosted Postgres (Neon, Supabase,
 
 1. Push this repo to GitHub and import it in Vercel.
 2. Set env vars `DATABASE_URL` and `AUTH_SECRET`.
-3. The `postinstall` hook generates Prisma Client. Hosts that launch with `npm start` also run the non-destructive schema sync automatically through `prestart`; Prisma stops startup rather than accepting a data-loss warning. For hosts that do not run `npm start` (including serverless build-only deployments), run `npm run db:push` after schema changes.
+3. The `postinstall` hook generates Prisma Client. Apply schema changes explicitly with `npm run db:push` before deploying a release that changes `prisma/schema.prisma`. Database synchronization is intentionally not part of `npm start`, so a temporary database connection shortage cannot prevent the web process from starting.
 
 ### Migrating from the legacy foxtownhq app
 Replacing an existing foxtownhq deployment and want to keep its recipes, items,
