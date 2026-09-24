@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { prisma } from "./prisma";
 import {
   confirmProduction,
+  previewProduction,
   recordPickup,
   closeDay,
   recordReturn,
@@ -28,8 +29,9 @@ if (
   throw new Error(
     "Transaction tests require the disposable local test harness.",
   );
-let manager: string,
+let admin: string,
   staff: string,
+  chefManager: string,
   venueA: string,
   venueB: string,
   recipeId: string,
@@ -51,7 +53,7 @@ async function requests(date: string, amounts = [10, 12]) {
         data: {
           forDate: businessDate(date),
           destinationVenueId: i === 0 ? venueA : venueB,
-          submittedByUserId: manager,
+          submittedByUserId: admin,
         },
       });
       return prisma.prepOrderLine.create({
@@ -69,13 +71,13 @@ async function requests(date: string, amounts = [10, 12]) {
 before(async () => {
   const u = await prisma.user.create({
     data: {
-      name: "Manager",
-      email: "manager@local.test",
+      name: "Admin",
+      email: "admin@local.test",
       passwordHash: "unused",
-      role: "MANAGER",
+      role: "ADMIN",
     },
   });
-  manager = u.id;
+  admin = u.id;
   staff = (
     await prisma.user.create({
       data: {
@@ -90,6 +92,21 @@ before(async () => {
     .id;
   venueB = (
     await prisma.venue.create({ data: { name: "Foxtown Brewing", code: "F" } })
+  ).id;
+  await prisma.user.update({
+    where: { id: staff },
+    data: { homeVenueId: venueA },
+  });
+  chefManager = (
+    await prisma.user.create({
+      data: {
+        name: "Chef Manager",
+        email: "manager@local.test",
+        passwordHash: "unused",
+        role: "MANAGER",
+        homeVenueId: venueA,
+      },
+    })
   ).id;
   itemId = (
     await prisma.item.create({
@@ -134,8 +151,8 @@ test("concurrent confirmation returns one shared production and two linked deliv
   };
   const op = key();
   const results = await Promise.all([
-    confirmProduction(manager, op, input),
-    confirmProduction(manager, op, input),
+    confirmProduction(admin, op, input),
+    confirmProduction(admin, op, input),
   ]);
   assert.deepEqual(results[0], results[1]);
   const t = await prisma.stockTransfer.findMany({
@@ -148,7 +165,7 @@ test("concurrent confirmation returns one shared production and two linked deliv
   );
   assert.ok(t.every((t) => t.requestLineId));
   await assert.rejects(
-    confirmProduction(manager, op, { ...input, quantity: 23 }),
+    confirmProduction(admin, op, { ...input, quantity: 23 }),
     /different contents/,
   );
 });
@@ -165,10 +182,10 @@ test("retained output creates no transfer and shortages require notes and close 
     deliveries: [{ venueId: venueA, requestLineId: line.id, quantity: 10 }],
   };
   await assert.rejects(
-    confirmProduction(manager, key(), input),
+    confirmProduction(admin, key(), input),
     /shortage needs a note/,
   );
-  const r = await confirmProduction(manager, key(), {
+  const r = await confirmProduction(admin, key(), {
     ...input,
     deliveries: [
       { ...input.deliveries[0], shortageNote: "Ingredient shortage" },
@@ -185,8 +202,8 @@ test("retained output creates no transfer and shortages require notes and close 
       .status,
     "SHORT",
   );
-  await closeDay(manager, key(), { date });
-  await assert.rejects(confirmProduction(manager, key(), input), /closed/);
+  await closeDay(admin, key(), { date });
+  await assert.rejects(confirmProduction(admin, key(), input), /closed/);
 });
 test("cross-day pickups capture current estimates without batches or inventory changes; concurrent replays deduplicate", async () => {
   const batches = await prisma.productionBatch.count(),
@@ -194,8 +211,8 @@ test("cross-day pickups capture current estimates without batches or inventory c
   const op = key(),
     input = pickup("2026-09-03");
   const [a, b] = await Promise.all([
-    recordPickup(manager, op, input),
-    recordPickup(manager, op, input),
+    recordPickup(admin, op, input),
+    recordPickup(admin, op, input),
   ]);
   assert.deepEqual(a, b);
   const first = await prisma.stockTransfer.findUniqueOrThrow({
@@ -204,7 +221,7 @@ test("cross-day pickups capture current estimates without batches or inventory c
   assert.equal(first.batchId, null);
   assert.equal(first.foodCostBeforeExclusions, 20);
   await prisma.item.update({ where: { id: itemId }, data: { unitCost: 3 } });
-  const c = await recordPickup(manager, key(), pickup("2026-09-04"));
+  const c = await recordPickup(admin, key(), pickup("2026-09-04"));
   assert.equal(
     (
       await prisma.stockTransfer.findUniqueOrThrow({
@@ -245,7 +262,7 @@ test("missing information permits closeout; linked completion preserves original
     },
   });
   const p = await recordPickup(
-    manager,
+    admin,
     key(),
     pickup("2026-09-05", {
       recipeId: r.id,
@@ -259,8 +276,8 @@ test("missing information permits closeout; linked completion preserves original
   assert.equal(original.totalTransferCost, null);
   const op = key();
   const [a, b] = await Promise.all([
-    closeDay(manager, op, { date: "2026-09-05" }),
-    closeDay(manager, op, { date: "2026-09-05" }),
+    closeDay(admin, op, { date: "2026-09-05" }),
+    closeDay(admin, op, { date: "2026-09-05" }),
   ]);
   assert.deepEqual(a, b);
   const report = await getPrepReport("2026-09-05", "2026-09-05");
@@ -270,7 +287,7 @@ test("missing information permits closeout; linked completion preserves original
     where: { recipeId: r.id, itemId: missing.id },
   });
   await prisma.item.update({ where: { id: itemId }, data: { unitCost: 999 } });
-  await completeTransferCost(manager, key(), {
+  await completeTransferCost(admin, key(), {
     transferId: p.transferId,
     date: "2026-09-06",
     reason: "Price verified, no labor",
@@ -310,8 +327,8 @@ test("confirmation serializes against closeout and cannot enter a closed day", a
       deliveries: [],
     };
   const outcomes = await Promise.allSettled([
-    confirmProduction(manager, key(), input),
-    closeDay(manager, key(), { date }),
+    confirmProduction(admin, key(), input),
+    closeDay(admin, key(), { date }),
   ]);
   assert.ok(outcomes.some((x) => x.status === "fulfilled"));
   const close = await prisma.productionCloseout.findUnique({
@@ -322,11 +339,11 @@ test("confirmation serializes against closeout and cannot enter a closed day", a
     where: { producedOn: businessDate(date) },
   });
   assert.ok(batches.every((b) => b.finalizedAt));
-  await assert.rejects(recordPickup(manager, key(), pickup(date)), /closed/);
+  await assert.rejects(recordPickup(admin, key(), pickup(date)), /closed/);
 });
 test("concurrent full returns create one credit/waste and cannot exceed quantity or money", async () => {
   const p = await recordPickup(
-    manager,
+    admin,
     key(),
     pickup("2026-09-08", {
       supplies: [
@@ -341,7 +358,7 @@ test("concurrent full returns create one credit/waste and cannot exceed quantity
       ],
     }),
   );
-  await closeDay(manager, key(), { date: "2026-09-08" });
+  await closeDay(admin, key(), { date: "2026-09-08" });
   const original = await prisma.stockTransfer.findUniqueOrThrow({
       where: { id: p.transferId },
     }),
@@ -353,8 +370,8 @@ test("concurrent full returns create one credit/waste and cannot exceed quantity
       reason: "Returned by venue",
     };
   const [a, b] = await Promise.all([
-    recordReturn(manager, op, input),
-    recordReturn(manager, op, input),
+    recordReturn(admin, op, input),
+    recordReturn(admin, op, input),
   ]);
   assert.deepEqual(a, b);
   assert.equal(
@@ -375,21 +392,21 @@ test("concurrent full returns create one credit/waste and cannot exceed quantity
     (amendment.costingSnapshot as { charge: { total: number } }).charge.total,
     Math.round(original.totalTransferCost! * 100),
   );
-  await assert.rejects(recordReturn(manager, key(), input), /exceed/);
-  await closeDay(manager, key(), { date: "2026-09-09" });
+  await assert.rejects(recordReturn(admin, key(), input), /exceed/);
+  await closeDay(admin, key(), { date: "2026-09-09" });
   const report = await getPrepReport("2026-09-08", "2026-09-09");
   assert.equal(report.tables[0].rows[0][7], 0);
 });
 test("concurrent returns with different keys and dates cannot over-refund", async () => {
-  const p = await recordPickup(manager, key(), pickup("2026-09-10"));
+  const p = await recordPickup(admin, key(), pickup("2026-09-10"));
   const results = await Promise.allSettled([
-    recordReturn(manager, key(), {
+    recordReturn(admin, key(), {
       transferId: p.transferId,
       date: "2026-09-11",
       quantity: 6,
       reason: "One",
     }),
-    recordReturn(manager, key(), {
+    recordReturn(admin, key(), {
       transferId: p.transferId,
       date: "2026-09-12",
       quantity: 6,
@@ -403,12 +420,12 @@ test("concurrent returns with different keys and dates cannot over-refund", asyn
   assert.equal(returned.length, 1);
 });
 test("closed corrections reverse and replace without rewriting originals", async () => {
-  const p = await recordPickup(manager, key(), pickup("2026-09-13"));
-  await closeDay(manager, key(), { date: "2026-09-13" });
+  const p = await recordPickup(admin, key(), pickup("2026-09-13"));
+  await closeDay(admin, key(), { date: "2026-09-13" });
   const original = await prisma.stockTransfer.findUniqueOrThrow({
     where: { id: p.transferId },
   });
-  const c = await correctTransfer(manager, key(), {
+  const c = await correctTransfer(admin, key(), {
     transferId: p.transferId,
     date: "2026-09-14",
     reason: "Wrong venue and quantity",
@@ -427,7 +444,7 @@ test("closed corrections reverse and replace without rewriting originals", async
   assert.equal(replacement.venueId, venueB);
   assert.equal(replacement.quantity, 8);
   await assert.rejects(
-    correctTransfer(manager, key(), {
+    correctTransfer(admin, key(), {
       transferId: p.transferId,
       date: "2026-09-14",
       reason: "Again",
@@ -439,7 +456,7 @@ test("closed corrections reverse and replace without rewriting originals", async
 test("frozen packets preserve nested recipe contents and separate requests across catalog edits", async () => {
   const date = "2026-09-15",
     lines = await requests(date);
-  const frozen = await freezePacket(manager, key(), { date });
+  const frozen = await freezePacket(admin, key(), { date });
   const before = await loadFrozenPacket(frozen.scope);
   assert.equal(before?.order.lines.length, 2);
   assert.notEqual(before?.order.lines[0].id, before?.order.lines[1].id);
@@ -449,7 +466,7 @@ test("frozen packets preserve nested recipe contents and separate requests acros
     data: { instructions: "New instructions", version: 2 },
   });
   assert.deepEqual(await loadFrozenPacket(frozen.scope), before);
-  assert.deepEqual(await freezePacket(manager, key(), { date }), frozen);
+  assert.deepEqual(await freezePacket(admin, key(), { date }), frozen);
   assert.equal(
     await prisma.prepOrderLine.count({
       where: { id: { in: lines.map((l) => l.id) }, status: "PRINTED" },
@@ -470,7 +487,7 @@ test("legacy completed requests stay separate, existing batch transfers readable
     },
   });
   await assert.rejects(
-    confirmProduction(manager, key(), {
+    confirmProduction(admin, key(), {
       date: "2026-09-16",
       recipeId,
       quantity: 2,
@@ -488,7 +505,7 @@ test("legacy completed requests stay separate, existing batch transfers readable
       producedOn: businessDate("2026-09-16"),
       outputQty: 10,
       outputUnit: "qt",
-      enteredByUserId: manager,
+      enteredByUserId: admin,
     },
   });
   await prisma.stockTransfer.create({
@@ -504,7 +521,7 @@ test("legacy completed requests stay separate, existing batch transfers readable
       productionLaborCost: 1,
       dishwasherLaborCost: 1,
       totalTransferCost: 6,
-      enteredByUserId: manager,
+      enteredByUserId: admin,
       finalizedAt: new Date(),
     },
   });
@@ -530,18 +547,18 @@ test("legacy completed requests stay separate, existing batch transfers readable
 test("server rejects staff, excess production deliveries, malformed dates and absent operation keys", async () => {
   await assert.rejects(
     recordPickup(staff, key(), pickup("2026-09-17")),
-    /Manager/,
+    /Admin/,
   );
   await assert.rejects(
-    recordPickup(manager, "", pickup("2026-09-17")),
+    recordPickup(admin, "", pickup("2026-09-17")),
     /operation key/,
   );
   await assert.rejects(
-    recordPickup(manager, key(), pickup("2026-02-30")),
+    recordPickup(admin, key(), pickup("2026-02-30")),
     /Invalid business date/,
   );
   await assert.rejects(
-    confirmProduction(manager, key(), {
+    confirmProduction(admin, key(), {
       date: "2026-09-17",
       recipeId,
       quantity: 2,
@@ -556,7 +573,7 @@ test("server rejects staff, excess production deliveries, malformed dates and ab
 
 test("shared ingredient supply holds every affected venue charge without allocating or excluding labor", async () => {
   const date = "2026-09-18";
-  const r = await confirmProduction(manager, key(), {
+  const r = await confirmProduction(admin, key(), {
     date,
     recipeId,
     quantity: 22,
@@ -594,18 +611,18 @@ test("shared ingredient supply holds every affected venue charge without allocat
         t.dishwasherLaborCost! > 0,
     ),
   );
-  await closeDay(manager, key(), { date });
+  await closeDay(admin, key(), { date });
   assert.equal((await getPrepReport(date, date)).tables[0].rows.length, 0);
 });
 test("cost completion after closeout is allowed on the closed day; originals and audit records are protected", async () => {
   const date = "2026-09-19",
     p = await recordPickup(
-      manager,
+      admin,
       key(),
       pickup(date, { dishwasherMinutes: null }),
     );
-  await closeDay(manager, key(), { date });
-  const completed = await completeTransferCost(manager, key(), {
+  await closeDay(admin, key(), { date });
+  const completed = await completeTransferCost(admin, key(), {
     transferId: p.transferId,
     date,
     reason: "Dishwasher signed paper",
@@ -642,7 +659,7 @@ test("cost completion after closeout is allowed on the closed day; originals and
 test("zero output closes shortages without inventing production; ordinary waste is distinct from return waste", async () => {
   const date = "2026-09-20",
     [line] = await requests(date, [10]);
-  const result = await confirmProduction(manager, key(), {
+  const result = await confirmProduction(admin, key(), {
     date,
     recipeId,
     quantity: 0,
@@ -660,8 +677,8 @@ test("zero output closes shortages without inventing production; ordinary waste 
   });
   assert.equal(result.batchId, null);
   assert.equal(result.transfers.length, 0);
-  await closeDay(manager, key(), { date });
-  const r = await confirmProduction(manager, key(), {
+  await closeDay(admin, key(), { date });
+  const r = await confirmProduction(admin, key(), {
     date: "2026-09-21",
     recipeId,
     quantity: 22,
@@ -714,7 +731,7 @@ test("non-destructive migration preserves exact legacy amounts and never convert
 
 test("supplies attached to entirely retained production remain visible in accounting support", async () => {
   const date = "2026-09-22";
-  const r = await confirmProduction(manager, key(), {
+  const r = await confirmProduction(admin, key(), {
     date,
     recipeId,
     quantity: 22,
@@ -744,11 +761,11 @@ test("supplies attached to entirely retained production remain visible in accoun
 });
 
 test("correction after a partial return reverses only the remaining charge; zero replacement cancels delivery", async () => {
-  const p = await recordPickup(manager, key(), pickup("2026-10-01"));
+  const p = await recordPickup(admin, key(), pickup("2026-10-01"));
   const original = await prisma.stockTransfer.findUniqueOrThrow({
     where: { id: p.transferId },
   });
-  const ret = await recordReturn(manager, key(), {
+  const ret = await recordReturn(admin, key(), {
     transferId: p.transferId,
     date: "2026-10-02",
     quantity: 3,
@@ -757,7 +774,7 @@ test("correction after a partial return reverses only the remaining charge; zero
   const credit = await prisma.prepAmendment.findUniqueOrThrow({
     where: { id: ret.amendmentId },
   });
-  const r = await correctTransfer(manager, key(), {
+  const r = await correctTransfer(admin, key(), {
     transferId: p.transferId,
     date: "2026-10-03",
     reason: "Cancel remaining delivery",
@@ -785,5 +802,212 @@ test("correction after a partial return reverses only the remaining charge; zero
       where: { transferId: p.transferId },
     }),
     1,
+  );
+});
+
+test("back-office operations reject managers while prep packet generation remains available", async () => {
+  await assert.rejects(
+    recordPickup(chefManager, key(), pickup("2026-11-01")),
+    /Admin authorization/,
+  );
+  await assert.rejects(
+    closeDay(chefManager, key(), { date: "2026-11-01" }),
+    /Admin authorization/,
+  );
+  const [line] = await requests("2026-11-01", [10]);
+  const packet = await freezePacket(chefManager, key(), {
+    orderId: line.prepOrderId,
+  });
+  assert.ok(await loadFrozenPacket(packet.scope));
+});
+
+test("Borracho Beans preview, saved deductions and accounting exports agree", async () => {
+  const date = "2026-11-02";
+  const bacon = await prisma.item.create({
+    data: { name: "Bacon", unit: "lb", unitCost: 4, gcode: "BACON" },
+  });
+  const beans = await prisma.recipe.create({
+    data: {
+      name: "Borracho Beans",
+      prodCode: "BEANS",
+      yieldQty: 8,
+      yieldUnit: "qt",
+      productionPersonMinutes: 60,
+      items: { create: { itemId: bacon.id, quantity: 2, unit: "lb" } },
+    },
+  });
+  const lines = await Promise.all(
+    [venueA, venueB].map(async (venueId) => {
+      const order = await prisma.prepOrder.create({
+        data: {
+          forDate: businessDate(date),
+          submittedByUserId: admin,
+          destinationVenueId: venueId,
+        },
+      });
+      return prisma.prepOrderLine.create({
+        data: {
+          prepOrderId: order.id,
+          recipeId: beans.id,
+          destinationVenueId: venueId,
+          requestedQty: 4,
+          requestedUnit: "qt",
+        },
+      });
+    }),
+  );
+  const payload = {
+    date,
+    recipeId: beans.id,
+    quantity: 8,
+    unit: "qt",
+    cookName: "Jeff",
+    notes: "Brewpub supplied the bacon.",
+    dishwasherMinutes: 20,
+    deliveries: lines.map((l) => ({
+      requestLineId: l.id,
+      venueId: l.destinationVenueId,
+      quantity: 4,
+      supplies:
+        l.destinationVenueId === venueB
+          ? [
+              {
+                itemId: bacon.id,
+                venueId: venueB,
+                quantity: 1,
+                unit: "lb",
+                note: "Brewpub supplied the bacon.",
+                shared: false,
+              },
+            ]
+          : [],
+    })),
+  };
+  const before = await prisma.productionBatch.count();
+  const preview = await previewProduction(payload);
+  assert.equal(
+    await prisma.productionBatch.count(),
+    before,
+    "preview must not write",
+  );
+  const credited = preview.find((p) => p.venueId === venueB)!.charge;
+  const other = preview.find((p) => p.venueId === venueA)!.charge;
+  assert.equal(credited.excluded, 400);
+  assert.equal(other.excluded, 0);
+  const baseline = await previewProduction({
+    ...payload,
+    deliveries: payload.deliveries.map((d) => ({ ...d, supplies: [] })),
+  });
+  const beforeCredit = baseline.find((p) => p.venueId === venueB)!.charge;
+  assert.equal(credited.production, beforeCredit.production);
+  assert.equal(credited.dishwasher, beforeCredit.dishwasher);
+  assert.equal(beforeCredit.total! - credited.total!, 400);
+  const op = key();
+  const result = await confirmProduction(admin, op, payload);
+  assert.deepEqual(await confirmProduction(admin, op, payload), result);
+  const saved = await prisma.stockTransfer.findMany({
+    where: { batchId: result.batchId },
+  });
+  for (const transfer of saved)
+    assert.deepEqual(
+      readCost(transfer.costingSnapshot)!.charge,
+      preview.find((p) => p.requestLineId === transfer.requestLineId)!.charge,
+    );
+  assert.equal(
+    (
+      await prisma.productionBatch.findUniqueOrThrow({
+        where: { id: result.batchId! },
+      })
+    ).notes,
+    payload.notes,
+  );
+  await closeDay(admin, key(), { date });
+  const exported = await exportSnapshot(date, date);
+  const report = await getPrepReport(date, date);
+  assert.deepEqual(exported.report.tables, report.tables);
+  assert.ok(reportCsv(exported.report, exported.id).includes(payload.notes));
+  assert.ok(
+    reportSheets(exported.report, exported.id).some(
+      (s) =>
+        s.name === "Production Notes" &&
+        s.rows.some((r) => r.includes(payload.notes)),
+    ),
+  );
+  await prisma.item.update({ where: { id: bacon.id }, data: { unitCost: 50 } });
+  assert.deepEqual(
+    (await exportSnapshot(null, null, null, exported.id)).report,
+    exported.report,
+  );
+});
+
+test("preview rejects excessive deductions and zero-delivery supplies, and preserves zero-production notes", async () => {
+  const date = "2026-11-03";
+  const [line] = await requests(date, [10]);
+  const payload = {
+    date,
+    recipeId,
+    quantity: 10,
+    unit: "qt",
+    cookName: "Cook",
+    dishwasherMinutes: null,
+    deliveries: [
+      {
+        requestLineId: line.id,
+        venueId: venueA,
+        quantity: 10,
+        supplies: [
+          {
+            itemId,
+            venueId: venueA,
+            quantity: 1000,
+            unit: "qt",
+            note: "Too much",
+            shared: false,
+          },
+        ],
+      },
+    ],
+  };
+  await assert.rejects(previewProduction(payload), /exceeds this delivery/);
+  const pending = await previewProduction({
+    ...payload,
+    deliveries: [{ ...payload.deliveries[0], supplies: [] }],
+  });
+  assert.equal(pending[0].charge.total, null);
+  assert.ok(
+    pending[0].charge.issues.some((i) => i.startsWith("LABOR:dishwasher")),
+  );
+  await assert.rejects(
+    previewProduction({
+      ...payload,
+      quantity: 0,
+      deliveries: [
+        { ...payload.deliveries[0], quantity: 0, shortageNote: "Not made" },
+      ],
+    }),
+    /greater than zero/,
+  );
+  const zero = {
+    ...payload,
+    quantity: 0,
+    notes: "Bacon delivery never arrived",
+    deliveries: [
+      {
+        ...payload.deliveries[0],
+        quantity: 0,
+        shortageNote: "Not made",
+        supplies: [],
+      },
+    ],
+  };
+  assert.deepEqual(await previewProduction(zero), []);
+  await confirmProduction(admin, key(), zero);
+  assert.match(
+    (await prisma.prepOrderLine.findUniqueOrThrow({ where: { id: line.id } }))
+      .notes!,
+    /Bacon delivery never arrived/,
+  );
+  assert.ok(
+    reportCsv(await getPrepReport(date, date), "test").includes(zero.notes),
   );
 });

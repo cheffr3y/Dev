@@ -1,338 +1,179 @@
 import Link from "next/link";
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
-import { requireUser, hasRole } from "@/lib/session";
+import { requirePrepUser } from "@/lib/prep-session";
+import { hasRole } from "@/lib/session";
 import { businessDate, chicagoToday } from "@/lib/prep-dates";
-import { readCost } from "@/lib/prep-costing";
+import { groupPrepRequests } from "@/lib/prep-worksheet";
 import { Card, PageHeader, Input, Button, LinkButton } from "@/components/ui";
-import { EntryForm, CloseDayForm } from "./EntryForms";
 import { generateDailyPacket } from "./actions";
-export default async function PrepToday({
+
+export default async function DailyPrep({
   searchParams,
 }: {
   searchParams: Promise<{ date?: string }>;
 }) {
-  const user = await requireUser(),
-    p = await searchParams,
-    date = businessDate(p.date ?? chicagoToday()),
-    day = date.toISOString().slice(0, 10),
-    manager = hasRole(user, "MANAGER");
-  const [
-    requests,
-    batches,
-    transfers,
-    closeout,
-    recipes,
-    venues,
-    items,
-    waste,
-    packets,
-  ] = await Promise.all([
+  const user = await requirePrepUser();
+  const p = await searchParams;
+  const date = businessDate(p.date ?? chicagoToday());
+  const day = date.toISOString().slice(0, 10);
+  const [requests, packets, closeout] = await Promise.all([
     prisma.prepOrderLine.findMany({
       where: { prepOrder: { forDate: date } },
-      include: { recipe: true, destinationVenue: true },
-      orderBy: [{ recipeId: "asc" }, { id: "asc" }],
-      take: 1000,
+      include: { recipe: true, destinationVenue: true, prepOrder: true },
+      orderBy: { id: "asc" },
     }),
-    prisma.productionBatch.findMany({
-      where: { producedOn: date },
-      include: { recipe: true, transfers: { include: { venue: true } } },
-      orderBy: { createdAt: "asc" },
-      take: 1000,
-    }),
-    prisma.stockTransfer.findMany({
-      where: { transferDate: date },
-      include: {
-        recipe: true,
-        batch: { include: { recipe: true } },
-        venue: true,
-        amendments: {
-          where: { kind: "COST_COMPLETION" },
-          orderBy: { revision: "desc" },
-          take: 1,
-        },
-      },
-      take: 1000,
-    }),
-    prisma.productionCloseout.findUnique({ where: { businessDate: date } }),
-    prisma.recipe.findMany({
-      select: {
-        id: true,
-        name: true,
-        prodCode: true,
-        yieldQty: true,
-        yieldUnit: true,
-        productionPersonMinutes: true,
-      },
-      orderBy: { name: "asc" },
-      take: 500,
-    }),
-    prisma.venue.findMany({
-      select: { id: true, name: true },
-      orderBy: { name: "asc" },
-      take: 200,
-    }),
-    prisma.item.findMany({
-      select: { id: true, name: true, unit: true },
-      orderBy: { name: "asc" },
-      take: 2000,
-    }),
-    prisma.finishedStockAdjustment.findMany({ where: { date }, take: 1000 }),
     prisma.prepPacketSnapshot.findMany({
       where: { scope: { startsWith: `day-${day}-` } },
       select: { id: true, scope: true, createdAt: true },
       orderBy: { createdAt: "desc" },
       take: 20,
     }),
+    prisma.productionCloseout.findUnique({ where: { businessDate: date } }),
   ]);
-  const open = requests.filter((l) =>
-    ["REQUESTED", "PRINTED", "IN_PROGRESS"].includes(l.status),
+  const groups = groupPrepRequests(
+    requests.map((l) => ({
+      id: l.id,
+      prepOrderId: l.prepOrderId,
+      recipeId: l.recipeId,
+      recipeName: l.recipe.name,
+      yieldUnit: l.recipe.yieldUnit,
+      yieldQty: l.recipe.yieldQty,
+      productionPersonMinutes: l.recipe.productionPersonMinutes,
+      venueId: l.destinationVenueId,
+      venueName: l.destinationVenue.name,
+      quantity: l.requestedQty,
+      unit: l.requestedUnit,
+      lot: l.lot,
+      status: l.status,
+      instructions: l.prepOrder.notes,
+    })),
   );
-  const closed = !!closeout?.finalizedAt;
   return (
     <div>
       <PageHeader
-        title="Prep Orders"
-        subtitle={date.toLocaleDateString("en-US", {
+        title="Daily Prep"
+        subtitle="Order what you need. Make from the shared prep sheet."
+        action={
+          <LinkButton href={`/prep-orders/requests?date=${day}`}>
+            Place order
+          </LinkButton>
+        }
+      />
+      <div className="no-print mb-6 flex flex-wrap items-center gap-3">
+        <form className="flex flex-wrap gap-2">
+          <Input
+            aria-label="Prep date"
+            name="date"
+            type="date"
+            defaultValue={day}
+          />
+          <Button variant="secondary">View day</Button>
+        </form>
+        {hasRole(user, "MANAGER") &&
+          !closeout?.finalizedAt &&
+          requests.length > 0 && (
+            <form action={generateDailyPacket}>
+              <input type="hidden" name="date" value={day} />
+              <input type="hidden" name="operationKey" value={randomUUID()} />
+              <Button>Print prep sheet</Button>
+            </form>
+          )}
+        {packets[0] && (
+          <LinkButton
+            variant="secondary"
+            href={`/prep-orders/${packets[0].scope}/packet`}
+          >
+            View / reprint prep sheet
+          </LinkButton>
+        )}
+        {user.role === "ADMIN" && (
+          <Link
+            className="text-blue-700"
+            href={`/prep-orders/closeout?date=${day}`}
+          >
+            Open daily worksheet →
+          </Link>
+        )}
+      </div>
+      <p className="no-print mb-4 text-sm">
+        <Link href="/prep-orders/history" className="text-blue-700">
+          Past orders
+        </Link>
+      </p>
+      <h2 className="mb-4 text-lg font-semibold">
+        {date.toLocaleDateString("en-US", {
           weekday: "long",
           month: "long",
           day: "numeric",
           timeZone: "UTC",
         })}
-        action={
-          <LinkButton href="/prep-orders/requests">New request</LinkButton>
-        }
-      />
-      <form className="mb-5 flex gap-3">
-        <Input
-          aria-label="Business date"
-          name="date"
-          type="date"
-          defaultValue={day}
-        />
-        <Button>View day</Button>
-      </form>
-      <div className="mb-6 flex flex-wrap items-center gap-4">
-        <form action={generateDailyPacket}>
-          <input type="hidden" name="date" value={day} />
-          <input type="hidden" name="operationKey" value={randomUUID()} />
-          {manager && !closed && (
-            <Button variant="secondary">Print cook packet</Button>
-          )}
-        </form>
-        <a href="#results-entry" className="text-blue-700">
-          Enter results
-        </a>
-        <a href="#pickup-entry" className="text-blue-700">
-          Record pickup
-        </a>
-        {closed && <strong>Day closed</strong>}
+        {closeout?.finalizedAt ? " · Day finished" : ""}
+      </h2>
+      {!groups.length && (
+        <Card className="p-6">
+          No prep ordered for this day. Start with Place order.
+        </Card>
+      )}
+      <div className="space-y-4">
+        {groups.map((group) => (
+          <Card key={group.recipeId} className="p-5">
+            <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+              <h3 className="text-lg font-semibold">{group.name}</h3>
+              <p className="font-medium">
+                {group.requested == null
+                  ? "Check request units"
+                  : `${Number(group.requested.toFixed(3))} ${group.unit} total requested`}
+              </p>
+            </div>
+            <div className="divide-y">
+              {group.rows.map((row) => (
+                <div key={row.id} className="py-3">
+                  <div className="flex flex-wrap justify-between gap-2">
+                    <Link
+                      className="text-blue-700"
+                      href={`/prep-orders/${row.prepOrderId}`}
+                    >
+                      {row.venueName}
+                    </Link>
+                    <span>
+                      {row.quantity} {row.unit} ·{" "}
+                      {["MADE", "SHORT", "NOT_MADE"].includes(row.status)
+                        ? "Results recorded"
+                        : "Ordered"}
+                    </span>
+                  </div>
+                  {row.instructions && (
+                    <p className="mt-1 whitespace-pre-wrap text-sm text-zinc-600">
+                      {row.instructions}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </Card>
+        ))}
       </div>
-      {packets.length > 0 && (
-        <details className="mb-5">
-          <summary>Reprint a frozen packet</summary>
-          {packets.map((p) => (
-            <p key={p.id}>
-              <Link
-                className="text-blue-700"
-                href={`/prep-orders/${p.scope}/packet`}
-              >
-                {p.createdAt.toLocaleString("en-US", {
+      {packets.length > 1 && (
+        <details className="no-print mt-6">
+          <summary>Earlier prep sheets</summary>
+          {packets.slice(1).map((packet) => (
+            <p key={packet.id} className="mt-2">
+              <Link href={`/prep-orders/${packet.scope}/packet`}>
+                {packet.createdAt.toLocaleString("en-US", {
                   timeZone: "America/Chicago",
-                })}{" "}
-                · {p.id}
+                })}
               </Link>
             </p>
           ))}
         </details>
       )}
-      <Card className="mb-5 overflow-x-auto p-4">
-        <h2 className="mb-3 text-lg font-semibold">Today’s requests</h2>
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr>
-              <th>Item / request</th>
-              <th>Venue</th>
-              <th>Requested</th>
-              <th>Result</th>
-            </tr>
-          </thead>
-          <tbody>
-            {requests.map((l) => (
-              <tr key={l.id} className="border-t">
-                <td className="py-3">
-                  <Link href={`/prep-orders/${l.prepOrderId}`}>
-                    {l.recipe.name} · #{l.id.slice(-6)}
-                  </Link>
-                </td>
-                <td>{l.destinationVenue.name}</td>
-                <td>
-                  {l.requestedQty} {l.requestedUnit}
-                </td>
-                <td>
-                  {l.actualQty == null ? "—" : `${l.actualQty} ${l.actualUnit}`}{" "}
-                  {l.status === "SHORT" || l.status === "NOT_MADE"
-                    ? ` · ${l.notes}`
-                    : ""}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {!requests.length && <p>No requests for this day.</p>}
-      </Card>
-      <Card className="mb-5 p-4">
-        <h2 className="mb-3 text-lg font-semibold">Today’s results</h2>
-        {batches.map((b) => (
-          <div key={b.id} className="border-t py-3">
-            <p className="font-medium">
-              {b.recipe.name} · Made {b.outputQty} {b.outputUnit} · Kept{" "}
-              {b.retainedQty ?? "historical"} · Production waste{" "}
-              {b.productionWasteQty ?? "historical"}
-            </p>
-            <p className="text-sm">
-              {b.transfers
-                .map((t) => `${t.venue.name}: ${t.quantity} ${t.unit}`)
-                .join(" · ")}{" "}
-              · Cook: {b.cookName ?? "historical record"}
-            </p>
-          </div>
-        ))}
-        {transfers
-          .filter((t) => !t.batchId)
-          .map((t) => (
-            <p key={t.id} className="py-2">
-              <Link href={`/prep-orders/transfers/${t.id}`}>
-                Pickup · {t.recipe?.name} → {t.venue.name} · {t.quantity}{" "}
-                {t.unit}
-              </Link>
-            </p>
-          ))}
-      </Card>
-      {!closed && manager && (
-        <>
-          <section id="results-entry">
-            <Card className="mb-5 p-5">
-              <details>
-                <summary className="cursor-pointer text-lg font-semibold">
-                  Enter results
-                </summary>
-                <div className="mt-4">
-                  <EntryForm
-                    mode="CONFIRM"
-                    date={day}
-                    operationKey={randomUUID()}
-                    recipes={recipes}
-                    venues={venues}
-                    items={items}
-                    requests={open.map((l) => ({
-                      id: l.id,
-                      recipeId: l.recipeId,
-                      venueId: l.destinationVenueId,
-                      venueName: l.destinationVenue.name,
-                      quantity: l.requestedQty,
-                      unit: l.requestedUnit,
-                    }))}
-                  />
-                </div>
-              </details>
-            </Card>
-          </section>
-          <section id="pickup-entry">
-            <Card className="mb-5 p-5">
-              <details>
-                <summary className="cursor-pointer text-lg font-semibold">
-                  Record pickup
-                </summary>
-                <div className="mt-4">
-                  <EntryForm
-                    mode="PICKUP"
-                    date={day}
-                    operationKey={randomUUID()}
-                    recipes={recipes}
-                    venues={venues}
-                    items={items}
-                  />
-                </div>
-              </details>
-            </Card>
-          </section>
-        </>
-      )}
-      <Card className="mb-5 p-5">
-        <h2 className="mb-3 text-lg font-semibold">Daily wrap-up</h2>
-        {requests
-          .filter((l) => l.status === "SHORT" || l.status === "NOT_MADE")
-          .map((l) => (
-            <p key={l.id}>
-              Shortage · {l.recipe.name} → {l.destinationVenue.name}: {l.notes}
-            </p>
-          ))}
-        {batches.flatMap((b) =>
-          (readCost(b.costingSnapshot)?.productionSupplies ?? []).map(
-            (s, i) => (
-              <p key={`${b.id}-${i}`} className="text-sm">
-                Production {b.recipe.name} · supplied by{" "}
-                {venues.find((v) => v.id === s.venueId)?.name}:{" "}
-                {items.find((v) => v.id === s.itemId)?.name ?? s.itemId} ·{" "}
-                {s.quantity} {s.unit} · {s.note} · Shared/retained supply facts
-              </p>
-            ),
-          ),
-        )}
-        {transfers.map((t) => {
-          const s = readCost(
-            t.amendments[0]?.costingSnapshot ?? t.costingSnapshot,
-          );
-          return (
-            <div key={t.id} className="border-t py-3">
-              <Link
-                className="text-blue-700"
-                href={`/prep-orders/transfers/${t.id}`}
-              >
-                {t.recipe?.name ?? t.batch?.recipe.name} → {t.venue.name} ·{" "}
-                {s?.charge.total == null && s
-                  ? "Pending costs"
-                  : t.accountingState === "LEGACY"
-                    ? "Captured historical charge"
-                    : "Costs captured"}
-              </Link>
-              {s?.charge.issues.map((i) => (
-                <p key={i} className="text-sm text-amber-800">
-                  {i}
-                </p>
-              ))}
-              {s?.capture.supplies.map((v, i) => (
-                <p key={i} className="text-sm">
-                  Supplied by {venues.find((x) => x.id === v.venueId)?.name}:{" "}
-                  {items.find((x) => x.id === v.itemId)?.name ?? v.itemId} ·{" "}
-                  {v.quantity} {v.unit} · {v.note}
-                  {v.shared ? " · Held for shared-supply review" : ""}
-                </p>
-              ))}
-            </div>
-          );
-        })}
-        {!closed && manager && (
-          <div className="mt-4">
-            <CloseDayForm date={day} operationKey={randomUUID()} />
-          </div>
-        )}
-      </Card>
-      <Card className="p-5">
-        <h2 className="font-semibold">
-          Exceptions: returns, waste, corrections
-        </h2>
-        <p className="my-2 text-sm">
-          Open a delivery above or in Accounting to record a linked return or
-          correction.
+      {!hasRole(user, "MANAGER") && !packets.length && requests.length > 0 && (
+        <p className="mt-4 text-sm text-zinc-500">
+          The prep sheet will be available here once a manager prints it.
+          Individual order sheets are available from each order.
         </p>
-        {waste.map((w) => (
-          <p key={w.id} className="text-sm">
-            {w.quantity} {w.unit} · {w.reason} · {w.stableId}
-          </p>
-        ))}
-      </Card>
+      )}
     </div>
   );
 }

@@ -21,7 +21,7 @@ node node_modules/prisma/build/index.js migrate resolve --applied 20260923000000
 node node_modules/prisma/build/index.js migrate deploy
 node --import tsx --test lib/prep-workflow.integration.test.ts
 if [ "${PREP_BROWSER_SMOKE:-0}" = "1" ]; then
-  node --import tsx -e 'const {prisma}=require("./lib/prisma.ts"); const bcrypt=require("bcryptjs"); (async()=>{await prisma.user.update({where:{email:"manager@local.test"},data:{passwordHash:await bcrypt.hash("local-smoke-only",10)}});await prisma.$disconnect();})()'
+  node --import tsx scripts/seed-prep-browser.ts
   export AUTH_SECRET='disposable-prep-browser-smoke-secret-2026'
   export AUTH_URL='http://localhost:3107'
   export AUTH_TRUST_HOST=true

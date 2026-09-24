@@ -121,7 +121,7 @@ export async function calculatePrepReport(
     headers: [
       "Venue",
       "Gross food",
-      "Exclusions",
+      "Ingredient deductions",
       "Net food",
       "Production labor",
       "Dishwasher labor",
@@ -141,7 +141,7 @@ export async function calculatePrepReport(
       "Quantity",
       "Unit",
       "Gross food",
-      "Exclusions",
+      "Ingredient deductions",
       "Net food",
       "Production labor",
       "Dishwasher labor",
@@ -303,13 +303,56 @@ export async function calculatePrepReport(
   };
   const productionFacts = await tx.productionBatch.findMany({
     where: { producedOn: period },
-    select: { stableId: true, costingSnapshot: true },
+    select: {
+      stableId: true,
+      costingSnapshot: true,
+      notes: true,
+      producedOn: true,
+      recipe: { select: { name: true } },
+      transfers: {
+        select: { venueId: true, venue: { select: { name: true } } },
+      },
+    },
     take: limit + 1,
   });
   if (productionFacts.length > limit)
     throw new Error(
       "Report exceeds 5000 production records. Choose a smaller date range.",
     );
+  const productionNotes: ReportTable = {
+    name: "Production Notes",
+    headers: ["Production / request ID", "Date", "Recipe", "Venues", "Note"],
+    rows: [
+      ...productionFacts
+        .filter(
+          (b) =>
+            b.notes &&
+            (!venueId || b.transfers.some((t) => t.venueId === venueId)),
+        )
+        .map((b) => [
+          b.stableId,
+          date(b.producedOn),
+          b.recipe.name,
+          [
+            ...new Set(
+              b.transfers
+                .filter((t) => !venueId || t.venueId === venueId)
+                .map((t) => t.venue.name),
+            ),
+          ].join(", "),
+          b.notes,
+        ]),
+      ...legacy
+        .filter((l) => l.notes)
+        .map((l) => [
+          l.id,
+          date(l.prepOrder.forDate),
+          l.recipe.name,
+          l.destinationVenue.name,
+          l.notes,
+        ]),
+    ],
+  };
   for (const batch of productionFacts) {
     const snap = readCost(batch.costingSnapshot);
     for (const supply of snap?.productionSupplies ?? []) {
@@ -563,6 +606,7 @@ export async function calculatePrepReport(
       wasteTable,
       late,
       historical,
+      productionNotes,
     ],
     transferIds: transfers.map((t) => t.id),
     transferStableIds: transfers.map((t) => t.stableId),

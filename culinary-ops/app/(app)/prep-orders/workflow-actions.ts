@@ -1,8 +1,9 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { requireActiveUser } from "@/lib/session";
+import { requirePrepUser } from "@/lib/prep-session";
 import {
   confirmProduction,
+  previewProduction,
   recordPickup,
   closeDay,
   completeTransferCost,
@@ -14,7 +15,7 @@ export async function submitPrepOperation(
   key: string,
   payload: unknown,
 ): Promise<{ ok: boolean; error?: string }> {
-  const user = await requireActiveUser("MANAGER");
+  const user = await requirePrepUser("ADMIN");
   try {
     switch (kind) {
       case "CONFIRM":
@@ -47,6 +48,19 @@ export async function submitPrepOperation(
         error instanceof Error
           ? error.message
           : "Unable to save. Retry with the same operation.",
+    };
+  }
+}
+
+export async function previewPrepProduction(payload: unknown) {
+  await requirePrepUser("ADMIN");
+  try {
+    return { ok: true as const, deliveries: await previewProduction(payload) };
+  } catch (error) {
+    return {
+      ok: false as const,
+      error:
+        error instanceof Error ? error.message : "Unable to preview costs.",
     };
   }
 }

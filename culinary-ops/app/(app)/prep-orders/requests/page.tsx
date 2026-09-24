@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { requireUser, hasRole } from "@/lib/session";
+import { requirePrepUser } from "@/lib/prep-session";
 import { chicagoToday } from "@/lib/prep-dates";
 import { createPrepOrder } from "../actions";
 import {
@@ -11,8 +11,13 @@ import {
   Card,
   PageHeader,
 } from "@/components/ui";
-export default async function RequestsPage() {
-  const user = await requireUser();
+export default async function RequestsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ date?: string }>;
+}) {
+  const user = await requirePrepUser();
+  const { date } = await searchParams;
   const [orders, venues] = await Promise.all([
     prisma.prepOrder.findMany({
       where: {
@@ -34,10 +39,10 @@ export default async function RequestsPage() {
   return (
     <div>
       <PageHeader
-        title="Requests"
-        subtitle="Each venue request stays separately identifiable."
+        title="Prep orders"
+        subtitle="Choose the day and venue, then add what you need."
       />
-      {hasRole(user, "MANAGER") && (
+      {user.role === "ADMIN" || user.homeVenueId ? (
         <Card className="mb-6 p-4">
           <form
             action={createPrepOrder}
@@ -47,25 +52,34 @@ export default async function RequestsPage() {
               <Input
                 name="forDate"
                 type="date"
-                defaultValue={chicagoToday()}
+                defaultValue={date ?? chicagoToday()}
                 required
               />
             </Field>
             <Field label="Venue">
               <Select name="destinationVenueId" required>
-                {venues.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.name}
-                  </option>
-                ))}
+                {venues
+                  .filter(
+                    (v) => user.role === "ADMIN" || v.id === user.homeVenueId,
+                  )
+                  .map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.name}
+                    </option>
+                  ))}
               </Select>
             </Field>
             <Field label="Notes">
               <Input name="notes" />
             </Field>
-            <Button>Create request</Button>
+            <Button>Start order</Button>
           </form>
         </Card>
+      ) : (
+        <p className="mb-6 rounded border p-4">
+          Ask an admin to assign your home venue before placing an order. You
+          can still view and print the daily prep list.
+        </p>
       )}
       <p className="mb-3 text-sm text-zinc-500">
         Up to 200 open requests, earliest first.

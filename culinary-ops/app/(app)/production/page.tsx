@@ -1,4 +1,6 @@
 import { redirect } from "next/navigation";
-export default function ProductionPage() {
-  redirect("/prep-orders");
+import { requirePrepUser } from "@/lib/prep-session";
+export default async function ProductionPage() {
+  await requirePrepUser("ADMIN");
+  redirect("/prep-orders/closeout");
 }

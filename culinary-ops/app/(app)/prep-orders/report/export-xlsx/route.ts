@@ -1,10 +1,10 @@
-import { getCurrentUser, hasRole } from "@/lib/session";
+import { getPrepUser } from "@/lib/prep-session";
 import { exportSnapshot, reportSheets } from "@/lib/prep-accounting-report";
 import { createXlsx } from "@/lib/xlsx";
 export const runtime = "nodejs";
 export async function GET(request: Request) {
-  const user = await getCurrentUser();
-  if (!user || !hasRole(user, "MANAGER"))
+  const user = await getPrepUser();
+  if (!user || user.role !== "ADMIN")
     return new Response("Unauthorized", { status: 403 });
   const p = new URL(request.url).searchParams;
   const { id, report } = await exportSnapshot(

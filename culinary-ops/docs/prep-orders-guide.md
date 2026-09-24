@@ -1,32 +1,44 @@
-# Prep Orders: kitchen and accounting guide
+# Daily Prep and Closeout
 
-## Kitchen
+## Chefs: order and cook
 
-Open **Prep Orders → Today**. Dates follow America/Chicago. Choose another date to review earlier work.
+Open **Prep Orders → Daily Prep** and choose the day.
 
-1. **New request** opens Requests. Each order belongs to one venue. Add recipes and requested quantities; requests remain individually identifiable even when cooked together.
-2. **Print cook packet** freezes the recipe, nested builds, ingredients, request lines and lots. The paper includes destination quantities, actual production, retained quantity, waste, shortage notes, cook sign-off, dishwasher minutes and cooling logs. Shopping information is optional. Use **Reprint a frozen packet** to reproduce an earlier packet after recipe edits. Older historical orders without a snapshot cannot reconstruct their original recipe contents.
-3. **Enter results** once per production item. Select the recipe and the requests served, enter quantity made, cook, and quantities delivered. Sent quantities use the recipe’s output unit. Enter the actual lot if combining requests bearing different printed lots. Made minus sent minus production waste is **kept at commissary**. Kept is a disposition of this run, not an inventory balance. You can also record an additional delivery without a request.
-4. The recipe supplies production person-minutes for the complete preparation. Leave the override blank to use that standard. Enter dishwasher minutes for this item. Blank labor is missing; **0 means explicitly none**. Rates default to $62/3 per production hour (about $20.67) and $18 per dishwasher hour. Managers can override either rate, including to zero.
-5. A short or zero delivery needs a shortage note. Confirming it closes that request; nothing carries forward. Fresh deliveries plus production waste cannot exceed actual output. Waste needs a reason and creates no venue charge.
-6. For an **existing-stock pickup**, choose the recipe/item, receiving venue, actual quantity, transfer date and labor. No Prep Order, batch, stock count or opening balance is required. This captures the recipe estimate available when entered; it does not locate or consume an original batch.
-7. In **Daily wrap-up**, review shortages, supplied ingredients and missing information, then **Close day**. All requests need either results or shortage notes. Costing problems do not prevent closeout. Closed quantities and original costs cannot be edited or deleted.
+1. **Place order:** choose the needed date and your venue, then add recipes, quantities, units, and any instructions. Chefs can change unprinted orders for their assigned home venue. Admins can manage every venue. If no venue is assigned, ask an admin to assign one.
+2. **Use the daily list:** recipes are grouped together, with a total and each venue’s portion. Everyone signed in can see the shared list.
+3. **Print prep sheet:** a manager or admin generates the cook packet. Chefs can view and reprint it. Printed recipes, lots, destination quantities, and cooling logs remain frozen even if recipes later change. Printed orders cannot be edited; add another order for additional needs.
 
-For example, make 22 qt of sauce, select the butcher’s 10 qt request and Foxtown Brewing’s 12 qt request, and enter 10 and 12 sent. Each venue receives its proportion of food, production labor and dishwasher labor, with deterministic penny allocation. Extra retained output receives its share of costs but creates no venue charge. Production waste is a separate uncharged disposition.
+Daily Prep contains no cost-entry or accounting work.
 
-Supplied ingredients are entered against a delivery: ingredient, source venue, quantity, unit and note. For an identified receiving venue, only applicable food is excluded; both labor charges remain. Mark facts involving multiple venues **shared across venues**. A shared supply on a production run holds that run’s affected deliveries for review. There is no automatic shared-supply allocation or reimbursement rule.
+## Admins: fill in the daily worksheet
 
-## Accounting
+Open **Closeout & Accounting**, choose the day, and fill in the recipes already listed.
 
-**Accounting** uses transfer dates for delivery charges and adjustment dates for returns and corrections. The web, CSV and Excel use the same report calculation. Reports include venue totals, transfer and ingredient detail, separate labor, supplied ingredients, waste, corrections, pending issues and legacy production.
+1. Enter **Made**, **Sent to each venue**, **Cook**, and optional **Notes**. Actual quantities start blank. Use **Use ordered quantities** only when they match what happened.
+2. If less was sent, explain the shortage. If there was waste, open **Waste, if any** and enter its quantity and reason. **Kept** is calculated as made minus sent minus waste; it does not establish an inventory balance.
+3. Recipe production time is applied automatically. Open **Labor** to enter dishwasher time or override production time/rates. Missing time stays pending; **0 means explicitly none**. Default rates are $62/3 per production hour (about $20.67) and $18 per dishwasher hour.
+4. Enter an actual lot when combining requests with different printed lots. Otherwise, the printed lot is reused or a lot is assigned automatically.
+5. **Preview charges**, then **Save item results**. Other unfinished items stay on the worksheet with their entries intact. The app warns before leaving unsaved entries. If a save’s connection is interrupted, retry it before changing that item; the same operation key retrieves the original result without creating another charge.
 
-- **Ready charges** contain complete captured costs for closed operational days. Unknown prices, GCODEs, unit conversions or labor hold the affected transfer’s **entire** charge out of ready totals. Known components remain visible in support detail; missing components display blank/unknown.
-- Open the transfer from Today or Accounting and use **Complete missing costs**. Fill only missing information using its documented source. Missing labor minutes refer to the entire captured production item (or entire pickup), before its destination split. For an incompatible unit, enter the conversion factor from the captured unit to the indicated target unit. A catalog zero is initially treated as unpriced; explicitly confirming a missing price as zero is allowed. Completion creates a linked record, retains the frozen recipe/quantities and all previously known prices, and may be done after closeout. Multiple partial completions are supported.
-- **Late Cost Completions** lists completions dated in the report period whose transfer belongs to another period. Review that original accounting period in Acumatica. Their amounts are not silently added to the completion period’s charges.
-- **Record return** on the original delivery. Enter returned quantity in that delivery’s unit, an open adjustment date, and a reason. Costs must be complete. The credit refunds original net food and both labor charges. A linked negative waste record identifies the returned product; it never becomes stock. Cumulative quantities and refunds cannot exceed the original delivery. Partial returns reconcile exactly when the final portion is returned. Credits enter ready totals after the original and adjustment days are closed.
-- **Correct quantity, venue or costs** reverses the original charge and records a replacement delivery on an open adjustment date. Enter the complete corrected, unreturned delivery (zero cancels it). The reversal refunds only the balance after prior return credits; existing return waste remains recorded. Its recipe estimate is captured anew at correction entry. The original stays intact and both records are linked. A reversed original cannot be reversed again; apply any later correction to its replacement.
-- Completed historical Prep Orders remain **legacy production**, never fabricated transfers. Existing batch-linked transfers retain their captured amounts. No old records are repriced.
+### Example: Brewpub supplied the bacon
 
-Each export creates an immutable snapshot with stable record IDs. **Recent immutable exports** downloads that same snapshot as CSV or Excel later. Starting another export may create another report snapshot, but never another charge. Exporting does not mean posted. Acumatica remains authoritative; the app does not post or email accounting records.
+Under Brewpub’s Borracho Beans delivery, open **Ingredient supplied by a venue**. Choose bacon, enter the supplied amount and unit, and add a note such as “Brewpub supplied the bacon.” The source venue is filled in for that delivery.
 
-If a save’s connection is interrupted, retry the same form. Durable operation keys return the original result. A reused key with changed contents is rejected. Validation errors can be corrected before retrying. Keep requests within one business day and reports within a year; narrow large reports when prompted.
+The preview shows food before deduction, the ingredient deduction, both labor charges, and the net charge. The deduction reduces Brewpub’s food charge only. Other venues and labor stay unchanged. A note by itself does not change costs.
+
+The deduction cannot exceed the amount of bacon included in that delivery. Excess amounts show an error rather than being allocated to another venue. Missing prices or incompatible units show **Needs cost review**; the affected charge stays out of ready totals until resolved. Shared supplies from older records retain their existing review status.
+
+Use **Extra pickup without an order** only for additional pickups. Pickups use a captured recipe estimate and require no batch or stock count. Open a saved delivery for a linked return or correction; saved original results are preserved.
+
+## Admins: finish and export
+
+1. **Finish day** after all requests have results or shortage notes. Missing costs do not prevent finishing the operational day.
+2. Open **Review & export accounting**. The date range starts with that day; change it for a larger period if needed.
+3. Review **Venue Summary**, **Ready Charges**, and **Pending Issues**. Incomplete charges are excluded from ready totals. Expand the supporting tables for ingredient detail, supplied-ingredient notes, production notes, labor, waste, and corrections.
+4. Download **Excel** or **CSV**. Both use the same calculation. Each download creates an immutable report snapshot; **Previous exports** lets you download that exact snapshot again. Exporting never creates another charge and does not post or email anything to Acumatica.
+
+Use **Complete missing costs** on a delivery to fill only missing values, citing their source. This preserves frozen quantities and known prices, and remains available after closeout. Late completions are identified for review of the original accounting period.
+
+Returns refund original net food and both labor charges, with a linked waste record. Corrections reverse the remaining original charge and create a replacement on an open adjustment date. Original records and historical exports remain unchanged. Transfer dates determine delivery charges; adjustments have their own dates.
+
+All closeout, cost preview, correction, accounting, and export access requires a current admin account. Managers retain packet-generation access, while chef ordering follows the account’s assigned home venue. Business dates use America/Chicago.

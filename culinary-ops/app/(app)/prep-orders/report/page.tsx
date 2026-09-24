@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { requireRole } from "@/lib/session";
+import { requirePrepUser } from "@/lib/prep-session";
 import { getPrepReport } from "@/lib/prep-accounting-report";
+import { chicagoToday } from "@/lib/prep-dates";
 import { prisma } from "@/lib/prisma";
 import { PageHeader, Input, Button, Select, Card } from "@/components/ui";
 export default async function AccountingPage({
@@ -8,10 +9,14 @@ export default async function AccountingPage({
 }: {
   searchParams: Promise<{ from?: string; to?: string; venue?: string }>;
 }) {
-  await requireRole("MANAGER");
+  await requirePrepUser("ADMIN");
   const p = await searchParams;
   const [report, venues, runs] = await Promise.all([
-    getPrepReport(p.from, p.to, p.venue),
+    getPrepReport(
+      p.from ?? chicagoToday(),
+      p.to ?? p.from ?? chicagoToday(),
+      p.venue,
+    ),
     prisma.venue.findMany({ orderBy: { name: "asc" }, take: 200 }),
     prisma.transferReportRun.findMany({
       orderBy: { createdAt: "desc" },
@@ -27,7 +32,7 @@ export default async function AccountingPage({
     <div>
       <PageHeader
         title="Accounting"
-        subtitle="Ready charges, pending issues and legacy production. Acumatica remains authoritative."
+        subtitle="Review venue totals, resolve missing costs, and download for accounting."
       />
       <form className="mb-5 flex flex-wrap gap-3">
         <Input
@@ -57,13 +62,13 @@ export default async function AccountingPage({
           className="text-blue-700"
           href={`/prep-orders/report/export?${query}`}
         >
-          Export CSV snapshot
+          Download CSV
         </a>
         <a
           className="text-blue-700"
           href={`/prep-orders/report/export-xlsx?${query}`}
         >
-          Export Excel snapshot
+          Download Excel
         </a>
       </p>
       <p className="mb-5 text-sm">
@@ -73,54 +78,65 @@ export default async function AccountingPage({
       </p>
       {report.tables.map((table) => (
         <Card key={table.name} className="mb-5 overflow-x-auto p-4">
-          <h2 className="mb-3 text-lg font-semibold">{table.name}</h2>
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr>
-                {table.headers.map((h) => (
-                  <th key={h} className="whitespace-nowrap px-3 py-2">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {table.rows.map((row, i) => (
-                <tr key={i} className="border-t">
-                  {row.map((v, j) => (
-                    <td key={j} className="px-3 py-2">
-                      {v == null ? (
-                        "—"
-                      ) : table.currencyColumns?.includes(j) &&
-                        typeof v === "number" ? (
-                        `$${v.toFixed(2)}`
-                      ) : j === 0 &&
-                        ["Ready Charges", "Pending Issues"].includes(
-                          table.name,
-                        ) &&
-                        report.transferStableIds.includes(String(v)) ? (
-                        <Link
-                          className="text-blue-700"
-                          href={`/prep-orders/transfers/${v}`}
-                        >
-                          {v}
-                        </Link>
-                      ) : (
-                        String(v)
-                      )}
-                    </td>
+          <details
+            open={["Venue Summary", "Ready Charges", "Pending Issues"].includes(
+              table.name,
+            )}
+          >
+            <summary className="mb-3 cursor-pointer text-lg font-semibold">
+              {table.name}
+              {table.name === "Pending Issues"
+                ? " · excluded from ready totals"
+                : ""}
+            </summary>
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr>
+                  {table.headers.map((h) => (
+                    <th key={h} className="whitespace-nowrap px-3 py-2">
+                      {h}
+                    </th>
                   ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          {!table.rows.length && (
-            <p className="text-sm text-zinc-500">None in this period.</p>
-          )}
+              </thead>
+              <tbody>
+                {table.rows.map((row, i) => (
+                  <tr key={i} className="border-t">
+                    {row.map((v, j) => (
+                      <td key={j} className="px-3 py-2">
+                        {v == null ? (
+                          "—"
+                        ) : table.currencyColumns?.includes(j) &&
+                          typeof v === "number" ? (
+                          `$${v.toFixed(2)}`
+                        ) : j === 0 &&
+                          ["Ready Charges", "Pending Issues"].includes(
+                            table.name,
+                          ) &&
+                          report.transferStableIds.includes(String(v)) ? (
+                          <Link
+                            className="text-blue-700"
+                            href={`/prep-orders/transfers/${v}`}
+                          >
+                            {v}
+                          </Link>
+                        ) : (
+                          String(v)
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {!table.rows.length && (
+              <p className="text-sm text-zinc-500">None in this period.</p>
+            )}
+          </details>
         </Card>
       ))}
       <Card className="p-4">
-        <h2 className="font-semibold">Recent immutable exports</h2>
+        <h2 className="font-semibold">Previous exports</h2>
         {runs
           .filter((r) => r.snapshot)
           .map((r) => (

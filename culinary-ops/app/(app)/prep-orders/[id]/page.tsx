@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { requireUser, hasRole } from "@/lib/session";
+import { hasRole } from "@/lib/session";
+import { requirePrepUser } from "@/lib/prep-session";
+import { canOrderForVenue } from "@/lib/prep-access";
 import { getVenues, getActiveVenue } from "@/lib/venue";
-import { money } from "@/lib/costing";
 import {
   Button,
   Card,
@@ -27,8 +28,7 @@ export default async function PrepOrderDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const user = await requireUser();
-  let canManage = hasRole(user, "MANAGER");
+  const user = await requirePrepUser();
 
   const [order, recipes, venues, { active }] = await Promise.all([
     prisma.prepOrder.findUnique({
@@ -65,8 +65,8 @@ export default async function PrepOrderDetailPage({
   ]);
 
   if (!order) notFound();
-  canManage =
-    canManage &&
+  const canManage =
+    canOrderForVenue(user, order.destinationVenueId) &&
     order.lines.every((l) => l.status === "REQUESTED") &&
     !(
       await prisma.productionCloseout.findUnique({
@@ -78,7 +78,6 @@ export default async function PrepOrderDetailPage({
   const hasRequested = lines.some((l) => l.status === "REQUESTED");
   const hasPrinted = lines.some((l) => l.status !== "REQUESTED");
   const open = lines.filter((l) => isOpenStatus(l.status)).length;
-  const totalAllocated = lines.reduce((s, l) => s + (l.allocatedCost ?? 0), 0);
 
   // Count destinations per recipe so split batches can be flagged in the list.
   const recipeCount = new Map<string, number>();
@@ -113,12 +112,12 @@ export default async function PrepOrderDetailPage({
               Shopping list
             </LinkButton>
           )}
-          {hasPrinted && (
+          {user.role === "ADMIN" && (
             <LinkButton
-              href={`/prep-orders?date=${order.forDate.toISOString().slice(0, 10)}`}
+              href={`/prep-orders/closeout?date=${order.forDate.toISOString().slice(0, 10)}`}
               variant="gold"
             >
-              Enter results →
+              Open daily worksheet →
             </LinkButton>
           )}
         </div>
@@ -136,11 +135,11 @@ export default async function PrepOrderDetailPage({
           order.destinationVenue ? ` · → ${order.destinationVenue.name}` : ""
         }`}
         action={
-          canManage && hasRequested ? (
+          hasRole(user, "MANAGER") && hasRequested ? (
             <form action={generatePacket}>
               <input type="hidden" name="id" value={order.id} />
               <Button type="submit" variant="primary">
-                Generate cook packet & assign lots
+                Print prep sheet
               </Button>
             </form>
           ) : undefined
@@ -197,11 +196,16 @@ export default async function PrepOrderDetailPage({
                         order.destinationVenueId ?? active?.id ?? venues[0]?.id
                       }
                     >
-                      {venues.map((v) => (
-                        <option key={v.id} value={v.id}>
-                          {v.name}
-                        </option>
-                      ))}
+                      {venues
+                        .filter(
+                          (v) =>
+                            user.role === "ADMIN" || v.id === user.homeVenueId,
+                        )
+                        .map((v) => (
+                          <option key={v.id} value={v.id}>
+                            {v.name}
+                          </option>
+                        ))}
                     </Select>
                   </Field>
                 </div>
@@ -228,7 +232,7 @@ export default async function PrepOrderDetailPage({
             <h2 className="mb-4 font-mono text-xs font-semibold uppercase tracking-[0.08em] text-zinc-700">
               Order Summary
             </h2>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <Stat
                 label="Lines"
                 value={String(lines.length)}
@@ -242,11 +246,6 @@ export default async function PrepOrderDetailPage({
                     ? "incl. repeats"
                     : undefined
                 }
-              />
-              <Stat
-                label="Est. Mise cost"
-                value={money(totalAllocated)}
-                sub="frozen at production"
               />
             </div>
           </Card>
@@ -288,17 +287,6 @@ export default async function PrepOrderDetailPage({
                     }}
                   />
                 ))}
-              </div>
-            )}
-
-            {totalAllocated > 0 && (
-              <div className="mt-3 flex items-center justify-between rounded-lg border border-hairline bg-zinc-50 px-4 py-3 text-sm">
-                <span className="font-medium text-zinc-700">
-                  Estimated Mise cost (frozen)
-                </span>
-                <span className="font-semibold text-zinc-900">
-                  {money(totalAllocated)}
-                </span>
               </div>
             )}
           </div>

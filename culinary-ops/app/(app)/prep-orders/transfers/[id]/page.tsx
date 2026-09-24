@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/lib/session";
+import { requirePrepUser } from "@/lib/prep-session";
 import { readCost } from "@/lib/prep-costing";
 import { chicagoToday } from "@/lib/prep-dates";
 import { PageHeader, Card } from "@/components/ui";
@@ -10,7 +10,7 @@ export default async function TransferPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireRole("MANAGER");
+  await requirePrepUser("ADMIN");
   const { id } = await params;
   const [t, recipes, venues, items] = await Promise.all([
     prisma.stockTransfer.findFirstOrThrow({

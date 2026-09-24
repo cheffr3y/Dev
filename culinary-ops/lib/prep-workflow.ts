@@ -54,6 +54,7 @@ export const confirmationSchema = z.object({
   quantity: nonnegative,
   unit: z.string().trim().min(1),
   cookName: z.string().trim().min(1),
+  notes: z.string().trim().max(5000).optional(),
   lot: z.string().trim().min(1).optional(),
   waste: nonnegative.default(0),
   wasteReason: z.string().trim().optional(),
@@ -162,8 +163,16 @@ export async function operation<T>(
       where: { id: authorId },
       select: { role: true },
     });
-    if (!author || !["ADMIN", "MANAGER"].includes(author.role))
-      throw new Error("Manager authorization required.");
+    if (
+      !author ||
+      (author.role !== "ADMIN" &&
+        !(kind === "PACKET" && author.role === "MANAGER"))
+    )
+      throw new Error(
+        kind === "PACKET"
+          ? "Manager authorization required."
+          : "Admin authorization required.",
+      );
     const previous = await tx.prepOperation.findUnique({ where: { key } });
     if (previous) {
       if (
@@ -264,98 +273,157 @@ async function validateSupplies(
       throw new Error("Supplying venue not found.");
   }
 }
+type ProductionInput = z.infer<typeof confirmationSchema>;
+function parseProduction(input: unknown) {
+  const d = confirmationSchema.parse(input);
+  d.deliveries.sort((a, b) =>
+    (a.requestLineId ?? a.venueId).localeCompare(b.requestLineId ?? b.venueId),
+  );
+  return d;
+}
+async function prepareProduction(tx: Tx, d: ProductionInput) {
+  const date = businessDate(d.date);
+  const ids = d.deliveries.flatMap((r) =>
+    r.requestLineId ? [r.requestLineId] : [],
+  );
+  if (new Set(ids).size !== ids.length)
+    throw new Error("A request line can only occur once.");
+  const lines = await tx.prepOrderLine.findMany({
+    where: { id: { in: ids } },
+    include: { prepOrder: true },
+  });
+  if (lines.length !== ids.length) throw new Error("Request line not found.");
+  await validateSupplies(tx, "", d.productionSupplies);
+  if (d.quantity === 0 && d.productionSupplies.length)
+    throw new Error(
+      "Associate supplied ingredients with a production result greater than zero.",
+    );
+  let delivered = 0;
+  for (const r of d.deliveries) {
+    delivered += r.quantity;
+    await validateSupplies(tx, r.venueId, r.supplies);
+    const line = lines.find((l) => l.id === r.requestLineId);
+    if (line) {
+      if (
+        line.recipeId !== d.recipeId ||
+        line.destinationVenueId !== r.venueId ||
+        line.prepOrder.forDate.getTime() !== date.getTime()
+      )
+        throw new Error(
+          "Request recipe, venue and date must match this result.",
+        );
+      if (
+        !["REQUESTED", "PRINTED", "IN_PROGRESS"].includes(line.status) ||
+        line.productionBatchId
+      )
+        throw new Error("Completed historical requests are read-only.");
+      const requested = convertQty(
+        line.requestedQty,
+        line.requestedUnit,
+        d.unit,
+      );
+      if (requested == null)
+        throw new Error("Request units do not match production units.");
+      if (r.quantity < requested - 1e-8 && !r.shortageNote)
+        throw new Error(
+          "Each shortage needs a note; it will not carry forward.",
+        );
+    }
+  }
+  if (delivered + d.waste > d.quantity + 1e-8)
+    throw new Error("Deliveries and production waste exceed actual output.");
+  if (d.waste > 0 && !d.wasteReason)
+    throw new Error("Production waste needs a reason.");
+  if (d.quantity === 0 && lines.length === 0)
+    throw new Error("Zero output needs an associated shortage request.");
+  if (d.deliveries.some((r) => r.quantity === 0 && r.supplies.length))
+    throw new Error("Supplied ingredients need a delivery greater than zero.");
+  const printedLots = [
+    ...new Set(lines.flatMap((l) => (l.lot ? [l.lot] : []))),
+  ];
+  if (d.quantity > 0 && printedLots.length > 1 && !d.lot)
+    throw new Error(
+      "These requests have different printed lots. Enter the actual lot used by the cook.",
+    );
+  return { lines, delivered, printedLots };
+}
+// Preview and commit share validation, ordering, allocation and deductions.
+export function productionCosts(d: ProductionInput, recipes: CapturedRecipe[]) {
+  const delivered = d.deliveries.reduce((sum, r) => sum + r.quantity, 0);
+  const retained = Math.max(0, d.quantity - delivered - d.waste);
+  const capture = captureCost({
+    ...d,
+    recipes,
+    weights: [...d.deliveries.map((r) => r.quantity), retained, d.waste],
+    share: d.deliveries.length,
+    supplies: [],
+    productionMinutes: null,
+  });
+  const retainedSnapshot = {
+    ...snapshot(capture),
+    productionSupplies: d.productionSupplies,
+  };
+  const pool = snapshot({ ...capture, weights: [d.quantity], share: 0 });
+  const shared = [
+    ...d.productionSupplies,
+    ...d.deliveries.flatMap((r) => r.supplies.filter((s) => s.shared)),
+  ];
+  const deliveryCosts = d.deliveries.map((r, i) =>
+    r.quantity > 0
+      ? snapshot({
+          ...capture,
+          share: i,
+          supplies: [...r.supplies.filter((s) => !s.shared), ...shared],
+        })
+      : null,
+  );
+  return { retained, capture, retainedSnapshot, pool, deliveryCosts };
+}
+export async function previewProduction(input: unknown) {
+  const d = parseProduction(input);
+  return prisma.$transaction(
+    async (tx) => {
+      const closed = await tx.productionCloseout.findUnique({
+        where: { businessDate: businessDate(d.date) },
+      });
+      if (closed?.finalizedAt)
+        throw new Error("This day is closed. Use a linked correction.");
+      await prepareProduction(tx, d);
+      if (d.quantity === 0) return [];
+      const costs = productionCosts(d, await loadCostRecipes(tx, d.recipeId));
+      return costs.deliveryCosts.flatMap((s, i) =>
+        s
+          ? [
+              {
+                requestLineId: d.deliveries[i].requestLineId,
+                venueId: d.deliveries[i].venueId,
+                charge: s.charge,
+              },
+            ]
+          : [],
+      );
+    },
+    {
+      isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
+      timeout: 30000,
+    },
+  );
+}
 export async function confirmProduction(
   authorId: string,
   key: string,
   input: unknown,
 ) {
-  const d = confirmationSchema.parse(input);
-  // Stable request ordering also breaks equal penny remainders deterministically.
-  d.deliveries.sort((a, b) =>
-    (a.requestLineId ?? a.venueId).localeCompare(b.requestLineId ?? b.venueId),
-  );
+  const d = parseProduction(input);
   return operation(authorId, key, "CONFIRM", d, async (tx) => {
     const date = businessDate(d.date);
     await lockDay(tx, date);
-    const ids = d.deliveries.flatMap((r) =>
-      r.requestLineId ? [r.requestLineId] : [],
-    );
-    if (new Set(ids).size !== ids.length)
-      throw new Error("A request line can only occur once.");
-    const lines = await tx.prepOrderLine.findMany({
-      where: { id: { in: ids } },
-      include: { prepOrder: true },
-    });
-    if (lines.length !== ids.length) throw new Error("Request line not found.");
-    await validateSupplies(tx, "", d.productionSupplies);
-    if (d.quantity === 0 && d.productionSupplies.length)
-      throw new Error(
-        "Associate supplied ingredients with a production result greater than zero.",
-      );
-    let delivered = 0;
-    for (const r of d.deliveries) {
-      delivered += r.quantity;
-      await validateSupplies(tx, r.venueId, r.supplies);
-      const line = lines.find((l) => l.id === r.requestLineId);
-      if (line) {
-        if (
-          line.recipeId !== d.recipeId ||
-          line.destinationVenueId !== r.venueId ||
-          line.prepOrder.forDate.getTime() !== date.getTime()
-        )
-          throw new Error(
-            "Request recipe, venue and date must match this result.",
-          );
-        if (
-          !["REQUESTED", "PRINTED", "IN_PROGRESS"].includes(line.status) ||
-          line.productionBatchId
-        )
-          throw new Error("Completed historical requests are read-only.");
-        const requested = convertQty(
-          line.requestedQty,
-          line.requestedUnit,
-          d.unit,
-        );
-        if (requested == null)
-          throw new Error("Request units do not match production units.");
-        if (r.quantity < requested - 1e-8 && !r.shortageNote)
-          throw new Error(
-            "Each shortage needs a note; it will not carry forward.",
-          );
-      }
-    }
-    if (delivered + d.waste > d.quantity + 1e-8)
-      throw new Error("Deliveries and production waste exceed actual output.");
-    if (d.waste > 0 && !d.wasteReason)
-      throw new Error("Production waste needs a reason.");
-    if (d.quantity === 0 && lines.length === 0)
-      throw new Error("Zero output needs an associated shortage request.");
+    const { lines, printedLots } = await prepareProduction(tx, d);
     let batchId: string | null = null;
     const transfers: string[] = [];
     if (d.quantity > 0) {
-      const recipes = await loadCostRecipes(tx, d.recipeId);
-      const retained = Math.max(0, d.quantity - delivered - d.waste);
-      // Waste is an explicit production disposition; it creates no venue charge.
-      const weights = [
-        ...d.deliveries.map((r) => r.quantity),
-        retained,
-        d.waste,
-      ];
-      const capture = captureCost({
-        ...d,
-        recipes,
-        weights,
-        share: d.deliveries.length,
-        supplies: [],
-        productionMinutes: null,
-      });
-      const printedLots = [
-        ...new Set(lines.flatMap((l) => (l.lot ? [l.lot] : []))),
-      ];
-      if (printedLots.length > 1 && !d.lot)
-        throw new Error(
-          "Selected requests have different printed lots. Enter the actual production lot used by the cook.",
-        );
+      const { retained, capture, retainedSnapshot, pool, deliveryCosts } =
+        productionCosts(d, await loadCostRecipes(tx, d.recipeId));
       const actualLot =
         d.lot ??
         printedLots[0] ??
@@ -369,15 +437,6 @@ export async function confirmProduction(
         throw new Error(
           "This lot already has production. Enter a distinct lot for the additional production.",
         );
-      const retainedSnapshot = {
-        ...snapshot(capture),
-        productionSupplies: d.productionSupplies,
-      };
-      const pool = snapshot({
-        ...capture,
-        weights: [d.quantity || 1],
-        share: 0,
-      });
       const batch = await tx.productionBatch.create({
         data: {
           recipeId: d.recipeId,
@@ -388,6 +447,7 @@ export async function confirmProduction(
           retainedQty: retained,
           productionWasteQty: d.waste,
           cookName: d.cookName,
+          notes: d.notes || null,
           costingSnapshot: json(retainedSnapshot),
           foodCostSnapshot: dollars(pool.charge.gross),
           standardProductionMinutes:
@@ -408,20 +468,7 @@ export async function confirmProduction(
       batchId = batch.id;
       for (const [i, r] of d.deliveries.entries())
         if (r.quantity > 0) {
-          const shared = [
-            ...d.productionSupplies,
-            ...d.deliveries.flatMap((row) =>
-              row.supplies.filter((supply) => supply.shared),
-            ),
-          ];
-          const s = snapshot({
-            ...capture,
-            share: i,
-            supplies: [
-              ...r.supplies.filter((supply) => !supply.shared),
-              ...shared,
-            ],
-          });
+          const s = deliveryCosts[i]!;
           const transfer = await tx.stockTransfer.create({
             data: {
               batchId,
@@ -470,7 +517,10 @@ export async function confirmProduction(
           madeAt: date,
           enteredAt: new Date(),
           enteredByUserId: authorId,
-          notes: row.shortageNote || line.notes,
+          notes:
+            [row.shortageNote || line.notes, !batchId ? d.notes : null]
+              .filter(Boolean)
+              .join("\n") || null,
         },
       });
     }

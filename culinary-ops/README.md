@@ -18,7 +18,7 @@ Built with Next.js (App Router), TypeScript, Prisma, and PostgreSQL. Role-based 
 | **Events** | Plan events with a menu of recipes scaled to servings. Rolls up estimated food cost and a single **aggregated prep & shopping list** across all dishes. Print-friendly. |
 | **Festivals** | Forecast sales from attendance and menu mix, scale recipes and nested sub-recipes, build prep/order guides, and produce a live **proposal P&L** with labor, fees, event expenses, break-even revenue, and target-margin pricing. |
 | **Banquets** | Transcribe a **Banquet Event Order (BEO)**: the header (contact, service window, room, special instructions, setup) plus food lines that link each recipe to its **ordered count**. Every dish scales by the ordered amount into one **aggregated prep / pull sheet** (sub-recipes exploded to raw items, summed by category), with a printable kitchen prep sheet. Customer pricing & beverage/additional charges are out of scope — this is the kitchen side of the BEO. |
-| **Prep Orders** | Today, Requests, History and Accounting: frozen cook packets, shared production results, manual pickups, daily closeout, pending-cost review, linked returns/corrections, and immutable CSV/Excel exports. No finished-stock balance is maintained. |
+| **Prep Orders** | Shared Daily Prep for chef ordering and printing; an admin-only daily worksheet for actuals, ingredient deductions, closeout, and CSV/Excel accounting exports. |
 | **Vendors / Venues / Users** | Manage suppliers, locations, and team access. |
 
 See the [kitchen and accounting guide](docs/prep-orders-guide.md) and [migration / rollout checklist](docs/prep-orders-rollout.md).
@@ -112,17 +112,13 @@ Every recipe has a kitchen-facing print view at `/recipes/[id]/print`: ingredien
 
 ## Prep Orders
 
-`/prep-orders` opens Today, with Requests, History and Accounting alongside it.
+`/prep-orders` opens **Daily Prep**: chefs order for their assigned venue and view the shared recipe totals and destination quantities. Managers/admins generate frozen prep sheets; all signed-in chefs can view and reprint them.
 
-1. Submit separate venue requests and print a frozen cook packet with recipe contents, lots, destination quantities and cooling logs.
-2. Enter each production result once, linking its deliveries to the requests served. Record output, cook, waste, retained quantity, production labor and dishwasher minutes. Shortages close with notes and do not carry forward.
-3. Record later pickups directly from a captured recipe estimate. They require no production batch or stock count. Kept production does not establish an inventory balance.
-4. Close the operational day even when costs remain incomplete. Missing prices, GCODEs, conversions or labor hold the entire affected charge for linked cost completion.
-5. Use Accounting for ready charges, pending issues, legacy production, returns, corrections and immutable CSV/Excel snapshots. Transfer dates drive charges; adjustments have their own dates. Acumatica remains authoritative, with no automatic posting or email.
+Admins use **Closeout** for one daily worksheet populated from the orders: enter made/sent quantities, cook and notes; add venue-supplied ingredient deductions; preview charges; save each item; then finish the day and export accounting. Recipe labor standards apply automatically, and missing costs remain explicitly pending. Ingredient deductions reduce only the supplying venue’s food charge, with labor unchanged.
 
-Production labor defaults to $62/3 per hour (approximately $20.67); dishwasher labor defaults to $18/hour. Standards cover the complete preparation, including nested recipes. Explicit manager overrides are captured. Dates use Chicago calendar dates stored as UTC-midnight labels.
+Accounting starts with venue totals and separates ready charges from pending costs. Excel and CSV include supporting ingredient, labor, supply and production notes. Saved results use linked corrections and returns; historical records and immutable exports remain unchanged. Acumatica remains authoritative, with no automatic posting or email. No finished-stock balance is maintained.
 
-See the [kitchen and accounting guide](docs/prep-orders-guide.md) for daily use.
+See the [daily prep and closeout guide](docs/prep-orders-guide.md) for the workflow and bacon-credit example.
 
 ## Deployment
 
@@ -146,3 +142,9 @@ old database read-only, and leaves it intact as your backup.
 - Per-venue recipe availability and pricing.
 - CSV import/export and vendor catalog sync.
 - Photo uploads for recipes.
+
+### Prep workflow verification
+
+`npm test` runs the unit checks; `npm run test:transactions` starts a disposable PostgreSQL database and exercises production, deductions, closeout, and immutable exports. It does not use the application database.
+
+For the functional browser check, build first, then run `PREP_BROWSER_SMOKE=1 npm run test:transactions` and, in another terminal, `node scripts/test-prep-browser.mjs`. The harness serves disposable fixtures on `http://localhost:3107` and removes its database on exit. The browser check requires Playwright; `PREP_PLAYWRIGHT_MODULE` can point to a bundled module and `PREP_BROWSER_EXECUTABLE` to an existing Chromium executable. Stop the harness after testing. This check verifies ordering, access controls, credits, unsaved entries, closeout, and downloads without a visual-review loop.
