@@ -20,6 +20,7 @@ import {
   finalizeCloseout,
   recordProduction,
   recordTransfer,
+  setBatchProductionMinutes,
 } from "../../production/actions";
 
 function isoDay(value: Date = new Date()) {
@@ -129,7 +130,7 @@ export default async function DailyPrepPage({
             <p className="mt-0.5 font-mono text-xs text-zinc-500">{lot}</p>
             <p className="mt-1 text-xs text-zinc-500">{lines.map((line) => `${line.destinationVenue.code} ${num(line.actualQty)} ${unitLabel(line.actualUnit ?? line.requestedUnit)}`).join(" · ")}</p>
           </div>
-          <div className="w-36"><Field label="Person-min" hint="Blank = standard"><Input name="actualProductionMinutes" type="number" min="0" step="0.1" /></Field></div>
+          <div className="w-36"><Field label="Person-min" hint={lines[0].recipe.productionPersonMinutes == null ? "Required—no recipe default" : "Blank = standard"}><Input name="actualProductionMinutes" type="number" min="0" step="0.1" required={lines[0].recipe.productionPersonMinutes == null} /></Field></div>
           <div className="w-40"><Field label="Delivery date"><Input name="transferDate" type="date" defaultValue={businessDate} required /></Field></div>
           <Button type="submit">Confirm</Button>
         </form>)}
@@ -191,6 +192,7 @@ export default async function DailyPrepPage({
       <div className="grid gap-5 border-t border-hairline p-4 lg:grid-cols-2">
         <div>
           <h3 className="text-sm font-medium">Dishwasher labor</h3>
+          {dayBatches.some((batch) => batch.actualProductionMinutes == null) && <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3"><p className="text-xs font-medium text-amber-800">Enter production person-minutes before closing the day:</p><div className="mt-2 space-y-2">{dayBatches.filter((batch) => batch.actualProductionMinutes == null).map((batch) => <form key={batch.id} action={setBatchProductionMinutes} className="flex items-end gap-2"><input type="hidden" name="batchId" value={batch.id} /><div className="flex-1 text-sm">{batch.recipe.name}<p className="font-mono text-[11px] text-zinc-500">{batch.lot}</p></div><div className="w-28"><Field label="Person-min"><Input name="minutes" type="number" min="0" step="0.1" required /></Field></div><Button type="submit" variant="secondary">Save</Button></form>)}</div></div>}
           {closeout?.finalizedAt ? <p className="mt-3 text-sm"><Badge color="green">Finalized</Badge> <span className="ml-2">{num(closeout.dishwasherMinutes)} min · {money(closeout.dishwasherCost)}</span></p> : <>
             <form className="mt-3 flex flex-wrap items-end gap-2"><input type="hidden" name="date" value={businessDate} /><div className="w-36"><Field label="Person-min"><Input name="dishwasherMinutes" type="number" min="0" step="0.1" defaultValue={sp.dishwasherMinutes ?? ""} /></Field></div><div className="w-32"><Field label="Rate / hr"><Input name="dishwasherRate" type="number" min="0" step="0.01" defaultValue={previewRate} /></Field></div><Button type="submit" variant="secondary">Preview</Button></form>
             {previewMinutes != null && basis <= 0 && previewMinutes > 0 && <p className="mt-3 text-xs text-amber-700">Add production person-minutes before allocating dishwasher time.</p>}

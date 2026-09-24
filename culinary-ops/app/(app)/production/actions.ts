@@ -110,7 +110,16 @@ export async function capturePrepLot(formData: FormData) {
     }),
     recipeNodes(),
   ]);
-  if (lines.length === 0) throw new Error("This prep lot is already captured or has no completed quantity.");
+  if (lines.length === 0) {
+    // Forms can be double-clicked or replayed by the browser. The lot is
+    // unique, so an existing batch means the requested work already happened.
+    const existing = await prisma.productionBatch.findUnique({ where: { lot }, select: { id: true } });
+    if (existing) {
+      revalidatePath("/prep-orders/daily");
+      return;
+    }
+    throw new Error("No completed prep was found for this lot.");
+  }
   if (new Set(lines.map((line) => line.recipeId)).size !== 1) throw new Error("A lot cannot contain multiple recipes.");
   const first = lines[0];
   const outputUnit = first.actualUnit ?? first.requestedUnit;
@@ -131,9 +140,10 @@ export async function capturePrepLot(formData: FormData) {
     ? standardMinutes
     : Number(formData.get("actualProductionMinutes"));
   if (enteredMinutes != null && (!Number.isFinite(enteredMinutes) || enteredMinutes < 0)) throw new Error("Production person-minutes must be zero or greater.");
-  await prisma.$transaction(async (tx) => {
-    const stillOpen = await tx.prepOrderLine.count({ where: { id: { in: lines.map((line) => line.id) }, productionBatchId: null } });
-    if (stillOpen !== lines.length) throw new Error("This prep lot was captured by another user. Refresh the closeout.");
+  try {
+    await prisma.$transaction(async (tx) => {
+      const stillOpen = await tx.prepOrderLine.count({ where: { id: { in: lines.map((line) => line.id) }, productionBatchId: null } });
+      if (stillOpen !== lines.length) return;
     const batch = await tx.productionBatch.create({ data: {
       recipeId: first.recipeId, lot, producedOn: first.prepOrder.forDate, outputQty, outputUnit,
       foodCostSnapshot: food.allocatedCost, foodCostDetailSnapshot: makePrepCostDetailSnapshot(details),
@@ -163,10 +173,56 @@ export async function capturePrepLot(formData: FormData) {
         enteredByUserId: user.id,
       } });
     }
-    await tx.prepOrderLine.updateMany({ where: { id: { in: lines.map((line) => line.id) } }, data: { productionBatchId: batch.id } });
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+      await tx.prepOrderLine.updateMany({ where: { id: { in: lines.map((line) => line.id) } }, data: { productionBatchId: batch.id } });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  } catch (error) {
+    // Concurrent duplicate confirmation can lose the serializable race or hit
+    // the unique lot constraint. If the lot now exists, the operation is done.
+    if (error instanceof Prisma.PrismaClientKnownRequestError && (error.code === "P2002" || error.code === "P2034")) {
+      const existing = await prisma.productionBatch.findUnique({ where: { lot }, select: { id: true } });
+      if (!existing) throw error;
+    } else {
+      throw error;
+    }
+  }
   revalidatePath("/prep-orders/daily");
   revalidatePath("/prep-orders/report");
+}
+
+export async function setBatchProductionMinutes(formData: FormData) {
+  await requireActiveUser();
+  const batchId = String(formData.get("batchId"));
+  const minutes = Number(formData.get("minutes"));
+  if (!Number.isFinite(minutes) || minutes < 0) throw new Error("Production person-minutes must be zero or greater.");
+
+  await prisma.$transaction(async (tx) => {
+    const batch = await tx.productionBatch.findUnique({
+      where: { id: batchId },
+      include: { transfers: { include: { exclusions: true } } },
+    });
+    if (!batch) throw new Error("Production batch not found.");
+    if (batch.finalizedAt) throw new Error("Finalized production cannot be rewritten. Record a correction instead.");
+    const productionLaborCost = batchLaborCost(minutes, batch.productionLaborRate);
+    await tx.productionBatch.update({
+      where: { id: batch.id },
+      data: { actualProductionMinutes: minutes, productionMinutesSource: "ACTUAL_OVERRIDE", productionLaborCost },
+    });
+    for (const transfer of batch.transfers) {
+      const ratio = quantityInBatchUnit(transfer.quantity, transfer.unit, batch.outputUnit) / batch.outputQty;
+      const laborExcluded = transfer.exclusions.some((row) => row.excludeProductionLabor);
+      const transferMinutes = minutes * ratio;
+      const transferLabor = laborExcluded ? 0 : productionLaborCost * ratio;
+      await tx.stockTransfer.update({
+        where: { id: transfer.id },
+        data: {
+          productionMinutes: transferMinutes,
+          productionLaborCost: transferLabor,
+          totalTransferCost: transfer.netFoodCost + transferLabor + transfer.dishwasherLaborCost,
+        },
+      });
+    }
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  revalidatePath("/prep-orders/daily");
 }
 
 const transferSchema = z.object({
