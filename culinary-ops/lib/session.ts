@@ -56,8 +56,9 @@ export async function requireActiveUser(min?: AppUser["role"]): Promise<AppUser>
   const user = min ? await requireRole(min) : await requireUser();
   const exists = await prisma.user.findUnique({
     where: { id: user.id },
-    select: { id: true },
+    select: { id: true, role: true },
   });
   if (!exists) await signOut({ redirectTo: "/login" });
-  return user;
+  if (exists && min && RANK[exists.role] < RANK[min]) redirect("/");
+  return { ...user, role: exists?.role ?? user.role };
 }

@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --import tsx --test \"lib/schedule.test.ts\" \"lib/trivia-engine.test.ts\" \"lib/prep-accounting.test.ts\" \"lib/production.test.ts\" \"lib/prep-packet.test.tsx\" \"lib/festival-accounting.test.ts\" \"app/(app)/schedule/schedule-ui.test.tsx\"",
+    "test": "node --import tsx --test \"lib/schedule.test.ts\" \"lib/trivia-engine.test.ts\" \"lib/prep-accounting.test.ts\" \"lib/production.test.ts\" \"lib/prep-packet.test.tsx\" \"lib/festival-accounting.test.ts\" \"app/(app)/schedule/schedule-ui.test.tsx\" \"lib/prep-costing.test.ts\"",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "db:migrate-legacy": "tsx scripts/migrate-from-foxtownhq.ts",
@@ -15,7 +15,8 @@
     "db:backfill-versions": "tsx scripts/backfill-recipe-versions.ts",
     "db:backfill-day-events": "tsx scripts/backfill-day-events.ts",
     "db:studio": "prisma studio",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "test:transactions": "bash scripts/test-prep-postgres.sh"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",

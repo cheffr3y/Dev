@@ -1,20 +1,26 @@
-export function defaultPrepReportRange(now: Date = new Date()): { from: string; to: string } {
-  const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-  const sunday = new Date(todayUtc);
-  sunday.setUTCDate(todayUtc.getUTCDate() - todayUtc.getUTCDay());
+import { businessDate, chicagoToday } from "./prep-dates";
+export function defaultPrepReportRange(now = new Date()) {
+  const today = businessDate(chicagoToday(now)),
+    sunday = new Date(today);
+  sunday.setUTCDate(today.getUTCDate() - today.getUTCDay());
   const saturday = new Date(sunday);
   saturday.setUTCDate(sunday.getUTCDate() + 6);
-  return { from: sunday.toISOString().slice(0, 10), to: saturday.toISOString().slice(0, 10) };
+  return {
+    from: sunday.toISOString().slice(0, 10),
+    to: saturday.toISOString().slice(0, 10),
+  };
 }
-
 export function prepReportDates(from?: string | null, to?: string | null) {
   const defaults = defaultPrepReportRange();
-  const safeFrom = /^\d{4}-\d{2}-\d{2}$/.test(from ?? "") ? from! : defaults.from;
-  const safeTo = /^\d{4}-\d{2}-\d{2}$/.test(to ?? "") ? to! : defaults.to;
-  return {
-    from: safeFrom,
-    to: safeTo,
-    fromDate: new Date(`${safeFrom}T00:00:00Z`),
-    toDate: new Date(`${safeTo}T23:59:59Z`),
-  };
+  const start = from || defaults.from,
+    end = to || defaults.to,
+    fromDate = businessDate(start),
+    toDate = businessDate(end);
+  if (
+    toDate < fromDate ||
+    toDate.getTime() - fromDate.getTime() > 366 * 86400000
+  )
+    throw new Error("Choose a date range of up to one year.");
+  toDate.setUTCHours(23, 59, 59, 999);
+  return { from: start, to: end, fromDate, toDate };
 }

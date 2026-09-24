@@ -4,16 +4,31 @@ import { prisma } from "@/lib/prisma";
 import { requireUser, hasRole } from "@/lib/session";
 import { getVenues, getActiveVenue } from "@/lib/venue";
 import { money } from "@/lib/costing";
-import { Button, Card, CardHeader, EmptyState, Field, Input, LinkButton, PageHeader, Select, Textarea } from "@/components/ui";
+import {
+  Button,
+  Card,
+  CardHeader,
+  EmptyState,
+  Field,
+  Input,
+  LinkButton,
+  PageHeader,
+  Select,
+  Textarea,
+} from "@/components/ui";
 import { updatePrepOrder, deletePrepOrder, generatePacket } from "../actions";
 import { isOpenStatus } from "@/lib/prep";
 import { PrepLineCard } from "../PrepLineCard";
 import { AddLineForm } from "../AddLineForm";
 
-export default async function PrepOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function PrepOrderDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = await params;
   const user = await requireUser();
-  const canManage = hasRole(user, "MANAGER");
+  let canManage = hasRole(user, "MANAGER");
 
   const [order, recipes, venues, { active }] = await Promise.all([
     prisma.prepOrder.findUnique({
@@ -28,16 +43,36 @@ export default async function PrepOrderDetailPage({ params }: { params: Promise<
             madeBy: { select: { name: true } },
             enteredBy: { select: { name: true } },
           },
-          orderBy: [{ recipe: { name: "asc" } }, { destinationVenue: { name: "asc" } }],
+          orderBy: [
+            { recipe: { name: "asc" } },
+            { destinationVenue: { name: "asc" } },
+          ],
         },
       },
     }),
-    prisma.recipe.findMany({ select: { id: true, name: true, prodCode: true, yieldQty: true, yieldUnit: true }, orderBy: { name: "asc" } }),
+    prisma.recipe.findMany({
+      select: {
+        id: true,
+        name: true,
+        prodCode: true,
+        yieldQty: true,
+        yieldUnit: true,
+      },
+      orderBy: { name: "asc" },
+    }),
     getVenues(),
     getActiveVenue(user.homeVenueId),
   ]);
 
   if (!order) notFound();
+  canManage =
+    canManage &&
+    order.lines.every((l) => l.status === "REQUESTED") &&
+    !(
+      await prisma.productionCloseout.findUnique({
+        where: { businessDate: order.forDate },
+      })
+    )?.finalizedAt;
 
   const lines = order.lines;
   const hasRequested = lines.some((l) => l.status === "REQUESTED");
@@ -47,37 +82,56 @@ export default async function PrepOrderDetailPage({ params }: { params: Promise<
 
   // Count destinations per recipe so split batches can be flagged in the list.
   const recipeCount = new Map<string, number>();
-  for (const l of lines) recipeCount.set(l.recipeId, (recipeCount.get(l.recipeId) ?? 0) + 1);
+  for (const l of lines)
+    recipeCount.set(l.recipeId, (recipeCount.get(l.recipeId) ?? 0) + 1);
 
   const dateValue = order.forDate.toISOString().slice(0, 10);
 
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <Link href="/prep-orders" className="text-sm text-blue-600 hover:underline">
+        <Link
+          href="/prep-orders"
+          className="text-sm text-blue-600 hover:underline"
+        >
           ← Prep orders
         </Link>
         <div className="flex items-center gap-2">
           {hasPrinted && (
-            <LinkButton href={`/prep-orders/${order.id}/packet`} variant="secondary">
+            <LinkButton
+              href={`/prep-orders/${order.id}/packet`}
+              variant="secondary"
+            >
               View cook packet
             </LinkButton>
           )}
           {hasPrinted && (
-            <LinkButton href={`/prep-orders/${order.id}/shopping-list`} variant="secondary">
+            <LinkButton
+              href={`/prep-orders/${order.id}/shopping-list`}
+              variant="secondary"
+            >
               Shopping list
             </LinkButton>
           )}
           {hasPrinted && (
-            <LinkButton href={`/prep-orders/${order.id}/back-entry`} variant="gold">
-              Back-entry →
+            <LinkButton
+              href={`/prep-orders?date=${order.forDate.toISOString().slice(0, 10)}`}
+              variant="gold"
+            >
+              Enter results →
             </LinkButton>
           )}
         </div>
       </div>
 
       <PageHeader
-        title={order.forDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "UTC" })}
+        title={order.forDate.toLocaleDateString("en-US", {
+          weekday: "long",
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+          timeZone: "UTC",
+        })}
         subtitle={`Prep order · submitted by ${order.submittedBy.name}${
           order.destinationVenue ? ` · → ${order.destinationVenue.name}` : ""
         }`}
@@ -106,7 +160,9 @@ export default async function PrepOrderDetailPage({ params }: { params: Promise<
         {canManage && (
           <div className="no-print space-y-6">
             <div className="rounded-xl border border-[#dcd3c0] bg-[#e9e3d4] p-5">
-              <h3 className="mb-3 font-mono text-xs font-semibold uppercase tracking-[0.08em] text-zinc-700">Add New Item</h3>
+              <h3 className="mb-3 font-mono text-xs font-semibold uppercase tracking-[0.08em] text-zinc-700">
+                Add New Item
+              </h3>
               {order.destinationVenueId ? (
                 <AddLineForm orderId={order.id} recipes={recipes} />
               ) : (
@@ -123,10 +179,24 @@ export default async function PrepOrderDetailPage({ params }: { params: Promise<
                 <input type="hidden" name="id" value={order.id} />
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   <Field label="Production date">
-                    <Input name="forDate" type="date" required defaultValue={dateValue} />
+                    <Input
+                      name="forDate"
+                      type="date"
+                      required
+                      defaultValue={dateValue}
+                    />
                   </Field>
-                  <Field label="Destination venue" hint="Applies to every line in this order.">
-                    <Select name="destinationVenueId" required defaultValue={order.destinationVenueId ?? active?.id ?? venues[0]?.id}>
+                  <Field
+                    label="Destination venue"
+                    hint="Applies to every line in this order."
+                  >
+                    <Select
+                      name="destinationVenueId"
+                      required
+                      defaultValue={
+                        order.destinationVenueId ?? active?.id ?? venues[0]?.id
+                      }
+                    >
                       {venues.map((v) => (
                         <option key={v.id} value={v.id}>
                           {v.name}
@@ -155,22 +225,45 @@ export default async function PrepOrderDetailPage({ params }: { params: Promise<
         {/* Right column — live summary + requested recipes */}
         <div className={canManage ? undefined : "lg:col-span-2"}>
           <Card className="p-5">
-            <h2 className="mb-4 font-mono text-xs font-semibold uppercase tracking-[0.08em] text-zinc-700">Order Summary</h2>
+            <h2 className="mb-4 font-mono text-xs font-semibold uppercase tracking-[0.08em] text-zinc-700">
+              Order Summary
+            </h2>
             <div className="grid grid-cols-3 gap-3">
-              <Stat label="Lines" value={String(lines.length)} sub={lines.length > 0 ? `${open} open` : undefined} />
+              <Stat
+                label="Lines"
+                value={String(lines.length)}
+                sub={lines.length > 0 ? `${open} open` : undefined}
+              />
               <Stat
                 label="Recipes"
                 value={String(recipeCount.size)}
-                sub={[...recipeCount.values()].some((c) => c > 1) ? "incl. repeats" : undefined}
+                sub={
+                  [...recipeCount.values()].some((c) => c > 1)
+                    ? "incl. repeats"
+                    : undefined
+                }
               />
-              <Stat label="Est. Mise cost" value={money(totalAllocated)} sub="frozen at production" />
+              <Stat
+                label="Est. Mise cost"
+                value={money(totalAllocated)}
+                sub="frozen at production"
+              />
             </div>
           </Card>
 
           <div className="mt-6">
-            <h2 className="mb-3 font-mono text-xs font-semibold uppercase tracking-[0.08em] text-zinc-700">Requested Recipes</h2>
+            <h2 className="mb-3 font-mono text-xs font-semibold uppercase tracking-[0.08em] text-zinc-700">
+              Requested Recipes
+            </h2>
             {lines.length === 0 ? (
-              <EmptyState title="No recipes yet" hint={canManage ? "Add one with the form on the left." : "Nothing requested."} />
+              <EmptyState
+                title="No recipes yet"
+                hint={
+                  canManage
+                    ? "Add one with the form on the left."
+                    : "Nothing requested."
+                }
+              />
             ) : (
               <div className="space-y-3">
                 {lines.map((l) => (
@@ -200,8 +293,12 @@ export default async function PrepOrderDetailPage({ params }: { params: Promise<
 
             {totalAllocated > 0 && (
               <div className="mt-3 flex items-center justify-between rounded-lg border border-hairline bg-zinc-50 px-4 py-3 text-sm">
-                <span className="font-medium text-zinc-700">Estimated Mise cost (frozen)</span>
-                <span className="font-semibold text-zinc-900">{money(totalAllocated)}</span>
+                <span className="font-medium text-zinc-700">
+                  Estimated Mise cost (frozen)
+                </span>
+                <span className="font-semibold text-zinc-900">
+                  {money(totalAllocated)}
+                </span>
               </div>
             )}
           </div>
@@ -211,11 +308,23 @@ export default async function PrepOrderDetailPage({ params }: { params: Promise<
   );
 }
 
-function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function Stat({
+  label,
+  value,
+  sub,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+}) {
   return (
     <div className="rounded-lg bg-stone px-4 py-5 text-center">
-      <p className="font-mono text-xs uppercase tracking-[0.08em] text-zinc-500">{label}</p>
-      <p className="mt-2 font-display text-3xl leading-none tracking-tight text-ink">{value}</p>
+      <p className="font-mono text-xs uppercase tracking-[0.08em] text-zinc-500">
+        {label}
+      </p>
+      <p className="mt-2 font-display text-3xl leading-none tracking-tight text-ink">
+        {value}
+      </p>
       {sub && <p className="mt-2 text-xs text-zinc-400">{sub}</p>}
     </div>
   );

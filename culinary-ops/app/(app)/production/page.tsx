@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-
-export default function LegacyProductionPage() {
-  redirect("/prep-orders/daily");
+export default function ProductionPage() {
+  redirect("/prep-orders");
 }

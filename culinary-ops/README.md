@@ -18,9 +18,10 @@ Built with Next.js (App Router), TypeScript, Prisma, and PostgreSQL. Role-based 
 | **Events** | Plan events with a menu of recipes scaled to servings. Rolls up estimated food cost and a single **aggregated prep & shopping list** across all dishes. Print-friendly. |
 | **Festivals** | Forecast sales from attendance and menu mix, scale recipes and nested sub-recipes, build prep/order guides, and produce a live **proposal P&L** with labor, fees, event expenses, break-even revenue, and target-margin pricing. |
 | **Banquets** | Transcribe a **Banquet Event Order (BEO)**: the header (contact, service window, room, special instructions, setup) plus food lines that link each recipe to its **ordered count**. Every dish scales by the ordered amount into one **aggregated prep / pull sheet** (sub-recipes exploded to raw items, summed by category), with a printable kitchen prep sheet. Customer pricing & beverage/additional charges are out of scope — this is the kitchen side of the BEO. |
-| **Prep Orders** | Commissary production ledger: a chef requests recipes per destination venue for a date → printable **lot-stamped cook packet** → **back-entry** of actuals (made-by / entered-by / status) → a **cost-transfer report** with accounting-ready Excel export. |
-| **Daily Prep** | An extension of Prep Orders for confirming completed prep, adding items made for stock, recording quick venue pickups, and closing daily labor. |
+| **Prep Orders** | Today, Requests, History and Accounting: frozen cook packets, shared production results, manual pickups, daily closeout, pending-cost review, linked returns/corrections, and immutable CSV/Excel exports. No finished-stock balance is maintained. |
 | **Vendors / Venues / Users** | Manage suppliers, locations, and team access. |
+
+See the [kitchen and accounting guide](docs/prep-orders-guide.md) and [migration / rollout checklist](docs/prep-orders-rollout.md).
 
 ### Roles
 - **Staff** — view everything, take inventory counts.
@@ -54,7 +55,7 @@ Open http://localhost:3000 and sign in:
 ```bash
 npm install
 cp .env.example .env        # paste your DATABASE_URL and set AUTH_SECRET
-npm run db:push             # create tables
+npx prisma migrate deploy  # create tables and audit-protection triggers (empty DB only)
 npm run db:seed             # optional demo data
 npm run dev
 ```
@@ -109,31 +110,27 @@ scripts/dev-setup.sh     Local Postgres bootstrap
 ## Printable recipe cards
 Every recipe has a kitchen-facing print view at `/recipes/[id]/print`: ingredient table, numbered method steps, allergen banner, critical food-safety (HACCP) box, storage & shelf-life instructions, and a prepared/verified sign-off footer. Quantities and yield scale for batches via `?x=N` (×1–×4 in the toolbar). Costs and margins are intentionally omitted from the card.
 
-## Prep orders & production ledger
-Commissary production is tracked from request to transfer at `/prep-orders`:
+## Prep Orders
 
-1. **Order entry** — a manager submits recipes for a **target date**, each with a **destination venue** and requested qty/unit. The same recipe added for a second venue becomes a split (combined batch, separate accounting).
-2. **Cook packet** (`/prep-orders/[id]/packet`) — printing assigns each batch a frozen **lot** (`MMDD-XXX-N`, where `XXX` is the recipe's auto-generated 3-char production code) and moves lines `REQUESTED → PRINTED`. Each entry is the recipe **scaled** to the combined qty, lot-stamped, with made-date/use-by for hand-written labels and a `⚠` flag on non-clean batch multiples. The system prints **no label** — cooks hand-copy the lot, so the production code bans the ambiguous characters **O/I/L**.
-3. **Back-entry** (`/prep-orders/[id]/back-entry`) — every printed line is pre-loaded with the requested qty as the default actual; a person confirms or corrects qty, made-by, status (`MADE` / `SHORT` / `NOT_MADE`) and notes in one save. `entered-by` is recorded automatically and kept distinct from made-by. Mise cost is **frozen** at this moment (`unitCostSnapshot`, `allocatedCost`) and never recomputed against the live catalog.
-4. **Daily prep extension** (`/prep-orders/daily`) — completed prep lots appear as confirmable defaults. Two compact actions cover items made for commissary stock and unplanned venue pickups without requiring a prep request. Labor closeout, waste/returns, and venue-supplied exceptions stay collapsed until needed.
-5. **Cost-transfer report** (`/prep-orders/report`) — uses finalized or open transfer records by **transfer date**, not request/production date. Excel includes venue summary, stable-ID transfer detail, frozen GCODE ingredient support, separate production/dishwasher labor, issues/corrections, and a compatibility sheet for historical completed prep that was deliberately not fabricated into the new ledger. Export inclusion is audited; export does not mean posted. Acumatica remains authoritative and Mise never posts or emails entries automatically.
+`/prep-orders` opens Today, with Requests, History and Accounting alongside it.
 
-Raw-ingredient inventory depletion, non-linear scaling, and programmatic Acumatica push are intentionally out of scope — Acumatica owns raw inventory and authoritative costing.
+1. Submit separate venue requests and print a frozen cook packet with recipe contents, lots, destination quantities and cooling logs.
+2. Enter each production result once, linking its deliveries to the requests served. Record output, cook, waste, retained quantity, production labor and dishwasher minutes. Shortages close with notes and do not carry forward.
+3. Record later pickups directly from a captured recipe estimate. They require no production batch or stock count. Kept production does not establish an inventory balance.
+4. Close the operational day even when costs remain incomplete. Missing prices, GCODEs, conversions or labor hold the entire affected charge for linked cost completion.
+5. Use Accounting for ready charges, pending issues, legacy production, returns, corrections and immutable CSV/Excel snapshots. Transfer dates drive charges; adjustments have their own dates. Acumatica remains authoritative, with no automatic posting or email.
 
-### Production ledger rollout
+Production labor defaults to $62/3 per hour (approximately $20.67); dishwasher labor defaults to $18/hour. Standards cover the complete preparation, including nested recipes. Explicit manager overrides are captured. Dates use Chicago calendar dates stored as UTC-midnight labels.
 
-The schema changes are additive: nullable links are added to historical prep rows and new finished-stock/transfer tables are created. Existing completed prep is not backfilled, so historical labor is not invented and historical production is not charged again. Before rollout, take the normal database backup, then run `npm run db:push`; Prisma will stop rather than accept a destructive data-loss warning. No live database is changed by this repository update.
-
-Configure each recipe's **Production person-minutes** as the standard hands-on estimate for one recipe yield. The production wage default preserves the exact average of $22, $20, and $20 ($20.666666…/hr, displayed as $20.67); dishwasher labor defaults to $18/hr. Both can be overridden for a batch/day and are frozen on finalization. The app's existing UTC-midnight calendar-date convention is used consistently for production and transfer business dates.
-
----
+See the [kitchen and accounting guide](docs/prep-orders-guide.md) for daily use.
 
 ## Deployment
-Designed to deploy cleanly to **Vercel** with a hosted Postgres (Neon, Supabase, or RDS):
 
-1. Push this repo to GitHub and import it in Vercel.
-2. Set env vars `DATABASE_URL` and `AUTH_SECRET`.
-3. The `postinstall` hook generates Prisma Client. Apply schema changes explicitly with `npm run db:push` before deploying a release that changes `prisma/schema.prisma`. Database synchronization is intentionally not part of `npm start`, so a temporary database connection shortage cannot prevent the web process from starting.
+This release requires a coordinated database and application rollout. A push to `main` is not sufficient: the build only generates Prisma Client and does not apply migrations. Confirm whether the hosting service automatically deploys `main` before merging.
+
+Follow the [migration and rollout checklist](docs/prep-orders-rollout.md): back up and rehearse on a restored database, verify the existing schema before marking its baseline applied, pause old application writes, apply the reviewed migrations with `prisma migrate deploy`, and release the new application. **Do not use `db push` for this release**; it omits the PostgreSQL audit-protection triggers.
+
+Existing tables and historical values are preserved. Old application code cannot safely run over new manual transfers with nullable batch links, so coordinate the cutover rather than running both writers concurrently. Configure `DATABASE_URL` and `AUTH_SECRET` in the hosting environment. No live migration or deployment is performed by this repository change.
 
 ### Migrating from the legacy foxtownhq app
 Replacing an existing foxtownhq deployment and want to keep its recipes, items,

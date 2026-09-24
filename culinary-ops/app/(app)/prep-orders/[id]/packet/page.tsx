@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import { loadFrozenPacket } from "@/lib/prep-packets";
 import { requireUser } from "@/lib/session";
 import { num } from "@/lib/costing";
 import { convertQty, unitLabel } from "@/lib/units";
@@ -9,7 +9,11 @@ import { PrepCoolingLog } from "@/components/PrepCoolingLog";
 import { PrintButton } from "@/components/PrintButton";
 import { LocalTime } from "@/components/LocalTime";
 import { ShoppingListBody } from "@/components/ShoppingList";
-import { RecipeBuildBody, buildRecipeTree, recipeTreeSelect, type RecipeTreeNode } from "@/components/RecipeBuild";
+import {
+  RecipeBuildBody,
+  buildRecipeTree,
+  type RecipeTreeNode,
+} from "@/components/RecipeBuild";
 
 // Cook packet — one printable artifact per prep order. It opens with a shopping
 // / pull list (every raw ingredient the day needs, for the prep request) so the
@@ -20,12 +24,24 @@ import { RecipeBuildBody, buildRecipeTree, recipeTreeSelect, type RecipeTreeNode
 
 // forDate-derived dates are UTC-midnight; format in UTC so the day is stable.
 function fmtDate(d: Date): string {
-  return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" });
+  return d.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
 }
 
-export default async function CookPacketPage({ params, searchParams }: {
+export default async function CookPacketPage({
+  params,
+  searchParams,
+}: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ weights?: string | string[]; shopping?: string | string[]; cooling?: string | string[] }>;
+  searchParams: Promise<{
+    weights?: string | string[];
+    shopping?: string | string[];
+    cooling?: string | string[];
+  }>;
 }) {
   const options = await searchParams;
   const weightInGrams = options.weights === "grams";
@@ -34,39 +50,19 @@ export default async function CookPacketPage({ params, searchParams }: {
   const { id } = await params;
   await requireUser();
 
-  const [order, allRecipes, shoppingRecipes] = await Promise.all([
-    prisma.prepOrder.findUnique({
-      where: { id },
-      include: {
-        lines: {
-          include: {
-            // Scalars only — the scaled ingredients, method and sub-builds are
-            // rendered from the full catalog tree (allRecipes) below.
-            recipe: {
-              select: { id: true, name: true, prodCode: true, yieldQty: true, yieldUnit: true, holdLifeDays: true },
-            },
-            destinationVenue: { select: { name: true, code: true } },
-          },
-          orderBy: [{ recipe: { name: "asc" } }, { destinationVenue: { name: "asc" } }],
-        },
-      },
-    }),
-    // Full catalog so sub-recipes can be nested to any depth (their own
-    // ingredients, method and sub-builds), independent of Prisma include depth.
-    prisma.recipe.findMany({ select: recipeTreeSelect }),
-    // Lightweight catalog (raw items with id/category + sub-recipe components)
-    // so the shopping list can explode sub-recipes down to purchasable items —
-    // same loading pattern the standalone shopping-list page uses.
-    prisma.recipe.findMany({
-      select: {
-        id: true,
-        yieldQty: true,
-        yieldUnit: true,
-        items: { select: { quantity: true, unit: true, item: { select: { id: true, name: true, category: true } } } },
-        components: { select: { childId: true, quantity: true, unit: true } },
-      },
-    }),
-  ]);
+  const frozen = await loadFrozenPacket(id);
+  if (!frozen)
+    return (
+      <div>
+        <h1>Packet unavailable</h1>
+        <p>
+          No frozen packet exists for this request. Historical recipe contents
+          cannot be reconstructed from today’s catalog.
+        </p>
+        <Link href="/prep-orders">Back to Prep Orders</Link>
+      </div>
+    );
+  const { order, allRecipes, shoppingRecipes } = frozen;
   if (!order) notFound();
 
   // Recipe tree keyed by id, for recursive sub-build rendering.
@@ -123,46 +119,82 @@ export default async function CookPacketPage({ params, searchParams }: {
   return (
     <div className="mx-auto max-w-3xl">
       <div className="no-print mb-5 flex items-center justify-between gap-3">
-        <Link href={`/prep-orders/${order.id}`} className="text-sm text-blue-600 hover:underline">
-          ← Back to order
+        <Link
+          href="/prep-orders"
+          className="text-sm text-blue-600 hover:underline"
+        >
+          ← Back to Prep Orders
         </Link>
         <div className="flex items-center gap-2">
-          <Link href={`/prep-orders/${order.id}/shopping-list`} className="text-sm text-blue-600 hover:underline">
-            Shopping list
+          <Link
+            href="/prep-orders/requests"
+            className="text-sm text-blue-600 hover:underline"
+          >
+            Request details
           </Link>
           <PrintButton label="Print cook packet" />
         </div>
       </div>
 
-      <form key={`${weightInGrams}-${includeShopping}-${includeCooling}`} method="get" className="no-print mb-5 rounded-xl border border-zinc-200 bg-white p-4 text-sm">
+      <form
+        key={`${weightInGrams}-${includeShopping}-${includeCooling}`}
+        method="get"
+        className="no-print mb-5 rounded-xl border border-zinc-200 bg-white p-4 text-sm"
+      >
         <div className="flex flex-wrap items-center gap-4">
           <label className="flex items-center gap-2">
             Recipe weights
-            <select name="weights" defaultValue={weightInGrams ? "grams" : "usual"} className="rounded border border-zinc-300 px-2 py-1">
+            <select
+              name="weights"
+              defaultValue={weightInGrams ? "grams" : "usual"}
+              className="rounded border border-zinc-300 px-2 py-1"
+            >
               <option value="usual">Usual units (lb / oz)</option>
               <option value="grams">Grams (g)</option>
             </select>
           </label>
           <label className="flex items-center gap-2">
-            <input type="checkbox" name="shopping" value="yes" defaultChecked={includeShopping} />
+            <input
+              type="checkbox"
+              name="shopping"
+              value="yes"
+              defaultChecked={includeShopping}
+            />
             Include shopping / pull list
           </label>
           <label className="flex items-center gap-2">
             Cooling log
-            <select name="cooling" defaultValue={includeCooling ? "yes" : "no"} className="rounded border border-zinc-300 px-2 py-1">
+            <select
+              name="cooling"
+              defaultValue={includeCooling ? "yes" : "no"}
+              className="rounded border border-zinc-300 px-2 py-1"
+            >
               <option value="yes">Include</option>
               <option value="no">Omit</option>
             </select>
           </label>
-          <button type="submit" className="rounded-full border border-zinc-300 px-4 py-2 font-medium">Update packet</button>
+          <button
+            type="submit"
+            className="rounded-full border border-zinc-300 px-4 py-2 font-medium"
+          >
+            Update packet
+          </button>
         </div>
-        <p className="mt-2 text-xs text-zinc-500">Choose options and update the packet before printing. Grams converts weight measurements, including sub-recipes. Volume and count measurements keep their usual units.</p>
+        <p className="mt-2 text-xs text-zinc-500">
+          Choose options and update the packet before printing. Grams converts
+          weight measurements, including sub-recipes. Volume and count
+          measurements keep their usual units.
+        </p>
       </form>
 
       {printed.length === 0 ? (
         <div className="rounded-xl border border-dashed border-zinc-300 bg-zinc-50 px-6 py-12 text-center">
-          <p className="text-sm font-medium text-zinc-600">No printed lines yet.</p>
-          <p className="mt-1 text-sm text-zinc-400">Generate the cook packet from the order to assign lots.</p>
+          <p className="text-sm font-medium text-zinc-600">
+            No printed lines yet.
+          </p>
+          <p className="mt-1 text-sm text-zinc-400">
+            Generate the cook packet from the order to assign lots.
+          </p>
         </div>
       ) : (
         <div className="print-sheet rounded-xl border border-zinc-200 bg-white p-10 shadow-sm">
@@ -170,9 +202,12 @@ export default async function CookPacketPage({ params, searchParams }: {
             <span>Mise · Cook Packet</span>
             <span>Production {madeOn}</span>
           </div>
-          <h1 className="mt-2 font-display text-4xl font-medium tracking-tight text-zinc-900">Commissary Prep</h1>
+          <h1 className="mt-2 font-display text-4xl font-medium tracking-tight text-zinc-900">
+            Commissary Prep
+          </h1>
           <p className="mt-1 text-sm text-zinc-500">
-            {groups.size} batch{groups.size === 1 ? "" : "es"} · hand-copy each lot onto the container labels.
+            {groups.size} batch{groups.size === 1 ? "" : "es"} · hand-copy each
+            lot onto the container labels.
           </p>
 
           {/* Prep / pull list — open the packet with everything to gather, so
@@ -180,13 +215,16 @@ export default async function CookPacketPage({ params, searchParams }: {
           {includeShopping && shopping.itemCount > 0 && (
             <section className="mt-8">
               <div className="flex items-baseline justify-between border-b-2 border-zinc-900 pb-1.5">
-                <h2 className="font-display text-2xl font-medium tracking-tight text-zinc-900">Shopping / Pull List</h2>
+                <h2 className="font-display text-2xl font-medium tracking-tight text-zinc-900">
+                  Shopping / Pull List
+                </h2>
                 <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-500">
                   {shopping.itemCount} item{shopping.itemCount === 1 ? "" : "s"}
                 </span>
               </div>
               <p className="mt-1 text-sm text-zinc-500">
-                Pull or buy everything below before building · sub-recipes broken down to raw items.
+                Pull or buy everything below before building · sub-recipes
+                broken down to raw items.
               </p>
               <ShoppingListBody list={shopping} />
             </section>
@@ -203,7 +241,9 @@ export default async function CookPacketPage({ params, searchParams }: {
                 sharedRefs={sharedRefs}
                 // Each recipe starts on a new page. The first only breaks when a
                 // shopping list precedes it, so it doesn't strand the header alone.
-                breakBefore={(includeShopping && shopping.itemCount > 0) || i > 0}
+                breakBefore={
+                  (includeShopping && shopping.itemCount > 0) || i > 0
+                }
                 weightInGrams={weightInGrams}
               />
             ))}
@@ -213,8 +253,8 @@ export default async function CookPacketPage({ params, searchParams }: {
           {includeCooling && <PrepCoolingLog lines={printed} madeOn={madeOn} />}
 
           <p className="mt-10 border-t border-zinc-200 pt-4 text-[10px] uppercase tracking-[0.14em] text-zinc-400">
-            Printed <LocalTime date={new Date()} mode="date" /> · Lots assigned at first print and frozen · Mise ·
-            Culinary Ops
+            Printed <LocalTime date={new Date()} mode="date" /> · Lots assigned
+            at first print and frozen · Mise · Culinary Ops
           </p>
         </div>
       )}
@@ -269,11 +309,14 @@ function PacketEntry({
     if (c == null) convertible = false;
     else combinedInYield += c;
   }
-  const scale = convertible && recipe.yieldQty > 0 ? combinedInYield / recipe.yieldQty : 1;
+  const scale =
+    convertible && recipe.yieldQty > 0 ? combinedInYield / recipe.yieldQty : 1;
 
   const useBy =
     recipe.holdLifeDays != null
-      ? new Date(forDate.getTime() + recipe.holdLifeDays * 86400000).toLocaleDateString("en-US", {
+      ? new Date(
+          forDate.getTime() + recipe.holdLifeDays * 86400000,
+        ).toLocaleDateString("en-US", {
           year: "numeric",
           month: "short",
           day: "numeric",
@@ -283,18 +326,29 @@ function PacketEntry({
   const split = lines.length > 1;
 
   return (
-    <article className={`break-inside-avoid border-t-2 border-zinc-900 pt-4 ${breakBefore ? "break-before-page" : ""}`}>
+    <article
+      className={`break-inside-avoid border-t-2 border-zinc-900 pt-4 ${breakBefore ? "break-before-page" : ""}`}
+    >
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="font-display text-3xl font-medium tracking-tight text-zinc-900">{recipe.name}</h2>
+          <h2 className="font-display text-3xl font-medium tracking-tight text-zinc-900">
+            {recipe.name}
+          </h2>
           <p className="mt-1 text-lg font-semibold text-zinc-900">
-            Yields {convertible ? `${num(combinedInYield)} ${unitLabel(recipe.yieldUnit)}` : "(mixed units)"}
+            Yields{" "}
+            {convertible
+              ? `${num(combinedInYield)} ${unitLabel(recipe.yieldUnit)}`
+              : "(mixed units)"}
           </p>
         </div>
         {/* Lot — large + clear for hand transcription onto labels */}
         <div className="shrink-0 border-2 border-zinc-900 px-4 py-2 text-right">
-          <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-500">Lot</p>
-          <p className="font-mono text-2xl font-bold tracking-wider text-zinc-900">{lot}</p>
+          <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-500">
+            Lot
+          </p>
+          <p className="font-mono text-2xl font-bold tracking-wider text-zinc-900">
+            {lot}
+          </p>
         </div>
       </div>
 
@@ -308,8 +362,13 @@ function PacketEntry({
           </div>
           <div className="divide-y divide-zinc-200 bg-white">
             {lines.map((l) => (
-              <div key={l.id} className="flex items-center justify-between px-4 py-2.5">
-                <span className="font-medium text-zinc-900">{l.destinationVenue.name}</span>
+              <div
+                key={l.id}
+                className="flex items-center justify-between px-4 py-2.5"
+              >
+                <span className="font-medium text-zinc-900">
+                  {l.destinationVenue.name}
+                </span>
                 <span className="font-bold tabular-nums text-zinc-900">
                   {num(l.requestedQty)} {unitLabel(l.requestedUnit)}
                 </span>
@@ -319,18 +378,24 @@ function PacketEntry({
           <div className="flex items-center justify-between border-t-2 border-zinc-900 bg-zinc-50 px-4 py-2">
             <span className="font-semibold text-zinc-500">Combined total</span>
             <span className="font-bold tabular-nums text-zinc-900">
-              {convertible ? `${num(combinedInYield)} ${unitLabel(recipe.yieldUnit)}` : "(mixed units)"}
+              {convertible
+                ? `${num(combinedInYield)} ${unitLabel(recipe.yieldUnit)}`
+                : "(mixed units)"}
             </span>
           </div>
         </div>
       ) : (
         <div className="mt-3 border-y border-zinc-300 bg-zinc-50 px-4 py-2.5 text-sm">
           <span className="font-semibold text-zinc-900">
-            Total {convertible ? `${num(combinedInYield)} ${unitLabel(recipe.yieldUnit)}` : "(mixed units)"}
+            Total{" "}
+            {convertible
+              ? `${num(combinedInYield)} ${unitLabel(recipe.yieldUnit)}`
+              : "(mixed units)"}
           </span>
           <span className="text-zinc-600">
             {" "}
-            → {lines[0].destinationVenue.name} ({num(lines[0].requestedQty)} {unitLabel(lines[0].requestedUnit)})
+            → {lines[0].destinationVenue.name} ({num(lines[0].requestedQty)}{" "}
+            {unitLabel(lines[0].requestedUnit)})
           </span>
         </div>
       )}
@@ -338,7 +403,8 @@ function PacketEntry({
       {/* Scaling guard — only when ordered units don't convert to the yield unit */}
       {!convertible && (
         <div className="mt-3 border-2 border-amber-600 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-900">
-          ⚠ Requested units don&apos;t convert to the base yield unit — verify the batch size manually.
+          ⚠ Requested units don&apos;t convert to the base yield unit — verify
+          the batch size manually.
         </div>
       )}
 
@@ -350,11 +416,43 @@ function PacketEntry({
       </div>
 
       {/* Scaled ingredients, method, allergens & nested sub-builds */}
-      {node && <RecipeBuildBody node={node} byId={byId} totalBatches={scale} compact={false} depth={0} stack={new Set()} sharedRefs={sharedRefs} weightInGrams={weightInGrams} />}
+      {node && (
+        <RecipeBuildBody
+          node={node}
+          byId={byId}
+          totalBatches={scale}
+          compact={false}
+          depth={0}
+          stack={new Set()}
+          sharedRefs={sharedRefs}
+          weightInGrams={weightInGrams}
+        />
+      )}
 
+      <div className="mt-6 space-y-5 border border-zinc-400 p-4 text-sm">
+        <p>
+          Actual production ______ {unitLabel(recipe.yieldUnit)} · Production
+          waste ______ · Kept at commissary ______
+        </p>
+        {lines.map((l) => (
+          <p key={l.id}>
+            Request {l.id.slice(-6)} · {l.destinationVenue.name}: sent ______{" "}
+            {unitLabel(l.requestedUnit)} · Shortage / reason __________________
+          </p>
+        ))}
+        <p>
+          Cook sign-off __________________ · Production person-minutes ______ ·
+          Dishwasher minutes ______
+        </p>
+        <p>
+          Venue-supplied ingredient / venue / quantity / unit / note
+          __________________________________
+        </p>
+      </div>
       {/* Footer stamp — self-documenting for food-safety / consistency */}
       <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.12em] text-zinc-400">
-        {recipe.name} · {recipe.prodCode} · v{version} · lot {lot} · printed {madeOn}
+        {recipe.name} · {recipe.prodCode} · v{version} · lot {lot} · printed{" "}
+        {madeOn}
       </p>
     </article>
   );
@@ -363,25 +461,42 @@ function PacketEntry({
 function LabelCell({ label, value }: { label: string; value: string }) {
   return (
     <div className="border border-zinc-300 px-3 py-1.5">
-      <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-400">{label}</p>
+      <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-400">
+        {label}
+      </p>
       <p className="font-semibold text-zinc-900">{value}</p>
     </div>
   );
 }
 
 // One row per destination matches back-entry, including split allocations.
-function PrepPacketLog({ lines, madeOn }: { lines: PacketLine[]; madeOn: string }) {
+function PrepPacketLog({
+  lines,
+  madeOn,
+}: {
+  lines: PacketLine[];
+  madeOn: string;
+}) {
   return (
     <section className="mt-10 break-before-page">
-      <h2 className="font-display text-3xl font-medium text-zinc-900">Prep Accountability Log</h2>
-      <p className="mt-1 text-sm text-zinc-600">Production {madeOn} · Record actual yield with units for each destination.</p>
+      <h2 className="font-display text-3xl font-medium text-zinc-900">
+        Prep Accountability Log
+      </h2>
+      <p className="mt-1 text-sm text-zinc-600">
+        Production {madeOn} · Record actual yield with units for each
+        destination.
+      </p>
       <table className="mt-5 w-full table-fixed border-collapse text-xs text-zinc-900">
         <thead className="table-header-group">
           <tr className="bg-zinc-100 text-left">
-            <th className="w-[27%] border border-zinc-400 p-2">Item / lot / destination</th>
+            <th className="w-[27%] border border-zinc-400 p-2">
+              Item / lot / destination
+            </th>
             <th className="w-[15%] border border-zinc-400 p-2">Planned prep</th>
             <th className="w-[17%] border border-zinc-400 p-2">Prepared by</th>
-            <th className="w-[18%] border border-zinc-400 p-2">Actual yield + unit</th>
+            <th className="w-[18%] border border-zinc-400 p-2">
+              Actual yield + unit
+            </th>
             <th className="w-[23%] border border-zinc-400 p-2">Notes</th>
           </tr>
         </thead>
@@ -393,7 +508,9 @@ function PrepPacketLog({ lines, madeOn }: { lines: PacketLine[]; madeOn: string 
                 <p className="mt-1 font-mono">{line.lot}</p>
                 <p className="mt-1">{line.destinationVenue.name}</p>
               </td>
-              <td className="border border-zinc-400 p-2 font-semibold">{num(line.requestedQty)} {unitLabel(line.requestedUnit)}</td>
+              <td className="border border-zinc-400 p-2 font-semibold">
+                {num(line.requestedQty)} {unitLabel(line.requestedUnit)}
+              </td>
               <td className="border border-zinc-400 p-2">&nbsp;</td>
               <td className="border border-zinc-400 p-2">&nbsp;</td>
               <td className="border border-zinc-400 p-2">&nbsp;</td>
@@ -404,7 +521,9 @@ function PrepPacketLog({ lines, madeOn }: { lines: PacketLine[]; madeOn: string 
       <div className="mt-8 break-inside-avoid text-sm text-zinc-900">
         <p className="font-semibold">Chef review</p>
         <div className="mt-8 flex gap-6">
-          <p className="flex-1 border-t border-zinc-600 pt-2">Chef review signature</p>
+          <p className="flex-1 border-t border-zinc-600 pt-2">
+            Chef review signature
+          </p>
           <p className="w-36 border-t border-zinc-600 pt-2">Date / time</p>
         </div>
       </div>

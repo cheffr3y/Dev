@@ -1,9 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
+
+const subscribe = () => () => {};
+const clientSnapshot = () => true;
+const serverSnapshot = () => false;
 
 const FORMATS: Record<string, Intl.DateTimeFormatOptions> = {
-  datetime: { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" },
+  datetime: {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  },
   date: { year: "numeric", month: "short", day: "numeric" },
 };
 
@@ -19,12 +28,14 @@ export function LocalTime({
   mode?: "datetime" | "date";
 }) {
   const d = typeof date === "string" ? new Date(date) : date;
-  const [text, setText] = useState(() =>
-    d.toLocaleString("en-US", { ...FORMATS[mode], timeZone: "UTC" }),
+  const hydrated = useSyncExternalStore(
+    subscribe,
+    clientSnapshot,
+    serverSnapshot,
   );
-  useEffect(() => {
-    setText(d.toLocaleString("en-US", FORMATS[mode]));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [d.getTime(), mode]);
+  const text = d.toLocaleString(
+    "en-US",
+    hydrated ? FORMATS[mode] : { ...FORMATS[mode], timeZone: "UTC" },
+  );
   return <time dateTime={d.toISOString()}>{text}</time>;
 }

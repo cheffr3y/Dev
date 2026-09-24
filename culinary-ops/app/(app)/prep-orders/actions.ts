@@ -1,338 +1,160 @@
 "use server";
-
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
-import { requireRole, requireActiveUser } from "@/lib/session";
-import { buildCostMap, type RecipeCostNode } from "@/lib/costing";
+import { requireActiveUser } from "@/lib/session";
+import { businessDate } from "@/lib/prep-dates";
+import { lockDay, serializable } from "@/lib/prep-workflow";
+import { freezePacket } from "@/lib/prep-packets";
 import { canConvert } from "@/lib/units";
-import { formatLot, nextLotSeq, lineCostSnapshot, BACK_ENTRY_STATUSES } from "@/lib/prep";
-import { buildPrepCostDetail, makePrepCostDetailSnapshot, type CostDetailRecipeNode } from "@/lib/prep-cost-detail";
 
-// --- Order header ---------------------------------------------------------
-
-const orderSchema = z.object({
-  forDate: z.string().min(1, "Production date is required"),
-  destinationVenueId: z.string().min(1, "Pick a destination venue"),
-  notes: z.string().trim().optional(),
-});
-
-export async function createPrepOrder(formData: FormData) {
-  // Confirm the session's account still exists before using its id as the
-  // submittedBy foreign key — a stale JWT (e.g. after a DB reseed) would
-  // otherwise fail with P2003 on PrepOrder_submittedByUserId_fkey.
-  const user = await requireActiveUser("MANAGER");
-  const d = orderSchema.parse({
-    forDate: formData.get("forDate"),
-    destinationVenueId: formData.get("destinationVenueId"),
-    notes: formData.get("notes") || undefined,
-  });
-  const order = await prisma.prepOrder.create({
-    data: {
-      submittedByUserId: user.id,
-      forDate: new Date(d.forDate),
-      destinationVenueId: d.destinationVenueId,
-      notes: d.notes || null,
-    },
-  });
-  revalidatePath("/prep-orders");
-  redirect(`/prep-orders/${order.id}`);
-}
-
-export async function updatePrepOrder(formData: FormData) {
-  await requireRole("MANAGER");
-  const id = String(formData.get("id"));
-  const d = orderSchema.parse({
-    forDate: formData.get("forDate"),
-    destinationVenueId: formData.get("destinationVenueId"),
-    notes: formData.get("notes") || undefined,
-  });
-  // The whole order ships to one venue, so changing it re-points every line.
-  await prisma.$transaction([
-    prisma.prepOrder.update({
-      where: { id },
-      data: { forDate: new Date(d.forDate), destinationVenueId: d.destinationVenueId, notes: d.notes || null },
-    }),
-    prisma.prepOrderLine.updateMany({
-      where: { prepOrderId: id },
-      data: { destinationVenueId: d.destinationVenueId },
-    }),
-  ]);
-  revalidatePath(`/prep-orders/${id}`);
-}
-
-export async function deletePrepOrder(formData: FormData) {
-  await requireRole("MANAGER");
-  const id = String(formData.get("id"));
-  await prisma.prepOrder.delete({ where: { id } });
-  revalidatePath("/prep-orders");
-  redirect("/prep-orders");
-}
-
-// --- Order lines ----------------------------------------------------------
-
-const lineSchema = z.object({
-  prepOrderId: z.string().min(1),
-  recipeId: z.string().min(1, "Pick a recipe"),
-  requestedQty: z.coerce.number().positive("Quantity must be greater than 0"),
-  requestedUnit: z.string().trim().min(1).default("each"),
-});
-
-export async function addPrepLine(formData: FormData) {
-  await requireRole("MANAGER");
-  const d = lineSchema.parse({
-    prepOrderId: formData.get("prepOrderId"),
-    recipeId: formData.get("recipeId"),
-    requestedQty: formData.get("requestedQty"),
-    requestedUnit: formData.get("requestedUnit") || "each",
-  });
-
-  // Venue is set once on the order; every line inherits it.
-  const order = await prisma.prepOrder.findUnique({
-    where: { id: d.prepOrderId },
-    select: { destinationVenueId: true },
-  });
-  if (!order) throw new Error("Prep order not found.");
-  if (!order.destinationVenueId) {
-    throw new Error("Set a destination venue for this order before adding recipes.");
-  }
-
-  const recipe = await prisma.recipe.findUnique({
-    where: { id: d.recipeId },
-    select: { yieldUnit: true, version: true },
-  });
-  if (!recipe) throw new Error("Recipe not found.");
-
-  // The requested unit must be convertible from the recipe's base (yield) unit
-  // — i.e. same measurement family (volume↔volume, weight↔weight).
-  if (!canConvert(d.requestedUnit, recipe.yieldUnit)) {
-    throw new Error(
-      `Can't order ${d.requestedUnit} of a recipe measured in ${recipe.yieldUnit}. Pick a matching unit (liquids in volume, dry goods by weight).`,
-    );
-  }
-
-  await prisma.prepOrderLine.create({
-    data: {
-      prepOrderId: d.prepOrderId,
-      recipeId: d.recipeId,
-      // Snapshot the recipe's edit version as printed on the packet.
-      recipeVersion: recipe.version,
-      destinationVenueId: order.destinationVenueId,
-      requestedQty: d.requestedQty,
-      requestedUnit: d.requestedUnit,
-    },
-  });
-  revalidatePath(`/prep-orders/${d.prepOrderId}`);
-}
-
-const editLineSchema = z.object({
-  id: z.string().min(1),
-  prepOrderId: z.string().min(1),
-  requestedQty: z.coerce.number().positive(),
-  requestedUnit: z.string().trim().min(1),
-});
-
-export async function updatePrepLine(formData: FormData) {
-  await requireRole("MANAGER");
-  const d = editLineSchema.parse({
-    id: formData.get("id"),
-    prepOrderId: formData.get("prepOrderId"),
-    requestedQty: formData.get("requestedQty"),
-    requestedUnit: formData.get("requestedUnit"),
-  });
-  const line = await prisma.prepOrderLine.findUnique({
-    where: { id: d.id },
-    include: { recipe: { select: { yieldUnit: true } } },
-  });
-  // Only requested (un-printed) lines are editable — lots are frozen at print.
-  if (!line || line.status !== "REQUESTED") {
-    throw new Error("Only un-printed lines can be edited.");
-  }
-  // Keep the unit locked to the recipe's base measurement family.
-  if (!canConvert(d.requestedUnit, line.recipe.yieldUnit)) {
-    throw new Error(
-      `Can't order ${d.requestedUnit} of a recipe measured in ${line.recipe.yieldUnit}. Pick a matching unit (liquids in volume, dry goods by weight).`,
-    );
-  }
-  await prisma.prepOrderLine.update({
-    where: { id: d.id },
-    data: {
-      requestedQty: d.requestedQty,
-      requestedUnit: d.requestedUnit,
-    },
-  });
-  revalidatePath(`/prep-orders/${d.prepOrderId}`);
-}
-
-export async function removePrepLine(formData: FormData) {
-  await requireRole("MANAGER");
-  const id = String(formData.get("id"));
-  const prepOrderId = String(formData.get("prepOrderId"));
-  const line = await prisma.prepOrderLine.findUnique({ where: { id } });
-  if (line && line.status !== "REQUESTED") {
-    throw new Error("Only un-printed lines can be removed.");
-  }
-  await prisma.prepOrderLine.delete({ where: { id } });
-  revalidatePath(`/prep-orders/${prepOrderId}`);
-}
-
-// --- Print: assign lots, REQUESTED → PRINTED ------------------------------
-//
-// Lots are generated per recipe (one batch = one lot). Shared batches across
-// venues are the same recipe, so their split lines share a lot. Reprints never
-// regenerate — only REQUESTED lines without a lot are touched here.
-
-export async function generatePacket(formData: FormData) {
-  await requireRole("MANAGER");
-  const id = String(formData.get("id"));
-
-  const order = await prisma.prepOrder.findUnique({
+async function editable(
+  tx: Parameters<Parameters<typeof serializable>[0]>[0],
+  id: string,
+) {
+  const order = await tx.prepOrder.findUniqueOrThrow({
     where: { id },
-    include: { lines: { include: { recipe: { select: { prodCode: true } } } } },
-  });
-  if (!order) throw new Error("Prep order not found.");
-
-  const toPrint = order.lines.filter((l) => l.status === "REQUESTED" && !l.lot);
-
-  // Group un-printed lines by recipe — each group is one batch / one lot.
-  const byRecipe = new Map<string, typeof toPrint>();
-  for (const line of toPrint) {
-    const arr = byRecipe.get(line.recipeId) ?? [];
-    arr.push(line);
-    byRecipe.set(line.recipeId, arr);
-  }
-
-  for (const [recipeId, lines] of byRecipe) {
-    const prodCode = lines[0].recipe.prodCode;
-    // Look across all lines (any order) for lots already used this date+recipe.
-    const existing = await prisma.prepOrderLine.findMany({
-      where: { recipeId, lot: { not: null } },
-      select: { lot: true },
-    });
-    const seq = nextLotSeq(
-      existing.map((e) => e.lot!).filter(Boolean),
-      order.forDate,
-      prodCode,
-    );
-    const lot = formatLot(order.forDate, prodCode, seq);
-    await prisma.prepOrderLine.updateMany({
-      where: { id: { in: lines.map((l) => l.id) } },
-      data: { status: "PRINTED", lot, lotPrintedAt: new Date() },
-    });
-  }
-
-  revalidatePath(`/prep-orders/${id}`);
-  redirect(`/prep-orders/${id}/packet`);
-}
-
-// --- Back-entry: capture actuals, freeze cost -----------------------------
-
-export async function saveBackEntry(formData: FormData) {
-  // enteredByUserId (and the madeBy default) come from the session id; guard
-  // against a stale JWT so back-entry can't fail on a user foreign key.
-  const user = await requireActiveUser();
-  const prepOrderId = String(formData.get("prepOrderId"));
-
-  const order = await prisma.prepOrder.findUnique({
-    where: { id: prepOrderId },
     include: { lines: true },
   });
-  if (!order) throw new Error("Prep order not found.");
-
-  // Cost map across all recipes (ingredients + sub-recipes) at this moment.
-  const recipeNodes = await prisma.recipe.findMany({
-    select: {
-      id: true,
-      yieldQty: true,
-      yieldUnit: true,
-      items: {
-        select: {
-          itemId: true,
-          quantity: true,
-          unit: true,
-          item: { select: { name: true, category: true, unitCost: true, unit: true, sku: true, gcode: true } },
-        },
-      },
-      components: { select: { childId: true, quantity: true, unit: true } },
-    },
-  });
-  const costMap = buildCostMap(recipeNodes as RecipeCostNode[]);
-  const yieldById = new Map(recipeNodes.map((r) => [r.id, { qty: r.yieldQty, unit: r.yieldUnit }]));
-
-  const statusSet = new Set<string>(BACK_ENTRY_STATUSES);
-  const now = new Date();
-
-  for (const line of order.lines) {
-    // Only resolve lines that have been printed (or already resolved/re-edited).
-    if (line.status === "REQUESTED") continue;
-
-    const status = String(formData.get(`status_${line.id}`) ?? "");
-    if (!statusSet.has(status)) continue; // row left untouched
-
-    const notes = (String(formData.get(`notes_${line.id}`) ?? "").trim()) || null;
-    const madeByUserId = (String(formData.get(`madeBy_${line.id}`) ?? "")) || null;
-
-    if (status === "NOT_MADE") {
-      await prisma.prepOrderLine.update({
-        where: { id: line.id },
-        data: {
-          status: "NOT_MADE",
-          actualQty: null,
-          actualUnit: null,
-          madeByUserId,
-          madeAt: order.forDate,
-          enteredByUserId: user.id,
-          enteredAt: now,
-          unitCostSnapshot: null,
-          allocatedCost: null,
-          costBreakdownSnapshot: Prisma.DbNull,
-          notes,
-        },
-      });
-      continue;
-    }
-
-    const actualQty = Number(formData.get(`actualQty_${line.id}`));
-    const actualUnit = String(formData.get(`actualUnit_${line.id}`) || line.requestedUnit);
-    if (!Number.isFinite(actualQty) || actualQty <= 0) {
-      throw new Error("Actual quantity must be greater than 0 for made / short lines.");
-    }
-
-    const yld = yieldById.get(line.recipeId);
-    const snap = lineCostSnapshot({
-      recipeTotalCost: costMap.get(line.recipeId) ?? 0,
-      yieldQty: yld?.qty ?? 1,
-      yieldUnit: yld?.unit ?? actualUnit,
-      qty: actualQty,
-      unit: actualUnit,
-    });
-    const costDetail = buildPrepCostDetail(
-      line.recipeId,
-      actualQty,
-      actualUnit,
-      recipeNodes as CostDetailRecipeNode[],
-    );
-
-    await prisma.prepOrderLine.update({
-      where: { id: line.id },
+  await lockDay(tx, order.forDate);
+  if (
+    order.lines.some((l) => l.status !== "REQUESTED") ||
+    (await tx.prepPacketSnapshot.findUnique({ where: { scope: id } }))
+  )
+    throw new Error("Printed or completed requests are read-only.");
+  return order;
+}
+export async function createPrepOrder(f: FormData) {
+  const user = await requireActiveUser("MANAGER"),
+    date = businessDate(String(f.get("forDate")));
+  const venueId = z.string().min(1).parse(f.get("destinationVenueId"));
+  const order = await serializable(async (tx) => {
+    await lockDay(tx, date);
+    return tx.prepOrder.create({
       data: {
-        status: status as "MADE" | "SHORT",
-        actualQty,
-        actualUnit,
-        madeByUserId,
-        madeAt: order.forDate,
-        enteredByUserId: user.id,
-        enteredAt: now,
-        unitCostSnapshot: snap.unitCostSnapshot,
-        allocatedCost: snap.allocatedCost,
-        costBreakdownSnapshot: makePrepCostDetailSnapshot(costDetail, now),
-        notes,
+        forDate: date,
+        destinationVenueId: venueId,
+        submittedByUserId: user.id,
+        notes: String(f.get("notes") || "") || null,
       },
     });
-  }
-
-  revalidatePath(`/prep-orders/${prepOrderId}`);
-  redirect(`/prep-orders/${prepOrderId}`);
+  });
+  revalidatePath("/prep-orders", "layout");
+  redirect(`/prep-orders/${order.id}`);
+}
+export async function updatePrepOrder(f: FormData) {
+  await requireActiveUser("MANAGER");
+  const id = String(f.get("id")),
+    date = businessDate(String(f.get("forDate"))),
+    venueId = z.string().min(1).parse(f.get("destinationVenueId"));
+  await serializable(async (tx) => {
+    await editable(tx, id);
+    await lockDay(tx, date);
+    await tx.prepOrder.update({
+      where: { id },
+      data: {
+        forDate: date,
+        destinationVenueId: venueId,
+        notes: String(f.get("notes") || "") || null,
+      },
+    });
+    await tx.prepOrderLine.updateMany({
+      where: { prepOrderId: id },
+      data: { destinationVenueId: venueId },
+    });
+  });
+  revalidatePath("/prep-orders", "layout");
+}
+export async function deletePrepOrder(f: FormData) {
+  await requireActiveUser("MANAGER");
+  const id = String(f.get("id"));
+  await serializable(async (tx) => {
+    await editable(tx, id);
+    await tx.prepOrder.delete({ where: { id } });
+  });
+  revalidatePath("/prep-orders", "layout");
+  redirect("/prep-orders/requests");
+}
+export async function addPrepLine(f: FormData) {
+  await requireActiveUser("MANAGER");
+  const id = String(f.get("prepOrderId"));
+  const d = z
+    .object({
+      recipeId: z.string().min(1),
+      requestedQty: z.coerce.number().finite().positive(),
+      requestedUnit: z.string().min(1),
+    })
+    .parse(Object.fromEntries(f));
+  await serializable(async (tx) => {
+    const order = await editable(tx, id);
+    if (!order.destinationVenueId)
+      throw new Error("Choose a destination venue.");
+    const recipe = await tx.recipe.findUniqueOrThrow({
+      where: { id: d.recipeId },
+    });
+    if (!canConvert(d.requestedUnit, recipe.yieldUnit))
+      throw new Error("Incompatible recipe units.");
+    await tx.prepOrderLine.create({
+      data: {
+        ...d,
+        prepOrderId: id,
+        destinationVenueId: order.destinationVenueId,
+        recipeVersion: recipe.version,
+      },
+    });
+  });
+  revalidatePath("/prep-orders", "layout");
+}
+export async function updatePrepLine(f: FormData) {
+  await requireActiveUser("MANAGER");
+  const id = String(f.get("id"));
+  const quantity = z.coerce
+      .number()
+      .finite()
+      .positive()
+      .parse(f.get("requestedQty")),
+    unit = z.string().min(1).parse(f.get("requestedUnit"));
+  await serializable(async (tx) => {
+    const line = await tx.prepOrderLine.findUniqueOrThrow({
+      where: { id },
+      include: { recipe: true },
+    });
+    await editable(tx, line.prepOrderId);
+    if (!canConvert(unit, line.recipe.yieldUnit))
+      throw new Error("Incompatible recipe units.");
+    await tx.prepOrderLine.update({
+      where: { id },
+      data: { requestedQty: quantity, requestedUnit: unit },
+    });
+  });
+  revalidatePath("/prep-orders", "layout");
+}
+export async function removePrepLine(f: FormData) {
+  await requireActiveUser("MANAGER");
+  const id = String(f.get("id"));
+  await serializable(async (tx) => {
+    const line = await tx.prepOrderLine.findUniqueOrThrow({ where: { id } });
+    await editable(tx, line.prepOrderId);
+    await tx.prepOrderLine.delete({ where: { id } });
+  });
+  revalidatePath("/prep-orders", "layout");
+}
+export async function generatePacket(f: FormData) {
+  const user = await requireActiveUser("MANAGER");
+  const result = await freezePacket(
+    user.id,
+    String(f.get("operationKey") || randomUUID()),
+    { orderId: String(f.get("id")) },
+  );
+  revalidatePath("/prep-orders", "layout");
+  redirect(`/prep-orders/${result.scope}/packet`);
+}
+export async function generateDailyPacket(f: FormData) {
+  const user = await requireActiveUser("MANAGER");
+  const result = await freezePacket(user.id, String(f.get("operationKey")), {
+    date: String(f.get("date")),
+  });
+  revalidatePath("/prep-orders", "layout");
+  redirect(`/prep-orders/${result.scope}/packet`);
 }

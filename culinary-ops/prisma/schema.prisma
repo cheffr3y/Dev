@@ -207,6 +207,7 @@ model Recipe {
   festivalItems     FestivalMenuItem[]
   prepLines         PrepOrderLine[]
   productionBatches ProductionBatch[]
+  directTransfers   StockTransfer[]
 
   // Sub-recipes: a recipe can be built from other recipes (components).
   components RecipeComponent[] @relation("ParentRecipe")
@@ -461,7 +462,8 @@ model PrepOrderLine {
   productionBatchId String?
   productionBatch   ProductionBatch? @relation(fields: [productionBatchId], references: [id], onDelete: SetNull)
 
-  notes String? // line-level, queryable
+  deliveries StockTransfer[]
+  notes      String? // line-level, queryable
 
   @@index([prepOrderId])
   @@index([recipeId])
@@ -496,10 +498,10 @@ model ProductionBatch {
   actualProductionMinutes    Float?
   productionMinutesSource    String    @default("STANDARD")
   productionLaborRate        Float     @default(20.666666666666668)
-  productionLaborCost        Float     @default(0)
-  dishwasherMinutes          Float     @default(0)
+  productionLaborCost        Float?    @default(0)
+  dishwasherMinutes          Float?    @default(0)
   dishwasherLaborRate        Float     @default(18)
-  dishwasherLaborCost        Float     @default(0)
+  dishwasherLaborCost        Float?    @default(0)
   dishwasherAllocationMethod String?
   finalizedAt                DateTime?
   notes                      String?
@@ -507,6 +509,11 @@ model ProductionBatch {
   enteredBy                  User      @relation(fields: [enteredByUserId], references: [id], onDelete: Restrict)
   createdAt                  DateTime  @default(now())
   updatedAt                  DateTime  @updatedAt
+
+  costingSnapshot    Json?
+  retainedQty        Float?
+  productionWasteQty Float?
+  cookName           String?
 
   prepLines   PrepOrderLine[]
   transfers   StockTransfer[]
@@ -519,22 +526,22 @@ model ProductionBatch {
 model StockTransfer {
   id                       String             @id @default(cuid())
   stableId                 String             @unique @default(cuid())
-  batchId                  String
-  batch                    ProductionBatch    @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  batchId                  String?
+  batch                    ProductionBatch?   @relation(fields: [batchId], references: [id], onDelete: Restrict)
   venueId                  String
   venue                    Venue              @relation(fields: [venueId], references: [id], onDelete: Restrict)
   transferDate             DateTime
   quantity                 Float
   unit                     String
   sourceType               TransferSourceType
-  foodCostBeforeExclusions Float
-  excludedFoodCost         Float              @default(0)
-  netFoodCost              Float
-  productionLaborCost      Float
-  dishwasherLaborCost      Float
-  totalTransferCost        Float
-  productionMinutes        Float              @default(0)
-  dishwasherMinutes        Float              @default(0)
+  foodCostBeforeExclusions Float?
+  excludedFoodCost         Float?             @default(0)
+  netFoodCost              Float?
+  productionLaborCost      Float?
+  dishwasherLaborCost      Float?
+  totalTransferCost        Float?
+  productionMinutes        Float?             @default(0)
+  dishwasherMinutes        Float?             @default(0)
   finalizedAt              DateTime?
   correctionOfId           String?
   correctionOf             StockTransfer?     @relation("TransferCorrections", fields: [correctionOfId], references: [id], onDelete: Restrict)
@@ -543,6 +550,15 @@ model StockTransfer {
   enteredByUserId          String
   enteredBy                User               @relation(fields: [enteredByUserId], references: [id], onDelete: Restrict)
   createdAt                DateTime           @default(now())
+
+  recipeId        String?
+  recipe          Recipe?                   @relation(fields: [recipeId], references: [id], onDelete: Restrict)
+  requestLineId   String?                   @unique
+  requestLine     PrepOrderLine?            @relation(fields: [requestLineId], references: [id], onDelete: Restrict)
+  accountingState String                    @default("LEGACY")
+  costingSnapshot Json?
+  amendments      PrepAmendment[]
+  returnWaste     FinishedStockAdjustment[]
 
   exclusions       TransferExclusion[]
   reportInclusions TransferReportInclusion[]
@@ -579,10 +595,15 @@ model TransferExclusion {
 }
 
 model FinishedStockAdjustment {
+  transferId      String?
+  transfer        StockTransfer?            @relation(fields: [transferId], references: [id], onDelete: Restrict)
+  amendmentId     String?                   @unique
+  amendment       PrepAmendment?            @relation(fields: [amendmentId], references: [id], onDelete: Restrict)
+  recipeId        String?
   id              String                    @id @default(cuid())
   stableId        String                    @unique @default(cuid())
-  batchId         String
-  batch           ProductionBatch           @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  batchId         String?
+  batch           ProductionBatch?          @relation(fields: [batchId], references: [id], onDelete: Restrict)
   date            DateTime
   type            StockAdjustmentType
   // Signed quantity in the batch output unit: waste is normally negative,
@@ -617,6 +638,7 @@ model ProductionCloseout {
 }
 
 model TransferReportRun {
+  snapshot   Json?
   id         String                    @id @default(cuid())
   stableId   String                    @unique @default(cuid())
   fromDate   DateTime
@@ -927,4 +949,47 @@ model TriviaAnswer {
   createdAt   DateTime       @default(now())
 
   @@unique([playerId, questionId]) // no double answers
+}
+
+// Durable, payload-checked command results; no inventory balances are maintained.
+model PrepOperation {
+  key         String   @id
+  kind        String
+  payloadHash String
+  authorId    String
+  result      Json
+  createdAt   DateTime @default(now())
+}
+
+// A write to this row serializes requests, confirmations, pickups and closeout.
+model PrepBusinessDay {
+  date     DateTime @id
+  revision Int      @default(0)
+}
+
+model PrepPacketSnapshot {
+  id        String   @id @default(cuid())
+  scope     String   @unique
+  contents  Json
+  authorId  String
+  createdAt DateTime @default(now())
+}
+
+model PrepAmendment {
+  revision        Int
+  id              String                   @id @default(cuid())
+  transferId      String
+  transfer        StockTransfer            @relation(fields: [transferId], references: [id], onDelete: Restrict)
+  kind            String
+  adjustmentDate  DateTime
+  quantity        Float?
+  costingSnapshot Json
+  reason          String
+  authorId        String
+  createdAt       DateTime                 @default(now())
+  waste           FinishedStockAdjustment?
+
+  @@unique([transferId, revision])
+  @@index([transferId, createdAt])
+  @@index([adjustmentDate])
 }
