@@ -1,6 +1,6 @@
 "use server";
 
-import { AuthError } from "next-auth";
+import { AuthError, CredentialsSignin } from "next-auth";
 import { signIn } from "@/auth";
 
 export async function authenticate(
@@ -14,6 +14,9 @@ export async function authenticate(
       redirectTo: "/",
     });
   } catch (error) {
+    if (error instanceof CredentialsSignin && error.code === "service_unavailable") {
+      return "Sign-in is temporarily unavailable. Please try again shortly.";
+    }
     if (error instanceof AuthError) {
       return "Invalid email or password.";
     }

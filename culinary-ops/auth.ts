@@ -1,4 +1,4 @@
-import NextAuth from "next-auth";
+import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
@@ -10,6 +10,10 @@ const credentialsSchema = z.object({
   password: z.string().min(1),
 });
 
+class SignInServiceUnavailable extends CredentialsSignin {
+  code = "service_unavailable";
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   providers: [
@@ -19,9 +23,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const parsed = credentialsSchema.safeParse(raw);
         if (!parsed.success) return null;
         const { email, password } = parsed.data;
-        const user = await prisma.user.findUnique({
-          where: { email: email.toLowerCase() },
-        });
+        let user;
+        try {
+          user = await prisma.user.findUnique({
+            where: { email: email.toLowerCase() },
+          });
+        } catch (error) {
+          console.error("[auth] Unable to query the user database", error);
+          throw new SignInServiceUnavailable();
+        }
         if (!user) return null;
         const ok = await bcrypt.compare(password, user.passwordHash);
         if (!ok) return null;

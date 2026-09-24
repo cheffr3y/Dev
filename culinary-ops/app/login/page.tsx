@@ -18,9 +18,7 @@ export default function LoginPage() {
           <LoginForm />
         </Card>
         <p className="mt-5 text-center font-mono text-[11px] leading-relaxed text-zinc-400">
-          Demo: admin@culinaryops.test · manager@culinaryops.test · cook@culinaryops.test
-          <br />
-          password: password123
+          Sign in with the email and password assigned by your administrator.
         </p>
       </div>
     </div>

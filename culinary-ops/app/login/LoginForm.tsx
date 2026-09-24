@@ -26,7 +26,6 @@ export function LoginForm() {
           required
           autoComplete="email"
           placeholder="you@restaurant.com"
-          defaultValue="admin@culinaryops.test"
         />
       </Field>
       <Field label="Password">
@@ -36,7 +35,6 @@ export function LoginForm() {
           required
           autoComplete="current-password"
           placeholder="••••••••"
-          defaultValue="password123"
         />
       </Field>
       {errorMessage && (

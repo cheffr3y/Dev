@@ -11,6 +11,7 @@
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "db:migrate-legacy": "tsx scripts/migrate-from-foxtownhq.ts",
+    "user:set-password": "tsx scripts/set-user-password.ts",
     "db:backfill-versions": "tsx scripts/backfill-recipe-versions.ts",
     "db:backfill-day-events": "tsx scripts/backfill-day-events.ts",
     "db:studio": "prisma studio",
