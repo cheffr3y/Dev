@@ -145,7 +145,7 @@ export function RecipesTable({ rows }: { rows: RecipeRow[] }) {
                     )}
                   </td>
                   <td className="px-6 py-4 text-right text-zinc-600">{money(r.perServing)}</td>
-                  <td className="px-6 py-4 text-right text-zinc-600">{r.menuPrice ? money(r.menuPrice) : "—"}</td>
+                  <td className="px-6 py-4 text-right text-zinc-600">{r.menuPrice ? money(r.menuPrice, 5) : "—"}</td>
                   <td className="px-6 py-4 text-right">
                     {r.fcp == null ? (
                       <span className="text-zinc-400">—</span>

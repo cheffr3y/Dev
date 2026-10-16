@@ -196,7 +196,7 @@ export default async function FestivalProposalPage({ params }: { params: Promise
                       return (
                         <tr key={item.id}>
                           <td className="px-3 py-2 font-medium text-zinc-800">{item.name}</td>
-                          <td className="px-3 py-2 text-right tabular-nums">{money(item.price)}</td>
+                          <td className="px-3 py-2 text-right tabular-nums">{money(item.price, 5)}</td>
                           <td className="px-3 py-2 text-right tabular-nums">{num(fc.chosenPortions)}</td>
                           <td className="px-3 py-2 text-right tabular-nums">{money(fc.projRevenue)}</td>
                           <td className="px-3 py-2 text-right tabular-nums">{foodCost == null ? "—" : money(foodCost)}</td>

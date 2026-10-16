@@ -213,9 +213,14 @@ export function foodCostPct(costPerServing: number, menuPrice?: number | null): 
   return (costPerServing / menuPrice) * 100;
 }
 
-export function money(n: number | null | undefined): string {
+export function money(n: number | null | undefined, maximumFractionDigits = 2): string {
   if (n == null || Number.isNaN(n)) return "—";
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits,
+  }).format(n);
 }
 
 export function pct(n: number | null | undefined): string {

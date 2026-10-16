@@ -81,7 +81,7 @@ export default async function RecipesPage() {
                   <Input name="yieldUnit" defaultValue="servings" />
                 </Field>
                 <Field label="Menu Price ($)">
-                  <Input name="menuPrice" type="number" step="0.01" min="0" placeholder="optional" />
+                  <Input name="menuPrice" type="number" step="0.00001" min="0" placeholder="optional" />
                 </Field>
               </div>
               <Button type="submit">Create & add ingredients →</Button>

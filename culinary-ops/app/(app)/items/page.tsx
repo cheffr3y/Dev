@@ -70,7 +70,7 @@ function ItemFields({
         <Input name="unit" defaultValue={item?.unit ?? "each"} placeholder="lb, case, each" />
       </Field>
       <Field label="Unit Cost ($)">
-        <Input name="unitCost" type="number" step="0.01" min="0" defaultValue={item?.unitCost ?? 0} />
+        <Input name="unitCost" type="number" step="0.00001" min="0" defaultValue={item?.unitCost ?? 0} />
       </Field>
       <Field label="Pack Size">
         <Input name="packSize" defaultValue={item?.packSize ?? ""} placeholder="6 x #10 can" />
@@ -245,7 +245,7 @@ export default async function ItemsPage({
                 <td className="px-4 py-2.5 font-mono text-xs text-zinc-700">{item.gcode ?? "—"}</td>
                 <td className="px-4 py-2.5 text-zinc-600">{item.unit}</td>
                 <td className={`px-4 py-2.5 text-right ${freshness.unpriced ? "text-red-600" : "text-zinc-800"}`}>
-                  {freshness.unpriced ? "—" : money(item.unitCost)}
+                  {freshness.unpriced ? "—" : money(item.unitCost, 5)}
                 </td>
                 <td className="px-4 py-2.5 text-xs">
                   {freshness.unpriced ? (

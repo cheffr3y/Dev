@@ -55,7 +55,7 @@ export function AddMenuItemForm({
       </div>
       <div className="w-24">
         <Field label="Price ($)">
-          <Input name="price" type="number" step="0.01" min="0" defaultValue={0} />
+          <Input name="price" type="number" step="0.00001" min="0" defaultValue={0} />
         </Field>
       </div>
       <div className="w-20">

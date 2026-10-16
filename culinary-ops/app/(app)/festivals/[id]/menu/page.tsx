@@ -164,14 +164,14 @@ export default async function FestivalMenuPage({ params }: { params: Promise<{ i
                               <input
                                 name="price"
                                 type="number"
-                                step="0.01"
+                                step="0.00001"
                                 min="0"
-                                defaultValue={num(mi.price)}
-                                className={`w-16 ${INPUT_CELL}`}
+                                defaultValue={mi.price}
+                                className={`w-28 ${INPUT_CELL}`}
                               />
                             </CellForm>
                           ) : (
-                            <span className={CALC_CELL}>{money(mi.price)}</span>
+                            <span className={CALC_CELL}>{money(mi.price, 5)}</span>
                           )}
                         </td>
                         <td className="px-3 py-2 text-right">

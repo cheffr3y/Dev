@@ -153,7 +153,7 @@ export default async function FestivalAccountingPage({ params }: { params: Promi
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">{num(fc.chosenPortions)}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{num(fc.finalPrepPortions)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{money(item.price)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{money(item.price, 5)}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{money(fc.projRevenue)}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{foodCost == null ? "—" : money(foodCost)}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{perSold == null ? "—" : money(perSold)}</td>

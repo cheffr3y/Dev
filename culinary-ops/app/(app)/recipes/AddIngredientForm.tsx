@@ -21,7 +21,7 @@ export function AddIngredientForm({ recipeId, items }: { recipeId: string; items
   const options: ComboOption[] = items.map((it) => ({
     id: it.id,
     label: it.name,
-    meta: `${money(it.unitCost)} / ${it.unit}`,
+    meta: `${money(it.unitCost, 5)} / ${it.unit}`,
   }));
 
   const units = picked ? allowedUnitsFor(picked.unit) : [];

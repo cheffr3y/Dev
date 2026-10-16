@@ -149,7 +149,7 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCardBlock label="Total Cost" value={money(totalCost)} sub={`${recipe.items.length} ingredients${recipe.components.length ? ` · ${recipe.components.length} sub-recipe${recipe.components.length === 1 ? "" : "s"}` : ""}`} />
         <StatCardBlock label="Cost / Serving" value={money(perServing)} />
-        <StatCardBlock label="Menu Price" value={recipe.menuPrice ? money(recipe.menuPrice) : "—"} sub={margin != null ? `${money(margin)} margin` : undefined} />
+        <StatCardBlock label="Menu Price" value={recipe.menuPrice ? money(recipe.menuPrice, 5) : "—"} sub={margin != null ? `${money(margin)} margin` : undefined} />
         <StatCardBlock label="Food Cost %" value={fcp == null ? "—" : pct(fcp)} />
       </div>
 
@@ -198,7 +198,7 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
                         {num(m.qty)} {m.label}
                       </td>
                       <td className="px-4 py-2 text-right text-zinc-500">
-                        {money(ri.item.unitCost)}/{unitLabel(ri.item.unit)}
+                        {money(ri.item.unitCost, 5)}/{unitLabel(ri.item.unit)}
                       </td>
                       <td className="px-4 py-2 text-right font-medium text-zinc-800">{money(lc.cost)}</td>
                       {canEdit && (
@@ -425,7 +425,7 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
                         <Input name="yieldUnit" defaultValue={recipe.yieldUnit} />
                       </Field>
                       <Field label="Menu Price ($)">
-                        <Input name="menuPrice" type="number" step="0.01" min="0" defaultValue={recipe.menuPrice ?? ""} placeholder="—" />
+                        <Input name="menuPrice" type="number" step="0.00001" min="0" defaultValue={recipe.menuPrice ?? ""} placeholder="—" />
                       </Field>
                     </div>
                   </Section>

@@ -153,7 +153,7 @@ const FIELD_LABELS: Record<string, string> = {
 
 function fmt(field: string, v: unknown): string {
   if (v == null || v === "") return "—";
-  if (field === "menuPrice") return money(Number(v));
+  if (field === "menuPrice") return money(Number(v), 5);
   if (field === "instructions") {
     const n = String(v).split(/\r?\n/).filter((s) => s.trim()).length;
     return `${n} step${n === 1 ? "" : "s"}`;
