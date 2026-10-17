@@ -27,7 +27,11 @@ export default async function RecipePrintPage({
     }),
     // Retain recursive allergen inheritance, including nested sub-recipes.
     prisma.recipe.findMany({
-      select: { id: true, allergens: true, components: { select: { childId: true } } },
+      select: {
+        id: true, allergens: true,
+        items: { select: { item: { select: { allergens: true } } } },
+        components: { select: { childId: true } },
+      },
     }),
   ]);
   if (!recipe) notFound();

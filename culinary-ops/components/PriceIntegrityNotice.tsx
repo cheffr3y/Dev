@@ -39,7 +39,7 @@ export function PriceIntegrityNotice({
           href={hasMissing ? "/items?flag=missing" : "/items?flag=stale"}
           className="no-print ml-auto text-xs underline"
         >
-          Review in Catalog
+          Review in Ingredients
         </Link>
       </div>
       <details className="no-print mt-1.5">

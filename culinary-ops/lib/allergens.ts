@@ -1,10 +1,8 @@
 // Allergen catalog + helpers.
 //
-// A recipe stores only the allergens introduced by *its own* ingredients, as a
-// comma-separated list of the canonical keys below (e.g. "milk,wheat,sesame").
-// The allergens shown to cooks are the *effective* set: a recipe's own
-// allergens unioned with those of every sub-recipe it's built from, computed on
-// the fly so a sub-recipe edit always propagates upward.
+// Ingredients and manual recipe selections store canonical comma-separated
+// keys. A recipe's effective set includes its ingredients and every nested
+// sub-recipe, calculated from the supplied live graph or frozen snapshot.
 
 export type AllergenGroup = "major" | "common";
 
@@ -116,11 +114,21 @@ export function allergenLabels(keys: string[]): string {
 export type AllergenNode = {
   name?: string;
   allergens: string | null;
+  items?: Array<{
+    name?: string;
+    allergens?: string | null;
+    item?: { name?: string; allergens?: string | null };
+  }>;
   components: { childId: string }[];
 };
 
-// Effective allergens for a recipe: its own plus every sub-recipe's, recursively
-// (cycle-safe), returned in canonical order.
+// Supports both Prisma recipe-item rows and the flat printable recipe tree.
+// Missing fields in older snapshots stay missing; never consult live items.
+function ingredientSources(node: AllergenNode) {
+  return (node.items ?? []).map(line => line.item ?? line);
+}
+
+// Effective allergens: manual selections + ingredients + nested sub-recipes.
 export function effectiveAllergens(
   rootId: string,
   byId: Map<string, AllergenNode>,
@@ -133,15 +141,17 @@ export function effectiveAllergens(
     const node = byId.get(id);
     if (!node) return;
     for (const k of parseAllergens(node.allergens)) acc.add(k);
+    for (const item of ingredientSources(node)) {
+      for (const k of parseAllergens(item.allergens)) acc.add(k);
+    }
     for (const c of node.components) visit(c.childId);
   };
   visit(rootId);
   return ALLERGENS.filter((a) => acc.has(a.key)).map((a) => a.key);
 }
 
-// Allergens contributed by a recipe's sub-recipes (recursively), excluding its
-// own manual selections. Maps each inherited key to the name of a direct
-// sub-recipe that introduces it, for an "via <sub-recipe>" note in the editor.
+// Show the ingredient or direct sub-recipe that contributes an inherited key.
+// Manual selections stay independently editable, including overlapping tags.
 export function inheritedAllergenSources(
   rootId: string,
   byId: Map<string, AllergenNode>,
@@ -150,6 +160,11 @@ export function inheritedAllergenSources(
   const root = byId.get(rootId);
   if (!root) return sources;
   const own = new Set(parseAllergens(root.allergens));
+  for (const item of ingredientSources(root)) {
+    for (const k of parseAllergens(item.allergens)) {
+      if (!own.has(k) && !sources.has(k)) sources.set(k, item.name ?? "ingredient");
+    }
+  }
   const seen = new Set<string>([rootId]);
   const visit = (id: string, viaName: string) => {
     if (seen.has(id)) return;
@@ -158,6 +173,11 @@ export function inheritedAllergenSources(
     if (!node) return;
     for (const k of parseAllergens(node.allergens)) {
       if (!own.has(k) && !sources.has(k)) sources.set(k, viaName);
+    }
+    for (const item of ingredientSources(node)) {
+      for (const k of parseAllergens(item.allergens)) {
+        if (!own.has(k) && !sources.has(k)) sources.set(k, viaName);
+      }
     }
     for (const c of node.components) visit(c.childId, viaName);
   };

@@ -45,6 +45,23 @@ async function main() {
       },
     });
   }
+  const cream = await prisma.item.create({ data: {
+    name: "Allergen test cream", category: "Dairy", unit: "qt", unitCost: 2,
+  } });
+  const sauce = await prisma.recipe.create({ data: {
+    name: "Allergen test sauce", prodCode: "ALS", yieldQty: 1, yieldUnit: "qt", allergens: "mustard",
+    items: { create: { itemId: cream.id, quantity: 1, unit: "qt" } },
+  } });
+  await prisma.recipe.create({ data: {
+    name: "Allergen test soup", prodCode: "ALP", yieldQty: 1, yieldUnit: "qt", allergens: "wheat",
+    components: { create: { childId: sauce.id, quantity: 1, unit: "qt" } },
+  } });
+  const oldTomato = await prisma.item.create({ data: { name: "Roma Tomato", category: "Produce", unit: "lb", unitCost: 2, sku: "ROMA" } });
+  const tomato = await prisma.item.create({ data: { name: "Tomato, Roma", category: "Produce", unit: "oz", unitCost: 0.1, sku: "ROMA", gcode: "ROMA-KEEP" } });
+  await prisma.recipe.create({ data: { name: "Cleanup test salad", prodCode: "CLS", yieldQty: 1, yieldUnit: "each", items: { create: [
+    { itemId: oldTomato.id, quantity: 1, unit: "lb", note: "diced" }, { itemId: tomato.id, quantity: 8, unit: "oz", note: "seeded" },
+  ] } } });
+  await prisma.recipe.create({ data: { name: "Cleanup test soup", prodCode: "CLP", yieldQty: 1, yieldUnit: "each", items: { create: { itemId: oldTomato.id, quantity: 2, unit: "oz", note: "diced" } } } });
 }
 main()
   .catch((error) => {

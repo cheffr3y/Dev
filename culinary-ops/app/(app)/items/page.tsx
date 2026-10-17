@@ -1,103 +1,28 @@
 import { prisma } from "@/lib/prisma";
 import { requireUser, hasRole } from "@/lib/session";
 import { money, priceFreshness, PRICE_STALE_DAYS } from "@/lib/costing";
-import { Badge, Button, Card, Field, Input, PageHeader, Select } from "@/components/ui";
-import { createItem, updateItem, deleteItem } from "./actions";
-
-// Purchasing categories, ordered roughly walk-in → dry storage → non-food.
-// Free-form in the DB, so this is just the picker/filter list; existing values
-// are preserved. Categories also group the pull list & order guide.
-const CATEGORIES = [
-  "Produce",
-  "Protein",
-  "Poultry",
-  "Seafood",
-  "Dairy",
-  "Frozen",
-  "Bakery",
-  "Dry Goods",
-  "Grains & Pasta",
-  "Canned & Jarred",
-  "Oils & Vinegars",
-  "Spices & Seasonings",
-  "Condiments & Sauces",
-  "Baking",
-  "Beverage",
-  "Paper & Disposables",
-  "Cleaning & Chemicals",
-  "Other",
-];
-
-function ItemFields({
-  vendors,
-  item,
-}: {
-  vendors: { id: string; name: string }[];
-  item?: {
-    name: string;
-    category: string;
-    unit: string;
-    packSize: string | null;
-    unitCost: number;
-    sku: string | null;
-    gcode: string | null;
-    vendorId: string | null;
-  };
-}) {
-  return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-      <Field label="Name">
-        <Input name="name" required defaultValue={item?.name} placeholder="Roma Tomatoes" />
-      </Field>
-      <Field label="Category">
-        <Select name="category" defaultValue={item?.category ?? "Other"}>
-          {CATEGORIES.map((c) => (
-            <option key={c}>{c}</option>
-          ))}
-        </Select>
-      </Field>
-      <Field label="Vendor">
-        <Select name="vendorId" defaultValue={item?.vendorId ?? ""}>
-          <option value="">— none —</option>
-          {vendors.map((v) => (
-            <option key={v.id} value={v.id}>
-              {v.name}
-            </option>
-          ))}
-        </Select>
-      </Field>
-      <Field label="Unit">
-        <Input name="unit" defaultValue={item?.unit ?? "each"} placeholder="lb, case, each" />
-      </Field>
-      <Field label="Unit Cost ($)">
-        <Input name="unitCost" type="number" step="0.00001" min="0" defaultValue={item?.unitCost ?? 0} />
-      </Field>
-      <Field label="Pack Size">
-        <Input name="packSize" defaultValue={item?.packSize ?? ""} placeholder="6 x #10 can" />
-      </Field>
-      <Field label="Item #">
-        <Input name="sku" defaultValue={item?.sku ?? ""} placeholder="Vendor item / SKU #" />
-      </Field>
-      <Field label="Acumatica GCODE">
-        <Input name="gcode" defaultValue={item?.gcode ?? ""} placeholder="GCODE" />
-      </Field>
-    </div>
-  );
-}
+import { Badge, Button, Card, Input, PageHeader, LinkButton } from "@/components/ui";
+import { createItem, deleteItem } from "./actions";
+import { AllergenBadges } from "@/components/AllergenBadges";
+import Link from "next/link";
+import { IngredientFields } from "@/components/IngredientFields";
+import { INGREDIENT_CATEGORIES } from "@/lib/ingredient-fields";
+import { duplicateIngredientGroups, ingredientNameKey } from "@/lib/ingredient-cleanup";
+import { ingredientUsageSelect } from "@/lib/ingredient-replacement";
 
 export default async function ItemsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string; flag?: string }>;
+  searchParams: Promise<{ category?: string; flag?: string; q?: string }>;
 }) {
   const user = await requireUser();
   const canEdit = hasRole(user, "MANAGER");
-  const { category, flag } = await searchParams;
+  const { category, flag, q = "" } = await searchParams;
 
   const [items, vendors] = await Promise.all([
     // Load the whole catalog so price-coverage counts are global, then filter
     // in memory — the master list is small and this keeps the counts honest.
-    prisma.item.findMany({ include: { vendor: true }, orderBy: [{ category: "asc" }, { name: "asc" }] }),
+    prisma.item.findMany({ include: { vendor: true, _count: { select: ingredientUsageSelect } }, orderBy: [{ category: "asc" }, { name: "asc" }] }),
     prisma.vendor.findMany({ orderBy: { name: "asc" } }),
   ]);
 
@@ -106,8 +31,17 @@ export default async function ItemsPage({
   const missingCount = withFreshness.filter((x) => x.freshness.unpriced).length;
   const staleCount = withFreshness.filter((x) => x.freshness.stale).length;
 
+  const groups = duplicateIngredientGroups(items);
+  const duplicateIds = new Set(groups.flatMap(group => group.map(item => item.id)));
+  const unused = items.filter(item => Object.values(item._count).every(count => count === 0)).length;
+  const categories = [...new Set([...INGREDIENT_CATEGORIES, ...items.map(item => item.category)])];
+
   const visible = withFreshness.filter(({ item, freshness }) => {
     if (category && item.category !== category) return false;
+    if (flag === "duplicates" && !duplicateIds.has(item.id)) return false;
+    if (flag === "unused" && Object.values(item._count).some(count => count > 0)) return false;
+    const search = ingredientNameKey([item.name, item.vendor?.name, item.sku, item.gcode].filter(Boolean).join(" "));
+    if (q && !ingredientNameKey(q).split(" ").every(token => search.includes(token))) return false;
     if (flag === "missing" && !freshness.unpriced) return false;
     if (flag === "stale" && !freshness.stale) return false;
     return true;
@@ -118,6 +52,7 @@ export default async function ItemsPage({
     const params = new URLSearchParams();
     const cat = next.category === undefined ? category : next.category;
     const fl = next.flag === undefined ? flag : next.flag;
+    if (q) params.set("q", q);
     if (cat) params.set("category", cat);
     if (fl) params.set("flag", fl);
     const qs = params.toString();
@@ -127,8 +62,9 @@ export default async function ItemsPage({
   return (
     <div>
       <PageHeader
-        title="Catalog"
-        subtitle="Master list of purchasable items, costs, and vendors."
+        title="Ingredients"
+        subtitle="Shared ingredients, allergen tags, costs, and vendors."
+        action={canEdit ? <LinkButton href="/items/cleanup">Review duplicates ({groups.length})</LinkButton> : undefined}
       />
 
       {/* Price coverage — theo food cost is only as honest as these prices. */}
@@ -153,6 +89,15 @@ export default async function ItemsPage({
         </div>
       )}
 
+      <form className="mb-4 flex flex-wrap items-center gap-2" method="get">
+        {category && <input type="hidden" name="category" value={category} />}
+        {flag && <input type="hidden" name="flag" value={flag} />}
+        <Input name="q" defaultValue={q} placeholder="Search name, vendor, item # or GCODE…" aria-label="Search ingredients" className="max-w-md" />
+        <Button type="submit" variant="secondary">Search</Button>
+        <Link href={hrefWith({ flag: flag === "duplicates" ? null : "duplicates" })} className="text-sm text-blue-600 hover:underline">Possible duplicates ({groups.length})</Link>
+        <Link href={hrefWith({ flag: flag === "unused" ? null : "unused" })} className="text-sm text-blue-600 hover:underline">Unused ({unused})</Link>
+      </form>
+
       {/* Category filter */}
       <div className="mb-4 flex flex-wrap gap-2 text-sm">
         <a
@@ -161,7 +106,7 @@ export default async function ItemsPage({
         >
           All
         </a>
-        {CATEGORIES.map((c) => (
+        {categories.map((c) => (
           <a
             key={c}
             href={hrefWith({ category: c })}
@@ -174,72 +119,53 @@ export default async function ItemsPage({
 
       {canEdit && (
         <details className="mb-5">
-          <summary className="cursor-pointer text-sm font-medium text-blue-600">+ Add item</summary>
+          <summary className="cursor-pointer text-sm font-medium text-blue-600">+ Add ingredient</summary>
           <Card className="mt-2 p-4">
             <form action={createItem} className="space-y-3">
-              <ItemFields vendors={vendors} />
-              <Button type="submit">Add item</Button>
+              <IngredientFields vendors={vendors} />
+              <Button type="submit">Add ingredient</Button>
             </form>
           </Card>
         </details>
       )}
 
-      <Card className="overflow-hidden">
+      <Card className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-zinc-50 text-left font-mono text-[11px] uppercase tracking-[0.02em] text-zinc-600">
             <tr>
-              <th className="px-4 py-2.5 font-medium">Item</th>
+              <th className="px-4 py-2.5 font-medium">Ingredient</th>
               <th className="px-4 py-2.5 font-medium">Category</th>
+              <th className="px-4 py-2.5 font-medium">Allergens</th>
               <th className="px-4 py-2.5 font-medium">Vendor</th>
               <th className="px-4 py-2.5 font-medium">Item #</th>
               <th className="px-4 py-2.5 font-medium">GCODE</th>
               <th className="px-4 py-2.5 font-medium">Unit</th>
               <th className="px-4 py-2.5 text-right font-medium">Unit Cost</th>
               <th className="px-4 py-2.5 font-medium">Price age</th>
+              <th className="px-4 py-2.5 font-medium">Recipes</th>
               {canEdit && <th className="px-4 py-2.5"></th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100">
             {visible.length === 0 && (
               <tr>
-                <td colSpan={canEdit ? 9 : 8} className="px-4 py-8 text-center text-zinc-400">
-                  {items.length === 0 ? "No items yet." : "No items match your filters."}
+                <td colSpan={canEdit ? 11 : 10} className="px-4 py-8 text-center text-zinc-400">
+                  {items.length === 0 ? "No ingredients yet." : "No ingredients match your filters."}
                 </td>
               </tr>
             )}
             {visible.map(({ item, freshness }) => (
               <tr key={item.id} className="align-top">
                 <td className="px-4 py-2.5 font-medium text-zinc-800">
-                  {item.name}
+                  <Link href={`/items/${item.id}`} className="hover:underline">{item.name}</Link>
                   {item.packSize && <span className="ml-1 text-xs text-zinc-400">({item.packSize})</span>}
-                  {canEdit && (
-                    <details className="mt-1">
-                      <summary className="cursor-pointer text-xs text-blue-600">edit</summary>
-                      <form action={updateItem} className="mt-2 space-y-3 rounded-lg bg-zinc-50 p-3">
-                        <input type="hidden" name="id" value={item.id} />
-                        <ItemFields
-                          vendors={vendors}
-                          item={{
-                            name: item.name,
-                            category: item.category,
-                            unit: item.unit,
-                            packSize: item.packSize,
-                            unitCost: item.unitCost,
-                            sku: item.sku,
-                            gcode: item.gcode,
-                            vendorId: item.vendorId,
-                          }}
-                        />
-                        <div className="flex gap-2">
-                          <Button type="submit" variant="secondary">Save</Button>
-                        </div>
-                      </form>
-                    </details>
-                  )}
+                  <Link href={`/items/${item.id}`} className="mt-1 block text-xs text-blue-600 hover:underline">{canEdit ? "edit / usage" : "view usage"}</Link>
+                  {duplicateIds.has(item.id) && <span className="mt-1 block text-xs text-amber-700">Possible duplicate</span>}
                 </td>
                 <td className="px-4 py-2.5">
                   <Badge>{item.category}</Badge>
                 </td>
+                <td className="px-4 py-2.5"><AllergenBadges allergens={item.allergens} /></td>
                 <td className="px-4 py-2.5 text-zinc-600">{item.vendor?.name ?? "—"}</td>
                 <td className="px-4 py-2.5 font-mono text-xs text-zinc-600">{item.sku ?? "—"}</td>
                 <td className="px-4 py-2.5 font-mono text-xs text-zinc-700">{item.gcode ?? "—"}</td>
@@ -256,11 +182,12 @@ export default async function ItemsPage({
                     <span className="text-zinc-500">{freshness.label}</span>
                   )}
                 </td>
+                <td className="px-4 py-2.5"><Link href={`/items/${item.id}`} className="text-blue-600 hover:underline">{item._count.recipeItems}</Link></td>
                 {canEdit && (
                   <td className="px-4 py-2.5 text-right">
                     <form action={deleteItem}>
                       <input type="hidden" name="id" value={item.id} />
-                      <button className="text-xs text-red-500 hover:underline">delete</button>
+                      <button disabled={Object.values(item._count).some(count => count > 0)} className="text-xs text-red-500 hover:underline disabled:cursor-not-allowed disabled:text-zinc-300" title="Only ingredients with no usage can be deleted">delete</button>
                     </form>
                   </td>
                 )}

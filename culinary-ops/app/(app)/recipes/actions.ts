@@ -6,7 +6,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireRole, type AppUser } from "@/lib/session";
 import { money } from "@/lib/costing";
-import { unitLabel } from "@/lib/units";
+import { canConvert, unitLabel } from "@/lib/units";
 import { generateProdCode } from "@/lib/prep";
 import { allergenLabels, parseAllergens, serializeAllergens } from "@/lib/allergens";
 
@@ -275,11 +275,8 @@ export async function addRecipeItem(formData: FormData) {
     where: { recipeId_itemId: { recipeId: d.recipeId, itemId: d.itemId } },
   });
   const item = await prisma.item.findUnique({ where: { id: d.itemId } });
-  await prisma.recipeItem.upsert({
-    where: { recipeId_itemId: { recipeId: d.recipeId, itemId: d.itemId } },
-    create: { ...d, note: d.note || null },
-    update: { quantity: d.quantity, unit: d.unit, note: d.note || null },
-  });
+  if (existing) throw new Error("This ingredient is already in the recipe. Use Edit ingredient to change its quantity or prep note.");
+  await prisma.recipeItem.create({ data: { ...d, note: d.note || null } });
   const label = `${item?.name ?? "ingredient"} (${d.quantity} ${unitLabel(d.unit)})${d.note ? ` — ${d.note}` : ""}`;
   await logChange(
     d.recipeId,
@@ -298,6 +295,32 @@ export async function removeRecipeItem(formData: FormData) {
   await prisma.recipeItem.delete({ where: { id } });
   await logChange(recipeId, user, "Removed ingredient", existing?.item.name);
   revalidatePath(`/recipes/${recipeId}`);
+}
+
+export async function updateRecipeIngredient(_previous: { error: string; saved: boolean }, formData: FormData) {
+  const user = await requireRole("MANAGER");
+  try {
+    const d = lineSchema.parse({ recipeId: formData.get("recipeId"), itemId: formData.get("itemId"), quantity: formData.get("quantity"), unit: formData.get("unit"), note: formData.get("note") || undefined });
+    const id = z.string().min(1).parse(formData.get("id"));
+    await prisma.$transaction(async tx => {
+      const [existing, item] = await Promise.all([tx.recipeItem.findUnique({ where: { id }, include: { item: true } }), tx.item.findUnique({ where: { id: d.itemId } })]);
+      if (!existing || existing.recipeId !== d.recipeId || !item) throw new Error("The recipe line or ingredient no longer exists. Refresh the recipe.");
+      if ((existing.itemId !== d.itemId || existing.unit !== d.unit) && !canConvert(d.unit, item.unit)) throw new Error(`Use a unit convertible to ${item.unit} for the selected ingredient. No weight-to-volume conversion is assumed.`);
+      const duplicate = await tx.recipeItem.findUnique({ where: { recipeId_itemId: { recipeId: d.recipeId, itemId: d.itemId } } });
+      if (duplicate && duplicate.id !== id) throw new Error("This ingredient already has a line in the recipe. Edit that line, or consolidate through Ingredient cleanup.");
+      await tx.recipeItem.update({ where: { id }, data: { itemId: d.itemId, quantity: d.quantity, unit: d.unit, note: d.note || null } });
+      const recipe = await tx.recipe.update({ where: { id: d.recipeId }, data: { version: { increment: 1 } } });
+      await tx.recipeChange.create({ data: { recipeId: recipe.id, version: recipe.version, summary: "Updated ingredient", detail: `${existing.item.name} (${existing.quantity} ${existing.unit}) → ${item.name} (${d.quantity} ${d.unit})${d.note ? ` — ${d.note}` : ""}`, userId: user.id, userName: user.name } });
+    });
+    revalidatePath("/", "layout");
+    return { error: "", saved: true };
+  } catch (error) { return { error: error instanceof Error ? error.message : "Could not save the ingredient line.", saved: false }; }
+}
+
+export async function addRecipeIngredientWithState(_previous: { error: string }, formData: FormData) {
+  await requireRole("MANAGER");
+  try { await addRecipeItem(formData); return { error: "" }; }
+  catch (error) { return { error: error instanceof Error ? error.message : "Could not add the ingredient." }; }
 }
 
 // --- Sub-recipes ---------------------------------------------------------

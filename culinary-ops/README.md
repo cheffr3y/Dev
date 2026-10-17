@@ -12,7 +12,7 @@ Built with Next.js (App Router), TypeScript, Prisma, and PostgreSQL. Role-based 
 | --- | --- |
 | **Dashboard** | At-a-glance counts, low-stock alerts for your active venue, and upcoming events. |
 | **Recipes & Builds** | Standardized recipes with ingredients, method, yield, menu price → automatic **plate cost, cost/serving, and food-cost %** (color-coded against targets). |
-| **Catalog** | Master list of purchasable items with unit cost, pack size, category, and vendor. Costing everywhere flows from here. |
+| **Ingredients** | Shared ingredient list with allergen tags, unit cost, pack size, category, and vendor. Recipes inherit allergens and costing from here. |
 | **Inventory** | Per-venue on-hand counts vs. par levels, low-stock highlighting, and inventory value. |
 | **Order Guides** | Per-venue / per-vendor order sheets. Computes **order quantity = par − on-hand** and an estimated order total. Print-friendly. |
 | **Events** | Plan events with a menu of recipes scaled to servings. Rolls up estimated food cost and a single **aggregated prep & shopping list** across all dishes. Print-friendly. |
@@ -25,10 +25,10 @@ See the [kitchen and accounting guide](docs/prep-orders-guide.md) and [migration
 
 ### Roles
 - **Staff** — view everything, take inventory counts.
-- **Manager** — all of the above plus manage recipes, catalog, vendors, order guides, events, and venues.
+- **Manager** — all of the above plus manage recipes, ingredients, vendors, order guides, events, and venues.
 - **Admin** — full access including user management.
 
-The **active venue** selector in the header scopes the Inventory and Order Guide views; recipes and the catalog are shared company-wide.
+The **active venue** selector in the header scopes the Inventory and Order Guide views; recipes and ingredients are shared company-wide.
 
 ---
 
@@ -90,7 +90,7 @@ app/
   (app)/                 Authenticated shell (sidebar, venue switcher)
     page.tsx             Dashboard
     recipes/             List, detail, costing, actions
-    items/               Catalog
+    items/               Ingredients
     inventory/           Per-venue stock
     order-guides/        Order sheets (list + detail + print)
     events/              Event planning (list + detail + prep list)
@@ -108,6 +108,13 @@ scripts/dev-setup.sh     Local Postgres bootstrap
 `line cost = converted quantity × item.unitCost`, summed per recipe. Recipe quantities convert automatically between units in the same family (`lib/units.ts`) — volume (tsp, tbsp, fl oz, cup, pt, qt, gal, mL, L) and weight (g, kg, oz, lb) — so an item costed per `gal` can be used by the `tbsp` in a recipe. When units aren't convertible (e.g. `cup` of an item costed per `lb`), costing falls back to the legacy same-unit assumption and the recipe page flags the line with a *unit mismatch* badge.
 
 ## Printable recipe cards
+
+Managers tag allergens when adding or editing an ingredient in **Ingredients** (`/items`, the existing address). Tags automatically flow through all recipes and nested sub-recipes into recipe details and printed allergen profiles. Existing manual recipe tags remain additive. New frozen prep packets capture ingredient tags; historical reprints retain their original captured values. Untagged ingredients display “None recorded”; tags are not inferred from ingredient names.
+
+Ingredients have full editors at `/items/[id]`, including vendor codes, structured packs, usable yield, allergen tags, and recipe/stock/order-guide usage. The list searches across ingredient names, vendors, SKU and GCODE, with duplicate and unused filters. **Review duplicates** opens `/items/cleanup`; suggestions match reordered names, punctuation, and common plurals without deciding product equivalence. The comparison previews affected recipes and unit conversions. Recipe-only replacement preserves the old record and other usage; confirmed duplicate consolidation combines compatible recipe quantities/prep notes, unions allergen tags, and removes the old record only when no stock/order-guide/festival references remain. Stale reviews and ambiguous measurements are rejected atomically. Historical packets/accounting snapshots remain unchanged.
+
+Recipe ingredient rows support editing quantity, unit, prep note, or ingredient directly. Ingredient searches include vendor and product codes, show the selected product’s metadata and allergens, and link to its full editor. Already-used ingredients are omitted from the add picker to prevent accidental overwrites.
+
 Every recipe has a kitchen-facing print view at `/recipes/[id]/print`: ingredients grouped by their saved catalog categories, numbered method steps, allergen banner, critical food-safety (HACCP) box, and storage & shelf-life instructions. Quantities and yield scale for batches via `?scale=N` (1×, 2×, or 4× in the screen-only toolbar). The printed sheet starts with the recipe name and omits the archive header, batch controls, and prepared/verified sign-off lines. Costs and margins are intentionally omitted from the card.
 
 Method cues highlight stated techniques, durations, temperatures, and endpoints with small icons and muted colors. Each step shows up to four cues, prioritizing numeric instructions and preserving qualifiers such as “at least” or “within.” Cues are extracted from saved method text and do not add cooking targets or change the recipe.
@@ -125,6 +132,8 @@ Accounting starts with venue totals and separates ready charges from pending cos
 See the [daily prep and closeout guide](docs/prep-orders-guide.md) for the workflow and bacon-credit example.
 
 ## Deployment
+
+Ingredient allergen tagging adds the nullable `Item.allergens` column in `20261016000000_ingredient_allergens`. Apply the migration with `prisma migrate deploy` before releasing this application version. Existing ingredients remain untagged until reviewed; existing recipe allergen selections are preserved.
 
 This release requires a coordinated database and application rollout. A push to `main` is not sufficient: the build only generates Prisma Client and does not apply migrations. Confirm whether the hosting service automatically deploys `main` before merging.
 
@@ -152,3 +161,7 @@ old database read-only, and leaves it intact as your backup.
 `npm test` runs the unit checks; `npm run test:transactions` starts a disposable PostgreSQL database and exercises production, deductions, closeout, and immutable exports. It does not use the application database.
 
 For the functional browser check, build first, then run `PREP_BROWSER_SMOKE=1 npm run test:transactions` and, in another terminal, `node scripts/test-prep-browser.mjs`. The harness serves disposable fixtures on `http://localhost:3107` and removes its database on exit. The browser check requires Playwright; `PREP_PLAYWRIGHT_MODULE` can point to a bundled module and `PREP_BROWSER_EXECUTABLE` to an existing Chromium executable. Stop the harness after testing. This check verifies ordering, access controls, credits, unsaved entries, closeout, and downloads without a visual-review loop.
+
+Against the same disposable harness, `node scripts/test-ingredient-allergens-browser.mjs` checks ingredient tag creation/clearing, nested recipe inheritance, manual recipe selections, printed profiles, and staff read-only access. Set `INGREDIENT_REVIEW_DIR` to save UI screenshots.
+
+`node scripts/test-ingredient-cleanup-browser.mjs` uses the same harness to verify full ingredient edits, recipe-line edits, reviewed duplicate consolidation, compatible quantity conversion, retained notes and manager-only access.

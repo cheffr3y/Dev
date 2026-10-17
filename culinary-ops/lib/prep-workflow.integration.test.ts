@@ -20,6 +20,9 @@ import {
 } from "./prep-accounting-report";
 import { readCost } from "./prep-costing";
 import { businessDate } from "./prep-dates";
+import { effectiveAllergens } from "./allergens";
+import { buildRecipeTree } from "../components/RecipeBuild";
+import { ingredientReplacementPreview, replaceIngredientRecipes } from "./ingredient-replacement";
 const url = new URL(process.env.DATABASE_URL ?? "postgresql://invalid");
 if (
   process.env.PREP_DISPOSABLE_DB !== "1" ||
@@ -132,6 +135,66 @@ before(async () => {
 });
 after(async () => {
   await prisma.$disconnect();
+});
+
+async function mergeFixture(sourceUnit = "lb", targetUnit = "oz") {
+  const source = await prisma.item.create({ data: { name: "Roma Tomato", unit: sourceUnit, unitCost: 1, allergens: "milk" } });
+  const target = await prisma.item.create({ data: { name: "Tomato, Roma", unit: targetUnit, unitCost: 2, gcode: "KEEP", allergens: "soy" } });
+  const recipe = await prisma.recipe.create({ data: { name: "Merge test recipe", prodCode: randomUUID(), yieldQty: 1, yieldUnit: "each",
+    items: { create: [{ itemId: source.id, quantity: 1, unit: sourceUnit, note: "diced" }, { itemId: target.id, quantity: 8, unit: targetUnit, note: "peeled" }] } } });
+  return { source, target, recipe };
+}
+test("ingredient consolidation combines recipe quantities/notes atomically, keeps canonical metadata and frozen history", async () => {
+  const { source, target, recipe } = await mergeFixture();
+  const captured = { ingredientId: source.id, name: source.name, quantity: 1, unit: "lb" };
+  const frozen = await prisma.prepPacketSnapshot.create({ data: { scope: randomUUID(), authorId: admin, contents: captured } });
+  const preview = await ingredientReplacementPreview(prisma, source.id, target.id);
+  const result = await replaceIngredientRecipes(prisma, { sourceId: source.id, targetId: target.id, fingerprint: preview.fingerprint, removeSource: true, authorId: admin });
+  assert.deepEqual(result, { replaced: 1, removed: true });
+  const remaining = await prisma.recipeItem.findMany({ where: { recipeId: recipe.id } });
+  assert.equal(remaining.length, 1); assert.equal(remaining[0].quantity, 24); assert.equal(remaining[0].unit, "oz");
+  assert.equal(remaining[0].note, "peeled\ndiced");
+  assert.equal(await prisma.item.findUnique({ where: { id: source.id } }), null);
+  const kept = await prisma.item.findUniqueOrThrow({ where: { id: target.id } });
+  assert.equal(kept.unitCost, 2); assert.equal(kept.gcode, "KEEP"); assert.equal(kept.allergens, "milk,soy");
+  assert.equal((await prisma.recipe.findUniqueOrThrow({ where: { id: recipe.id } })).version, 2);
+  assert.equal(await prisma.recipeChange.count({ where: { recipeId: recipe.id, summary: "Replaced ingredient" } }), 1);
+  assert.deepEqual((await prisma.prepPacketSnapshot.findUniqueOrThrow({ where: { id: frozen.id } })).contents, captured);
+});
+test("ingredient replacement rejects stale reviews and unauthorized users without changing recipe lines", async () => {
+  const { source, target, recipe } = await mergeFixture();
+  const preview = await ingredientReplacementPreview(prisma, source.id, target.id);
+  const input = { sourceId: source.id, targetId: target.id, fingerprint: preview.fingerprint, removeSource: true, authorId: staff };
+  await assert.rejects(replaceIngredientRecipes(prisma, input), /Manager/);
+  await prisma.recipeItem.updateMany({ where: { recipeId: recipe.id, itemId: source.id }, data: { quantity: 3 } });
+  await assert.rejects(replaceIngredientRecipes(prisma, { ...input, authorId: admin }), /usage changed/);
+  assert.equal(await prisma.recipeItem.count({ where: { recipeId: recipe.id } }), 2);
+});
+test("non-recipe usage blocks consolidation; recipe-only substitution preserves inventory and target tags", async () => {
+  const { source, target } = await mergeFixture();
+  const inventory = await prisma.inventoryItem.create({ data: { venueId: venueA, itemId: source.id, quantity: 5, par: 2, unit: "lb" } });
+  const preview = await ingredientReplacementPreview(prisma, source.id, target.id);
+  const input = { sourceId: source.id, targetId: target.id, fingerprint: preview.fingerprint, removeSource: true, authorId: chefManager };
+  await assert.rejects(replaceIngredientRecipes(prisma, input), /Inventory/);
+  await replaceIngredientRecipes(prisma, { ...input, removeSource: false });
+  assert.deepEqual(await prisma.inventoryItem.findUnique({ where: { id: inventory.id } }), inventory);
+  assert.ok(await prisma.item.findUnique({ where: { id: source.id } }));
+  assert.equal((await prisma.item.findUniqueOrThrow({ where: { id: target.id } })).allergens, "soy");
+});
+test("incompatible recipe collisions roll back and unused duplicates can be consolidated", async () => {
+  const { source, target, recipe } = await mergeFixture("fl oz", "gallon");
+  await prisma.recipeItem.updateMany({ where: { recipeId: recipe.id, itemId: source.id }, data: { unit: "oz" } });
+  const preview = await ingredientReplacementPreview(prisma, source.id, target.id);
+  const input = { sourceId: source.id, targetId: target.id, fingerprint: preview.fingerprint, removeSource: true, authorId: admin };
+  await assert.rejects(replaceIngredientRecipes(prisma, input), /Cannot combine/);
+  assert.equal(await prisma.recipeItem.count({ where: { recipeId: recipe.id } }), 2);
+  await prisma.item.update({ where: { id: source.id }, data: { unit: "case", packQty: 6, packUnit: "lb" } });
+  await prisma.item.update({ where: { id: target.id }, data: { unit: "case", packQty: 12, packUnit: "lb" } });
+  const packages = await ingredientReplacementPreview(prisma, source.id, target.id);
+  await assert.rejects(replaceIngredientRecipes(prisma, { ...input, fingerprint: packages.fingerprint }), /Package measurements differ/);
+  await prisma.recipeItem.deleteMany({ where: { recipeId: recipe.id, itemId: source.id } });
+  const unused = await ingredientReplacementPreview(prisma, source.id, target.id);
+  assert.deepEqual(await replaceIngredientRecipes(prisma, { ...input, fingerprint: unused.fingerprint }), { replaced: 0, removed: true });
 });
 test("concurrent confirmation returns one shared production and two linked deliveries", async () => {
   const date = "2026-09-01",
@@ -456,8 +519,11 @@ test("closed corrections reverse and replace without rewriting originals", async
 test("frozen packets preserve nested recipe contents and separate requests across catalog edits", async () => {
   const date = "2026-09-15",
     lines = await requests(date);
+  await prisma.item.update({ where: { id: itemId }, data: { allergens: "milk" } });
   const frozen = await freezePacket(admin, key(), { date });
   const before = await loadFrozenPacket(frozen.scope);
+  assert.ok(before);
+  assert.deepEqual(effectiveAllergens(recipeId, buildRecipeTree(before.allRecipes)), ["milk"]);
   assert.equal(before?.order.lines.length, 2);
   assert.notEqual(before?.order.lines[0].id, before?.order.lines[1].id);
   assert.equal(before?.order.lines[0].lot, before?.order.lines[1].lot);
@@ -465,6 +531,9 @@ test("frozen packets preserve nested recipe contents and separate requests acros
     where: { id: recipeId },
     data: { instructions: "New instructions", version: 2 },
   });
+  await prisma.item.update({ where: { id: itemId }, data: { allergens: "soy" } });
+  const live = await prisma.recipe.findMany({ include: { items: { include: { item: true } }, components: true } });
+  assert.deepEqual(effectiveAllergens(recipeId, new Map(live.map(row => [row.id, row]))), ["soy"]);
   assert.deepEqual(await loadFrozenPacket(frozen.scope), before);
   assert.deepEqual(await freezePacket(admin, key(), { date }), frozen);
   assert.equal(
@@ -473,6 +542,7 @@ test("frozen packets preserve nested recipe contents and separate requests acros
     }),
     2,
   );
+  await prisma.item.update({ where: { id: itemId }, data: { allergens: null } });
 });
 test("legacy completed requests stay separate, existing batch transfers readable, exports immutable and consistent", async () => {
   const [line] = await requests("2026-09-16", [2]);

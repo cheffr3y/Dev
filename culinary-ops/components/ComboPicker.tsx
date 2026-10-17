@@ -44,12 +44,10 @@ export function ComboPicker({
   const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const matches = q
+    const tokens = query.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+    const matches = tokens.length
       ? options.filter(
-          (o) =>
-            o.label.toLowerCase().includes(q) ||
-            (o.keywords?.toLowerCase().includes(q) ?? false),
+          (o) => tokens.every(token => `${o.label} ${o.keywords ?? ""}`.toLowerCase().includes(token)),
         )
       : options;
     return matches.slice(0, LIMIT);

@@ -52,7 +52,7 @@ export default async function DashboardPage() {
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard label="Recipes & Builds" value={recipeCount} href="/recipes" />
-        <StatCard label="Catalog Items" value={itemCount} href="/items" />
+        <StatCard label="Ingredients" value={itemCount} href="/items" />
         <StatCard label="Venues" value={venueCount} href="/venues" />
         <StatCard label="Vendors" value={vendorCount} href="/vendors" />
       </div>

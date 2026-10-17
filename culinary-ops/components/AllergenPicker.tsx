@@ -1,20 +1,19 @@
 import { MAJOR_ALLERGENS, COMMON_ALLERGENS, type Allergen } from "@/lib/allergens";
 
-// Checkbox grid for a recipe's own allergens. Allergens inherited from
-// sub-recipes are shown pre-checked and locked (disabled, so they aren't
-// re-submitted) with a "via <sub-recipe>" note — the sub-recipe stays the
-// source of truth. Manually-checked allergens post as repeated `allergen` fields.
+// Ingredient/manual recipe tags post as repeated `allergen` fields.
+// Inherited tags are displayed but never copied into manual selections.
 export function AllergenPicker({
   selected,
-  inherited,
+  inherited = new Map(),
 }: {
   selected: string[];
-  inherited: Map<string, string>;
+  inherited?: Map<string, string>;
 }) {
   const own = new Set(selected);
 
   return (
     <fieldset className="space-y-3">
+      <legend className="mb-2 font-mono text-xs uppercase tracking-[0.02em] text-zinc-600">Allergens</legend>
       <AllergenColumn label="Major (Big 9)" allergens={MAJOR_ALLERGENS} own={own} inherited={inherited} />
       <AllergenColumn label="Also common" allergens={COMMON_ALLERGENS} own={own} inherited={inherited} />
     </fieldset>
@@ -47,7 +46,7 @@ function AllergenColumn({
                 "flex items-center gap-2 text-sm " +
                 (isInherited ? "text-zinc-500" : "cursor-pointer text-ink")
               }
-              title={isInherited ? `From sub-recipe “${via}” — edit it there` : a.hint}
+              title={isInherited ? `Inherited from “${via}” — edit its allergen tags there` : a.hint}
             >
               <input
                 type="checkbox"

@@ -44,7 +44,7 @@ const SECTIONS: Array<{ heading: string; items: NavItem[] }> = [
     items: [
       { href: "/inventory", label: "Inventory", icon: "inventory" },
       { href: "/order-guides", label: "Order Guides", icon: "orders" },
-      { href: "/items", label: "Catalog", icon: "catalog" },
+      { href: "/items", label: "Ingredients", icon: "catalog" },
       { href: "/vendors", label: "Vendors", icon: "vendors" },
     ],
   },

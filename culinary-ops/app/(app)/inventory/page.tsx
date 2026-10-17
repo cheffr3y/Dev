@@ -55,7 +55,7 @@ export default async function InventoryPage() {
       </details>
 
       {stock.length === 0 ? (
-        <EmptyState title="No items tracked here yet" hint="Add items from the catalog above." />
+        <EmptyState title="No items tracked here yet" hint="Add ingredients from the list above." />
       ) : (
         <Card className="overflow-hidden">
           <table className="w-full text-sm">

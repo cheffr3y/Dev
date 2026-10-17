@@ -140,6 +140,7 @@ model Item {
   id             String    @id @default(cuid())
   name           String
   category       String    @default("Other")
+  allergens      String?   // canonical comma-separated keys; recipes inherit these
   unit           String    @default("each") // purchase & count unit, e.g. "lb", "case", "each"
   packSize       String? // descriptive display fallback, e.g. "6 x #10 can"
   // Structured purchasing data for pack-rounded ordering (Festivals order guide

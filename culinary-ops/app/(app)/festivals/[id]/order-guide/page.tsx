@@ -180,7 +180,7 @@ export default async function FestivalOrderGuidePage({ params }: { params: Promi
                           {canEdit && r.missingPack && meta && (
                             <details className="mt-1 no-print">
                               <summary className="cursor-pointer text-xs text-blue-600">
-                                set pack &amp; yield <span className="text-zinc-400">(updates Catalog)</span>
+                                set pack &amp; yield <span className="text-zinc-400">(updates Ingredients)</span>
                               </summary>
                               <form action={updateItemPurchasing} className="mt-1 flex flex-wrap items-center gap-1 text-xs">
                                 <input type="hidden" name="itemId" value={r.itemId} />

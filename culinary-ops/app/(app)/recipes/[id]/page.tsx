@@ -17,6 +17,8 @@ import { unitLabel, displayMeasure } from "@/lib/units";
 import { allergenLabels, effectiveAllergens, inheritedAllergenSources, parseAllergens } from "@/lib/allergens";
 import { Badge, Button, Card, CardHeader, Field, Input, LinkButton, PageHeader, Select, Textarea } from "@/components/ui";
 import { AllergenPicker } from "@/components/AllergenPicker";
+import { AllergenBadges } from "@/components/AllergenBadges";
+import { RecipeIngredientEditor } from "@/components/RecipeIngredientEditor";
 import { MethodEditor } from "@/components/MethodEditor";
 import { splitStep } from "@/lib/method";
 import { SubRecipeForm } from "../SubRecipeForm";
@@ -84,7 +86,7 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
         changes: { orderBy: { createdAt: "desc" }, take: 25 },
       },
     }),
-    prisma.item.findMany({ orderBy: { name: "asc" } }),
+    prisma.item.findMany({ include: { vendor: { select: { name: true } } }, orderBy: { name: "asc" } }),
     prisma.recipe.findMany({
       select: {
         id: true,
@@ -93,7 +95,7 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
         yieldQty: true,
         yieldUnit: true,
         allergens: true,
-        items: { select: { quantity: true, unit: true, item: { select: { unitCost: true, unit: true } } } },
+        items: { select: { quantity: true, unit: true, item: { select: { name: true, allergens: true, unitCost: true, unit: true } } } },
         components: { select: { childId: true, quantity: true, unit: true } },
       },
       orderBy: { name: "asc" },
@@ -116,9 +118,7 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
   const margin = recipe.menuPrice ? recipe.menuPrice - perServing : null;
   const methodSteps = parseSteps(recipe.instructions);
 
-  // Allergens: this recipe's own selections, plus those auto-inherited from its
-  // sub-recipes (shown locked in the editor; rolled into the effective set
-  // displayed everywhere else).
+  // Ingredient and sub-recipe tags are inherited; manual tags remain additive.
   const ownAllergens = parseAllergens(recipe.allergens);
   const inheritedAllergens = inheritedAllergenSources(recipe.id, byId);
   const effectiveAllergenKeys = effectiveAllergens(recipe.id, byId);
@@ -159,6 +159,7 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
           {/* Ingredients */}
           <Card>
             <CardHeader>Ingredients</CardHeader>
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-zinc-50 text-left font-mono text-[11px] uppercase tracking-[0.02em] text-zinc-600">
                 <tr>
@@ -184,6 +185,8 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
                     <tr key={ri.id}>
                       <td className="px-4 py-2 text-zinc-800">
                         {ri.item.name}
+                        {canEdit && <RecipeIngredientEditor recipeId={recipe.id} line={ri} items={items} />}
+                        {parseAllergens(ri.item.allergens).length > 0 && <div className="mt-1"><AllergenBadges allergens={ri.item.allergens} /></div>}
                         {ri.note && <span className="ml-2 text-xs text-zinc-400">{ri.note}</span>}
                         {!lc.converted && (
                           <span
@@ -224,12 +227,14 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
                 </tr>
               </tfoot>
             </table>
+            </div>
 
             {canEdit && (
               <div className="border-t border-zinc-100 p-4">
                 <AddIngredientForm
+                  key={recipe.items.length}
                   recipeId={recipe.id}
-                  items={items.map((it) => ({ id: it.id, name: it.name, unitCost: it.unitCost, unit: it.unit }))}
+                  items={items.filter(item => !recipe.items.some(line => line.itemId === item.id))}
                 />
               </div>
             )}
@@ -449,9 +454,10 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
                       <Field label="Critical / Food Safety" hint="HACCP critical limits — put each point on its own line for clarity.">
                         <Textarea name="criticalNotes" rows={3} defaultValue={recipe.criticalNotes ?? ""} placeholder={"Cook to 165°F internal\nHold above 140°F\nDiscard after 4 hrs in danger zone"} />
                       </Field>
-                      <Field label="Allergens" hint="Check what this recipe's own ingredients contain. Allergens from sub-recipes are added automatically.">
+                      <div>
                         <AllergenPicker selected={ownAllergens} inherited={inheritedAllergens} />
-                      </Field>
+                        <p className="mt-2 text-xs text-zinc-500">Ingredient and sub-recipe tags are inherited automatically. Select any additional allergens here.</p>
+                      </div>
                       <Field label="Storage Instructions" hint="One step per line so it's easy to follow on the line.">
                         <Textarea name="storage" rows={3} defaultValue={recipe.storage ?? ""} placeholder={"Cool rapidly to 41°F within 4 hrs\nStore covered & labeled, FIFO\nKeep below 40°F"} />
                       </Field>
