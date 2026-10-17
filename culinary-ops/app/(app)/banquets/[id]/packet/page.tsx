@@ -138,7 +138,7 @@ function DishEntry({ node, batches, converted, description, orderedQty, unit, by
   references: RecipeReferencePlan; eventLabel: string;
 }) {
   return <RecipeBuildCard node={node} byId={byId} totalBatches={batches}
-    compact={false} depth={0} stack={new Set()} references={references} batchLabel="Ordered Batch"
+    compact={false} depth={0} stack={new Set()} references={references}
     context={<>
       <p className="font-medium text-[#2C3E35]">{eventLabel}</p>
       <p className="mt-1">Ordered: <span className="font-mono tabular-nums">{num(orderedQty)} {unitLabel(unit)}</span>{description ? ` · ${description}` : ""}</p>

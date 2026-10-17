@@ -75,7 +75,7 @@ export default async function RecipePrintPage({
 
       <div className="recipe-sheet-scroll">
         <RecipeDossier recipe={recipe} scale={scale} allergenKeys={allergenKeys}
-          lines={lines} batchOptions={BATCH_OPTIONS} titleLevel={1} />
+          lines={lines} titleLevel={1} />
       </div>
     </div>
   );

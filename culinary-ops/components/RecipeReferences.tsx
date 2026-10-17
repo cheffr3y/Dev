@@ -25,7 +25,7 @@ export function RecipeReferences({ references, byId, sharedRefs, weightInGrams =
           const needed = displayMeasure(reference.totalBatches * node.yieldQty, node.yieldUnit, weightInGrams);
           return <RecipeBuildCard key={node.id} id={`recipe-reference-${node.id}`}
             node={node} byId={byId} totalBatches={reference.totalBatches}
-            compact depth={1} stack={new Set()} supporting batchLabel={`Reference ${reference.label}`}
+            compact depth={1} stack={new Set()} supporting
             sharedRefs={sharedRefs} weightInGrams={weightInGrams} references={references}
             context={<>
               <p className="font-semibold text-[#2C3E35]">Reference {reference.label} · Sub-recipe of {reference.parents.join(" · ")}</p>

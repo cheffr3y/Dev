@@ -158,6 +158,54 @@ body {
 .recipe-dossier-supporting .recipe-hero {
   padding-block: 12px;
 }
+.recipe-cues {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+}
+.recipe-cue {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  border: 1px solid #cbd7cf;
+  border-radius: 999px;
+  padding: 3px 7px;
+  background: #eef3ef;
+  color: #304c3c;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.2;
+  overflow-wrap: normal;
+  break-inside: avoid;
+}
+.recipe-cue svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+.recipe-cue[data-kind="time"],
+.recipe-cue[data-kind="temperature"] {
+  font-family: var(--font-monospace), monospace;
+  font-variant-numeric: tabular-nums;
+}
+.recipe-cue[data-kind="time"] {
+  border-color: #d9d2c5;
+  background: #f5f2ec;
+  color: #5b5142;
+}
+.recipe-cue[data-kind="temperature"] {
+  border-color: #ddcba6;
+  background: #faf2e2;
+  color: #795323;
+}
+.recipe-cue[data-kind="endpoint"] {
+  border-color: #cdd6dc;
+  background: #eef2f5;
+  color: #425761;
+}
 .recipe-stage-title,
 .recipe-step-heading {
   break-after: avoid;
@@ -227,19 +275,11 @@ body {
   .recipe-sheet-body {
     padding: 10px 0 0;
   }
-  .recipe-masthead {
-    padding-block: 6px;
-    font-size: 7px;
-  }
   .recipe-hero {
     padding-block: 10px;
   }
   .recipe-title {
-    margin-top: 5px;
     font-size: 29pt;
-  }
-  .recipe-kicker {
-    font-size: 10pt;
   }
   .recipe-specs {
     padding-block: 9px;
@@ -297,6 +337,17 @@ body {
   .recipe-step-prose {
     line-height: 1.4;
   }
+  .recipe-cues {
+    gap: 4px;
+  }
+  .recipe-cue {
+    padding: 2px 6px;
+    font-size: 7pt;
+  }
+  .recipe-cue svg {
+    width: 10px;
+    height: 10px;
+  }
   .recipe-critical,
   .recipe-storage {
     margin-top: 12px;
@@ -309,9 +360,6 @@ body {
   }
   .recipe-footer {
     padding-top: 12px;
-  }
-  .recipe-signature {
-    height: 16px;
   }
   .recipe-colophon {
     margin-top: 10px;
@@ -373,9 +421,6 @@ body {
   }
   .recipe-packet .recipe-footer {
     padding-top: 6px;
-  }
-  .recipe-packet .recipe-signature {
-    height: 12px;
   }
   .recipe-packet .recipe-colophon {
     margin-top: 6px;

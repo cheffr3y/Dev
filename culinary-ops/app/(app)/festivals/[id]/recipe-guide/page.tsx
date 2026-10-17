@@ -255,7 +255,7 @@ function RecipeGuideEntry({ entry, byId, sharedRefs, festivalLabel, forecastLabe
   entry: GuideEntry; byId: Map<string, RecipeTreeNode>; sharedRefs: Map<string, string>; festivalLabel: string; forecastLabel: string;
 }) {
   return <RecipeBuildCard node={entry.node} byId={byId} totalBatches={entry.totalBatches}
-    compact={false} depth={0} stack={new Set()} sharedRefs={sharedRefs} batchLabel="Forecast Batch"
+    compact={false} depth={0} stack={new Set()} sharedRefs={sharedRefs}
     context={<>
       <p className="font-medium text-[#2C3E35]">{festivalLabel}</p>
       <p className="mt-1 text-[9px]">{forecastLabel}</p>

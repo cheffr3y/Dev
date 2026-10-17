@@ -321,7 +321,7 @@ function PacketEntry({ lines, madeOn, forDate, byId, sharedRefs, references, wei
     : { ...recipe, version, instructions: null, criticalNotes: null, allergens: null, items: [], components: [] };
   return <RecipeBuildCard node={node} byId={byId} totalBatches={scale}
     compact={false} depth={0} stack={new Set()} sharedRefs={sharedRefs}
-    weightInGrams={weightInGrams} references={references} batchLabel="Requested Batch"
+    weightInGrams={weightInGrams} references={references}
     context={<>
       <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 font-medium text-[#2C3E35]">
         <p>Commissary Prep · Production {madeOn}</p>

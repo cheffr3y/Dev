@@ -148,7 +148,7 @@ function WeeklyDishEntry({ dish, byId, references, weekLabel }: {
 }) {
   const { node, totalBatches, converted, splits } = dish;
   return <RecipeBuildCard node={node} byId={byId} totalBatches={totalBatches}
-    compact={false} depth={0} stack={new Set()} references={references} batchLabel="Week Total"
+    compact={false} depth={0} stack={new Set()} references={references}
     context={<>
       <p className="font-medium text-[#2C3E35]">Weekly Production · {weekLabel}</p>
       <ul className="mt-1 grid grid-cols-2 gap-x-4 gap-y-1">

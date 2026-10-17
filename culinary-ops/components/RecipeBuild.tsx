@@ -150,15 +150,15 @@ export type RecipeBuildProps = {
 };
 
 type BuildCardProps = RecipeBuildProps & Pick<RecipeDossierProps,
-  "context" | "batchLabel" | "id" | "className" | "supporting">;
+  "context" | "id" | "className" | "supporting">;
 
-export function RecipeBuildCard({ context, batchLabel, id, className = "", supporting = false, ...build }: BuildCardProps) {
+export function RecipeBuildCard({ context, id, className = "", supporting = false, ...build }: BuildCardProps) {
   return (
     <>
       <RecipeDossier recipe={build.node} scale={build.totalBatches}
         allergenKeys={effectiveAllergens(build.node.id, build.byId)}
         weightInGrams={build.weightInGrams} supporting={supporting}
-        context={context} batchLabel={batchLabel} id={id}
+        context={context} id={id}
         className={`${supporting ? "" : "recipe-packet-card"} ${className}`}>
         <RecipeBuildBody {...build} renderSubBuilds={false} />
       </RecipeDossier>
@@ -168,7 +168,7 @@ export function RecipeBuildCard({ context, batchLabel, id, className = "", suppo
 }
 
 // Body-only remains useful for composition and tests; every route uses the
-// same workspace, including notes, cues, storage and culinary stage grouping.
+// same workspace, including notes, cues, storage and catalog category grouping.
 export function RecipeBuildBody({ renderSubBuilds = true, ...build }: RecipeBuildProps & { renderSubBuilds?: boolean }) {
   const { node, byId, totalBatches, depth, sharedRefs, references, weightInGrams } = build;
   const lines: MiseLine[] = node.items.map((ri) => ({ ...ri }));
@@ -239,6 +239,6 @@ export function SharedBuildCard({ build, byId, sharedRefs, context }: {
 }) {
   const made = displayMeasure(build.totalBatches * build.node.yieldQty, build.node.yieldUnit);
   return <RecipeBuildCard node={build.node} byId={byId} totalBatches={build.totalBatches}
-    compact={false} depth={0} stack={new Set()} sharedRefs={sharedRefs} batchLabel="Make Once"
+    compact={false} depth={0} stack={new Set()} sharedRefs={sharedRefs}
     context={<>{context}<p>Make {num(made.qty)} {made.label} — once · Feeds: {build.usedBy.join(" · ")}</p></>} />;
 }
