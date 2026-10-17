@@ -2,9 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { displayMeasure } from "./units";
-import { RecipeBuildBody, type RecipeTreeNode } from "../components/RecipeBuild";
+import { RecipeBuildBody, RecipeBuildCard, buildRecipeTree, consolidateSharedSubBuilds, SharedBuildCard, type RecipeTreeNode } from "../components/RecipeBuild";
 import { RecipeReferences } from "../components/RecipeReferences";
 import { buildRecipeReferences } from "./recipe-references";
+import { RecipeDossier } from "../components/RecipeDossier";
+
+const textContent = (html: string) => html.replace(/<[^>]*>/g, "");
 
 test("grams converts scaled weights while preserving volume, count and unknown units", () => {
   assert.ok(Math.abs(displayMeasure(2, "lbs", true).qty - 907.184) < 0.01);
@@ -32,7 +35,8 @@ test("grams reaches nested builds and shared pull amounts without changing defau
   assert.doesNotMatch(grams, />lb</);
   assert.match(renderToStaticMarkup(<RecipeBuildBody {...props} />), />lb</);
   const shared = renderToStaticMarkup(<RecipeBuildBody {...props} weightInGrams sharedRefs={new Map([[child.id, "lot TEST"]])} />);
-  assert.match(shared, /pull 4000 g/);
+  assert.match(textContent(shared), /4000 g/);
+  assert.match(shared, /pull from lot TEST/);
   assert.match(shared, /lot TEST/);
   assert.doesNotMatch(shared, /Flour/);
 });
@@ -90,7 +94,7 @@ test("packet keeps the first sub-recipe inline and prints deeper instructions on
   const { wraps, byId } = referenceFixture();
   const references = buildRecipeReferences([{ node: wraps, totalBatches: 3 }], byId);
   assert.deepEqual([...references.keys()], ["mayo", "garlic"]);
-  const main = renderToStaticMarkup(<RecipeBuildBody node={wraps} byId={byId} totalBatches={3}
+  const main = renderToStaticMarkup(<RecipeBuildCard node={wraps} byId={byId} totalBatches={3}
     compact={false} depth={0} stack={new Set()} references={references} />);
   assert.match(main, /Sub-recipe of Chicken wraps/);
   assert.match(main, /Whisk the ranch dressing/);
@@ -102,8 +106,8 @@ test("packet keeps the first sub-recipe inline and prints deeper instructions on
   const appendix = renderToStaticMarkup(<RecipeReferences references={references} byId={byId} />);
   assert.match(appendix, /print:break-before-page/);
   assert.match(appendix, /Reference A.1 · Sub-recipe of Ranch dressing/);
-  assert.match(appendix, /Total needed: 1.5 gal/);
-  assert.match(appendix, /Total needed: 12 oz/);
+  assert.match(textContent(appendix), /Total needed: 1.5 gal/);
+  assert.match(textContent(appendix), /Total needed: 12 oz/);
   assert.match(appendix, /Reference A.2 at the back/);
   assert.match(appendix, /Garlic reference safety instruction/);
   assert.equal((appendix.match(/Emulsify the mayonnaise/g) ?? []).length, 1);
@@ -138,12 +142,12 @@ test("printed lot references use their own batch demand and preserve grams in th
   // components again. Mayo is immediate to that batch, garlic is the deep ref.
   assert.equal(references.has(mayo.id), false);
   assert.equal(references.get(garlic.id)!.totalBatches * garlic.yieldQty, 20);
-  const main = renderToStaticMarkup(<RecipeBuildBody node={wraps} byId={byId} totalBatches={3}
+  const main = renderToStaticMarkup(<RecipeBuildCard node={wraps} byId={byId} totalBatches={3}
     compact={false} depth={0} stack={new Set()} references={references} sharedRefs={sharedRefs} />);
   assert.match(main, /pull from lot RANCH-01/);
   assert.doesNotMatch(main, /Whisk the ranch dressing/);
   const appendix = renderToStaticMarkup(<RecipeReferences references={references} byId={byId} sharedRefs={sharedRefs} weightInGrams />);
-  assert.match(appendix, /Total needed: 566.99 g/);
+  assert.match(textContent(appendix), /Total needed: 566.99 g/);
   assert.doesNotMatch(appendix, /Total needed:.*lb/);
 });
 
@@ -155,4 +159,103 @@ test("reference collection terminates cycles and omits missing recipes and empty
   assert.deepEqual([...references.keys()], [mayo.id, garlic.id]);
   assert.ok(!references.has(wraps.id) && !references.has(ranch.id));
   assert.equal(renderToStaticMarkup(<RecipeReferences references={new Map()} byId={byId} />), "");
+});
+
+test("dossier preserves fractional packet scaling, category stages, cues and inherited allergens", () => {
+  const { wraps, ranch, byId } = referenceFixture();
+  wraps.category = "Lunch";
+  wraps.station = "Garde Manger";
+  wraps.prepMinutes = 10;
+  wraps.cookMinutes = 20;
+  wraps.shelfLife = "2 days refrigerated";
+  wraps.storage = "Store covered.\nLabel each container.";
+  wraps.instructions = "1. Finish — Cook for 1 minute to 165°F, then use an Ice Bath.";
+  wraps.items = [
+    { id: "greens", name: "Greens", quantity: 4, unit: "oz", note: "washed", category: "Produce" },
+    { id: "salt", name: "Salt", quantity: 1, unit: "oz", note: null, category: "Legacy category" },
+  ];
+  const html = renderToStaticMarkup(<RecipeBuildCard node={wraps} byId={byId} totalBatches={2.5}
+    compact={false} depth={0} stack={new Set()} references={buildRecipeReferences([{ node: wraps, totalBatches: 2.5 }], byId)} />);
+  const text = textContent(html);
+  assert.match(text, /25 each/);
+  assert.match(text, /2.5×/);
+  assert.match(text, /30m/);
+  assert.match(text, /I\. House Sub-Recipes/);
+  assert.match(text, /II\. Produce &amp; Botanicals/);
+  assert.match(text, /III\. Seasonings &amp; Aromatics/);
+  assert.match(text, /Greenswashed10 oz/);
+  assert.match(text, /1 minute/);
+  assert.match(text, /165°F/);
+  assert.match(text, /Storage, Stewardship &amp; Shelf Life/);
+  const profile = html.slice(html.indexOf("Allergen Profile"), html.indexOf('class="recipe-workspace'));
+  assert.match(profile, /Milk.*Eggs/);
+  assert.match(text, new RegExp(ranch.name));
+});
+
+test("new recipe trees retain display metadata and historical snapshots render without inventing metadata", () => {
+  const row = {
+    id: "frozen", name: "Frozen soup", prodCode: "FS", version: 2, yieldQty: 1, yieldUnit: "quart",
+    instructions: "Stir the captured soup.", allergens: null, criticalNotes: null,
+    items: [{ id: "carrot", quantity: 1, unit: "lb", note: "diced", item: { name: "Carrot" } }], components: [],
+  };
+  const legacy = buildRecipeTree([row]).get(row.id)!;
+  assert.equal(legacy.category, undefined);
+  assert.equal(legacy.items[0].category, undefined);
+  const historical = renderToStaticMarkup(<RecipeBuildCard node={legacy} byId={new Map([[legacy.id, legacy]])}
+    totalBatches={2} compact={false} depth={0} stack={new Set()} />);
+  assert.match(textContent(historical), /Stir the captured soup/);
+  assert.doesNotMatch(historical, /Invalid Date|undefined|null/);
+  const updatedAt = "2026-10-15T12:00:00.000Z";
+  const modern = buildRecipeTree([{ ...row, category: "Soup", station: "Saucier", prepMinutes: 0,
+    cookMinutes: 15, shelfLife: "2 days", storage: "Covered", updatedAt,
+    items: [{ ...row.items[0], item: { name: "Carrot", category: "Produce" } }],
+  }]).get(row.id)!;
+  assert.equal(modern.updatedAt, updatedAt);
+  assert.equal(modern.prepMinutes, 0);
+  assert.equal(modern.items[0].category, "Produce");
+  assert.equal(modern.storage, "Covered");
+});
+
+test("multiple dossier instances keep accessible heading ids unique", () => {
+  const { wraps, byId } = referenceFixture();
+  const props = { node: wraps, byId, totalBatches: 1, compact: false, depth: 0, stack: new Set<string>() };
+  const html = renderToStaticMarkup(<><RecipeBuildCard {...props} /><RecipeBuildCard {...props} /></>);
+  const ids = [...html.matchAll(/\sid="([^"]+)"/g)].map((match) => match[1]);
+  assert.equal(ids.length, new Set(ids).size);
+  for (const [, target] of html.matchAll(/aria-labelledby="([^"]+)"/g)) {
+    assert.ok(ids.includes(target));
+  }
+});
+
+test("editorial recursion stops cycles and consolidated festival builds retain pull quantities", () => {
+  const { wraps, salad, ranch, garlic, byId } = referenceFixture();
+  const { shared, sharedRefs } = consolidateSharedSubBuilds([
+    { node: wraps, totalBatches: 3 }, { node: salad, totalBatches: 2 },
+  ], byId);
+  assert.equal(shared.find((build) => build.node.id === ranch.id)!.totalBatches, 8);
+  const ranchCard = renderToStaticMarkup(<SharedBuildCard build={shared.find((build) => build.node.id === ranch.id)!}
+    byId={byId} sharedRefs={sharedRefs} />);
+  assert.match(textContent(ranchCard), /Make 2 gal — once/);
+  assert.match(textContent(ranchCard), /Feeds: Chicken wraps · Garden salad/);
+  const dish = renderToStaticMarkup(<RecipeBuildCard node={wraps} byId={byId} totalBatches={3}
+    compact={false} depth={0} stack={new Set()} sharedRefs={sharedRefs} />);
+  assert.match(textContent(dish), /pull from shared build above/);
+  assert.doesNotMatch(dish, /Whisk the ranch dressing/);
+  garlic.components.push({ id: "cycle", childId: wraps.id, quantity: 10, unit: "each" });
+  const cyclic = renderToStaticMarkup(<RecipeBuildCard node={wraps} byId={byId} totalBatches={1}
+    compact={false} depth={0} stack={new Set()} />);
+  assert.equal((cyclic.match(/Assemble the wraps\./g) ?? []).length, 1);
+});
+
+test("standalone and packet dossiers share grouping and preserve zero yield and time", () => {
+  const { wraps } = referenceFixture();
+  const html = renderToStaticMarkup(<RecipeDossier recipe={{ ...wraps, prepMinutes: 0, cookMinutes: 0, holdLifeDays: 0 }}
+    scale={0} allergenKeys={[]} titleLevel={1} lines={[
+      { id: "lettuce", name: "Lettuce", quantity: 2, unit: "each", note: null, category: "Produce" },
+    ]} />);
+  assert.match(textContent(html), /0 each/);
+  assert.match(textContent(html), /0m \/ 0m/);
+  assert.match(textContent(html), /0 Days/);
+  assert.doesNotMatch(html, /recipe-stage-title/);
+  assert.match(html, /<h1 /);
 });

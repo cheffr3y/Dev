@@ -1,3 +1,4 @@
+import { RecipePrintSettings } from "@/components/RecipeDossier";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { loadFrozenPacket } from "@/lib/prep-packets";
@@ -12,7 +13,7 @@ import { ShoppingListBody } from "@/components/ShoppingList";
 import { RecipeReferences } from "@/components/RecipeReferences";
 import { buildRecipeReferences, type RecipeReferencePlan } from "@/lib/recipe-references";
 import {
-  RecipeBuildBody,
+  RecipeBuildCard,
   buildRecipeTree,
   type RecipeTreeNode,
 } from "@/components/RecipeBuild";
@@ -127,7 +128,8 @@ export default async function CookPacketPage({
   const madeOn = fmtDate(order.forDate);
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="recipe-print recipe-packet mx-auto max-w-[8.5in]">
+      <RecipePrintSettings />
       <div className="no-print mb-5 flex items-center justify-between gap-3">
         <Link
           href="/prep-orders"
@@ -207,7 +209,8 @@ export default async function CookPacketPage({
           </p>
         </div>
       ) : (
-        <div className="print-sheet rounded-xl border border-zinc-200 bg-white p-10 shadow-sm">
+        <div className="recipe-packet-content">
+          <div className="no-print rounded-xl border border-hairline bg-canvas p-5">
           <div className="flex items-baseline justify-between text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-500">
             <span>Mise · Cook Packet</span>
             <span>Production {madeOn}</span>
@@ -219,6 +222,7 @@ export default async function CookPacketPage({
             {groups.size} batch{groups.size === 1 ? "" : "es"} · hand-copy each
             lot onto the container labels.
           </p>
+          </div>
 
           {/* Prep / pull list — open the packet with everything to gather, so
               the team can shop before building. Each recipe then starts fresh. */}
@@ -240,8 +244,8 @@ export default async function CookPacketPage({
             </section>
           )}
 
-          <div className="mt-8 space-y-10 print:mt-4">
-            {[...groups.values()].map((lines, i) => (
+          <div className="recipe-packet-builds mt-8 space-y-8">
+            {[...groups.values()].map((lines) => (
               <PacketEntry
                 key={lines[0].lot}
                 lines={lines}
@@ -250,11 +254,6 @@ export default async function CookPacketPage({
                 byId={byId}
                 sharedRefs={sharedRefs}
                 references={references}
-                // Each recipe starts on a new page. The first only breaks when a
-                // shopping list precedes it, so it doesn't strand the header alone.
-                breakBefore={
-                  (includeShopping && shopping.itemCount > 0) || i > 0
-                }
                 weightInGrams={weightInGrams}
               />
             ))}
@@ -265,7 +264,7 @@ export default async function CookPacketPage({
 
           <RecipeReferences references={references} byId={byId} sharedRefs={sharedRefs} weightInGrams={weightInGrams} />
 
-          <p className="mt-10 border-t border-zinc-200 pt-4 text-[10px] uppercase tracking-[0.14em] text-zinc-400">
+          <p className="no-print mt-10 border-t border-zinc-200 pt-4 text-[10px] uppercase tracking-[0.14em] text-zinc-400">
             Printed <LocalTime date={new Date()} mode="date" /> · Lots assigned
             at first print and frozen · Mise · Culinary Ops
           </p>
@@ -305,190 +304,54 @@ function packetScale(lines: PacketLine[]) {
   return { combinedInYield, convertible, scale };
 }
 
-function PacketEntry({
-  lines,
-  madeOn,
-  forDate,
-  byId,
-  sharedRefs,
-  references,
-  breakBefore,
-  weightInGrams,
-}: {
-  lines: PacketLine[];
-  madeOn: string;
-  forDate: Date;
-  byId: Map<string, RecipeTreeNode>;
-  sharedRefs: Map<string, string>;
-  references: RecipeReferencePlan;
-  breakBefore: boolean;
-  weightInGrams: boolean;
+function PacketEntry({ lines, madeOn, forDate, byId, sharedRefs, references, weightInGrams }: {
+  lines: PacketLine[]; madeOn: string; forDate: Date;
+  byId: Map<string, RecipeTreeNode>; sharedRefs: Map<string, string>;
+  references: RecipeReferencePlan; weightInGrams: boolean;
 }) {
   const recipe = lines[0].recipe;
-  const node = byId.get(recipe.id);
+  const captured = byId.get(recipe.id);
   const lot = lines[0].lot ?? "—";
   const version = lines[0].recipeVersion;
-
-  // Combine requested quantity across destinations into the recipe yield unit.
   const { combinedInYield, convertible, scale } = packetScale(lines);
-
-  const useBy =
-    recipe.holdLifeDays != null
-      ? new Date(
-          forDate.getTime() + recipe.holdLifeDays * 86400000,
-        ).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-          timeZone: "UTC",
-        })
-      : null;
-  const split = lines.length > 1;
-
-  return (
-    <article
-      className={`break-inside-avoid border-t-2 border-zinc-900 pt-4 print:break-inside-auto print:pt-3 ${breakBefore ? "break-before-page" : ""}`}
-    >
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-900">Requested recipe</p>
-          <h2 className="font-display text-3xl font-medium tracking-tight text-zinc-900 print:text-2xl">
-            {recipe.name}
-          </h2>
-          <p className="mt-1 text-lg font-semibold text-zinc-900 print:text-base">
-            Yields{" "}
-            {convertible
-              ? `${num(combinedInYield)} ${unitLabel(recipe.yieldUnit)}`
-              : "(mixed units)"}
-          </p>
-        </div>
-        {/* Lot — large + clear for hand transcription onto labels */}
-        <div className="shrink-0 border-2 border-zinc-900 px-4 py-2 text-right">
-          <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-500">
-            Lot
-          </p>
-          <p className="font-mono text-2xl font-bold tracking-wider text-zinc-900">
-            {lot}
-          </p>
-        </div>
+  const useBy = recipe.holdLifeDays != null
+    ? fmtDate(new Date(forDate.getTime() + recipe.holdLifeDays * 86400000)) : "—";
+  const node: RecipeTreeNode = captured
+    ? { ...captured, version, holdLifeDays: captured.holdLifeDays ?? recipe.holdLifeDays }
+    : { ...recipe, version, instructions: null, criticalNotes: null, allergens: null, items: [], components: [] };
+  return <RecipeBuildCard node={node} byId={byId} totalBatches={scale}
+    compact={false} depth={0} stack={new Set()} sharedRefs={sharedRefs}
+    weightInGrams={weightInGrams} references={references} batchLabel="Requested Batch"
+    context={<>
+      <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 font-medium text-[#2C3E35]">
+        <p>Commissary Prep · Production {madeOn}</p>
+        <p>Lot <strong className="font-mono tabular-nums">{lot}</strong></p>
       </div>
-
-      {/* Quantity + split allocation */}
-      {split ? (
-        <div className="mt-3 border-2 border-zinc-900 text-sm">
-          <div className="bg-zinc-900 px-4 py-1.5">
-            <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-white">
-              Split Batch — Portion before pickup
-            </span>
-          </div>
-          <div className="divide-y divide-zinc-200 bg-white">
-            {lines.map((l) => (
-              <div
-                key={l.id}
-                className="flex items-center justify-between px-4 py-2.5"
-              >
-                <span className="font-medium text-zinc-900">
-                  {l.destinationVenue.name}
-                </span>
-                <span className="font-bold tabular-nums text-zinc-900">
-                  {num(l.requestedQty)} {unitLabel(l.requestedUnit)}
-                </span>
-              </div>
-            ))}
-          </div>
-          <div className="flex items-center justify-between border-t-2 border-zinc-900 bg-zinc-50 px-4 py-2">
-            <span className="font-semibold text-zinc-500">Combined total</span>
-            <span className="font-bold tabular-nums text-zinc-900">
-              {convertible
-                ? `${num(combinedInYield)} ${unitLabel(recipe.yieldUnit)}`
-                : "(mixed units)"}
-            </span>
-          </div>
-        </div>
-      ) : (
-        <div className="mt-3 border-y border-zinc-300 bg-zinc-50 px-4 py-2.5 text-sm print:mt-2 print:py-1.5">
-          <span className="font-semibold text-zinc-900">
-            Total{" "}
-            {convertible
-              ? `${num(combinedInYield)} ${unitLabel(recipe.yieldUnit)}`
-              : "(mixed units)"}
-          </span>
-          <span className="text-zinc-600">
-            {" "}
-            → {lines[0].destinationVenue.name} ({num(lines[0].requestedQty)}{" "}
-            {unitLabel(lines[0].requestedUnit)})
-          </span>
-        </div>
-      )}
-
-      {/* Scaling guard — only when ordered units don't convert to the yield unit */}
-      {!convertible && (
-        <div className="mt-3 border-2 border-amber-600 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-900">
-          ⚠ Requested units don&apos;t convert to the base yield unit — verify
-          the batch size manually.
-        </div>
-      )}
-
-      {/* Label transcription line */}
-      <div className="mt-3 grid grid-cols-3 gap-3 text-sm print:mt-2">
-        <LabelCell label="Made date" value={madeOn} />
-        <LabelCell label="Use-by" value={useBy ?? "—"} />
-        <LabelCell label="Prod. code" value={recipe.prodCode} />
+      <div className="mt-1 flex flex-wrap gap-x-5 gap-y-1 font-mono text-[9px] tabular-nums">
+        <p>Made date: {madeOn}</p><p>Use-by: {useBy}</p>
+        <p>Total: {convertible ? `${num(combinedInYield)} ${unitLabel(recipe.yieldUnit)}` : "(mixed units)"}{lines.length > 1 ? " · Split Batch — Portion before pickup" : ""}</p>
       </div>
-
-      {/* Scaled ingredients, method, allergens & nested sub-builds */}
-      {node && (
-        <RecipeBuildBody
-          node={node}
-          byId={byId}
-          totalBatches={scale}
-          compact
-          depth={0}
-          stack={new Set()}
-          sharedRefs={sharedRefs}
-          weightInGrams={weightInGrams}
-          references={references}
-        />
-      )}
-
-      <div className="mt-6 break-inside-avoid space-y-5 border border-zinc-400 p-4 text-sm print:mt-3 print:space-y-2 print:p-3">
-        <p>
-          Actual production ______ {unitLabel(recipe.yieldUnit)} · Production
-          waste ______ · Kept at commissary ______
-        </p>
-        {lines.map((l) => (
-          <p key={l.id}>
-            Request {l.id.slice(-6)} · {l.destinationVenue.name}: sent ______{" "}
-            {unitLabel(l.requestedUnit)} · Shortage / reason __________________
-          </p>
-        ))}
-        <p>
-          Cook sign-off __________________ · Production person-minutes ______ ·
-          Dishwasher minutes ______
-        </p>
-        <p>
-          Venue-supplied ingredient / venue / quantity / unit / note
-          __________________________________
-        </p>
-      </div>
-      {/* Footer stamp — self-documenting for food-safety / consistency */}
-      <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.12em] text-zinc-400 print:mt-2">
-        {recipe.name} · {recipe.prodCode} · v{version} · lot {lot} · printed{" "}
-        {madeOn}
-      </p>
-    </article>
-  );
+      <ul className="mt-1 grid grid-cols-2 gap-x-4 gap-y-1">
+        {lines.map((line) => <li key={line.id}>{line.destinationVenue.name}: <span className="font-mono tabular-nums">{num(line.requestedQty)} {unitLabel(line.requestedUnit)}</span></li>)}
+      </ul>
+      {!convertible && <p className="recipe-scaling-warning mt-2 border-l-2 border-gold bg-[#F4F1EA] p-2 font-semibold">Requested units don&apos;t convert to the base yield unit — verify the batch size manually.</p>}
+      {!captured && <p className="mt-2 font-semibold">Captured recipe details unavailable for this lot.</p>}
+    </>} />;
 }
 
-function LabelCell({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="border border-zinc-300 px-3 py-1.5 print:py-1">
-      <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-400">
-        {label}
-      </p>
-      <p className="font-semibold text-zinc-900">{value}</p>
+// Capture the same production and allocation fields beside the accountability
+// log, so recipe sheets retain their room for ingredients and execution.
+function PrepProductionRecord({ lines }: { lines: PacketLine[] }) {
+  const recipe = lines[0].recipe;
+  return <div className="recipe-production-record mt-4 break-inside-avoid border border-hairline bg-canvas p-4 text-xs leading-relaxed">
+    <h3 className="font-display text-lg italic text-[#2C3E35]">{recipe.name} · <span className="font-mono text-xs not-italic">Lot {lines[0].lot}</span></h3>
+    <div className="mt-3 space-y-4">
+      <p>Actual production ______ {unitLabel(recipe.yieldUnit)} · Production waste ______ · Kept at commissary ______</p>
+      {lines.map((line) => <p key={line.id}>Request {line.id.slice(-6)} · {line.destinationVenue.name}: sent ______ {unitLabel(line.requestedUnit)} · Shortage / reason __________________</p>)}
+      <p>Cook sign-off __________________ · Production person-minutes ______ · Dishwasher minutes ______</p>
+      <p>Venue-supplied ingredient / venue / quantity / unit / note __________________________________</p>
     </div>
-  );
+  </div>;
 }
 
 // One row per destination matches back-entry, including split allocations.
@@ -499,6 +362,11 @@ function PrepPacketLog({
   lines: PacketLine[];
   madeOn: string;
 }) {
+  const batches = new Map<string, PacketLine[]>();
+  for (const line of lines) {
+    const key = line.lot ?? line.id;
+    batches.set(key, [...(batches.get(key) ?? []), line]);
+  }
   return (
     <section className="mt-10 break-before-page">
       <h2 className="font-display text-3xl font-medium text-zinc-900">
@@ -540,6 +408,10 @@ function PrepPacketLog({
           ))}
         </tbody>
       </table>
+      <section className="mt-6" aria-label="Batch production records">
+        <h2 className="font-display text-2xl italic text-[#2C3E35]">Batch Production Records</h2>
+        {[...batches.entries()].map(([lot, batch]) => <PrepProductionRecord key={lot} lines={batch} />)}
+      </section>
       <div className="mt-8 break-inside-avoid text-sm text-zinc-900">
         <p className="font-semibold">Chef review</p>
         <div className="mt-8 flex gap-6">

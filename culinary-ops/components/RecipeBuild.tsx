@@ -10,23 +10,15 @@
 
 import { num, componentBatchFactor } from "@/lib/costing";
 import { displayMeasure } from "@/lib/units";
-import { allergenLabels, effectiveAllergens } from "@/lib/allergens";
-import { splitStep } from "@/lib/method";
+import { effectiveAllergens } from "@/lib/allergens";
+import { RecipeDossier, RecipeDossierWorkspace, type DossierRecipe, type MiseLine, type RecipeDossierProps } from "./RecipeDossier";
 import type { RecipeReferencePlan } from "@/lib/recipe-references";
 
 // Catalog node used for recursive sub-build rendering.
-export type RecipeTreeNode = {
-  id: string;
-  name: string;
-  prodCode: string;
-  version: number;
-  yieldQty: number;
-  yieldUnit: string;
-  instructions: string | null;
+export type RecipeTreeNode = DossierRecipe & {
   allergens: string | null;
-  criticalNotes: string | null;
-  items: Array<{ id: string; quantity: number; unit: string; note: string | null; name: string }>;
-  components: Array<{ id: string; childId: string; quantity: number; unit: string }>;
+  items: Array<{ id: string; quantity: number; unit: string; note: string | null; name: string; category?: string | null }>;
+  components: Array<{ id: string; childId: string; quantity: number; unit: string; note?: string | null }>;
 };
 
 // Prisma `select` that loads a recipe row with everything the tree needs.
@@ -40,60 +32,39 @@ export const recipeTreeSelect = {
   instructions: true,
   allergens: true,
   criticalNotes: true,
+  category: true,
+  station: true,
+  prepMinutes: true,
+  cookMinutes: true,
+  shelfLife: true,
+  holdLifeDays: true,
+  storage: true,
+  updatedAt: true,
   items: {
-    select: { id: true, quantity: true, unit: true, note: true, item: { select: { name: true } } },
+    select: { id: true, quantity: true, unit: true, note: true, item: { select: { name: true, category: true } } },
     orderBy: { item: { name: "asc" } },
   },
   components: {
-    select: { id: true, childId: true, quantity: true, unit: true },
+    select: { id: true, childId: true, quantity: true, unit: true, note: true },
     orderBy: { child: { name: "asc" } },
   },
 } as const;
 
 // Shape of a row returned by findMany({ select: recipeTreeSelect }).
-type RecipeTreeRow = {
-  id: string;
-  name: string;
-  prodCode: string;
-  version: number;
-  yieldQty: number;
-  yieldUnit: string;
-  instructions: string | null;
-  allergens: string | null;
-  criticalNotes: string | null;
-  items: Array<{ id: string; quantity: number; unit: string; note: string | null; item: { name: string } }>;
-  components: Array<{ id: string; childId: string; quantity: number; unit: string }>;
+// Older frozen snapshots lack the optional display metadata. Never hydrate
+// them from today's catalog: a historical packet must stay historical.
+type RecipeTreeRow = Omit<RecipeTreeNode, "items"> & {
+  items: Array<{ id: string; quantity: number; unit: string; note: string | null; item: { name: string; category?: string | null } }>;
 };
 
-// Index the catalog by id for recursive sub-build rendering.
 export function buildRecipeTree(rows: RecipeTreeRow[]): Map<string, RecipeTreeNode> {
-  return new Map(
-    rows.map((r) => [
-      r.id,
-      {
-        id: r.id,
-        name: r.name,
-        prodCode: r.prodCode,
-        version: r.version,
-        yieldQty: r.yieldQty,
-        yieldUnit: r.yieldUnit,
-        instructions: r.instructions,
-        allergens: r.allergens,
-        criticalNotes: r.criticalNotes,
-        items: r.items.map((ri) => ({ id: ri.id, quantity: ri.quantity, unit: ri.unit, note: ri.note, name: ri.item.name })),
-        components: r.components,
-      },
-    ]),
-  );
-}
-
-// Split stored free-text instructions into trimmed, number-stripped steps.
-export function parseSteps(instructions: string | null): string[] {
-  if (!instructions) return [];
-  return instructions
-    .split(/\r?\n/)
-    .map((s) => s.trim().replace(/^\d+[.)]\s*/, ""))
-    .filter(Boolean);
+  return new Map(rows.map((r) => [r.id, {
+    ...r,
+    items: r.items.map((ri) => ({
+      id: ri.id, quantity: ri.quantity, unit: ri.unit, note: ri.note,
+      name: ri.item.name, category: ri.item.category,
+    })),
+  }]));
 }
 
 // A sub-recipe pulled out of the inline builds because more than one build in
@@ -164,75 +135,9 @@ export function consolidateSharedSubBuilds(
   return { shared, sharedRefs };
 }
 
-// One consolidated shared sub-recipe, printed once at the top of a packet with
-// the same chrome as a top-level build: name, total to make, who pulls from it,
-// then the full scaled body (whose own shared components render as pulls).
-export function SharedBuildCard({
-  build,
-  byId,
-  sharedRefs,
-}: {
-  build: SharedSubBuild;
-  byId: Map<string, RecipeTreeNode>;
-  sharedRefs: Map<string, string>;
-}) {
-  const { node } = build;
-  const made = displayMeasure(build.totalBatches * node.yieldQty, node.yieldUnit);
-
-  return (
-    <article className="break-inside-avoid border-t-2 border-zinc-900 pt-4">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 className="font-display text-3xl font-medium tracking-tight text-zinc-900">{node.name}</h2>
-          <p className="mt-1 text-lg font-semibold text-zinc-900">
-            Make {num(made.qty)} {made.label} — once
-          </p>
-          <p className="mt-0.5 text-xs text-zinc-500">
-            {node.prodCode} · v{node.version} · base yield {num(node.yieldQty)} {node.yieldUnit} · scale x
-            {num(build.totalBatches)}
-          </p>
-          <p className="mt-0.5 text-xs text-zinc-500">Feeds: {build.usedBy.join(" · ")}</p>
-        </div>
-        <div className="shrink-0 border-2 border-zinc-900 px-4 py-2 text-right">
-          <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-500">Make once</p>
-          <p className="font-mono text-2xl font-bold tracking-wider text-zinc-900">{num(made.qty)}</p>
-          <p className="text-xs font-medium text-zinc-500">{made.label}</p>
-        </div>
-      </div>
-
-      <RecipeBuildBody
-        node={node}
-        byId={byId}
-        totalBatches={build.totalBatches}
-        compact={false}
-        depth={0}
-        stack={new Set()}
-        sharedRefs={sharedRefs}
-      />
-    </article>
-  );
-}
-
-// The scaled body of a recipe build: allergen line, scaled ingredient table
-// (own items + sub-recipe lines rolled into natural units), method, critical
-// notes, then each sub-recipe rendered as its own nested build card. Callers
-// supply the surrounding chrome (lot box, ordered count, etc.). `compact`
-// tightens spacing for nested cards; `depth`/`stack` thread cycle-safety and
-// indentation down to the sub-builds. `sharedRefs` maps recipeId → a "where to
-// get it" phrase (e.g. "lot A123", "shared build above") for sub-recipes that
-// already have their own build elsewhere in this packet; those render as a
-// pull reference instead of a full inline build.
-export function RecipeBuildBody({
-  node,
-  byId,
-  totalBatches,
-  compact,
-  depth,
-  stack,
-  sharedRefs,
-  weightInGrams = false,
-  references,
-}: {
+// One full dossier, with operational context supplied by its packet. Supporting
+// recipes follow the main sheet; they never inflate its page-height minimum.
+export type RecipeBuildProps = {
   node: RecipeTreeNode;
   byId: Map<string, RecipeTreeNode>;
   totalBatches: number;
@@ -242,196 +147,98 @@ export function RecipeBuildBody({
   sharedRefs?: Map<string, string>;
   weightInGrams?: boolean;
   references?: RecipeReferencePlan;
-}) {
-  const steps = parseSteps(node.instructions);
-  const allergens = allergenLabels(effectiveAllergens(node.id, byId));
-  const cellY = compact ? "py-1" : "py-1.5";
-  // Match the recipe card: the Prep/Note column only prints when a line has
-  // something to say (an ingredient note or a sub-recipe pull pointer), so
-  // blank builds give the space back to the ingredients.
-  const hasNotes = node.items.some((ri) => ri.note) || node.components.length > 0;
-  const inlineComponents = node.components.filter((component) =>
-    byId.has(component.childId) && (!references || !sharedRefs?.has(component.childId)),
-  );
+};
 
+type BuildCardProps = RecipeBuildProps & Pick<RecipeDossierProps,
+  "context" | "batchLabel" | "id" | "className" | "supporting">;
+
+export function RecipeBuildCard({ context, batchLabel, id, className = "", supporting = false, ...build }: BuildCardProps) {
   return (
     <>
-      {allergens && (
-        <div className={`${compact ? "mt-2 py-1" : "mt-3 py-1.5"} border-2 border-zinc-900 px-3 text-xs`}>
-          <span className="font-bold uppercase tracking-wide">Contains allergens:</span>{" "}
-          <span className="font-semibold uppercase">{allergens}</span>
-        </div>
-      )}
-
-      {/* Zebra rows keep the eye on-line on kitchen printouts (globals.css
-          sets print-color-adjust so the shading survives printing). */}
-      <table className={`${compact ? "mt-2" : "mt-4"} w-full text-sm`}>
-        <thead>
-          <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-zinc-400">
-            <th className={`w-20 ${cellY} pl-2 pr-3 text-right font-medium`}>Qty</th>
-            <th className={`w-16 ${cellY} pr-4 font-medium`}>Unit</th>
-            <th className={`${cellY} pr-4 font-medium`}>Ingredient</th>
-            {hasNotes && <th className={`w-2/5 ${cellY} pr-2 font-medium`}>Prep / Note</th>}
-          </tr>
-        </thead>
-        <tbody>
-          {node.items.map((ri) => {
-            // Roll the scaled amount up into its natural unit (oz→lb, sub-oz→g,
-            // fl oz→qt→gal) so cooks read "3 lb" not "48 oz".
-            const m = displayMeasure(ri.quantity * totalBatches, ri.unit, weightInGrams);
-            return (
-              <tr key={ri.id} className="even:bg-zinc-100/80">
-                <td className={`${cellY} pl-2 pr-3 text-right font-semibold tabular-nums text-zinc-900`}>{num(m.qty)}</td>
-                <td className={`${cellY} pr-4 text-zinc-600`}>{m.label}</td>
-                <td className={`${cellY} pr-4 text-zinc-900`}>{ri.name}</td>
-                {hasNotes && <td className={`${cellY} pr-2 text-zinc-500`}>{ri.note ?? ""}</td>}
-              </tr>
-            );
-          })}
-          {node.components.map((c) => {
-            const child = byId.get(c.childId);
-            if (!child) return null;
-            // Show the sub-recipe amount in the child's own yield unit (rolled
-            // up), scaled by this batch — so the line reads in the child's units.
-            const { batches } = componentBatchFactor(c.quantity, c.unit, child.yieldQty, child.yieldUnit);
-            const m = displayMeasure(batches * child.yieldQty * totalBatches, child.yieldUnit, weightInGrams);
-            const sharedRef = sharedRefs?.get(c.childId);
-            const reference = references && depth > 0 ? references.get(c.childId) : undefined;
-            return (
-              <tr key={c.id} className="even:bg-zinc-100/80">
-                <td className={`${cellY} pl-2 pr-3 text-right font-semibold tabular-nums text-zinc-900`}>{num(m.qty)}</td>
-                <td className={`${cellY} pr-4 text-zinc-600`}>{m.label}</td>
-                <td className={`${cellY} pr-4 text-zinc-900`}>{child.name} (sub-recipe)</td>
-                <td className={`${cellY} pr-2 text-zinc-600`}>
-                  {sharedRef ? `pull from ${sharedRef}` : reference ? (
-                    <a href={`#recipe-reference-${child.id}`} className="underline underline-offset-2">
-                      Reference {reference.label} at the back
-                    </a>
-                  ) : "see sub-recipe below ↓"}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-
-      {steps.length > 0 && (
-        <ol className={compact ? "mt-2 space-y-1" : "mt-4 space-y-1.5"}>
-          {steps.map((step, i) => {
-            const { action, detail } = splitStep(step);
-            return (
-              <li key={i} className={`flex gap-3 text-sm leading-relaxed text-zinc-800 ${references ? "print:leading-snug" : ""}`}>
-                <span className="w-6 shrink-0 text-right font-semibold tabular-nums text-zinc-400">
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-                <span>
-                  {action && <span className="font-semibold text-zinc-900">{action} — </span>}
-                  {detail}
-                </span>
-              </li>
-            );
-          })}
-        </ol>
-      )}
-
-      {node.criticalNotes && (
-        <p
-          className={`${
-            compact ? "mt-2 py-1" : "mt-3 py-1.5"
-          } whitespace-pre-wrap border-l-2 border-zinc-900 bg-zinc-50 px-3 text-sm font-medium text-zinc-900`}
-        >
-          ⚠ {node.criticalNotes}
-        </p>
-      )}
-
-      {/* Packet references keep only the first level inline; other guides
-          retain the recursive builds at every depth. */}
-      {inlineComponents.length > 0 && (!references || depth === 0) && (
-        <div className={compact ? "mt-3 space-y-3" : "mt-6 space-y-4"}>
-          {!compact && <p className="text-xs font-semibold uppercase tracking-wide text-zinc-900">{references ? "Supporting sub-recipes" : "Sub-Builds"}</p>}
-          {inlineComponents.map((c) => {
-            const child = byId.get(c.childId);
-            if (!child) return null;
-            const { batches } = componentBatchFactor(c.quantity, c.unit, child.yieldQty, child.yieldUnit);
-            return (
-              <SubBuild key={c.id} node={child} byId={byId} totalBatches={batches * totalBatches} depth={depth} stack={stack} sharedRefs={sharedRefs} weightInGrams={weightInGrams} references={references} parentName={node.name} />
-            );
-          })}
-        </div>
-      )}
+      <RecipeDossier recipe={build.node} scale={build.totalBatches}
+        allergenKeys={effectiveAllergens(build.node.id, build.byId)}
+        weightInGrams={build.weightInGrams} supporting={supporting}
+        context={context} batchLabel={batchLabel} id={id}
+        className={`${supporting ? "" : "recipe-packet-card"} ${className}`}>
+        <RecipeBuildBody {...build} renderSubBuilds={false} />
+      </RecipeDossier>
+      <RecipeSubBuilds {...build} />
     </>
   );
 }
 
-// Recursive sub-recipe build card: the sub-recipe's header (name + the amount to
-// make) followed by its scaled body. `totalBatches` already folds in the
-// parent's scale. A stack guards against cycles (blocked at creation, defensive
-// here). When the sub-recipe is in `sharedRefs` (it already has its own build
-// elsewhere in this packet — a lot-stamped batch or a consolidated shared
-// build), render only a pull reference so the cook doesn't rebuild what
-// they've already made.
-export function SubBuild({
-  node,
-  byId,
-  totalBatches,
-  depth,
-  stack,
-  sharedRefs,
-  weightInGrams = false,
-  references,
-  parentName,
-}: {
-  node: RecipeTreeNode;
-  byId: Map<string, RecipeTreeNode>;
-  totalBatches: number;
-  depth: number;
-  stack: Set<string>;
-  sharedRefs?: Map<string, string>;
-  weightInGrams?: boolean;
-  references?: RecipeReferencePlan;
-  parentName?: string;
-}) {
-  if (stack.has(node.id)) return null; // cycle guard
+// Body-only remains useful for composition and tests; every route uses the
+// same workspace, including notes, cues, storage and culinary stage grouping.
+export function RecipeBuildBody({ renderSubBuilds = true, ...build }: RecipeBuildProps & { renderSubBuilds?: boolean }) {
+  const { node, byId, totalBatches, depth, sharedRefs, references, weightInGrams } = build;
+  const lines: MiseLine[] = node.items.map((ri) => ({ ...ri }));
+  for (const component of node.components) {
+    const child = byId.get(component.childId);
+    if (!child) continue;
+    const { batches } = componentBatchFactor(component.quantity, component.unit, child.yieldQty, child.yieldUnit);
+    const sharedRef = sharedRefs?.get(child.id);
+    const reference = references && depth > 0 ? references.get(child.id) : undefined;
+    lines.push({
+      id: component.id, name: child.name, quantity: batches * child.yieldQty,
+      unit: child.yieldUnit, subRecipe: true,
+      note: <>Sub-recipe · {child.prodCode}{component.note ? ` — ${component.note}` : ""}
+        <span className="block font-sans text-[9px] not-italic">
+          {sharedRef ? `pull from ${sharedRef}` : reference ? (
+            <a href={`#recipe-reference-${child.id}`} className="underline underline-offset-2">Reference {reference.label} at the back</a>
+          ) : "see sub-recipe below ↓"}
+        </span>
+      </>,
+    });
+  }
+  return <>
+    <RecipeDossierWorkspace recipe={node} lines={lines} scale={totalBatches} weightInGrams={weightInGrams} />
+    {renderSubBuilds && <RecipeSubBuilds {...build} />}
+  </>;
+}
 
+function RecipeSubBuilds(build: RecipeBuildProps) {
+  const { node, byId, totalBatches, depth, stack, sharedRefs, references } = build;
+  if (references && depth > 0) return null;
+  const next = new Set(stack).add(node.id);
+  // The mise row already gives the pull amount and source. Do not add a
+  // separate supporting page for a build that was printed elsewhere.
+  const components = node.components.filter((c) => byId.has(c.childId) && !next.has(c.childId) && !sharedRefs?.has(c.childId));
+  if (components.length === 0) return null;
+  return (
+    <section className="recipe-supporting-builds mt-5 space-y-5" aria-label={`Supporting sub-recipes for ${node.name}`}>
+      <h3 className="font-display text-xl italic text-[#2C3E35]">Supporting sub-recipes</h3>
+      {components.map((c) => {
+        const child = byId.get(c.childId)!;
+        const { batches } = componentBatchFactor(c.quantity, c.unit, child.yieldQty, child.yieldUnit);
+        return <SubBuild key={c.id} {...build} node={child} totalBatches={batches * totalBatches} stack={next} parentName={node.name} />;
+      })}
+    </section>
+  );
+}
+
+export function SubBuild({ parentName, ...build }: RecipeBuildProps & { parentName?: string }) {
+  const { node, totalBatches, depth, stack, sharedRefs, weightInGrams } = build;
+  if (stack.has(node.id)) return null;
   const made = displayMeasure(totalBatches * node.yieldQty, node.yieldUnit, weightInGrams);
   const sharedRef = sharedRefs?.get(node.id);
-
   if (sharedRef) {
-    return (
-      <div className={`break-inside-avoid border-l-2 border-zinc-300 pl-4 ${depth > 0 ? "ml-2" : ""}`}>
-        <div className="flex items-baseline justify-between gap-3">
-          <h3 className="font-display text-xl font-medium tracking-tight text-zinc-500">
-            ↳ {node.name}{" "}
-            <span className="align-middle text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-400">sub-recipe</span>
-          </h3>
-          <span className="shrink-0 text-sm font-semibold text-zinc-500">
-            pull {num(made.qty)} {made.label}
-          </span>
-        </div>
-        <p className="mt-0.5 text-xs text-zinc-400">→ from {sharedRef}</p>
-      </div>
-    );
+    return <aside className="break-inside-avoid border-l-2 border-gold bg-[#F4F1EA] p-3 text-sm text-[#2C3E35]">
+      <h3 className="font-display text-lg italic">{node.name}</h3>
+      <p className="font-mono text-xs tabular-nums">pull {num(made.qty)} {made.label} → from {sharedRef}</p>
+    </aside>;
   }
+  return <RecipeBuildCard {...build} depth={depth + 1} compact supporting
+    context={<p><span className="font-semibold">Sub-recipe of {parentName}</span> · Needed: {num(made.qty)} {made.label}</p>} />;
+}
 
-  const nextStack = new Set(stack);
-  nextStack.add(node.id);
-
-  return (
-    <div className={`break-inside-avoid border-l-2 border-zinc-400 pl-4 ${depth > 0 ? "ml-2" : ""}`}>
-      {references && <p className="mb-1 text-xs font-semibold text-zinc-900">Sub-recipe of {parentName}</p>}
-      <div className="flex items-baseline justify-between gap-3">
-        <h3 className="font-display text-xl font-medium tracking-tight text-zinc-900">
-          {references ? node.name : <>↳ {node.name}{" "}<span className="align-middle text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-400">sub-recipe</span></>}
-        </h3>
-        <span className="shrink-0 text-sm font-semibold text-zinc-900">
-          {references ? "Needed:" : "make"} {num(made.qty)} {made.label}
-        </span>
-      </div>
-      <p className="mt-0.5 text-xs text-zinc-500">
-        {node.prodCode} · v{node.version} · base yield {num(node.yieldQty)} {node.yieldUnit}
-      </p>
-
-      <RecipeBuildBody node={node} byId={byId} totalBatches={totalBatches} compact depth={depth + 1} stack={nextStack} sharedRefs={sharedRefs} weightInGrams={weightInGrams} references={references} />
-    </div>
-  );
+export function SharedBuildCard({ build, byId, sharedRefs, context }: {
+  build: SharedSubBuild;
+  byId: Map<string, RecipeTreeNode>;
+  sharedRefs: Map<string, string>;
+  context?: RecipeDossierProps["context"];
+}) {
+  const made = displayMeasure(build.totalBatches * build.node.yieldQty, build.node.yieldUnit);
+  return <RecipeBuildCard node={build.node} byId={byId} totalBatches={build.totalBatches}
+    compact={false} depth={0} stack={new Set()} sharedRefs={sharedRefs} batchLabel="Make Once"
+    context={<>{context}<p>Make {num(made.qty)} {made.label} — once · Feeds: {build.usedBy.join(" · ")}</p></>} />;
 }

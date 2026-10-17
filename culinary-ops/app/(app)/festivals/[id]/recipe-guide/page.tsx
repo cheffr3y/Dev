@@ -1,3 +1,4 @@
+import { RecipePrintSettings } from "@/components/RecipeDossier";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -8,7 +9,7 @@ import { unitLabel } from "@/lib/units";
 import { PrintButton } from "@/components/PrintButton";
 import { LocalTime } from "@/components/LocalTime";
 import {
-  RecipeBuildBody,
+  RecipeBuildCard,
   SharedBuildCard,
   buildRecipeTree,
   consolidateSharedSubBuilds,
@@ -129,7 +130,8 @@ export default async function FestivalRecipeGuidePage({ params }: { params: Prom
   const projectedCovers = Math.round(festival.expectedAttendance * festival.captureRate);
 
   return (
-    <div>
+    <div className="recipe-print recipe-packet mx-auto max-w-[8.5in]">
+      <RecipePrintSettings />
       <div className="no-print mb-4 flex items-center justify-between">
         <Link href={`/festivals/${festival.id}`} className="text-sm text-blue-600 hover:underline">
           ← {festival.name}
@@ -153,7 +155,8 @@ export default async function FestivalRecipeGuidePage({ params }: { params: Prom
           </p>
         </div>
       ) : (
-        <div className="print-sheet mx-auto max-w-3xl rounded-xl border border-zinc-200 bg-white p-10 shadow-sm">
+        <div className="recipe-packet-content">
+          <div className="no-print rounded-xl border border-hairline bg-canvas p-5">
           <div className="flex items-baseline justify-between text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-500">
             <span>Mise · Festival Recipe Guide</span>
             <span>{Math.round(festival.captureRate * 100)}% capture · {Math.round(festival.bufferPct * 100)}% default buffer</span>
@@ -182,38 +185,43 @@ export default async function FestivalRecipeGuidePage({ params }: { params: Prom
               Some recipes have no usable yield and are shown as base batches. Verify those quantities by hand.
             </div>
           )}
+          </div>
 
           {shared.length > 0 && (
-            <section className="mt-8">
-              <div className="border-b-2 border-zinc-900 pb-1.5">
+            <section className="recipe-packet-builds mt-8">
+              <div className="no-print border-b-2 border-zinc-900 pb-1.5">
                 <h2 className="font-display text-2xl font-medium tracking-tight text-zinc-900">
                   Shared Builds — Make These First
                 </h2>
               </div>
-              <p className="mt-1 text-sm text-zinc-500">
+              <p className="no-print mt-1 text-sm text-zinc-500">
                 Each build below feeds more than one dish. Make the full amount once; the dishes pull from it.
               </p>
-              <div className="mt-6 space-y-12">
+              <div className="recipe-packet-builds mt-6 space-y-8">
                 {shared.map((b) => (
-                  <SharedBuildCard key={b.node.id} build={b} byId={byId} sharedRefs={sharedRefs} />
+                  <SharedBuildCard key={b.node.id} build={b} byId={byId} sharedRefs={sharedRefs}
+                    context={<p>{festival.name} · {fmtDate(festival.date)}</p>} />
                 ))}
               </div>
             </section>
           )}
 
           {shared.length > 0 && (
-            <div className="mt-12 border-b-2 border-zinc-900 pb-1.5">
+            <div className="no-print mt-12 border-b-2 border-zinc-900 pb-1.5">
               <h2 className="font-display text-2xl font-medium tracking-tight text-zinc-900">Dishes</h2>
             </div>
           )}
-          <div className="mt-8 space-y-12">
+          <div className="recipe-packet-builds mt-8 space-y-8">
             {entries.map((entry) => (
-              <RecipeGuideEntry key={entry.node.id} entry={entry} byId={byId} sharedRefs={sharedRefs} />
+              <RecipeGuideEntry key={entry.node.id} entry={entry} byId={byId} sharedRefs={sharedRefs}
+                festivalLabel={`${festival.name} · ${fmtDate(festival.date)}`}
+                forecastLabel={`${festival.expectedAttendance.toLocaleString()} attendance · ${projectedCovers.toLocaleString()} projected covers · ${Math.round(festival.captureRate * 100)}% capture · ${Math.round(festival.bufferPct * 100)}% default buffer`} />
             ))}
           </div>
 
-          {(festival.weatherNotes || festival.notes) && (
-            <div className="mt-8 grid grid-cols-1 gap-6 break-inside-avoid sm:grid-cols-2">
+          {(festival.weatherNotes || festival.notes || unlinked.length > 0) && (
+            <div className="recipe-packet-notes mt-8 grid grid-cols-1 gap-6 break-inside-avoid sm:grid-cols-2">
+              {unlinked.length > 0 && <p className="col-span-full border-l-2 border-gold bg-[#F4F1EA] p-3 text-xs">Forecast-only (no recipe linked): {unlinked.map((mi) => mi.name).join(", ")}.</p>}
               {festival.weatherNotes && (
                 <section>
                   <h2 className="border-b-2 border-zinc-900 pb-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-900">
@@ -233,7 +241,7 @@ export default async function FestivalRecipeGuidePage({ params }: { params: Prom
             </div>
           )}
 
-          <p className="mt-10 border-t border-zinc-200 pt-4 text-[10px] uppercase tracking-[0.14em] text-zinc-400">
+          <p className="no-print mt-10 border-t border-zinc-200 pt-4 text-[10px] uppercase tracking-[0.14em] text-zinc-400">
             Printed <LocalTime date={new Date()} mode="date" /> · Scaled from final prep portions (forecast + buffer) ·
             Mise · Culinary Ops
           </p>
@@ -243,82 +251,20 @@ export default async function FestivalRecipeGuidePage({ params }: { params: Prom
   );
 }
 
-function RecipeGuideEntry({
-  entry,
-  byId,
-  sharedRefs,
-}: {
-  entry: GuideEntry;
-  byId: Map<string, RecipeTreeNode>;
-  sharedRefs: Map<string, string>;
+function RecipeGuideEntry({ entry, byId, sharedRefs, festivalLabel, forecastLabel }: {
+  entry: GuideEntry; byId: Map<string, RecipeTreeNode>; sharedRefs: Map<string, string>; festivalLabel: string; forecastLabel: string;
 }) {
-  const { node } = entry;
-
-  return (
-    <article className="break-inside-avoid border-t-2 border-zinc-900 pt-4">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 className="font-display text-3xl font-medium tracking-tight text-zinc-900">{node.name}</h2>
-          <p className="mt-1 text-lg font-semibold text-zinc-900">
-            Make{" "}
-            {entry.unscaled
-              ? `${num(entry.totalBatches)} base batch${entry.totalBatches === 1 ? "" : "es"}`
-              : `${num(entry.totalQty)} ${unitLabel(node.yieldUnit)}`}
-          </p>
-          <p className="mt-0.5 text-xs text-zinc-500">
-            {node.prodCode} · v{node.version} · base yield {num(node.yieldQty)} {unitLabel(node.yieldUnit)} · scale x
-            {num(entry.totalBatches)}
-          </p>
-        </div>
-        <div className="shrink-0 border-2 border-zinc-900 px-4 py-2 text-right">
-          <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-500">Needed</p>
-          <p className="font-mono text-2xl font-bold tracking-wider text-zinc-900">
-            {entry.unscaled ? num(entry.totalBatches) : num(entry.totalQty)}
-          </p>
-          <p className="text-xs font-medium text-zinc-500">{entry.unscaled ? "base batches" : unitLabel(node.yieldUnit)}</p>
-        </div>
-      </div>
-
-      <section className="mt-4 break-inside-avoid">
-        <h3 className="border-b border-zinc-200 pb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-500">
-          Menu lines feeding this build
-        </h3>
-        <table className="mt-1 w-full text-xs">
-          <tbody className="divide-y divide-zinc-100">
-            {entry.uses.map((use, i) => (
-              <tr key={`${use.tentName}-${use.menuName}-${i}`}>
-                <td className="py-1.5 pr-4 text-zinc-800">
-                  {use.menuName}
-                  <span className="block text-[11px] text-zinc-500">
-                    {use.tentName}
-                    {use.overridden ? " · chef override" : ` · ${num(use.mixPct * 100)}% mix`}
-                    {` · ${num(use.bufferPct * 100)}% buffer`}
-                  </span>
-                </td>
-                <td className="py-1.5 text-right font-semibold tabular-nums text-zinc-900">
-                  {num(use.prepPortions)} <span className="font-normal text-zinc-500">{unitLabel(node.yieldUnit)}</span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
-
-      {entry.unscaled && (
-        <div className="mt-3 border-2 border-amber-600 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-900">
-          This recipe has no usable yield, so the guide cannot scale the ingredient amounts reliably.
-        </div>
-      )}
-
-      <RecipeBuildBody
-        node={node}
-        byId={byId}
-        totalBatches={entry.totalBatches}
-        compact={false}
-        depth={0}
-        stack={new Set()}
-        sharedRefs={sharedRefs}
-      />
-    </article>
-  );
+  return <RecipeBuildCard node={entry.node} byId={byId} totalBatches={entry.totalBatches}
+    compact={false} depth={0} stack={new Set()} sharedRefs={sharedRefs} batchLabel="Forecast Batch"
+    context={<>
+      <p className="font-medium text-[#2C3E35]">{festivalLabel}</p>
+      <p className="mt-1 text-[9px]">{forecastLabel}</p>
+      <ul className="mt-1 grid grid-cols-2 gap-x-4 gap-y-1">
+        {entry.uses.map((use, index) => <li key={`${use.tentName}-${use.menuName}-${index}`}>
+          {use.menuName} · {use.tentName}: <span className="font-mono tabular-nums">{num(use.prepPortions)} {unitLabel(entry.node.yieldUnit)}</span>
+          <span className="block text-[9px] text-zinc-500">{use.overridden ? "Chef override" : `${num(use.mixPct * 100)}% mix`} · {num(use.bufferPct * 100)}% buffer</span>
+        </li>)}
+      </ul>
+      {entry.unscaled && <p className="recipe-scaling-warning mt-2 border-l-2 border-gold bg-[#F4F1EA] p-2 font-semibold">Make {num(entry.totalBatches)} base batches. This recipe has no usable yield; verify ingredient amounts manually.</p>}
+    </>} />;
 }

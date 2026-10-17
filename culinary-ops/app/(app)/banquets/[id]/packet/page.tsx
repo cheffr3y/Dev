@@ -1,3 +1,4 @@
+import { RecipePrintSettings } from "@/components/RecipeDossier";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -9,7 +10,7 @@ import { LocalTime } from "@/components/LocalTime";
 import { RecipeReferences } from "@/components/RecipeReferences";
 import { buildRecipeReferences, type RecipeReferencePlan } from "@/lib/recipe-references";
 import {
-  RecipeBuildBody,
+  RecipeBuildCard,
   buildRecipeTree,
   recipeTreeSelect,
   type RecipeTreeNode,
@@ -60,7 +61,8 @@ export default async function BanquetCookPacketPage({ params }: { params: Promis
   );
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="recipe-print recipe-packet mx-auto max-w-[8.5in]">
+      <RecipePrintSettings />
       <div className="no-print mb-5 flex items-center justify-between gap-3">
         <Link href={`/banquets/${banquet.id}`} className="text-sm text-blue-600 hover:underline">
           ← Back to banquet
@@ -79,7 +81,8 @@ export default async function BanquetCookPacketPage({ params }: { params: Promis
           <p className="mt-1 text-sm text-zinc-400">Add food lines to the banquet to build the cook packet.</p>
         </div>
       ) : (
-        <div className="print-sheet rounded-xl border border-zinc-200 bg-white p-10 shadow-sm">
+        <div className="recipe-packet-content">
+          <div className="no-print rounded-xl border border-hairline bg-canvas p-5">
           <div className="flex items-baseline justify-between text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-500">
             <span>Mise · Cook Packet</span>
             <span>{banquet.venue.name}</span>
@@ -97,8 +100,9 @@ export default async function BanquetCookPacketPage({ params }: { params: Promis
               : ""}{" "}
             · scaled to ordered counts.
           </p>
+          </div>
 
-          <div className="mt-8 space-y-10">
+          <div className="recipe-packet-builds mt-8 space-y-8">
             {dishes.map((d) => (
               <DishEntry
                 key={d.menuItem.id}
@@ -110,13 +114,14 @@ export default async function BanquetCookPacketPage({ params }: { params: Promis
                 unit={d.menuItem.unit}
                 byId={byId}
                 references={references}
+                eventLabel={`${banquet.name} · ${fmtDate(banquet.date)} · ${banquet.venue.name}${banquet.timeLabel ? ` · ${banquet.timeLabel}` : ""}${banquet.guestCount > 0 ? ` · ${banquet.guestCount} guests` : ""}`}
               />
             ))}
           </div>
 
           <RecipeReferences references={references} byId={byId} />
 
-          <p className="mt-10 border-t border-zinc-200 pt-4 text-[10px] uppercase tracking-[0.14em] text-zinc-400">
+          <p className="no-print mt-10 border-t border-zinc-200 pt-4 text-[10px] uppercase tracking-[0.14em] text-zinc-400">
             Printed <LocalTime date={new Date()} mode="date" /> · Each dish scaled to its ordered count · Mise ·
             Culinary Ops
           </p>
@@ -126,65 +131,17 @@ export default async function BanquetCookPacketPage({ params }: { params: Promis
   );
 }
 
-// One BEO food line, scaled to its ordered count and built out with sub-recipes.
-function DishEntry({
-  node,
-  batches,
-  converted,
-  description,
-  orderedQty,
-  unit,
-  byId,
-  references,
-}: {
-  node: RecipeTreeNode;
-  batches: number;
-  converted: boolean;
-  description: string | null;
-  orderedQty: number;
-  unit: string;
-  byId: Map<string, RecipeTreeNode>;
-  references: RecipeReferencePlan;
+// One BEO food line, scaled to its ordered count.
+function DishEntry({ node, batches, converted, description, orderedQty, unit, byId, references, eventLabel }: {
+  node: RecipeTreeNode; batches: number; converted: boolean; description: string | null;
+  orderedQty: number; unit: string; byId: Map<string, RecipeTreeNode>;
+  references: RecipeReferencePlan; eventLabel: string;
 }) {
-  return (
-    <article className="break-inside-avoid border-t-2 border-zinc-900 pt-4">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-900">Ordered recipe</p>
-          <h2 className="font-display text-3xl font-medium tracking-tight text-zinc-900">{node.name}</h2>
-          <p className="mt-1 text-lg font-semibold text-zinc-900">
-            Yields {converted ? `${num(batches * node.yieldQty)} ${unitLabel(node.yieldUnit)}` : `${num(orderedQty)} ${unitLabel(unit)}`}
-          </p>
-          {description && <p className="mt-0.5 text-sm text-zinc-500">{description}</p>}
-        </div>
-        {/* Ordered count — what this dish is being built toward */}
-        <div className="shrink-0 border-2 border-zinc-900 px-4 py-2 text-right">
-          <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-500">Ordered</p>
-          <p className="font-mono text-2xl font-bold tracking-wider text-zinc-900">
-            {num(orderedQty)} {unitLabel(unit)}
-          </p>
-        </div>
-      </div>
-
-      {!converted && (
-        <div className="mt-3 border-2 border-amber-600 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-900">
-          ⚠ Ordered units don&apos;t convert to the base yield unit — verify the batch size manually.
-        </div>
-      )}
-
-      <RecipeBuildBody
-        node={node}
-        byId={byId}
-        totalBatches={batches}
-        compact={false}
-        depth={0}
-        stack={new Set()}
-        references={references}
-      />
-
-      <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.12em] text-zinc-400">
-        {node.name} · {node.prodCode} · v{node.version} · ordered {num(orderedQty)} {unitLabel(unit)}
-      </p>
-    </article>
-  );
+  return <RecipeBuildCard node={node} byId={byId} totalBatches={batches}
+    compact={false} depth={0} stack={new Set()} references={references} batchLabel="Ordered Batch"
+    context={<>
+      <p className="font-medium text-[#2C3E35]">{eventLabel}</p>
+      <p className="mt-1">Ordered: <span className="font-mono tabular-nums">{num(orderedQty)} {unitLabel(unit)}</span>{description ? ` · ${description}` : ""}</p>
+      {!converted && <p className="recipe-scaling-warning mt-2 border-l-2 border-gold bg-[#F4F1EA] p-2 font-semibold">Ordered units don&apos;t convert to the base yield unit — verify the batch size manually.</p>}
+    </>} />;
 }

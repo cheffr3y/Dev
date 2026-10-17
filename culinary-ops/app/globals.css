@@ -40,12 +40,11 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  /* Serif for page titles & summary numbers; Inter for everything else.
-     "mono" is repurposed to Inter so small-caps labels read as clean,
-     letter-spaced sans rather than typewriter mono. */
+  /* Playfair Display for editorial type, Inter for body copy, and
+     IBM Plex Mono for quantities, metadata, and tabular figures. */
   --font-sans: var(--font-sans-fallback);
   --font-display: var(--font-serif);
-  --font-mono: var(--font-sans-fallback);
+  --font-mono: var(--font-monospace);
 }
 
 /*
@@ -129,6 +128,49 @@ body {
   font-feature-settings: "liga" 1, "dlig" 1;
 }
 
+/* Editorial recipe dossier. Match the printable column width on screen;
+   small screens can pan the sheet while retaining the two-column hierarchy. */
+.recipe-sheet-scroll {
+  overflow-x: auto;
+}
+.recipe-dossier {
+  min-width: 7.7in;
+  min-height: 11in;
+  font-size: 12px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+.recipe-sheet-body {
+  padding: 0.22in 0.39in 0.28in;
+}
+.recipe-packet-content {
+  overflow-x: auto;
+}
+.recipe-dossier-supporting {
+  min-height: 0;
+  break-inside: avoid;
+}
+.recipe-dossier-supporting .recipe-title {
+  font-size: 26px;
+}
+.recipe-dossier-supporting .recipe-hero {
+  padding-block: 12px;
+}
+.recipe-stage-title,
+.recipe-step-heading {
+  break-after: avoid;
+}
+.recipe-ingredient,
+.recipe-step,
+.recipe-critical,
+.recipe-storage,
+.recipe-footer {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
 /* Print-friendly order guides, event prep sheets & recipe cards */
 @page {
   margin: 0.5in;
@@ -153,6 +195,220 @@ body {
     background: #fff;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
+  }
+
+  /* Remove the app shell's viewport minimum only for a recipe dossier.
+     Otherwise its min-height can create a blank second sheet. */
+  body:has(.recipe-print),
+  body:has(.recipe-print) .min-h-screen {
+    min-height: 0 !important;
+  }
+  body:has(.recipe-print) .min-h-screen,
+  body:has(.recipe-print) .flex:has(> main.print-full) {
+    display: block;
+  }
+  .recipe-print {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+  }
+  .recipe-sheet-scroll {
+    overflow: visible;
+  }
+  .recipe-dossier {
+    width: 100%;
+    min-width: 0;
+    /* Letter minus two 0.4in margins; leave rounding room for pagination.
+       A minimum, rather than a fixed height, lets long recipes continue. */
+    min-height: calc(10.2in - 1px);
+    font-size: 9pt;
+    line-height: 1.35;
+  }
+  .recipe-sheet-body {
+    padding: 10px 0 0;
+  }
+  .recipe-masthead {
+    padding-block: 6px;
+    font-size: 7px;
+  }
+  .recipe-hero {
+    padding-block: 10px;
+  }
+  .recipe-title {
+    margin-top: 5px;
+    font-size: 29pt;
+  }
+  .recipe-kicker {
+    font-size: 10pt;
+  }
+  .recipe-specs {
+    padding-block: 9px;
+  }
+  .recipe-spec {
+    padding-inline: 9px;
+  }
+  .recipe-spec:first-child {
+    padding-left: 0;
+  }
+  .recipe-spec:last-child {
+    padding-right: 0;
+  }
+  .recipe-meta {
+    font-size: 7px;
+  }
+  .recipe-workspace {
+    grid-template-columns: 38% 57%;
+    column-gap: 5%;
+    margin-top: 12px;
+    /* Align the independent columns at their tops across print engines. */
+    align-items: start;
+  }
+  .recipe-section-title {
+    padding-bottom: 6px;
+    font-size: 16pt;
+  }
+  .recipe-stage {
+    margin-top: 5px;
+  }
+  .recipe-stage-title {
+    font-size: 7px;
+  }
+  .recipe-ingredient {
+    padding-block: 2px;
+    gap: 8px;
+    font-size: 8.25pt;
+    line-height: 1.25;
+  }
+  .recipe-prep-note {
+    margin-top: 0;
+    font-size: 9.5px;
+    line-height: 1.2;
+  }
+  .recipe-method {
+    margin-top: 12px;
+    row-gap: 8px;
+  }
+  .recipe-step {
+    column-gap: 9px;
+  }
+  .recipe-step-number {
+    font-size: 21pt;
+  }
+  .recipe-step-prose {
+    line-height: 1.4;
+  }
+  .recipe-critical,
+  .recipe-storage {
+    margin-top: 12px;
+    padding: 8px;
+  }
+  .recipe-critical p,
+  .recipe-storage li {
+    font-size: 10px;
+    line-height: 1.4;
+  }
+  .recipe-footer {
+    padding-top: 12px;
+  }
+  .recipe-signature {
+    height: 16px;
+  }
+  .recipe-colophon {
+    margin-top: 10px;
+    padding-top: 7px;
+    font-size: 6.5px;
+  }
+  .recipe-packet-content {
+    overflow: visible;
+  }
+  .recipe-packet-builds,
+  .recipe-packet-builds > * {
+    margin-block: 0 !important;
+  }
+  .recipe-packet-card,
+  .recipe-supporting-builds,
+  .recipe-packet-notes {
+    break-before: page;
+  }
+  .recipe-supporting-builds,
+  .recipe-references {
+    margin-top: 0;
+  }
+  .recipe-packet .recipe-dossier {
+    font-size: 8.5pt;
+  }
+  .recipe-packet .recipe-hero {
+    padding-block: 8px;
+  }
+  .recipe-packet .recipe-sheet-body {
+    padding-top: 8px;
+  }
+  .recipe-packet .recipe-specs {
+    padding-block: 7px;
+  }
+  .recipe-packet .recipe-title {
+    font-size: 26pt;
+  }
+  .recipe-packet .recipe-context {
+    margin-top: 8px;
+    font-size: 10px;
+    line-height: 1.25;
+  }
+  .recipe-packet .recipe-workspace {
+    margin-top: 8px;
+  }
+  .recipe-packet .recipe-section-title {
+    padding-bottom: 5px;
+    font-size: 15pt;
+  }
+  .recipe-packet .recipe-ingredient {
+    padding-block: 1.5px;
+  }
+  .recipe-packet .recipe-stage {
+    margin-top: 4px;
+  }
+  .recipe-packet .recipe-critical {
+    margin-top: 9px;
+    padding: 7px;
+  }
+  .recipe-packet .recipe-footer {
+    padding-top: 6px;
+  }
+  .recipe-packet .recipe-signature {
+    height: 12px;
+  }
+  .recipe-packet .recipe-colophon {
+    margin-top: 6px;
+    padding-top: 5px;
+  }
+  .recipe-packet .break-before-page {
+    margin-top: 0;
+  }
+  .recipe-production-record {
+    margin-top: 12px;
+    padding: 10px;
+    font-size: 10px;
+    line-height: 1.5;
+  }
+  .recipe-production-record h3 {
+    font-size: 15px;
+  }
+  .recipe-production-record > div {
+    display: grid;
+    row-gap: 10px;
+    margin-top: 8px;
+  }
+  .recipe-production-record p {
+    margin-block: 0;
+  }
+  .recipe-dossier.recipe-dossier-supporting {
+    min-height: 0;
+  }
+  .recipe-dossier-supporting .recipe-title {
+    font-size: 18pt;
+  }
+  .recipe-dossier-supporting .recipe-hero {
+    padding-block: 8px;
   }
 }
 
