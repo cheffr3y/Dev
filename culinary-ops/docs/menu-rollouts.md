@@ -33,8 +33,11 @@ references. Kitchen copies omit financial audit stamps.
 
 ## Database and checks
 
-Apply `prisma migrate deploy` and regenerate the Prisma client before running the
-new routes. The additive `20261017000000_menu_rollouts` migration creates the two
+Production `npm start` runs `prisma migrate deploy` before Next.js accepts traffic;
+a migration failure stops startup. To repair an already-running release, run
+`npm run db:deploy` in that deployed component's console, then reload the affected
+pages. Prisma Client is regenerated during installation. The additive
+`20261017000000_menu_rollouts` migration creates the two
 rollout tables and ingredient grouping fields. Recipes referenced by rollouts
 cannot be deleted until removed from those rollouts.
 

@@ -23,6 +23,7 @@ services:
     source_dir: culinary-ops
     environment_slug: node-js
     build_command: npm run build
+    # Apply committed database migrations before starting the web server.
     run_command: npm start
     instance_count: 1
     # Bump to basic-s if the Next.js build runs out of memory.

@@ -135,11 +135,11 @@ See the [daily prep and closeout guide](docs/prep-orders-guide.md) for the workf
 
 Ingredient allergen tagging adds the nullable `Item.allergens` column in `20261016000000_ingredient_allergens`. Apply the migration with `prisma migrate deploy` before releasing this application version. Existing ingredients remain untagged until reviewed; existing recipe allergen selections are preserved.
 
-This release requires a coordinated database and application rollout. A push to `main` is not sufficient: the build only generates Prisma Client and does not apply migrations. Confirm whether the hosting service automatically deploys `main` before merging.
+Production startup (`npm start`) applies committed migrations with `prisma migrate deploy` before starting Next.js. If a migration fails, the web server does not start. The build generates Prisma Client but does not change the database. Keep the hosting service's run command set to `npm start`; launching `next start` directly bypasses the migration step. Operators can also apply migrations with `npm run db:deploy` from the deployed component's console.
 
 Follow the [migration and rollout checklist](docs/prep-orders-rollout.md): back up and rehearse on a restored database, verify the existing schema before marking its baseline applied, pause old application writes, apply the reviewed migrations with `prisma migrate deploy`, and release the new application. **Do not use `db push` for this release**; it omits the PostgreSQL audit-protection triggers.
 
-Existing tables and historical values are preserved. Old application code cannot safely run over new manual transfers with nullable batch links, so coordinate the cutover rather than running both writers concurrently. Configure `DATABASE_URL` and `AUTH_SECRET` in the hosting environment. No live migration or deployment is performed by this repository change.
+Existing databases must have a verified migration baseline before automated startup migrations can run. Existing tables and historical values are preserved. Old application code cannot safely run over new manual transfers with nullable batch links, so coordinate that initial cutover rather than running both writers concurrently. Configure `DATABASE_URL` and `AUTH_SECRET` in the hosting environment.
 
 ### Migrating from the legacy foxtownhq app
 Replacing an existing foxtownhq deployment and want to keep its recipes, items,
