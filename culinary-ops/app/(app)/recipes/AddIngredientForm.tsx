@@ -18,7 +18,7 @@ type Item = IngredientOption;
 // within the item's purchase-unit family (a salt bought by the oz offers
 // oz/lb/g/kg, not "each") so the line is always costable — cross-family lines
 // can't be costed and would just flag.
-export function AddIngredientForm({ recipeId, items }: { recipeId: string; items: Item[] }) {
+export function AddIngredientForm({ recipeId, items, groupNames = [], nextSortOrder = 0 }: { recipeId: string; items: Item[]; groupNames?: string[]; nextSortOrder?: number }) {
   const [picked, setPicked] = useState<Item | null>(null);
   const [state, action, pending] = useActionState(addRecipeIngredientWithState, { error: "" });
 
@@ -75,6 +75,8 @@ export function AddIngredientForm({ recipeId, items }: { recipeId: string; items
           <Input name="note" placeholder="diced, room temp… (optional)" disabled={!picked} />
         </Field>
       </div>
+      <div className="w-44"><Field label="Group (optional)"><Input aria-label="Group (optional)" name="groupName" list={`ingredient-groups-${recipeId}`} placeholder="Herb base, emulsion…" /><datalist id={`ingredient-groups-${recipeId}`}>{groupNames.map(name => <option key={name} value={name} />)}</datalist></Field></div>
+      <div className="w-24"><Field label="Sort order"><Input name="sortOrder" type="number" min="0" step="1" defaultValue={nextSortOrder} /></Field></div>
       <Button type="submit" disabled={!picked || pending}>
         {pending ? "Adding…" : "Add"}
       </Button>

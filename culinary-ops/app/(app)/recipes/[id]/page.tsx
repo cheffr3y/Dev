@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser, hasRole } from "@/lib/session";
 import {
   recipeCost,
+  buildPriceGapMap,
   costPerYieldUnit,
   costUnitLabel,
   foodCostPct,
@@ -31,6 +32,7 @@ import {
   removeSubRecipe,
 } from "../actions";
 import { RECIPE_CATEGORIES } from "@/lib/categories";
+import { CostIntegrityBanner } from "@/components/CostAudit";
 import { LocalTime } from "@/components/LocalTime";
 
 // One changelog row per recipe version: all the change entries recorded in
@@ -82,7 +84,7 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
     prisma.recipe.findUnique({
       where: { id },
       include: {
-        items: { include: { item: true }, orderBy: { item: { name: "asc" } } },
+        items: { include: { item: true }, orderBy: [{ sortOrder: "asc" }, { item: { name: "asc" } }] },
         components: { include: { child: true }, orderBy: { child: { name: "asc" } } },
         changes: { orderBy: { createdAt: "desc" }, take: 25 },
       },
@@ -96,7 +98,7 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
         yieldQty: true,
         yieldUnit: true,
         allergens: true,
-        items: { select: { quantity: true, unit: true, item: { select: { name: true, allergens: true, unitCost: true, unit: true } } } },
+        items: { select: { quantity: true, unit: true, item: { select: { id: true, priceUpdatedAt: true, name: true, allergens: true, unitCost: true, unit: true } } } },
         components: { select: { childId: true, quantity: true, unit: true } },
       },
       orderBy: { name: "asc" },
@@ -105,6 +107,25 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
 
   if (!recipe) notFound();
 
+  const groupNames = [...new Set(recipe.items.map(line => line.groupName?.trim()).filter((name): name is string => !!name))];
+  const gapMap = buildPriceGapMap(allRecipes.map(node => ({ id: node.id, components: node.components, items: node.items.map(({ item }) => ({ itemId: item.id, unitCost: item.unitCost, priceUpdatedAt: item.priceUpdatedAt })) })));
+  const gap = gapMap.get(id);
+  const affectedSubRecipes = new Set<string>();
+  const visitedAuditRecipes = new Set<string>([id]);
+  const auditById = new Map(allRecipes.map(node => [node.id, node]));
+  const walkAudit = (recipeId: string) => {
+    for (const component of auditById.get(recipeId)?.components ?? []) {
+      if (visitedAuditRecipes.has(component.childId)) continue;
+      visitedAuditRecipes.add(component.childId);
+      const childGap = gapMap.get(component.childId);
+      const child = auditById.get(component.childId);
+      if (child && childGap && (childGap.unpriced.size || childGap.stale.size)) affectedSubRecipes.add(child.name);
+      walkAudit(component.childId);
+    }
+  };
+  walkAudit(id);
+  const itemNames = new Map(items.map(item => [item.id, item.name]));
+  const gapNames = (ids?: Set<string>) => [...(ids ?? [])].map(id => itemNames.get(id) ?? id).sort();
   const costMap = buildCostMap(allRecipes);
   const byId = new Map(allRecipes.map((r) => [r.id, r]));
 
@@ -153,6 +174,7 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
         }
       />
 
+      <CostIntegrityBanner unpriced={gapNames(gap?.unpriced)} stale={gapNames(gap?.stale)} subRecipes={[...affectedSubRecipes].sort()} />
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCardBlock label="Total Cost" value={money(totalCost)} sub={`${recipe.items.length} ingredients${recipe.components.length ? ` · ${recipe.components.length} sub-recipe${recipe.components.length === 1 ? "" : "s"}` : ""}`} />
         <StatCardBlock label={`Cost / ${costUnit}`} value={money(perUnit, 5)} />
@@ -192,8 +214,9 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
                     <tr key={ri.id}>
                       <td className="px-4 py-2 text-zinc-800">
                         {ri.item.name}
-                        {canEdit && <RecipeIngredientEditor recipeId={recipe.id} line={ri} items={items} />}
+                        {canEdit && <RecipeIngredientEditor recipeId={recipe.id} line={ri} items={items} groupNames={groupNames} />}
                         {parseAllergens(ri.item.allergens).length > 0 && <div className="mt-1"><AllergenBadges allergens={ri.item.allergens} /></div>}
+                        {ri.groupName && <span className="ml-2 font-mono text-[10px] uppercase text-gold">{ri.groupName} · {ri.sortOrder}</span>}
                         {ri.note && <span className="ml-2 text-xs text-zinc-400">{ri.note}</span>}
                         {!lc.converted && (
                           <span
@@ -239,6 +262,8 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
             {canEdit && (
               <div className="border-t border-zinc-100 p-4">
                 <AddIngredientForm
+                  groupNames={groupNames}
+                  nextSortOrder={Math.max(-1, ...recipe.items.map(line => line.sortOrder)) + 1}
                   key={recipe.items.length}
                   recipeId={recipe.id}
                   items={items.filter(item => !recipe.items.some(line => line.itemId === item.id))}

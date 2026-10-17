@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { effectiveAllergens } from "@/lib/allergens";
+import { buildPriceGapMap } from "@/lib/costing";
+import { CostAuditStamp } from "@/components/CostAudit";
 import { recipeCostSheet } from "@/lib/recipe-cost-sheet";
 import { PrintButton } from "@/components/PrintButton";
 import { RecipeDossier, RecipeDossierWorkspace, RecipePrintSettings, type MiseLine } from "@/components/RecipeDossier";
@@ -24,7 +26,7 @@ export default async function RecipePrintPage({
     prisma.recipe.findUnique({
       where: { id },
       include: {
-        items: { include: { item: true }, orderBy: { item: { name: "asc" } } },
+        items: { include: { item: true }, orderBy: [{ sortOrder: "asc" }, { item: { name: "asc" } }] },
         components: { include: { child: true }, orderBy: { child: { name: "asc" } } },
       },
     }),
@@ -32,7 +34,7 @@ export default async function RecipePrintPage({
     prisma.recipe.findMany({
       select: {
         id: true, allergens: true, yieldQty: true, yieldUnit: true,
-        items: { select: { quantity: true, unit: true, item: { select: { allergens: true, unitCost: true, unit: true } } } },
+        items: { select: { quantity: true, unit: true, item: { select: { id: true, priceUpdatedAt: true, allergens: true, unitCost: true, unit: true } } } },
         components: { select: { childId: true, quantity: true, unit: true } },
       },
     }),
@@ -43,6 +45,7 @@ export default async function RecipePrintPage({
   const byId = new Map(allRecipes.map((r) => [r.id, r]));
   const allergenKeys = effectiveAllergens(recipe.id, byId);
   const costs = showCosts ? recipeCostSheet(recipe, allRecipes, scale) : null;
+  const gap = showCosts ? buildPriceGapMap(allRecipes.map(node => ({ id: node.id, components: node.components, items: node.items.map(({ item }) => ({ itemId: item.id, unitCost: item.unitCost, priceUpdatedAt: item.priceUpdatedAt })) }))).get(id) : null;
   const lines: MiseLine[] = [
     ...recipe.components.map((component) => ({
       id: component.id, name: component.child.name, quantity: component.quantity,
@@ -51,7 +54,7 @@ export default async function RecipePrintPage({
     })),
     ...recipe.items.map((ri) => ({
       id: ri.id, name: ri.item.name, quantity: ri.quantity, unit: ri.unit,
-      category: ri.item.category, note: ri.note,
+      category: ri.item.category, groupName: ri.groupName, sortOrder: ri.sortOrder, note: ri.note,
     })),
   ];
 
@@ -95,7 +98,7 @@ export default async function RecipePrintPage({
 
       <div className="recipe-sheet-scroll">
         <RecipeDossier recipe={recipe} scale={scale} allergenKeys={allergenKeys}
-          lines={lines} titleLevel={1}>
+          lines={lines} titleLevel={1} footerNote={costs && <CostAuditStamp unpriced={gap?.unpriced.size ?? 0} stale={gap?.stale.size ?? 0} />}>
           <RecipeDossierWorkspace recipe={recipe} lines={lines} scale={scale} />
           {costs && <RecipeCosting costs={costs} />}
         </RecipeDossier>

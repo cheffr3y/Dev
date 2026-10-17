@@ -111,6 +111,7 @@ model Venue {
   events             Event[]
   banquets           Banquet[]
   festivals          Festival[] // festivals hinting at this venue's inventory
+  menuRollouts       MenuRollout[]
   prepLines          PrepOrderLine[] // production destined here
   prepOrders         PrepOrder[] // orders destined here
   cooks              Cook[] // kitchen roster scheduled at this venue
@@ -206,6 +207,7 @@ model Recipe {
   eventItems        EventMenuItem[]
   banquetItems      BanquetMenuItem[]
   festivalItems     FestivalMenuItem[]
+  menuRolloutItems  MenuRolloutItem[]
   prepLines         PrepOrderLine[]
   productionBatches ProductionBatch[]
   directTransfers   StockTransfer[]
@@ -258,8 +260,42 @@ model RecipeItem {
   quantity Float   @default(0) // in the item's unit
   unit     String  @default("each")
   note     String?
+  groupName String?
+  sortOrder Int @default(0)
 
   @@unique([recipeId, itemId])
+}
+
+model MenuRollout {
+  id             String @id @default(cuid())
+  name           String
+  subtitle       String?
+  venueId        String?
+  venue          Venue? @relation(fields: [venueId], references: [id], onDelete: SetNull)
+  status         String @default("DRAFT")
+  targetFcp      Float @default(28)
+  expectedCovers Int @default(100)
+  notes          String?
+  items          MenuRolloutItem[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model MenuRolloutItem {
+  id              String @id @default(cuid())
+  rolloutId       String
+  rollout         MenuRollout @relation(fields: [rolloutId], references: [id], onDelete: Cascade)
+  recipeId        String
+  recipe          Recipe @relation(fields: [recipeId], references: [id], onDelete: Restrict)
+  section         String @default("Main")
+  menuTitle       String?
+  menuDescription String?
+  menuPrice       Float?
+  parBatches      Float @default(1)
+  sortOrder       Int @default(0)
+  createdAt       DateTime @default(now())
+
+  @@unique([rolloutId, recipeId])
 }
 
 // Per-venue current stock with par levels.

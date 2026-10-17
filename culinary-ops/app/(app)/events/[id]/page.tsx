@@ -1,3 +1,7 @@
+import { AtelierHeader } from "@/components/AtelierHeader";
+import { RecipePrintSettings } from "@/components/RecipeDossier";
+import { CostAuditStamp } from "@/components/CostAudit";
+import { priceGapNames } from "@/lib/costing";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -58,8 +62,12 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
   const menuRecipeIds = new Set(event.menuItems.map((m) => m.recipeId));
   const availableRecipes = recipeRows.filter((r) => !menuRecipeIds.has(r.id));
 
+  const priceGaps = priceGapNames(recipeRows.map(recipe => ({ id: recipe.id, components: recipe.components, items: recipe.items.map(({ item }) => ({ itemId: item.id, unitCost: item.unitCost, priceUpdatedAt: item.priceUpdatedAt })) })), lines.map(line => line.recipeId), new Map(recipeRows.flatMap(recipe => recipe.items.map(({ item }) => [item.id, item.name] as const))));
+
   return (
-    <div>
+    <div className="atelier-event">
+      <RecipePrintSettings />
+      <div className="hidden print:block"><AtelierHeader title={event.name} venue={event.venue.name} date={event.date} guests={event.guestCount} runTime={event.date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Chicago" })} kicker="Event Prep & Service Sheet" /></div>
       <div className="no-print mb-4 flex items-center justify-between">
         <Link href="/events" className="text-sm text-blue-600 hover:underline">
           ← Events
@@ -67,11 +75,11 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
         <PrintButton label="Print prep sheet" />
       </div>
 
-      <PageHeader
+      <div className="no-print"><PageHeader
         title={event.name}
         subtitle={`${event.venue.name}${event.location ? ` · ${event.location}` : ""}`}
         action={<Badge color={STATUS_COLOR[event.status]}>{event.status.toLowerCase()}</Badge>}
-      />
+      /></div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard
@@ -193,7 +201,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
               )}
               <div className="space-y-5">
                 {plan.shoppingList.categories.map((cat) => (
-                  <section key={cat.category}>
+                  <section key={cat.category} className="break-inside-avoid">
                     <h3 className="border-b border-zinc-200 pb-1 font-mono text-[11px] uppercase tracking-[0.02em] text-zinc-600">
                       {cat.category}
                     </h3>
@@ -201,7 +209,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                       <tbody className="divide-y divide-zinc-100">
                         {cat.items.map((it) => (
                           <tr key={it.itemId}>
-                            <td className="py-1.5 pr-4 text-zinc-800">{it.name}</td>
+                            <td className="py-1.5 pr-4 text-zinc-800"><span className="mr-2 font-mono text-gold">[ ]</span>{it.name}</td>
                             <td className="py-1.5 text-right tabular-nums text-zinc-600">
                               {it.amounts.map((a, j) => (
                                 <div key={j}>
@@ -225,6 +233,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
         </Card>
       </div>
 
+      <CostAuditStamp unpriced={priceGaps.unpriced.length} stale={priceGaps.stale.length} />
       {/* Edit event */}
       {canEdit && (
         <Card className="no-print mt-6">

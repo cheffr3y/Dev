@@ -145,6 +145,67 @@ body {
 .recipe-sheet-body {
   padding: 0.22in 0.39in 0.28in;
 }
+
+.recipe-dossier,
+.atelier-packet,
+.atelier-event {
+  --font-serif: var(--font-atelier-serif);
+  --font-monospace: var(--font-atelier-mono);
+  color: #1c1b18;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+.recipe-dossier .font-display,
+.atelier-packet .font-display,
+.atelier-event .font-display { font-family: var(--font-atelier-serif), Georgia, serif; }
+.recipe-dossier .font-mono,
+.atelier-packet .font-mono,
+.atelier-event .font-mono { font-family: var(--font-atelier-mono), monospace; }
+.recipe-dossier { background: #fcfbf9; }
+.atelier-paper {
+  margin-bottom: 2rem;
+  padding: 0.35in;
+  background: #fcfbf9;
+  border: 1px solid #e2ddd5;
+}
+.atelier-table th,
+.atelier-table td { padding: 0.65rem 0.5rem; vertical-align: top; }
+.atelier-table thead {
+  font-family: var(--font-atelier-mono), monospace;
+  color: #76746e;
+  font-size: 9px;
+  text-transform: uppercase;
+  background: #f4f1ea;
+}
+.atelier-table tbody tr { border-bottom: 1px dotted #e2ddd5; }
+.allergen-matrix th,
+.allergen-matrix td { padding: 0.4rem 0.15rem; }
+.launch-recipe-sheet { margin-top: 2rem; }
+
+@media print {
+  body:has(.atelier-packet), body:has(.atelier-event),
+  body:has(.atelier-packet) .min-h-screen,
+  body:has(.atelier-event) .min-h-screen { min-height: 0 !important; }
+  body:has(.atelier-packet) .flex:has(> main.print-full),
+  body:has(.atelier-event) .flex:has(> main.print-full) { display: block; }
+  .atelier-packet { width: 100%; max-width: none; }
+  .atelier-paper { margin: 0; border: 0; padding: 0; }
+  .atelier-cover { min-height: 9.9in; }
+  .atelier-packet-section,
+  .launch-recipe-sheet { break-before: page; page-break-before: always; }
+  .launch-recipe-sheet { margin: 0; }
+  .atelier-pull-sheet { break-before: page; padding-top: 0.2in; }
+  .atelier-category, .atelier-header, .atelier-table tr { break-inside: avoid; page-break-inside: avoid; }
+  .atelier-table thead { display: table-header-group; }
+  .atelier-table th, .atelier-table td { padding: 5px 4px; }
+  .atelier-vendor-heading { break-after: avoid; page-break-after: avoid; }
+  .atelier-vendor .atelier-table { font-size: 10px; line-height: 1.2; }
+  .atelier-vendor .atelier-table th, .atelier-vendor .atelier-table td { padding-block: 4px; }
+  .atelier-event table { font-size: 10px; }
+  .atelier-event > .grid, .atelier-event > div.grid { display: block; }
+  .atelier-event .overflow-x-auto, .atelier-packet .overflow-x-auto { overflow: visible; }
+  .atelier-event .rounded-lg { border-color: #e2ddd5; background: #fcfbf9; box-shadow: none; margin-bottom: 12px; }
+}
 .recipe-packet-content {
   overflow-x: auto;
 }

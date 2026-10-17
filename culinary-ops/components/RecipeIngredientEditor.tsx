@@ -8,7 +8,7 @@ import { money } from "@/lib/costing";
 import { updateRecipeIngredient } from "@/app/(app)/recipes/actions";
 
 export type IngredientOption = { id: string; name: string; unit: string; unitCost: number; category: string; sku: string | null; gcode: string | null; allergens: string | null; vendor: { name: string } | null };
-export function RecipeIngredientEditor({ recipeId, line, items }: { recipeId: string; line: { id: string; itemId: string; quantity: number; unit: string; note: string | null }; items: IngredientOption[] }) {
+export function RecipeIngredientEditor({ recipeId, line, items, groupNames = [] }: { recipeId: string; line: { id: string; itemId: string; quantity: number; unit: string; note: string | null; groupName?: string | null; sortOrder?: number }; items: IngredientOption[]; groupNames?: string[] }) {
   const [picked, setPicked] = useState(items.find(item => item.id === line.itemId) ?? null);
   const [state, action, pending] = useActionState(updateRecipeIngredient, { error: "", saved: false });
   return <details className="mt-2 font-normal"><summary className="cursor-pointer text-xs text-blue-600">Edit ingredient</summary>
@@ -17,6 +17,7 @@ export function RecipeIngredientEditor({ recipeId, line, items }: { recipeId: st
       <Field label="Ingredient"><ComboPicker name="itemId" defaultId={line.itemId} options={items.map(item => ({ id: item.id, label: item.name, meta: `${money(item.unitCost, 5)} / ${item.unit}`, keywords: `${item.category} ${item.vendor?.name ?? ""} ${item.sku ?? ""} ${item.gcode ?? ""}` }))} onSelect={option => setPicked(items.find(item => item.id === option?.id) ?? null)} /></Field>
       {picked && <div className="space-y-1 text-xs text-zinc-500"><p>{picked.category} · {picked.vendor?.name ?? "No vendor"}</p><p>Item # {picked.sku ?? "—"} · GCODE {picked.gcode ?? "—"}</p><AllergenBadges allergens={picked.allergens} /><Link href={`/items/${picked.id}`} target="_blank" rel="noreferrer" className="inline-block text-blue-600 underline">Full ingredient details ↗</Link></div>}
       <div className="grid grid-cols-2 gap-3"><Field label="Quantity"><Input name="quantity" type="number" step="any" min="0" required defaultValue={line.quantity} /></Field><Field label="Unit"><Input name="unit" required defaultValue={line.unit} /></Field></div>
+      <div className="grid grid-cols-2 gap-3"><Field label="Group (optional)"><Input aria-label="Group (optional)" name="groupName" list={`groups-${line.id}`} defaultValue={line.groupName ?? ""} /><datalist id={`groups-${line.id}`}>{groupNames.map(name => <option key={name} value={name} />)}</datalist></Field><Field label="Sort order"><Input name="sortOrder" type="number" min="0" step="1" defaultValue={line.sortOrder ?? 0} /></Field></div>
       <Field label="Prep / note"><Textarea name="note" rows={2} defaultValue={line.note ?? ""} /></Field>
       {state.error && <p role="alert" className="text-sm text-red-600">{state.error}</p>}
       {state.saved && <p role="status" className="text-sm text-sage">Ingredient line saved.</p>}

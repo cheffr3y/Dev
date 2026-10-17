@@ -28,5 +28,10 @@ if [ "${PREP_BROWSER_SMOKE:-0}" = "1" ]; then
   node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3107 &
   PREP_SERVER_PID=$!
   trap 'kill "$PREP_SERVER_PID" 2>/dev/null || true; cleanup' EXIT
+  if [ "${MENU_ROLLOUT_BROWSER_SMOKE:-0}" = "1" ]; then
+    node -e 'const url="http://localhost:3107/login"; (async()=>{for(let attempt=0;attempt<50;attempt++){try{if((await fetch(url)).ok) return;}catch{}await new Promise(resolve=>setTimeout(resolve,200));}process.exit(1);})()'
+    node scripts/test-menu-rollout-browser.mjs
+    exit 0
+  fi
   wait "$PREP_SERVER_PID"
 fi

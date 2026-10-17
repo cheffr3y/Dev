@@ -30,6 +30,7 @@ export default async function RecipesPage() {
     })),
   );
 
+  const nameByItemId = new Map(recipes.flatMap(recipe => recipe.items.map(({ item }) => [item.id, item.name] as const)));
   const rows = recipes.map((r) => {
     const cost = costMap.get(r.id) ?? 0;
     const perUnit = costPerYieldUnit(cost, r.yieldQty);
@@ -44,6 +45,8 @@ export default async function RecipesPage() {
       costUnit: costUnitLabel(r.yieldUnit),
       menuPrice: r.menuPrice,
       fcp: foodCostPct(perUnit, r.menuPrice),
+      unpricedNames: [...(gap?.unpriced ?? [])].map(id => nameByItemId.get(id) ?? id),
+      staleNames: [...(gap?.stale ?? [])].map(id => nameByItemId.get(id) ?? id),
       unpriced: gap?.unpriced.size ?? 0,
       stale: gap?.stale.size ?? 0,
     };

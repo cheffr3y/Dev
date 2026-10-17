@@ -5,6 +5,7 @@ import { ALLERGENS } from "@/lib/allergens";
 import { splitStep } from "@/lib/method";
 import { LocalTime } from "./LocalTime";
 import { MethodCues } from "./MethodCues";
+import { groupMiseLines } from "@/lib/recipe-groups";
 
 // Optional metadata supports immutable packets captured before this design.
 export type DossierRecipe = {
@@ -38,6 +39,8 @@ export type MiseLine = {
   note: ReactNode;
   category?: string | null;
   subRecipe?: boolean;
+  groupName?: string | null;
+  sortOrder?: number;
 };
 
 function parseSteps(instructions: string | null): string[] {
@@ -60,12 +63,13 @@ export type RecipeDossierProps = {
   id?: string;
   className?: string;
   printedAt?: Date | string;
+  footerNote?: ReactNode;
 };
 
 export function RecipeDossier({
   recipe, scale, allergenKeys, lines = [], weightInGrams = false,
   context,
-  children, supporting = false, titleLevel = 2, id, className = "", printedAt = new Date(),
+  children, footerNote, supporting = false, titleLevel = 2, id, className = "", printedAt = new Date(),
 }: RecipeDossierProps) {
   const titleId = useId();
   const Title = titleLevel === 1 ? "h1" : titleLevel === 3 ? "h3" : "h2";
@@ -80,10 +84,19 @@ export function RecipeDossier({
     <article id={id} className={`print-sheet recipe-dossier flex flex-col border border-hairline bg-canvas shadow-sm ${supporting ? "recipe-dossier-supporting" : ""} ${className}`} aria-labelledby={titleId}>
       <div className="recipe-accent h-1 shrink-0 bg-[#2C3E35]" />
       <div className="recipe-sheet-body flex flex-1 flex-col">
-        <header className="recipe-hero py-6">
+        <div className="recipe-masthead flex justify-between gap-3 border-b border-hairline py-2 font-mono text-[8px] uppercase tracking-wider text-zinc-500">
+          <span>MISE // CULINARY ARCHIVE</span>
+          <span>{recipe.station || "Kitchen"} — {recipe.category || "Recipe"}</span>
+          <span>CODE {recipe.prodCode} · V{recipe.version}</span>
+        </div>
+        <header className="recipe-hero flex items-center justify-between gap-4 py-6">
+          <div>
+          <p className="mb-1 font-display text-sm italic text-gold">{recipe.category || "Recipe"} — {recipe.station || "Kitchen"} Station</p>
           <Title id={titleId} className="recipe-title font-display text-[40px] font-medium leading-[1.12] tracking-tight text-[#2C3E35]">
             {recipe.name}
           </Title>
+          </div>
+          <span className="shrink-0 rounded-full border border-[#D5CFC4] bg-[#F4F1EA] px-3 py-2 text-right font-mono text-[10px] tabular-nums text-[#2C3E35]">{num(scale)}× Batch<span className="block text-[9px] text-zinc-500">{yieldLabel}</span></span>
         </header>
 
         <dl className="recipe-specs grid grid-cols-[1fr_1fr_0.85fr_1.1fr_1.45fr] border-y border-hairline py-3">
@@ -114,6 +127,10 @@ export function RecipeDossier({
         {children ?? <RecipeDossierWorkspace recipe={recipe} lines={lines} scale={scale} weightInGrams={weightInGrams} />}
 
         <footer className="recipe-footer mt-auto pt-6">
+          {footerNote}
+          <div className="recipe-signatures grid grid-cols-3 gap-6 pt-3 font-mono text-[8px] text-zinc-500">
+            {["Prepared By", "Date & Time", "Verified By (Chef / Sous)"].map(label => <p key={label} className="border-t border-[#D5CFC4] pt-1">{label}</p>)}
+          </div>
           <div className="recipe-colophon mt-4 flex justify-between gap-3 border-t border-hairline pt-2 font-mono text-[7px] uppercase tracking-[0.08em] text-zinc-500">
             <p>Mise // Culinary Archive · {recipe.prodCode} · V{recipe.version}</p>
             <p className="text-right">Printed <LocalTime date={printedAt} mode="date" />{recipe.updatedAt && <> · Updated <LocalTime date={recipe.updatedAt} mode="date" /></>}</p>
@@ -131,24 +148,7 @@ export function RecipeDossierWorkspace({ recipe, lines, scale, weightInGrams = f
   weightInGrams?: boolean;
 }) {
   const sectionId = useId();
-  const subRecipes: MiseLine[] = [];
-  const categories = new Map<string, MiseLine[]>();
-  for (const line of lines) {
-    if (line.subRecipe) {
-      subRecipes.push(line);
-      continue;
-    }
-    // Use the saved catalog category, including custom and historical values.
-    const category = line.category?.trim() || "Other";
-    const group = categories.get(category) ?? [];
-    group.push(line);
-    categories.set(category, group);
-  }
-  const groups = [
-    ...(subRecipes.length > 0 ? [{ label: "Sub-Recipes", lines: subRecipes }] : []),
-    ...Array.from(categories, ([label, lines]) => ({ label, lines }))
-      .sort((a, b) => a.label.localeCompare(b.label)),
-  ];
+  const groups = groupMiseLines(lines);
   const steps = parseSteps(recipe.instructions);
   const shelfLife = recipe.shelfLife || (recipe.holdLifeDays != null ? `${recipe.holdLifeDays} Days` : null);
   const storageNotes = (recipe.storage ?? "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
@@ -161,7 +161,7 @@ export function RecipeDossierWorkspace({ recipe, lines, scale, weightInGrams = f
           <div key={index} className="recipe-stage mt-3">
             {groups.length > 1 && (
               <h3 className="recipe-stage-title mb-1 flex items-center gap-2 font-mono text-[8px] font-medium uppercase tracking-[0.08em] text-gold">
-                <span>{group.label}</span>
+                <span>{["I", "II", "III", "IV", "V", "VI"][index] ?? `${index + 1}`}. {group.label}</span>
                 <span className="h-px min-w-2 flex-1 bg-[#E2DDD5]" aria-hidden="true" />
               </h3>
             )}

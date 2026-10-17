@@ -223,12 +223,14 @@ export async function deleteRecipe(formData: FormData) {
   // clear message instead of letting the Postgres FK violation crash the
   // request. Ingredients, changelog, and this recipe's own sub-recipe links
   // cascade away on their own.
-  const [prepLines, productionBatches, eventItems, banquetItems, usedIn] = await Promise.all([
+  const [prepLines, productionBatches, eventItems, banquetItems, usedIn, rolloutItems, festivalItems] = await Promise.all([
     prisma.prepOrderLine.count({ where: { recipeId: id } }),
     prisma.productionBatch.count({ where: { recipeId: id } }),
     prisma.eventMenuItem.count({ where: { recipeId: id } }),
     prisma.banquetMenuItem.count({ where: { recipeId: id } }),
     prisma.recipeComponent.count({ where: { childId: id } }),
+    prisma.menuRolloutItem.count({ where: { recipeId: id } }),
+    prisma.festivalMenuItem.count({ where: { recipeId: id } }),
   ]);
 
   const plural = (n: number, one: string, many = `${one}s`) =>
@@ -238,6 +240,8 @@ export async function deleteRecipe(formData: FormData) {
   if (productionBatches) blockers.push(plural(productionBatches, "production batch", "production batches"));
   if (eventItems) blockers.push(plural(eventItems, "event"));
   if (banquetItems) blockers.push(plural(banquetItems, "banquet"));
+  if (rolloutItems) blockers.push(plural(rolloutItems, "menu rollout"));
+  if (festivalItems) blockers.push(plural(festivalItems, "festival"));
   if (usedIn) blockers.push(`${plural(usedIn, "recipe")} (as a sub-recipe)`);
 
   if (blockers.length > 0) {
@@ -260,6 +264,8 @@ const lineSchema = z.object({
   quantity: z.coerce.number().min(0).default(0),
   unit: z.string().trim().min(1).default("each"),
   note: z.string().trim().optional(),
+  groupName: z.string().trim().max(100).optional(),
+  sortOrder: z.coerce.number().int().min(0).default(0),
 });
 
 export async function addRecipeItem(formData: FormData) {
@@ -270,13 +276,15 @@ export async function addRecipeItem(formData: FormData) {
     quantity: formData.get("quantity") || 0,
     unit: formData.get("unit") || "each",
     note: formData.get("note") || undefined,
+    groupName: formData.get("groupName") || undefined,
+    sortOrder: formData.get("sortOrder") || 0,
   });
   const existing = await prisma.recipeItem.findUnique({
     where: { recipeId_itemId: { recipeId: d.recipeId, itemId: d.itemId } },
   });
   const item = await prisma.item.findUnique({ where: { id: d.itemId } });
   if (existing) throw new Error("This ingredient is already in the recipe. Use Edit ingredient to change its quantity or prep note.");
-  await prisma.recipeItem.create({ data: { ...d, note: d.note || null } });
+  await prisma.recipeItem.create({ data: { ...d, note: d.note || null, groupName: d.groupName || null, sortOrder: d.sortOrder } });
   const label = `${item?.name ?? "ingredient"} (${d.quantity} ${unitLabel(d.unit)})${d.note ? ` — ${d.note}` : ""}`;
   await logChange(
     d.recipeId,
@@ -300,7 +308,7 @@ export async function removeRecipeItem(formData: FormData) {
 export async function updateRecipeIngredient(_previous: { error: string; saved: boolean }, formData: FormData) {
   const user = await requireRole("MANAGER");
   try {
-    const d = lineSchema.parse({ recipeId: formData.get("recipeId"), itemId: formData.get("itemId"), quantity: formData.get("quantity"), unit: formData.get("unit"), note: formData.get("note") || undefined });
+    const d = lineSchema.parse({ recipeId: formData.get("recipeId"), itemId: formData.get("itemId"), quantity: formData.get("quantity"), unit: formData.get("unit"), note: formData.get("note") || undefined, groupName: formData.get("groupName") || undefined, sortOrder: formData.get("sortOrder") || 0 });
     const id = z.string().min(1).parse(formData.get("id"));
     await prisma.$transaction(async tx => {
       const [existing, item] = await Promise.all([tx.recipeItem.findUnique({ where: { id }, include: { item: true } }), tx.item.findUnique({ where: { id: d.itemId } })]);
@@ -308,7 +316,7 @@ export async function updateRecipeIngredient(_previous: { error: string; saved: 
       if ((existing.itemId !== d.itemId || existing.unit !== d.unit) && !canConvert(d.unit, item.unit)) throw new Error(`Use a unit convertible to ${item.unit} for the selected ingredient. No weight-to-volume conversion is assumed.`);
       const duplicate = await tx.recipeItem.findUnique({ where: { recipeId_itemId: { recipeId: d.recipeId, itemId: d.itemId } } });
       if (duplicate && duplicate.id !== id) throw new Error("This ingredient already has a line in the recipe. Edit that line, or consolidate through Ingredient cleanup.");
-      await tx.recipeItem.update({ where: { id }, data: { itemId: d.itemId, quantity: d.quantity, unit: d.unit, note: d.note || null } });
+      await tx.recipeItem.update({ where: { id }, data: { itemId: d.itemId, quantity: d.quantity, unit: d.unit, note: d.note || null, groupName: d.groupName || null, sortOrder: d.sortOrder } });
       const recipe = await tx.recipe.update({ where: { id: d.recipeId }, data: { version: { increment: 1 } } });
       await tx.recipeChange.create({ data: { recipeId: recipe.id, version: recipe.version, summary: "Updated ingredient", detail: `${existing.item.name} (${existing.quantity} ${existing.unit}) → ${item.name} (${d.quantity} ${d.unit})${d.note ? ` — ${d.note}` : ""}`, userId: user.id, userName: user.name } });
     });

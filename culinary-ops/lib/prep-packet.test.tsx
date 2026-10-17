@@ -161,7 +161,7 @@ test("reference collection terminates cycles and omits missing recipes and empty
   assert.equal(renderToStaticMarkup(<RecipeReferences references={new Map()} byId={byId} />), "");
 });
 
-test("dossier preserves fractional scaling, saved categories, cues and inherited allergens", () => {
+test("dossier preserves fractional scaling, culinary stages, cues and inherited allergens", () => {
   const { wraps, ranch, byId } = referenceFixture();
   wraps.category = "Lunch";
   wraps.station = "Garde Manger";
@@ -178,13 +178,14 @@ test("dossier preserves fractional scaling, saved categories, cues and inherited
     compact={false} depth={0} stack={new Set()} references={buildRecipeReferences([{ node: wraps, totalBatches: 2.5 }], byId)} />);
   const text = textContent(html);
   assert.match(text, /25 each/);
-  assert.doesNotMatch(html, /recipe-batch|recipe-masthead|recipe-kicker|recipe-signature/);
-  assert.doesNotMatch(text, /2.5×|Production Batch|Prepared By|Date &amp; Time|Verified By|Garde Manger|Lunch/);
+  assert.match(html, /recipe-masthead/);
+  assert.match(text, /2.5× Batch/);
+  assert.match(text, /Prepared By.*Date &amp; Time.*Verified By/);
+  assert.match(text, /Garde Manger.*Lunch/);
   assert.match(text, /30m/);
-  assert.match(html, /<span>Sub-Recipes<\/span>/);
-  assert.match(html, /<span>Produce<\/span>/);
-  assert.match(html, /<span>Legacy category<\/span>/);
-  assert.doesNotMatch(text, /Botanicals|Emulsion|Lipids|Aromatics/);
+  assert.match(text, /I\. House Sub-Recipes/);
+  assert.match(text, /II\. Produce &amp; Botanicals/);
+  assert.match(text, /III\. Seasonings &amp; Aromatics/);
   assert.match(text, /Greenswashed10 oz/);
   assert.match(text, /1 minute/);
   assert.match(text, /165°F/);

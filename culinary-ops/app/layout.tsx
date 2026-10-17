@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { IBM_Plex_Mono, Inter, Playfair_Display } from "next/font/google";
+import { Cormorant_Garamond, JetBrains_Mono, IBM_Plex_Mono, Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
 
 // "The French Laundry" type pairing: a high-contrast serif for page titles
@@ -22,6 +22,9 @@ const mono = IBM_Plex_Mono({
   weight: ["400", "500", "600"],
 });
 
+const atelierSerif = Cormorant_Garamond({ variable: "--font-atelier-serif", subsets: ["latin"], weight: ["400", "500", "600", "700"], style: ["normal", "italic"] });
+const atelierMono = JetBrains_Mono({ variable: "--font-atelier-mono", subsets: ["latin"], weight: ["400", "500", "600"] });
+
 export const metadata: Metadata = {
   title: "Mise — Culinary Operations",
   description: "Recipes, inventory, order guides, and event planning across every venue.",
@@ -43,7 +46,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${serif.variable} ${sans.variable} ${mono.variable} h-full antialiased`}
+      className={`${serif.variable} ${sans.variable} ${mono.variable} ${atelierSerif.variable} ${atelierMono.variable} h-full antialiased`}
     >
       <body className="min-h-full font-sans">{children}</body>
     </html>

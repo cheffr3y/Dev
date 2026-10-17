@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Badge, Card, cn } from "@/components/ui";
+import { CostIntegrityBanner } from "@/components/CostAudit";
 import { money, pct } from "@/lib/costing";
 
 // Costing (including nested sub-recipes) is done on the server; this island
@@ -17,6 +18,8 @@ export type RecipeRow = {
   costUnit: string;
   menuPrice: number | null;
   fcp: number | null;
+  unpricedNames?: string[];
+  staleNames?: string[];
   unpriced: number; // ingredients in the tree with no price on file
   stale: number; // priced ingredients not re-costed within the window
 };
@@ -47,6 +50,7 @@ export function RecipesTable({ rows }: { rows: RecipeRow[] }) {
 
   return (
     <div>
+      <CostIntegrityBanner unpriced={[...new Set(rows.flatMap(row => row.unpricedNames ?? []))].sort()} stale={[...new Set(rows.flatMap(row => row.staleNames ?? []))].sort()} />
       {/* Filter controls */}
       <div className="mb-4 space-y-3">
         <div className="relative max-w-sm">

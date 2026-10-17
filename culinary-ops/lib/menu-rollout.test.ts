@@ -1,0 +1,93 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { buildMenuRollout, packetMode, type RolloutRecipe, type RolloutLine } from "./menu-rollout";
+
+const now = new Date("2026-10-17T12:00:00Z");
+function fixture() {
+  const butter = { id: "butter", name: "Butter", category: "Dairy", unitCost: 4, unit: "lb", priceUpdatedAt: now, allergens: "milk", sku: "B01", gcode: "G01", packSize: "4 x 1 lb", vendor: { id: "dairy", name: "Dairy Vendor" } };
+  const greens = { ...butter, id: "greens", name: "Greens", category: "Produce", unitCost: 2, allergens: null, vendor: { id: "farm", name: "Farm Vendor" } };
+  const node = (id: string, overrides: Partial<RolloutRecipe>): RolloutRecipe => ({ id, name: id, station: "Cold", menuPrice: null, allergens: null, yieldQty: 1, yieldUnit: "qt", items: [], components: [], ...overrides });
+  const stock = node("Stock", { yieldQty: 2, items: [{ quantity: 16, unit: "oz", item: butter }] });
+  const sauce = node("Sauce", { items: [{ quantity: 2, unit: "oz", item: butter }], components: [{ childId: stock.id, quantity: 16, unit: "fl oz" }] });
+  const dish = node("Dish", { yieldQty: 10, yieldUnit: "each", menuPrice: 3.5, items: [{ quantity: 16, unit: "oz", item: greens }], components: [{ childId: sauce.id, quantity: 32, unit: "fl oz" }] });
+  const second = node("Second", { yieldQty: 5, yieldUnit: "each", menuPrice: 3, components: [{ childId: sauce.id, quantity: 16, unit: "fl oz" }] });
+  const line = (recipeId: string, parBatches: number, sortOrder: number): RolloutLine => ({ id: recipeId, recipeId, section: "Cold", menuTitle: null, menuDescription: null, menuPrice: null, parBatches, sortOrder });
+  return { recipes: [dish, second, sauce, stock], items: [line(dish.id, 2, 1), line(second.id, 3, 2)], butter, dish, second, sauce, stock };
+}
+const close = (actual: number | null, expected: number) => assert.ok(actual != null && Math.abs(actual - expected) < 1e-10, `${actual} ≠ ${expected}`);
+
+test("nested menu costs, margins and vendor quantities agree across fractional child batches", () => {
+  const f = fixture();
+  const plan = buildMenuRollout(f, f.recipes, now);
+  close(plan.rows[0].batchCost, 3.5);
+  close(plan.rows[0].portionCost, 0.35);
+  close(plan.rows[0].grossMargin, 3.15);
+  close(plan.rows[0].fcp, 10);
+  close(plan.rows[1].fcp, 5);
+  close(plan.averageFcp, 7.5);
+  close(plan.averageMenuPrice, 3.25);
+  close(plan.totalOpeningFoodCost, 9.25);
+  close(plan.parWeightedFcp, 9.25 / 115 * 100);
+  assert.deepEqual(plan.dependencies.map(row => row.recipe.id), ["Sauce", "Stock"]);
+  for (const dependency of plan.dependencies) assert.deepEqual(dependency.usedIn, ["Dish", "Second"]);
+  const dairy = plan.vendorGroups.find(vendor => vendor.id === "dairy")!;
+  close(dairy.lines[0].purchaseQty, 1.3125);
+  close(dairy.estimatedCost, 5.25);
+  assert.equal(dairy.lines[0].item.sku, "B01");
+  assert.equal(dairy.lines[0].item.gcode, "G01");
+  assert.equal(dairy.lines[0].item.packSize, "4 x 1 lb");
+  close(plan.vendorGroups.find(vendor => vendor.id === "farm")!.lines[0].purchaseQty, 2);
+  close(plan.vendorGroups.reduce((sum, vendor) => sum + vendor.estimatedCost, 0), plan.totalOpeningFoodCost);
+  assert.deepEqual(plan.rows[0].allergens, ["milk"]);
+  assert.deepEqual(plan.categoryGroups.map(group => group.category), ["Dairy", "Produce"]);
+});
+
+test("overrides, zero pars and missing prices do not imply free verified dishes", () => {
+  const f = fixture();
+  f.items[0].menuPrice = 7;
+  f.items[1].menuPrice = 0;
+  f.items[1].parBatches = 0;
+  f.butter.unitCost = 0;
+  const plan = buildMenuRollout(f, f.recipes, now);
+  close(plan.rows[0].effectiveMenuPrice, 7);
+  assert.equal(plan.rows[1].fcp, null);
+  assert.equal(plan.missingMenuPrices, 1);
+  assert.deepEqual(plan.unpricedNames, ["Butter"]);
+  assert.equal(plan.priceGaps.unpriced.size, 1);
+  close(plan.totalOpeningFoodCost, 4);
+  assert.equal(plan.orderLines.length, 2);
+});
+
+test("stale nested prices are deduplicated; untracked paid prices are neutral", () => {
+  const f = fixture();
+  f.butter.priceUpdatedAt = new Date("2026-01-01");
+  const plan = buildMenuRollout(f, f.recipes, now);
+  assert.deepEqual(plan.staleNames, ["Butter"]);
+  assert.equal(plan.rows[0].priceGaps.stale.size, 1);
+  assert.equal(plan.rows[1].priceGaps.stale.size, 1);
+  const untracked = { ...f.butter, priceUpdatedAt: null };
+  for (const recipe of f.recipes) for (const line of recipe.items) if (line.item.id === "butter") line.item = untracked;
+  assert.deepEqual(buildMenuRollout(f, f.recipes, now).staleNames, []);
+});
+
+test("dependency traversal terminates cycles and purchase-unit mismatches stay explicit", () => {
+  const f = fixture();
+  f.stock.components.push({ childId: f.dish.id, quantity: 1, unit: "each" });
+  assert.equal(buildMenuRollout(f, f.recipes, now).dependencies.length, 3);
+  f.stock.components = [];
+  f.stock.items[0].unit = "cup";
+  const line = buildMenuRollout(f, f.recipes, now).orderLines.find(line => line.itemId === "butter")!;
+  assert.equal(line.converted, false);
+  assert.equal(line.extendedCost, null);
+  assert.equal(line.purchaseQty, null);
+});
+
+test("empty rollout and unsupported packet modes have deterministic defaults", () => {
+  const plan = buildMenuRollout({ items: [] }, [], now);
+  assert.equal(plan.averageFcp, null);
+  assert.equal(plan.totalOpeningFoodCost, 0);
+  assert.deepEqual(plan.dependencies, []);
+  assert.equal(packetMode("bad-mode"), "all");
+  assert.equal(packetMode(["recipes", "costing"]), "all");
+  assert.equal(packetMode("order-guide"), "order-guide");
+});
