@@ -11,7 +11,7 @@ Built with Next.js (App Router), TypeScript, Prisma, and PostgreSQL. Role-based 
 | Module | What it does |
 | --- | --- |
 | **Dashboard** | At-a-glance counts, low-stock alerts for your active venue, and upcoming events. |
-| **Recipes & Builds** | Standardized recipes with ingredients, method, yield, menu price → automatic **plate cost, cost/serving, and food-cost %** (color-coded against targets). |
+| **Recipes & Builds** | Standardized recipes with ingredients, method, yield, menu price → automatic **batch cost, cost per yield unit, and food-cost %** (color-coded against targets). |
 | **Ingredients** | Shared ingredient list with allergen tags, unit cost, pack size, category, and vendor. Recipes inherit allergens and costing from here. |
 | **Inventory** | Per-venue on-hand counts vs. par levels, low-stock highlighting, and inventory value. |
 | **Order Guides** | Per-venue / per-vendor order sheets. Computes **order quantity = par − on-hand** and an estimated order total. Print-friendly. |
@@ -115,7 +115,7 @@ Ingredients have full editors at `/items/[id]`, including vendor codes, structur
 
 Recipe ingredient rows support editing quantity, unit, prep note, or ingredient directly. Ingredient searches include vendor and product codes, show the selected product’s metadata and allergens, and link to its full editor. Already-used ingredients are omitted from the add picker to prevent accidental overwrites.
 
-Every recipe has a kitchen-facing print view at `/recipes/[id]/print`: ingredients grouped by their saved catalog categories, numbered method steps, allergen banner, critical food-safety (HACCP) box, and storage & shelf-life instructions. Quantities and yield scale for batches via `?scale=N` (1×, 2×, or 4× in the screen-only toolbar). The printed sheet starts with the recipe name and omits the archive header, batch controls, and prepared/verified sign-off lines. Costs and margins are intentionally omitted from the card.
+Every recipe has a kitchen-facing print view at `/recipes/[id]/print`: ingredients grouped by their saved catalog categories, numbered method steps, allergen banner, critical food-safety (HACCP) box, and storage & shelf-life instructions. Choose **Print with Costing** on the recipe or **With costing** in the print toolbar (`?costs=1`) to include ingredient and sub-recipe unit costs, line costs, subtotals, total batch cost, cost per yield unit, and menu price/food cost % when available. The regular **Kitchen copy** omits costs. Quantities, yield, and batch costs scale together (1×, 2×, or 4×); unit costs remain fixed. Recipe details, the catalog, and costing prints label rates using the saved yield unit (for example, $4.69 for 5 lb is $0.938/lb). The printed sheet starts with the recipe name and omits the archive header, batch controls, and prepared/verified sign-off lines.
 
 Method cues highlight stated techniques, durations, temperatures, and endpoints with small icons and muted colors. Each step shows up to four cues, prioritizing numeric instructions and preserving qualifiers such as “at least” or “within.” Cues are extracted from saved method text and do not add cooking targets or change the recipe.
 
@@ -165,3 +165,5 @@ For the functional browser check, build first, then run `PREP_BROWSER_SMOKE=1 np
 Against the same disposable harness, `node scripts/test-ingredient-allergens-browser.mjs` checks ingredient tag creation/clearing, nested recipe inheritance, manual recipe selections, printed profiles, and staff read-only access. Set `INGREDIENT_REVIEW_DIR` to save UI screenshots.
 
 `node scripts/test-ingredient-cleanup-browser.mjs` uses the same harness to verify full ingredient edits, recipe-line edits, reviewed duplicate consolidation, compatible quantity conversion, retained notes and manager-only access.
+
+`node scripts/test-recipe-costing-browser.mjs` uses the disposable harness to check costing prints, kitchen-copy toggles, nested sub-recipe costs, 2×/4× batches, and yield-unit labels with gram precision. It changes only disposable fixture yields and writes review screenshots/PDFs to `/tmp/recipe-costing-review` (override with `RECIPE_REVIEW_DIR`).

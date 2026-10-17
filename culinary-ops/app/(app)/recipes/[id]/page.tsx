@@ -4,7 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { requireUser, hasRole } from "@/lib/session";
 import {
   recipeCost,
-  costPerServing,
+  costPerYieldUnit,
+  costUnitLabel,
   foodCostPct,
   lineCost,
   componentLineCost,
@@ -113,9 +114,10 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
     0,
   );
   const totalCost = ingredientsCost + subRecipesCost;
-  const perServing = costPerServing(totalCost, recipe.yieldQty);
-  const fcp = foodCostPct(perServing, recipe.menuPrice);
-  const margin = recipe.menuPrice ? recipe.menuPrice - perServing : null;
+  const perUnit = costPerYieldUnit(totalCost, recipe.yieldQty);
+  const costUnit = costUnitLabel(recipe.yieldUnit);
+  const fcp = foodCostPct(perUnit, recipe.menuPrice);
+  const margin = recipe.menuPrice ? recipe.menuPrice - perUnit : null;
   const methodSteps = parseSteps(recipe.instructions);
 
   // Ingredient and sub-recipe tags are inherited; manual tags remain additive.
@@ -137,19 +139,24 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
         title={recipe.name}
         subtitle={`${recipe.prodCode} · v${recipe.version} · ${recipe.category}${recipe.station ? ` · ${recipe.station}` : ""} · yields ${num(recipe.yieldQty)} ${recipe.yieldUnit}`}
         action={
-          <LinkButton href={`/recipes/${recipe.id}/print`} variant="gold">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4">
-              <path d="M6 9V3h12v6M6 18H4v-7h16v7h-2M8 14h8v7H8z" strokeLinejoin="round" />
-            </svg>
-            Print Recipe Card
-          </LinkButton>
+          <div className="flex flex-wrap gap-2">
+            <LinkButton href={`/recipes/${recipe.id}/print`} variant="secondary">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4">
+                <path d="M6 9V3h12v6M6 18H4v-7h16v7h-2M8 14h8v7H8z" strokeLinejoin="round" />
+              </svg>
+              Print Recipe Card
+            </LinkButton>
+            <LinkButton href={`/recipes/${recipe.id}/print?costs=1`} variant="gold">
+              Print with Costing
+            </LinkButton>
+          </div>
         }
       />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCardBlock label="Total Cost" value={money(totalCost)} sub={`${recipe.items.length} ingredients${recipe.components.length ? ` · ${recipe.components.length} sub-recipe${recipe.components.length === 1 ? "" : "s"}` : ""}`} />
-        <StatCardBlock label="Cost / Serving" value={money(perServing)} />
-        <StatCardBlock label="Menu Price" value={recipe.menuPrice ? money(recipe.menuPrice, 5) : "—"} sub={margin != null ? `${money(margin)} margin` : undefined} />
+        <StatCardBlock label={`Cost / ${costUnit}`} value={money(perUnit, 5)} />
+        <StatCardBlock label="Menu Price" value={recipe.menuPrice ? money(recipe.menuPrice, 5) : "—"} sub={margin != null ? `${money(margin, 5)} margin / ${costUnit}` : undefined} />
         <StatCardBlock label="Food Cost %" value={fcp == null ? "—" : pct(fcp)} />
       </div>
 

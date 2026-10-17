@@ -214,6 +214,8 @@ body {
 .recipe-step,
 .recipe-critical,
 .recipe-storage,
+.recipe-cost-summary,
+.recipe-costing tr,
 .recipe-footer {
   break-inside: avoid;
   page-break-inside: avoid;
@@ -306,6 +308,19 @@ body {
   .recipe-section-title {
     padding-bottom: 6px;
     font-size: 16pt;
+  }
+  .recipe-costing {
+    margin-top: 16px;
+  }
+  .recipe-costing h2,
+  .recipe-costing thead {
+    break-after: avoid;
+  }
+  .recipe-costing thead {
+    display: table-header-group;
+  }
+  .recipe-costing tfoot {
+    display: table-row-group;
   }
   .recipe-stage {
     margin-top: 5px;

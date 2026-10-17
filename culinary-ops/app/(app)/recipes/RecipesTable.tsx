@@ -13,7 +13,8 @@ export type RecipeRow = {
   station: string | null;
   category: string;
   cost: number;
-  perServing: number;
+  perUnit: number;
+  costUnit: string;
   menuPrice: number | null;
   fcp: number | null;
   unpriced: number; // ingredients in the tree with no price on file
@@ -101,7 +102,7 @@ export function RecipesTable({ rows }: { rows: RecipeRow[] }) {
                 <th className="px-6 py-4 font-medium">Recipe</th>
                 <th className="px-6 py-4 font-medium">Category</th>
                 <th className="px-6 py-4 text-right font-medium">Cost</th>
-                <th className="px-6 py-4 text-right font-medium">$ / serving</th>
+                <th className="px-6 py-4 text-right font-medium">Cost / yield unit</th>
                 <th className="px-6 py-4 text-right font-medium">Menu</th>
                 <th className="px-6 py-4 text-right font-medium">Food %</th>
               </tr>
@@ -144,7 +145,7 @@ export function RecipesTable({ rows }: { rows: RecipeRow[] }) {
                       </span>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-right text-zinc-600">{money(r.perServing)}</td>
+                  <td className="px-6 py-4 text-right text-zinc-600">{money(r.perUnit, 5)} / {r.costUnit}</td>
                   <td className="px-6 py-4 text-right text-zinc-600">{r.menuPrice ? money(r.menuPrice, 5) : "—"}</td>
                   <td className="px-6 py-4 text-right">
                     {r.fcp == null ? (

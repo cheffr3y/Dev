@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireUser, hasRole } from "@/lib/session";
-import { buildCostMap, buildPriceGapMap, costPerServing, foodCostPct } from "@/lib/costing";
+import { buildCostMap, buildPriceGapMap, costPerYieldUnit, costUnitLabel, foodCostPct } from "@/lib/costing";
 import { Button, Card, Field, Input, PageHeader, Select } from "@/components/ui";
 import { createRecipe } from "./actions";
 import { RecipesTable } from "./RecipesTable";
@@ -32,7 +32,7 @@ export default async function RecipesPage() {
 
   const rows = recipes.map((r) => {
     const cost = costMap.get(r.id) ?? 0;
-    const perServing = costPerServing(cost, r.yieldQty);
+    const perUnit = costPerYieldUnit(cost, r.yieldQty);
     const gap = gapMap.get(r.id);
     return {
       id: r.id,
@@ -40,9 +40,10 @@ export default async function RecipesPage() {
       station: r.station,
       category: r.category,
       cost,
-      perServing,
+      perUnit,
+      costUnit: costUnitLabel(r.yieldUnit),
       menuPrice: r.menuPrice,
-      fcp: foodCostPct(perServing, r.menuPrice),
+      fcp: foodCostPct(perUnit, r.menuPrice),
       unpriced: gap?.unpriced.size ?? 0,
       stale: gap?.stale.size ?? 0,
     };

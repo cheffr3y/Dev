@@ -5,7 +5,7 @@
 // back to the legacy same-unit assumption and report `converted: false` so
 // the UI can flag the line.
 
-import { convertQty } from "./units";
+import { convertQty, unitLabel } from "./units";
 
 export type RecipeItemWithCost = {
   quantity: number;
@@ -92,9 +92,17 @@ export function buildCostMap(recipes: RecipeCostNode[]): Map<string, number> {
   return cache;
 }
 
-export function costPerServing(totalCost: number, yieldQty: number): number {
+// A yield may be weight, volume, count, or servings. The denominator always
+// stays in the saved yield unit; 5 lb at $4.69 is $0.938/lb, not per serving.
+export function costPerYieldUnit(totalCost: number, yieldQty: number): number {
   if (!yieldQty || yieldQty <= 0) return 0;
   return totalCost / yieldQty;
+}
+
+export function costUnitLabel(yieldUnit: string): string {
+  const unit = yieldUnit.trim();
+  const serving = unit.match(/^(serving|portion)s?$/i);
+  return serving ? serving[1].toLowerCase() : unitLabel(unit) || "unit";
 }
 
 // --- Price integrity -------------------------------------------------------
@@ -207,10 +215,10 @@ export function priceGapNames(
   return { unpriced: names(unpriced), stale: names(stale) };
 }
 
-// Food cost % = ingredient cost per serving / menu price.
-export function foodCostPct(costPerServing: number, menuPrice?: number | null): number | null {
+// Menu price and food cost use the same recipe yield unit.
+export function foodCostPct(costPerUnit: number, menuPrice?: number | null): number | null {
   if (!menuPrice || menuPrice <= 0) return null;
-  return (costPerServing / menuPrice) * 100;
+  return (costPerUnit / menuPrice) * 100;
 }
 
 export function money(n: number | null | undefined, maximumFractionDigits = 2): string {
