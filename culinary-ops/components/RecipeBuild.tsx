@@ -1,8 +1,6 @@
-// Shared cook-packet renderer: a recipe scaled to a batch count, with every
-// sub-recipe built inline to any depth. Used by the commissary prep-order
-// packet, the banquet cook packet and the festival recipe guide so the
-// "scaled recipe + nested sub-builds" math and layout live in exactly one
-// place.
+// Shared scaled-recipe renderer. Banquet and commissary packets provide a
+// reference plan to keep one level inline and send deeper builds to the back.
+// Other guides can continue rendering the full nested tree.
 //
 // The whole recipe catalog is loaded as a flat map of RecipeTreeNode so a
 // recipe's sub-recipes can be nested to any depth (their own ingredients, method
@@ -14,6 +12,7 @@ import { num, componentBatchFactor } from "@/lib/costing";
 import { displayMeasure } from "@/lib/units";
 import { allergenLabels, effectiveAllergens } from "@/lib/allergens";
 import { splitStep } from "@/lib/method";
+import type { RecipeReferencePlan } from "@/lib/recipe-references";
 
 // Catalog node used for recursive sub-build rendering.
 export type RecipeTreeNode = {
@@ -232,6 +231,7 @@ export function RecipeBuildBody({
   stack,
   sharedRefs,
   weightInGrams = false,
+  references,
 }: {
   node: RecipeTreeNode;
   byId: Map<string, RecipeTreeNode>;
@@ -241,6 +241,7 @@ export function RecipeBuildBody({
   stack: Set<string>;
   sharedRefs?: Map<string, string>;
   weightInGrams?: boolean;
+  references?: RecipeReferencePlan;
 }) {
   const steps = parseSteps(node.instructions);
   const allergens = allergenLabels(effectiveAllergens(node.id, byId));
@@ -249,6 +250,9 @@ export function RecipeBuildBody({
   // something to say (an ingredient note or a sub-recipe pull pointer), so
   // blank builds give the space back to the ingredients.
   const hasNotes = node.items.some((ri) => ri.note) || node.components.length > 0;
+  const inlineComponents = node.components.filter((component) =>
+    byId.has(component.childId) && (!references || !sharedRefs?.has(component.childId)),
+  );
 
   return (
     <>
@@ -292,12 +296,19 @@ export function RecipeBuildBody({
             const { batches } = componentBatchFactor(c.quantity, c.unit, child.yieldQty, child.yieldUnit);
             const m = displayMeasure(batches * child.yieldQty * totalBatches, child.yieldUnit, weightInGrams);
             const sharedRef = sharedRefs?.get(c.childId);
+            const reference = references && depth > 0 ? references.get(c.childId) : undefined;
             return (
               <tr key={c.id} className="even:bg-zinc-100/80">
                 <td className={`${cellY} pl-2 pr-3 text-right font-semibold tabular-nums text-zinc-900`}>{num(m.qty)}</td>
                 <td className={`${cellY} pr-4 text-zinc-600`}>{m.label}</td>
                 <td className={`${cellY} pr-4 text-zinc-900`}>{child.name} (sub-recipe)</td>
-                <td className={`${cellY} pr-2 text-zinc-500`}>{sharedRef ? `pull from ${sharedRef}` : "see build below ↓"}</td>
+                <td className={`${cellY} pr-2 text-zinc-600`}>
+                  {sharedRef ? `pull from ${sharedRef}` : reference ? (
+                    <a href={`#recipe-reference-${child.id}`} className="underline underline-offset-2">
+                      Reference {reference.label} at the back
+                    </a>
+                  ) : "see sub-recipe below ↓"}
+                </td>
               </tr>
             );
           })}
@@ -309,7 +320,7 @@ export function RecipeBuildBody({
           {steps.map((step, i) => {
             const { action, detail } = splitStep(step);
             return (
-              <li key={i} className="flex gap-3 text-sm leading-relaxed text-zinc-800">
+              <li key={i} className={`flex gap-3 text-sm leading-relaxed text-zinc-800 ${references ? "print:leading-snug" : ""}`}>
                 <span className="w-6 shrink-0 text-right font-semibold tabular-nums text-zinc-400">
                   {String(i + 1).padStart(2, "0")}
                 </span>
@@ -333,18 +344,17 @@ export function RecipeBuildBody({
         </p>
       )}
 
-      {/* Nested sub-builds — each sub-recipe's own ingredients + method, scaled
-          to the amount this batch needs, so the recipe is fully buildable from
-          one entry. */}
-      {node.components.length > 0 && (
+      {/* Packet references keep only the first level inline; other guides
+          retain the recursive builds at every depth. */}
+      {inlineComponents.length > 0 && (!references || depth === 0) && (
         <div className={compact ? "mt-3 space-y-3" : "mt-6 space-y-4"}>
-          {!compact && <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-900">Sub-Builds</p>}
-          {node.components.map((c) => {
+          {!compact && <p className="text-xs font-semibold uppercase tracking-wide text-zinc-900">{references ? "Supporting sub-recipes" : "Sub-Builds"}</p>}
+          {inlineComponents.map((c) => {
             const child = byId.get(c.childId);
             if (!child) return null;
             const { batches } = componentBatchFactor(c.quantity, c.unit, child.yieldQty, child.yieldUnit);
             return (
-              <SubBuild key={c.id} node={child} byId={byId} totalBatches={batches * totalBatches} depth={depth} stack={stack} sharedRefs={sharedRefs} weightInGrams={weightInGrams} />
+              <SubBuild key={c.id} node={child} byId={byId} totalBatches={batches * totalBatches} depth={depth} stack={stack} sharedRefs={sharedRefs} weightInGrams={weightInGrams} references={references} parentName={node.name} />
             );
           })}
         </div>
@@ -368,6 +378,8 @@ export function SubBuild({
   stack,
   sharedRefs,
   weightInGrams = false,
+  references,
+  parentName,
 }: {
   node: RecipeTreeNode;
   byId: Map<string, RecipeTreeNode>;
@@ -376,6 +388,8 @@ export function SubBuild({
   stack: Set<string>;
   sharedRefs?: Map<string, string>;
   weightInGrams?: boolean;
+  references?: RecipeReferencePlan;
+  parentName?: string;
 }) {
   if (stack.has(node.id)) return null; // cycle guard
 
@@ -404,20 +418,20 @@ export function SubBuild({
 
   return (
     <div className={`break-inside-avoid border-l-2 border-zinc-400 pl-4 ${depth > 0 ? "ml-2" : ""}`}>
+      {references && <p className="mb-1 text-xs font-semibold text-zinc-900">Sub-recipe of {parentName}</p>}
       <div className="flex items-baseline justify-between gap-3">
         <h3 className="font-display text-xl font-medium tracking-tight text-zinc-900">
-          ↳ {node.name}{" "}
-          <span className="align-middle text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-400">sub-recipe</span>
+          {references ? node.name : <>↳ {node.name}{" "}<span className="align-middle text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-400">sub-recipe</span></>}
         </h3>
         <span className="shrink-0 text-sm font-semibold text-zinc-900">
-          make {num(made.qty)} {made.label}
+          {references ? "Needed:" : "make"} {num(made.qty)} {made.label}
         </span>
       </div>
       <p className="mt-0.5 text-xs text-zinc-500">
         {node.prodCode} · v{node.version} · base yield {num(node.yieldQty)} {node.yieldUnit}
       </p>
 
-      <RecipeBuildBody node={node} byId={byId} totalBatches={totalBatches} compact depth={depth + 1} stack={nextStack} sharedRefs={sharedRefs} weightInGrams={weightInGrams} />
+      <RecipeBuildBody node={node} byId={byId} totalBatches={totalBatches} compact depth={depth + 1} stack={nextStack} sharedRefs={sharedRefs} weightInGrams={weightInGrams} references={references} />
     </div>
   );
 }

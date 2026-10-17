@@ -10,6 +10,8 @@ Open **Prep Orders → Daily Prep** and choose the day.
 
 Daily Prep contains no cost-entry or accounting work.
 
+The cook packet keeps each requested recipe and its immediate sub-recipes together. Labels such as **Sub-recipe of Ranch dressing** show the relationship. Deeper recipes appear once under **Sub-recipe references** at the back; component lines point to a reference such as **A.1**. Reference quantities total the packet's demand. Use prepared stock when available; a component already printed as its own batch points to that lot.
+
 ## Admins: fill in the daily worksheet
 
 Open **Closeout & Accounting**, choose the day, and fill in the recipes already listed.

@@ -110,6 +110,8 @@ scripts/dev-setup.sh     Local Postgres bootstrap
 ## Printable recipe cards
 Every recipe has a kitchen-facing print view at `/recipes/[id]/print`: ingredient table, numbered method steps, allergen banner, critical food-safety (HACCP) box, storage & shelf-life instructions, and a prepared/verified sign-off footer. Quantities and yield scale for batches via `?x=N` (×1–×4 in the toolbar). Costs and margins are intentionally omitted from the card.
 
+Banquet and commissary cook packets keep immediate sub-recipes beside the main recipe, labeled with their parent and quantity needed. Deeper recipes print once in a numbered reference section at the back, with total demand across the packet and links from the component lines. Ingredients, methods, allergens, and critical notes remain available; prepared components can be pulled from stock. Commissary references use the frozen packet recipes and preserve links to separately printed lots.
+
 ## Prep Orders
 
 `/prep-orders` opens **Daily Prep**: chefs order for their assigned venue and view the shared recipe totals and destination quantities. Managers/admins generate frozen prep sheets; all signed-in chefs can view and reprint them.

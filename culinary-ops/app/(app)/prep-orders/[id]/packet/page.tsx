@@ -9,6 +9,8 @@ import { PrepCoolingLog } from "@/components/PrepCoolingLog";
 import { PrintButton } from "@/components/PrintButton";
 import { LocalTime } from "@/components/LocalTime";
 import { ShoppingListBody } from "@/components/ShoppingList";
+import { RecipeReferences } from "@/components/RecipeReferences";
+import { buildRecipeReferences, type RecipeReferencePlan } from "@/lib/recipe-references";
 import {
   RecipeBuildBody,
   buildRecipeTree,
@@ -113,6 +115,14 @@ export default async function CookPacketPage({
   for (const lines of groups.values()) {
     sharedRefs.set(lines[0].recipeId, `lot ${lines[0].lot!}`);
   }
+  const references = buildRecipeReferences(
+    [...groups.values()].flatMap((lines) => {
+      const node = byId.get(lines[0].recipeId);
+      return node ? [{ node, totalBatches: packetScale(lines).scale }] : [];
+    }),
+    byId,
+    sharedRefs,
+  );
 
   const madeOn = fmtDate(order.forDate);
 
@@ -202,7 +212,7 @@ export default async function CookPacketPage({
             <span>Mise · Cook Packet</span>
             <span>Production {madeOn}</span>
           </div>
-          <h1 className="mt-2 font-display text-4xl font-medium tracking-tight text-zinc-900">
+          <h1 className="mt-2 font-display text-4xl font-medium tracking-tight text-zinc-900 print:text-3xl">
             Commissary Prep
           </h1>
           <p className="mt-1 text-sm text-zinc-500">
@@ -230,7 +240,7 @@ export default async function CookPacketPage({
             </section>
           )}
 
-          <div className="mt-8 space-y-10">
+          <div className="mt-8 space-y-10 print:mt-4">
             {[...groups.values()].map((lines, i) => (
               <PacketEntry
                 key={lines[0].lot}
@@ -239,6 +249,7 @@ export default async function CookPacketPage({
                 forDate={order.forDate}
                 byId={byId}
                 sharedRefs={sharedRefs}
+                references={references}
                 // Each recipe starts on a new page. The first only breaks when a
                 // shopping list precedes it, so it doesn't strand the header alone.
                 breakBefore={
@@ -251,6 +262,8 @@ export default async function CookPacketPage({
 
           <PrepPacketLog lines={printed} madeOn={madeOn} />
           {includeCooling && <PrepCoolingLog lines={printed} madeOn={madeOn} />}
+
+          <RecipeReferences references={references} byId={byId} sharedRefs={sharedRefs} weightInGrams={weightInGrams} />
 
           <p className="mt-10 border-t border-zinc-200 pt-4 text-[10px] uppercase tracking-[0.14em] text-zinc-400">
             Printed <LocalTime date={new Date()} mode="date" /> · Lots assigned
@@ -279,12 +292,26 @@ type PacketLine = {
   };
 };
 
+function packetScale(lines: PacketLine[]) {
+  const recipe = lines[0].recipe;
+  let combinedInYield = 0;
+  let convertible = true;
+  for (const line of lines) {
+    const quantity = convertQty(line.requestedQty, line.requestedUnit, recipe.yieldUnit);
+    if (quantity == null) convertible = false;
+    else combinedInYield += quantity;
+  }
+  const scale = convertible && recipe.yieldQty > 0 ? combinedInYield / recipe.yieldQty : 1;
+  return { combinedInYield, convertible, scale };
+}
+
 function PacketEntry({
   lines,
   madeOn,
   forDate,
   byId,
   sharedRefs,
+  references,
   breakBefore,
   weightInGrams,
 }: {
@@ -293,6 +320,7 @@ function PacketEntry({
   forDate: Date;
   byId: Map<string, RecipeTreeNode>;
   sharedRefs: Map<string, string>;
+  references: RecipeReferencePlan;
   breakBefore: boolean;
   weightInGrams: boolean;
 }) {
@@ -302,15 +330,7 @@ function PacketEntry({
   const version = lines[0].recipeVersion;
 
   // Combine requested quantity across destinations into the recipe yield unit.
-  let combinedInYield = 0;
-  let convertible = true;
-  for (const l of lines) {
-    const c = convertQty(l.requestedQty, l.requestedUnit, recipe.yieldUnit);
-    if (c == null) convertible = false;
-    else combinedInYield += c;
-  }
-  const scale =
-    convertible && recipe.yieldQty > 0 ? combinedInYield / recipe.yieldQty : 1;
+  const { combinedInYield, convertible, scale } = packetScale(lines);
 
   const useBy =
     recipe.holdLifeDays != null
@@ -327,14 +347,15 @@ function PacketEntry({
 
   return (
     <article
-      className={`break-inside-avoid border-t-2 border-zinc-900 pt-4 ${breakBefore ? "break-before-page" : ""}`}
+      className={`break-inside-avoid border-t-2 border-zinc-900 pt-4 print:break-inside-auto print:pt-3 ${breakBefore ? "break-before-page" : ""}`}
     >
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="font-display text-3xl font-medium tracking-tight text-zinc-900">
+          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-900">Requested recipe</p>
+          <h2 className="font-display text-3xl font-medium tracking-tight text-zinc-900 print:text-2xl">
             {recipe.name}
           </h2>
-          <p className="mt-1 text-lg font-semibold text-zinc-900">
+          <p className="mt-1 text-lg font-semibold text-zinc-900 print:text-base">
             Yields{" "}
             {convertible
               ? `${num(combinedInYield)} ${unitLabel(recipe.yieldUnit)}`
@@ -385,7 +406,7 @@ function PacketEntry({
           </div>
         </div>
       ) : (
-        <div className="mt-3 border-y border-zinc-300 bg-zinc-50 px-4 py-2.5 text-sm">
+        <div className="mt-3 border-y border-zinc-300 bg-zinc-50 px-4 py-2.5 text-sm print:mt-2 print:py-1.5">
           <span className="font-semibold text-zinc-900">
             Total{" "}
             {convertible
@@ -409,7 +430,7 @@ function PacketEntry({
       )}
 
       {/* Label transcription line */}
-      <div className="mt-3 grid grid-cols-3 gap-3 text-sm">
+      <div className="mt-3 grid grid-cols-3 gap-3 text-sm print:mt-2">
         <LabelCell label="Made date" value={madeOn} />
         <LabelCell label="Use-by" value={useBy ?? "—"} />
         <LabelCell label="Prod. code" value={recipe.prodCode} />
@@ -421,15 +442,16 @@ function PacketEntry({
           node={node}
           byId={byId}
           totalBatches={scale}
-          compact={false}
+          compact
           depth={0}
           stack={new Set()}
           sharedRefs={sharedRefs}
           weightInGrams={weightInGrams}
+          references={references}
         />
       )}
 
-      <div className="mt-6 space-y-5 border border-zinc-400 p-4 text-sm">
+      <div className="mt-6 break-inside-avoid space-y-5 border border-zinc-400 p-4 text-sm print:mt-3 print:space-y-2 print:p-3">
         <p>
           Actual production ______ {unitLabel(recipe.yieldUnit)} · Production
           waste ______ · Kept at commissary ______
@@ -450,7 +472,7 @@ function PacketEntry({
         </p>
       </div>
       {/* Footer stamp — self-documenting for food-safety / consistency */}
-      <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.12em] text-zinc-400">
+      <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.12em] text-zinc-400 print:mt-2">
         {recipe.name} · {recipe.prodCode} · v{version} · lot {lot} · printed{" "}
         {madeOn}
       </p>
@@ -460,7 +482,7 @@ function PacketEntry({
 
 function LabelCell({ label, value }: { label: string; value: string }) {
   return (
-    <div className="border border-zinc-300 px-3 py-1.5">
+    <div className="border border-zinc-300 px-3 py-1.5 print:py-1">
       <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-400">
         {label}
       </p>

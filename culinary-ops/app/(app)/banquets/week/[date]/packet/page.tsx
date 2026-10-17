@@ -6,11 +6,11 @@ import { num, componentBatchFactor } from "@/lib/costing";
 import { unitLabel } from "@/lib/units";
 import { dateFromParam, startOfUtcWeek, addDays, isoDate, fmtWeekRange, fmtShortDate } from "@/lib/banquet-week";
 import { PrintButton } from "@/components/PrintButton";
+import { RecipeReferences } from "@/components/RecipeReferences";
+import { buildRecipeReferences, type RecipeReferencePlan } from "@/lib/recipe-references";
 import {
   RecipeBuildBody,
-  SharedBuildCard,
   buildRecipeTree,
-  consolidateSharedSubBuilds,
   recipeTreeSelect,
   type RecipeTreeNode,
 } from "@/components/RecipeBuild";
@@ -19,8 +19,8 @@ import {
 // every banquet in the week, rolled up so each recipe is built ONCE at its
 // week total (the kitchen preps by recipe, not by event), with the per-event
 // split printed under the build so the batch can be divided afterward.
-// Sub-recipes used by more than one dish consolidate into a make-first Shared
-// Builds section, exactly like the single-banquet packet.
+// Immediate sub-recipes stay inline. Deeper recipes are totalled once in a
+// supporting reference section at the back, like the single-banquet packet.
 
 // One rolled-up dish: a recipe's total demand across the week, plus where each
 // piece of it goes.
@@ -78,7 +78,7 @@ export default async function WeekCookPacketPage({ params }: { params: Promise<{
     (a, b) => Number(b.splits.length > 1) - Number(a.splits.length > 1) || a.node.name.localeCompare(b.node.name),
   );
 
-  const { shared, sharedRefs } = consolidateSharedSubBuilds(
+  const references = buildRecipeReferences(
     dishes.map((d) => ({ node: d.node, totalBatches: d.totalBatches })),
     byId,
   );
@@ -114,40 +114,19 @@ export default async function WeekCookPacketPage({ params }: { params: Promise<{
           <p className="mt-1 text-sm text-zinc-500">
             {dishes.length} dish{dishes.length === 1 ? "" : "es"} across {banquets.length} event
             {banquets.length === 1 ? "" : "s"}
-            {shared.length > 0
-              ? ` · ${shared.length} shared build${shared.length === 1 ? "" : "s"} made once up front`
+            {references.size > 0
+              ? ` · ${references.size} deeper recipe reference${references.size === 1 ? "" : "s"} at the back`
               : ""}{" "}
             · each recipe made once at its week total.
           </p>
 
-          {shared.length > 0 && (
-            <section className="mt-8">
-              <div className="border-b-2 border-zinc-900 pb-1.5">
-                <h2 className="font-display text-2xl font-medium tracking-tight text-zinc-900">
-                  Shared Builds — Make These First
-                </h2>
-              </div>
-              <p className="mt-1 text-sm text-zinc-500">
-                Each build below feeds more than one dish. Make the full amount once; the dishes pull from it.
-              </p>
-              <div className="mt-6 space-y-10">
-                {shared.map((b) => (
-                  <SharedBuildCard key={b.node.id} build={b} byId={byId} sharedRefs={sharedRefs} />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {shared.length > 0 && (
-            <div className="mt-12 border-b-2 border-zinc-900 pb-1.5">
-              <h2 className="font-display text-2xl font-medium tracking-tight text-zinc-900">Dishes</h2>
-            </div>
-          )}
           <div className="mt-8 space-y-10">
             {dishes.map((d) => (
-              <WeeklyDishEntry key={d.node.id} dish={d} byId={byId} sharedRefs={sharedRefs} />
+              <WeeklyDishEntry key={d.node.id} dish={d} byId={byId} references={references} />
             ))}
           </div>
+
+          <RecipeReferences references={references} byId={byId} />
 
           <p className="mt-10 border-t border-zinc-200 pt-4 text-[10px] uppercase tracking-[0.14em] text-zinc-400">
             Printed {printedOn} · Each recipe scaled to its week total · Mise · Culinary Ops
@@ -163,17 +142,18 @@ export default async function WeekCookPacketPage({ params }: { params: Promise<{
 function WeeklyDishEntry({
   dish,
   byId,
-  sharedRefs,
+  references,
 }: {
   dish: WeeklyDish;
   byId: Map<string, RecipeTreeNode>;
-  sharedRefs: Map<string, string>;
+  references: RecipeReferencePlan;
 }) {
   const { node, totalBatches, converted, splits } = dish;
   return (
     <article className="break-inside-avoid border-t-2 border-zinc-900 pt-4">
       <div className="flex items-start justify-between gap-4">
         <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-900">Ordered recipe</p>
           <h2 className="font-display text-3xl font-medium tracking-tight text-zinc-900">{node.name}</h2>
           <p className="mt-1 text-lg font-semibold text-zinc-900">
             Yields {num(totalBatches * node.yieldQty)} {unitLabel(node.yieldUnit)}
@@ -213,7 +193,7 @@ function WeeklyDishEntry({
         compact={false}
         depth={0}
         stack={new Set()}
-        sharedRefs={sharedRefs}
+        references={references}
       />
 
       <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.12em] text-zinc-400">

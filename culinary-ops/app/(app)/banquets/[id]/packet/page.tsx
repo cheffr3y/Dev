@@ -6,21 +6,18 @@ import { num, componentBatchFactor } from "@/lib/costing";
 import { unitLabel } from "@/lib/units";
 import { PrintButton } from "@/components/PrintButton";
 import { LocalTime } from "@/components/LocalTime";
+import { RecipeReferences } from "@/components/RecipeReferences";
+import { buildRecipeReferences, type RecipeReferencePlan } from "@/lib/recipe-references";
 import {
   RecipeBuildBody,
-  SharedBuildCard,
   buildRecipeTree,
-  consolidateSharedSubBuilds,
   recipeTreeSelect,
   type RecipeTreeNode,
 } from "@/components/RecipeBuild";
 
 // Banquet cook packet — one printable artifact per banquet. Every dish on the
-// BEO is scaled to its ordered count, with sub-recipes built inline to any
-// depth. Sub-recipes used by more than one dish are consolidated into a
-// make-first Shared Builds section so the packet never prints the same build
-// twice. The companion to the prep sheet (which aggregates the raw pull list):
-// this is what the line actually cooks from.
+// BEO is scaled to its ordered count. Immediate sub-recipes stay inline;
+// deeper supporting recipes are scaled and collected at the back.
 
 function fmtDate(d: Date): string {
   return d.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
@@ -57,7 +54,7 @@ export default async function BanquetCookPacketPage({ params }: { params: Promis
     const { batches, converted } = componentBatchFactor(mi.orderedQty, mi.unit, node.yieldQty, node.yieldUnit);
     return [{ menuItem: mi, node, batches, converted }];
   });
-  const { shared, sharedRefs } = consolidateSharedSubBuilds(
+  const references = buildRecipeReferences(
     dishes.map((d) => ({ node: d.node, totalBatches: d.batches })),
     byId,
   );
@@ -95,35 +92,12 @@ export default async function BanquetCookPacketPage({ params }: { params: Promis
           </p>
           <p className="mt-1 text-sm text-zinc-500">
             {banquet.menuItems.length} dish{banquet.menuItems.length === 1 ? "" : "es"}
-            {shared.length > 0
-              ? ` · ${shared.length} shared build${shared.length === 1 ? "" : "s"} made once up front`
+            {references.size > 0
+              ? ` · ${references.size} deeper recipe reference${references.size === 1 ? "" : "s"} at the back`
               : ""}{" "}
             · scaled to ordered counts.
           </p>
 
-          {shared.length > 0 && (
-            <section className="mt-8">
-              <div className="border-b-2 border-zinc-900 pb-1.5">
-                <h2 className="font-display text-2xl font-medium tracking-tight text-zinc-900">
-                  Shared Builds — Make These First
-                </h2>
-              </div>
-              <p className="mt-1 text-sm text-zinc-500">
-                Each build below feeds more than one dish. Make the full amount once; the dishes pull from it.
-              </p>
-              <div className="mt-6 space-y-10">
-                {shared.map((b) => (
-                  <SharedBuildCard key={b.node.id} build={b} byId={byId} sharedRefs={sharedRefs} />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {shared.length > 0 && (
-            <div className="mt-12 border-b-2 border-zinc-900 pb-1.5">
-              <h2 className="font-display text-2xl font-medium tracking-tight text-zinc-900">Dishes</h2>
-            </div>
-          )}
           <div className="mt-8 space-y-10">
             {dishes.map((d) => (
               <DishEntry
@@ -135,10 +109,12 @@ export default async function BanquetCookPacketPage({ params }: { params: Promis
                 orderedQty={d.menuItem.orderedQty}
                 unit={d.menuItem.unit}
                 byId={byId}
-                sharedRefs={sharedRefs}
+                references={references}
               />
             ))}
           </div>
+
+          <RecipeReferences references={references} byId={byId} />
 
           <p className="mt-10 border-t border-zinc-200 pt-4 text-[10px] uppercase tracking-[0.14em] text-zinc-400">
             Printed <LocalTime date={new Date()} mode="date" /> · Each dish scaled to its ordered count · Mise ·
@@ -159,7 +135,7 @@ function DishEntry({
   orderedQty,
   unit,
   byId,
-  sharedRefs,
+  references,
 }: {
   node: RecipeTreeNode;
   batches: number;
@@ -168,12 +144,13 @@ function DishEntry({
   orderedQty: number;
   unit: string;
   byId: Map<string, RecipeTreeNode>;
-  sharedRefs: Map<string, string>;
+  references: RecipeReferencePlan;
 }) {
   return (
     <article className="break-inside-avoid border-t-2 border-zinc-900 pt-4">
       <div className="flex items-start justify-between gap-4">
         <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-900">Ordered recipe</p>
           <h2 className="font-display text-3xl font-medium tracking-tight text-zinc-900">{node.name}</h2>
           <p className="mt-1 text-lg font-semibold text-zinc-900">
             Yields {converted ? `${num(batches * node.yieldQty)} ${unitLabel(node.yieldUnit)}` : `${num(orderedQty)} ${unitLabel(unit)}`}
@@ -202,7 +179,7 @@ function DishEntry({
         compact={false}
         depth={0}
         stack={new Set()}
-        sharedRefs={sharedRefs}
+        references={references}
       />
 
       <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.12em] text-zinc-400">
