@@ -4,7 +4,7 @@ import { loadMenuRollout } from "@/lib/menu-rollout-data";
 import { buildMenuRollout, PACKET_MODES } from "@/lib/menu-rollout";
 import { prisma } from "@/lib/prisma";
 import { requireUser, hasRole } from "@/lib/session";
-import { money, num, pct } from "@/lib/costing";
+import { money, num, pct, preciseNum } from "@/lib/costing";
 import { Card, CardHeader, Input, LinkButton, PageHeader, StatCard } from "@/components/ui";
 import { CostIntegrityBanner } from "@/components/CostAudit";
 import { MenuOrderGuide } from "@/components/MenuOrderGuide";
@@ -34,7 +34,7 @@ export default async function MenuWorkspace({ params }: { params: Promise<{ id: 
     {plan.sections.length === 0 && <Card className="mb-6 p-8 text-center text-zinc-500">Add your first recipe to begin the rollout.</Card>}
     {plan.sections.map(section => <Card key={section.name} className="mb-6"><CardHeader>{section.name}</CardHeader><div className="overflow-x-auto"><table className="atelier-table w-full text-left text-sm"><thead><tr><th>Section / Dish</th><th>Station</th><th>Yield</th><th>Portion cost</th><th>Menu price ($)</th><th>Margin</th><th>Food cost</th><th>Opening par (batches)</th><th>Audit</th></tr></thead><tbody>{section.rows.map(row => <tr key={row.id}>
       <td className="min-w-72"><Link className="font-medium text-[#2C3E35] hover:underline" href={`/recipes/${row.recipeId}`}>{row.title}</Link><p className="text-xs text-zinc-500">{row.menuDescription}</p>{canEdit && <details className="mt-2"><summary className="cursor-pointer text-xs text-gold">Edit dish / Save row</summary><div className="mt-3 min-w-80"><MenuItemForm rolloutId={id} line={row} inline /><form action={removeRolloutItem} className="mt-3"><input type="hidden" name="id" value={row.id} /><input type="hidden" name="rolloutId" value={id} /><button className="text-xs text-red-700">Remove from rollout</button></form></div></details>}</td>
-      <td>{row.recipe.station || "—"}</td><td className="whitespace-nowrap font-mono text-xs">{num(row.recipe.yieldQty)} {row.recipe.yieldUnit}</td><td className="font-mono">{money(row.portionCost, 5)}</td>
+      <td>{row.recipe.station || "—"}</td><td className="whitespace-nowrap font-mono text-xs"><span className="block text-zinc-500">Standard: {num(row.recipe.yieldQty)} {row.recipe.yieldUnit}</span><span className="menu-opening-yield mt-1 block text-[#2C3E35]">Opening: {preciseNum(row.recipe.yieldQty * row.parBatches)} {row.recipe.yieldUnit}</span></td><td className="font-mono">{money(row.portionCost, 5)}</td>
       <td>{canEdit ? <Input aria-label={`Menu price for ${row.title}`} form={`menu-line-${row.id}`} className="w-24" name="menuPrice" type="number" min="0" step="0.01" defaultValue={row.menuPrice ?? ""} placeholder={row.recipe.menuPrice != null ? String(row.recipe.menuPrice) : "—"} /> : money(row.effectiveMenuPrice)}</td>
       <td className="font-mono">{money(row.grossMargin)}</td><td><span className={`whitespace-nowrap rounded-full px-2 py-1 font-mono text-xs ${row.fcp == null ? "bg-stone" : row.fcp <= rollout.targetFcp ? "bg-pale-sage text-sage" : "bg-amber-100 text-amber-900"}`}>{pct(row.fcp)}</span></td>
       <td>{canEdit ? <Input aria-label={`Opening par for ${row.title}`} form={`menu-line-${row.id}`} className="w-24" name="parBatches" type="number" min="0" step="any" required defaultValue={row.parBatches} /> : num(row.parBatches)}</td>

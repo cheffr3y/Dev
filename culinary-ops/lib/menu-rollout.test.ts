@@ -30,6 +30,12 @@ test("nested menu costs, margins and vendor quantities agree across fractional c
   close(plan.parWeightedFcp, 9.25 / 115 * 100);
   assert.deepEqual(plan.dependencies.map(row => row.recipe.id), ["Sauce", "Stock"]);
   for (const dependency of plan.dependencies) assert.deepEqual(dependency.usedIn, ["Dish", "Second"]);
+  const sauce = plan.dependencies.find(row => row.recipe.id === "Sauce")!;
+  const stock = plan.dependencies.find(row => row.recipe.id === "Stock")!;
+  close(sauce.openingBatches, 3.5);
+  close(sauce.openingYieldQty, 3.5);
+  close(stock.openingBatches, 0.875);
+  close(stock.openingYieldQty, 1.75);
   const dairy = plan.vendorGroups.find(vendor => vendor.id === "dairy")!;
   close(dairy.lines[0].purchaseQty, 1.3125);
   close(dairy.estimatedCost, 5.25);
@@ -90,4 +96,33 @@ test("empty rollout and unsupported packet modes have deterministic defaults", (
   assert.equal(packetMode("bad-mode"), "all");
   assert.equal(packetMode(["recipes", "costing"]), "all");
   assert.equal(packetMode("order-guide"), "order-guide");
+});
+
+test("opening prep counts every path to a shared foundation within the same dish", () => {
+  const f = fixture();
+  f.dish.components.push({ childId: f.stock.id, quantity: 1, unit: "qt" });
+  const plan = buildMenuRollout(f, f.recipes, now);
+  const stock = plan.dependencies.find(row => row.recipe.id === f.stock.id)!;
+  close(stock.openingBatches, 1.875);
+  close(stock.openingYieldQty, 3.75);
+  assert.deepEqual(stock.usedIn, ["Dish", "Second"]);
+});
+
+test("zero opening pars retain reference dependencies without inventing a batch", () => {
+  const f = fixture();
+  for (const item of f.items) item.parBatches = 0;
+  const plan = buildMenuRollout(f, f.recipes, now);
+  assert.equal(plan.dependencies.length, 2);
+  for (const dependency of plan.dependencies) {
+    assert.equal(dependency.openingBatches, 0);
+    assert.equal(dependency.openingYieldQty, 0);
+  }
+  assert.equal(plan.orderLines.length, 0);
+});
+
+test("component conversion fallbacks remain visible on affected prep recipes", () => {
+  const f = fixture();
+  f.sauce.components[0].unit = "lb";
+  const stock = buildMenuRollout(f, f.recipes, now).dependencies.find(row => row.recipe.id === f.stock.id)!;
+  assert.equal(stock.converted, false);
 });

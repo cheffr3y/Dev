@@ -117,6 +117,7 @@ try {
   const saved = await prisma.menuRolloutItem.findUniqueOrThrow({ where: { rolloutId_recipeId: { rolloutId, recipeId: dish.id } } });
   assert.equal(saved.menuPrice, 18);
   assert.equal(saved.parBatches, 2.5);
+  assert.match(await engineeringRow.locator(".menu-opening-yield").innerText(), /Opening: 25 each/);
   await page.screenshot({ path: join(output, "workspace.png"), fullPage: true });
   for (const mode of ["all", "costing", "order-guide", "allergens", "recipes"]) {
     await page.goto(`${base}/menus/${rolloutId}/packet?mode=${mode}`);
@@ -125,6 +126,18 @@ try {
     assert.equal(await page.locator("#costing").count(), ["all", "costing"].includes(mode) ? 1 : 0);
     assert.equal(await page.locator("#order-guide").count(), ["all", "order-guide"].includes(mode) ? 1 : 0);
     assert.equal(await page.locator("#allergens").count(), ["all", "allergens"].includes(mode) ? 1 : 0);
+    if (["all", "recipes"].includes(mode)) {
+      const plated = page.locator(`#dish-${saved.id}`);
+      assert.match(await plated.locator(".recipe-hero").innerText(), /2.5× Batch/);
+      assert.match(await plated.locator(".recipe-opening-prep").innerText(), /Target yield: 25 each.*Standard batch: 10 each/);
+      const leeks = plated.locator(".recipe-ingredient").filter({ hasText: "Leeks" });
+      assert.match(await leeks.innerText(), /5 oz/);
+      const emulsion = page.locator(`#sub-${child.id}`);
+      assert.match(await emulsion.locator(".recipe-hero").innerText(), /1.75× Batch/);
+      assert.match(await emulsion.locator(".recipe-opening-prep").innerText(), /Target yield: 3.5 qt.*Standard batch: 2 qt/);
+      const baseCard = page.locator(`#sub-${foundation.id}`);
+      assert.match(await baseCard.locator(".recipe-opening-prep").innerText(), /Opening prep: 1.75×.*Target yield: 1.75 qt/);
+    }
     if (mode === "recipes") {
       assert.equal(await page.locator(".cost-audit-stamp").count(), 0);
       assert.match(await page.locator(`#sub-${foundation.id}`).innerText(), /Used in: Autumn Greens.*Seasonal Soup/);

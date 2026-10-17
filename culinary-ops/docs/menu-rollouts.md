@@ -10,7 +10,10 @@ The packet switcher offers the master launch book, costing dossier, vendor order
 guide and category pull sheet, allergen study guide, or kitchen recipe book. The
 recipe book includes a cover and table of contents, every plated build, and one
 card for each required sub-recipe, including nested dependencies and parent-dish
-references. Kitchen copies omit financial audit stamps.
+references. Plated cards use their saved opening par; sub-recipe cards total the
+opening demand from every parent and every nested path. Each card records the
+batch multiplier, target output, and original standard yield, with ingredient
+and component quantities scaled to match. Kitchen copies omit financial audit stamps.
 
 ## Calculation conventions
 

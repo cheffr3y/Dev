@@ -1,5 +1,5 @@
 import { useId, type ReactNode } from "react";
-import { num } from "@/lib/costing";
+import { preciseNum, num } from "@/lib/costing";
 import { displayMeasure } from "@/lib/units";
 import { ALLERGENS } from "@/lib/allergens";
 import { splitStep } from "@/lib/method";
@@ -74,7 +74,7 @@ export function RecipeDossier({
   const titleId = useId();
   const Title = titleLevel === 1 ? "h1" : titleLevel === 3 ? "h3" : "h2";
   const scaledYield = displayMeasure(recipe.yieldQty * scale, recipe.yieldUnit, weightInGrams);
-  const yieldLabel = `${num(scaledYield.qty)} ${scaledYield.label}`;
+  const yieldLabel = `${preciseNum(scaledYield.qty)} ${scaledYield.label}`;
   const keys = new Set(allergenKeys);
   const allergens = ALLERGENS.filter((allergen) => keys.has(allergen.key));
   const totalMinutes = (recipe.prepMinutes ?? 0) + (recipe.cookMinutes ?? 0);
@@ -96,7 +96,7 @@ export function RecipeDossier({
             {recipe.name}
           </Title>
           </div>
-          <span className="shrink-0 rounded-full border border-[#D5CFC4] bg-[#F4F1EA] px-3 py-2 text-right font-mono text-[10px] tabular-nums text-[#2C3E35]">{num(scale)}× Batch<span className="block text-[9px] text-zinc-500">{yieldLabel}</span></span>
+          <span className="shrink-0 rounded-full border border-[#D5CFC4] bg-[#F4F1EA] px-3 py-2 text-right font-mono text-[10px] tabular-nums text-[#2C3E35]">{preciseNum(scale)}× Batch<span className="block text-[9px] text-zinc-500">{yieldLabel}</span></span>
         </header>
 
         <dl className="recipe-specs grid grid-cols-[1fr_1fr_0.85fr_1.1fr_1.45fr] border-y border-hairline py-3">

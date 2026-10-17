@@ -1,4 +1,4 @@
-import { buildCostMap, buildPriceGapMap, costPerYieldUnit, foodCostPct, type PriceGap } from "./costing";
+import { buildCostMap, buildPriceGapMap, componentBatchFactor, costPerYieldUnit, foodCostPct, type PriceGap } from "./costing";
 import { buildBanquetPlan, type BanquetRecipeRow } from "./banquet";
 import { effectiveAllergens } from "./allergens";
 import { convertQty } from "./units";
@@ -60,23 +60,34 @@ export function buildMenuRollout(rollout: { items: RolloutLine[] }, recipes: Rol
   const sections = new Map<string, typeof rows>();
   for (const row of rows) sections.set(row.section, [...(sections.get(row.section) ?? []), row]);
 
-  // Walk separately for each dish so shared dependencies retain every parent.
-  const required = new Map<string, Set<string>>();
+  // Accumulate every path to a component, including diamonds and shared dishes.
+  // Only the current ancestry guards cycles; a global seen set would undercount
+  // a foundation used through two different sauces in the same dish.
+  const required = new Map<string, { usedIn: Set<string>; openingBatches: number; converted: boolean }>();
   for (const row of rows) {
-    const seen = new Set<string>([row.recipeId]);
-    const walk = (id: string) => {
+    const walk = (id: string, batches: number, stack: Set<string>, converted: boolean) => {
       for (const component of byId.get(id)?.components ?? []) {
-        if (seen.has(component.childId) || !byId.has(component.childId)) continue;
-        seen.add(component.childId);
-        const parents = required.get(component.childId) ?? new Set<string>();
-        parents.add(row.title);
-        required.set(component.childId, parents);
-        walk(component.childId);
+        const child = byId.get(component.childId);
+        if (stack.has(component.childId) || !child) continue;
+        const factor = componentBatchFactor(component.quantity, component.unit, child.yieldQty, child.yieldUnit);
+        const openingBatches = batches * factor.batches;
+        const pathConverted = converted && factor.converted && child.yieldQty > 0;
+        const demand = required.get(child.id) ?? { usedIn: new Set<string>(), openingBatches: 0, converted: true };
+        demand.usedIn.add(row.title);
+        demand.openingBatches += openingBatches;
+        if (openingBatches > 0) demand.converted &&= pathConverted;
+        required.set(child.id, demand);
+        walk(child.id, openingBatches, new Set(stack).add(child.id), pathConverted);
       }
     };
-    walk(row.recipeId);
+    walk(row.recipeId, row.parBatches, new Set([row.recipeId]), row.recipe.yieldQty > 0);
   }
-  const dependencies = [...required].map(([id, parents]) => ({ recipe: byId.get(id)!, usedIn: [...parents].sort() }))
+  const dependencies = [...required].map(([id, demand]) => ({
+    recipe: byId.get(id)!, usedIn: [...demand.usedIn].sort(),
+    openingBatches: demand.openingBatches,
+    openingYieldQty: demand.openingBatches * byId.get(id)!.yieldQty,
+    converted: demand.converted,
+  }))
     .sort((a, b) => a.recipe.name.localeCompare(b.recipe.name));
 
   const openingPlan = buildBanquetPlan(rows.filter(row => row.parBatches > 0).map(row => ({

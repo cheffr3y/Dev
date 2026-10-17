@@ -241,3 +241,8 @@ export function num(n: number | null | undefined): string {
   // trim trailing zeros but keep up to 2 decimals
   return Number(n.toFixed(2)).toString();
 }
+
+// Fractional prep demand must not read as a whole batch or round down to 0×.
+export function preciseNum(batches: number): string {
+  return new Intl.NumberFormat("en-US", { maximumSignificantDigits: 6, useGrouping: false }).format(batches);
+}
