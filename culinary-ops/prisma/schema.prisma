@@ -94,6 +94,16 @@ model User {
   dailyCloseouts    ProductionCloseout[]
 
   triviaGames TriviaGame[]
+  homestead   HomesteadSave?
+}
+
+// Personal Break Room game. No links to operational stock, costing or venues.
+model HomesteadSave {
+  userId    String   @id
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  state     Json
+  revision  Int      @default(1)
+  updatedAt DateTime @updatedAt
 }
 
 model Venue {

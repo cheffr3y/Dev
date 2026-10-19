@@ -20,6 +20,7 @@ Built with Next.js (App Router), TypeScript, Prisma, and PostgreSQL. Role-based 
 | **Banquets** | Transcribe a **Banquet Event Order (BEO)**: the header (contact, service window, room, special instructions, setup) plus food lines that link each recipe to its **ordered count**. Every dish scales by the ordered amount into one **aggregated prep / pull sheet** (sub-recipes exploded to raw items, summed by category), with a printable kitchen prep sheet. Customer pricing & beverage/additional charges are out of scope — this is the kitchen side of the BEO. |
 | **Prep Orders** | Shared Daily Prep for chef ordering and printing; an admin-only daily worksheet for actuals, ingredient deductions, closeout, and CSV/Excel accounting exports. |
 | **Vendors / Venues / Users** | Manage suppliers, locations, and team access. |
+| **Break Room · Homestead** | A personal Willowbrook Acre garden with crops, landmark restorations and six animal friends. Available to every signed-in role, with account autosaves and JSON backup/import. |
 
 See the [kitchen and accounting guide](docs/prep-orders-guide.md) and [migration / rollout checklist](docs/prep-orders-rollout.md).
 
@@ -132,6 +133,8 @@ Accounting starts with venue totals and separates ready charges from pending cos
 See the [daily prep and closeout guide](docs/prep-orders-guide.md) for the workflow and bacon-credit example.
 
 ## Deployment
+
+Homestead adds the independent `HomesteadSave` table in `20261019000000_homestead_saves`. The existing `npm start` migration step applies it before serving `/homestead`. Saves are scoped to the authenticated user; optimistic revisions reject stale writes from other sessions. Garden resources never affect operational inventory, recipes, or accounting. See [the Homestead guide](docs/homestead.md) for gameplay, recovery and verification.
 
 Ingredient allergen tagging adds the nullable `Item.allergens` column in `20261016000000_ingredient_allergens`. Apply the migration with `prisma migrate deploy` before releasing this application version. Existing ingredients remain untagged until reviewed; existing recipe allergen selections are preserved.
 

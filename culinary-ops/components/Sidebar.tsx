@@ -17,7 +17,8 @@ type IconKey =
   | "vendors"
   | "venues"
   | "users"
-  | "trivia";
+  | "trivia"
+  | "homestead";
 
 // `match` lists extra path prefixes that keep the item highlighted — the
 // merged Events entry stays lit while browsing banquets or festivals.
@@ -51,7 +52,10 @@ const SECTIONS: Array<{ heading: string; items: NavItem[] }> = [
   },
   {
     heading: "Break Room",
-    items: [{ href: "/trivia", label: "Trivia", icon: "trivia" }],
+    items: [
+      { href: "/trivia", label: "Trivia", icon: "trivia" },
+      { href: "/homestead", label: "Homestead", icon: "homestead" },
+    ],
   },
 ];
 
@@ -65,6 +69,11 @@ const ADMIN_SECTION: { heading: string; items: NavItem[] } = {
 
 function Icon({ name }: { name: IconKey }) {
   const paths: Record<IconKey, ReactNode> = {
+    homestead: (
+      <>
+        <path d="M12 21v-9M12 16C5 16 3 12 3 7c6 0 9 3 9 9ZM12 12c0-6 3-9 9-9 0 6-3 9-9 9Z" />
+      </>
+    ),
     dashboard: (
       <>
         <rect x="3" y="3" width="7" height="7" rx="1" />
