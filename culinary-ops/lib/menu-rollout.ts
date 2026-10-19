@@ -7,7 +7,7 @@ export const ROLLOUT_STATUSES = ["ACTIVE", "REVIEW", "DRAFT", "ARCHIVED"] as con
 export const PACKET_MODES = [
   { mode: "all", label: "All-in-One Launch Book" },
   { mode: "costing", label: "01 // Costing & Margin Dossier" },
-  { mode: "order-guide", label: "02 // Vendor Order Guide & Pull Sheet" },
+  { mode: "order-guide", label: "02 // Vendor Order Guide" },
   { mode: "allergens", label: "03 // FOH & BOH Allergen & Study Matrix" },
   { mode: "recipes", label: "04 // Complete Recipe & Sub-Recipe Bible" },
 ] as const;
@@ -35,6 +35,22 @@ export type RolloutLine = {
   id: string; recipeId: string; section: string; menuTitle: string | null;
   menuDescription: string | null; menuPrice: number | null; parBatches: number; sortOrder: number;
 };
+
+export function isRolloutOrderable(item: { name: string; sku?: string | null }) {
+  const name = item.name.toLowerCase().replace(/[^a-z]+/g, " ").trim();
+  return !(name === "water" || item.sku?.trim() === "007"
+    || /^chicken (?:backs?(?: bones?)?|bones?|feet)$/.test(name)
+    || name === "carrot tops");
+}
+
+// A plated recipe must have a count yield before it can be divided into orders.
+// Never invent a serving weight for a recipe stored in pounds or quarts.
+export function platedServingSpec(recipe: { yieldQty: number; yieldUnit: string }) {
+  const servings = /^(?:servings?|portions?|orders?|plates?)$/i.test(recipe.yieldUnit.trim())
+    ? recipe.yieldQty : convertQty(recipe.yieldQty, recipe.yieldUnit, "each");
+  return servings != null && servings > 0 && Number.isFinite(servings)
+    ? { scale: 1 / servings, servings } : null;
+}
 
 export function buildMenuRollout(rollout: { items: RolloutLine[] }, recipes: RolloutRecipe[], now = new Date()) {
   const byId = new Map(recipes.map(recipe => [recipe.id, recipe]));
@@ -102,19 +118,22 @@ export function buildMenuRollout(rollout: { items: RolloutLine[] }, recipes: Rol
     const purchaseQty = converted ? quantities.reduce<number>((sum, quantity) => sum + quantity!, 0) : null;
     return { ...line, item, purchaseQty, converted, extendedCost: purchaseQty != null ? purchaseQty * item.unitCost : null };
   }));
-  const vendors = new Map<string, { id: string; name: string; lines: typeof orderLines }>();
-  for (const line of orderLines) {
+  // Ordering is a catalog checklist for the entire menu, independent of pars.
+  // Theoretical demand above remains available to the costing dossier only.
+  const guideRecipes = new Set([...rows.map(row => row.recipeId), ...dependencies.map(row => row.recipe.id)]);
+  const guideCatalog = new Map(recipes.filter(recipe => guideRecipes.has(recipe.id))
+    .flatMap(recipe => recipe.items.map(({ item }) => [item.id, item] as const)));
+  const guideLines = [...guideCatalog.values()].filter(isRolloutOrderable)
+    .map(item => ({ itemId: item.id, name: item.name, category: item.category, item }));
+  const vendors = new Map<string, { id: string; name: string; lines: typeof guideLines }>();
+  for (const line of guideLines) {
     const id = line.item.vendor?.id ?? "unassigned";
-    const vendor = vendors.get(id) ?? { id, name: line.item.vendor?.name ?? "Unassigned vendor", lines: [] as typeof orderLines };
+    const vendor = vendors.get(id) ?? { id, name: line.item.vendor?.name ?? "Unassigned vendor", lines: [] as typeof guideLines };
     vendor.lines.push(line);
     vendors.set(id, vendor);
   }
   const vendorGroups = [...vendors.values()].sort((a, b) => a.name.localeCompare(b.name)).map(vendor => ({
     ...vendor, lines: vendor.lines.sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name)),
-    estimatedCost: vendor.lines.reduce((sum, line) => sum + (line.extendedCost ?? 0), 0),
-  }));
-  const categoryGroups = openingPlan.shoppingList.categories.map(category => ({
-    category: category.category, lines: orderLines.filter(line => line.category === category.category),
   }));
   const priceGaps: PriceGap = { unpriced: new Set(), stale: new Set() };
   for (const row of rows) {
@@ -132,7 +151,7 @@ export function buildMenuRollout(rollout: { items: RolloutLine[] }, recipes: Rol
   const parRevenue = pricedRows.reduce((sum, row) => sum + row.effectiveMenuPrice! * row.recipe.yieldQty * row.parBatches, 0);
   const parCost = pricedRows.reduce((sum, row) => sum + row.batchCost * row.parBatches, 0);
   return { rows, sections: [...sections].map(([name, rows]) => ({ name, rows })), dependencies,
-    vendorGroups, categoryGroups, orderLines, openingPlan, priceGaps,
+    vendorGroups, guideLines, orderLines, openingPlan, priceGaps,
     unpricedNames: names(priceGaps.unpriced), staleNames: names(priceGaps.stale),
     averageMenuPrice: average(rows.map(row => row.effectiveMenuPrice)),
     averageFcp: average(rows.map(row => row.fcp)), averageMargin: average(rows.map(row => row.grossMargin)),

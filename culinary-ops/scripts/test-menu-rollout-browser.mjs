@@ -24,7 +24,7 @@ const items = await Promise.all(itemNames.map((name, i) => prisma.item.create({ 
   priceUpdatedAt: i === 1 ? new Date("2025-01-01") : new Date(),
 } })));
 const unpriced = await prisma.item.create({ data: { name: "Unpriced seed oil", unit: "qt", unitCost: 0, vendorId: vendor.id } });
-const foundation = await prisma.recipe.create({ data: { name: "Botanical Base", prodCode: `B${stamp}`, yieldQty: 1, yieldUnit: "qt", instructions: "Blend — Pulse the prepared herbs for 15 seconds.", items: { create: { itemId: unpriced.id, quantity: 1, unit: "qt" } } } });
+const foundation = await prisma.recipe.create({ data: { name: "Botanical Base", category: "Stocks", prodCode: `B${stamp}`, yieldQty: 1, yieldUnit: "qt", instructions: "Blend — Pulse the prepared herbs for 15 seconds.", items: { create: { itemId: unpriced.id, quantity: 1, unit: "qt" } } } });
 const child = await prisma.recipe.create({ data: { name: "House Herb Emulsion", prodCode: `E${stamp}`, yieldQty: 2, yieldUnit: "qt", instructions: "Emulsify — Blend the base under high shear for 1 minute.", components: { create: { childId: foundation.id, quantity: 1, unit: "qt" } } } });
 const dish = await prisma.recipe.create({ data: {
   name: "Autumn Greens & Warm Herb Emulsion", prodCode: `D${stamp}`, yieldQty: 10, yieldUnit: "each", menuPrice: 15,
@@ -68,6 +68,11 @@ try {
   await page.getByLabel("Password").fill("local-smoke-only");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.waitForURL(`${base}/`);
+  await page.goto(`${base}/recipes/${foundation.id}`);
+  assert.equal(await page.locator('select[name="category"]').inputValue(), "Stocks");
+  await page.getByLabel("Prep (min)", { exact: true }).fill("5");
+  await save(page.locator("#recipeForm"), "Save changes");
+  assert.equal((await prisma.recipe.findUniqueOrThrow({ where: { id: foundation.id } })).category, "Stocks");
   await page.goto(`${base}/recipes/${dish.id}/print`);
   await page.locator(".recipe-dossier").waitFor();
   assert.equal(await page.locator(".recipe-ingredient").count(), 16);
@@ -128,22 +133,27 @@ try {
     assert.equal(await page.locator("#allergens").count(), ["all", "allergens"].includes(mode) ? 1 : 0);
     if (["all", "recipes"].includes(mode)) {
       const plated = page.locator(`#dish-${saved.id}`);
-      assert.match(await plated.locator(".recipe-hero").innerText(), /2.5× Batch/);
-      assert.match(await plated.locator(".recipe-opening-prep").innerText(), /Target yield: 25 each.*Standard batch: 10 each/);
+      assert.match(await plated.locator(".recipe-hero").innerText(), /1× Single-Serving/);
+      assert.match(await plated.locator(".recipe-opening-prep").innerText(), /Pickup spec: 1 serving.*Opening Par Target: 25 servings/);
       const leeks = plated.locator(".recipe-ingredient").filter({ hasText: "Leeks" });
-      assert.match(await leeks.innerText(), /5 oz/);
+      assert.match(await leeks.innerText(), /5.67 g/);
       const emulsion = page.locator(`#sub-${child.id}`);
-      assert.match(await emulsion.locator(".recipe-hero").innerText(), /1.75× Batch/);
-      assert.match(await emulsion.locator(".recipe-opening-prep").innerText(), /Target yield: 3.5 qt.*Standard batch: 2 qt/);
+      assert.match(await emulsion.locator(".recipe-hero").innerText(), /1× Standard Batch/);
+      assert.match(await emulsion.locator(".recipe-opening-prep").innerText(), /Standard batch: 2 qt/);
       const baseCard = page.locator(`#sub-${foundation.id}`);
-      assert.match(await baseCard.locator(".recipe-opening-prep").innerText(), /Opening prep: 1.75×.*Target yield: 1.75 qt/);
+      assert.match(await baseCard.locator(".recipe-opening-prep").innerText(), /Standard batch: 1 qt/);
     }
     if (mode === "recipes") {
       assert.equal(await page.locator(".cost-audit-stamp").count(), 0);
       assert.match(await page.locator(`#sub-${foundation.id}`).innerText(), /Used in: Autumn Greens.*Seasonal Soup/);
     }
     if (mode === "costing") assert.match(await page.locator(".cost-audit-stamp").innerText(), /Cost Understated/);
-    if (mode === "order-guide") assert.match(await page.locator("#order-guide").innerText(), /AT-0.*G-0/s);
+    if (mode === "order-guide") {
+      const guide = await page.locator("#order-guide").innerText();
+      assert.match(guide, /AT-0.*G-0/s);
+      assert.match(guide, /Order Qty/i);
+      assert.doesNotMatch(guide, /Required|Extended|Storage Category Pull Sheet|Opening estimate/);
+    }
     await pdf(`packet-${mode}`);
   }
   await page.goto(`${base}/banquets/${banquet.id}/prep-sheet`);

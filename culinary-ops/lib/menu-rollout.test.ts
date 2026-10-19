@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildMenuRollout, packetMode, type RolloutRecipe, type RolloutLine } from "./menu-rollout";
+import { buildMenuRollout, packetMode, isRolloutOrderable, type RolloutRecipe, type RolloutLine } from "./menu-rollout";
 
 const now = new Date("2026-10-17T12:00:00Z");
 function fixture() {
@@ -37,15 +37,14 @@ test("nested menu costs, margins and vendor quantities agree across fractional c
   close(stock.openingBatches, 0.875);
   close(stock.openingYieldQty, 1.75);
   const dairy = plan.vendorGroups.find(vendor => vendor.id === "dairy")!;
-  close(dairy.lines[0].purchaseQty, 1.3125);
-  close(dairy.estimatedCost, 5.25);
+  close(plan.orderLines.find(line => line.itemId === "butter")!.purchaseQty, 1.3125);
   assert.equal(dairy.lines[0].item.sku, "B01");
   assert.equal(dairy.lines[0].item.gcode, "G01");
   assert.equal(dairy.lines[0].item.packSize, "4 x 1 lb");
-  close(plan.vendorGroups.find(vendor => vendor.id === "farm")!.lines[0].purchaseQty, 2);
-  close(plan.vendorGroups.reduce((sum, vendor) => sum + vendor.estimatedCost, 0), plan.totalOpeningFoodCost);
+  close(plan.orderLines.find(line => line.itemId === "greens")!.purchaseQty, 2);
+  assert.equal("purchaseQty" in dairy.lines[0], false);
   assert.deepEqual(plan.rows[0].allergens, ["milk"]);
-  assert.deepEqual(plan.categoryGroups.map(group => group.category), ["Dairy", "Produce"]);
+  assert.deepEqual(plan.guideLines.map(line => line.itemId).sort(), ["butter", "greens"]);
 });
 
 test("overrides, zero pars and missing prices do not imply free verified dishes", () => {
@@ -125,4 +124,25 @@ test("component conversion fallbacks remain visible on affected prep recipes", (
   f.sauce.components[0].unit = "lb";
   const stock = buildMenuRollout(f, f.recipes, now).dependencies.find(row => row.recipe.id === f.stock.id)!;
   assert.equal(stock.converted, false);
+});
+
+test("vendor checklist includes zero-par dishes and nested ingredients, excluding only non-orderables", () => {
+  const f = fixture();
+  for (const line of f.items) line.parBatches = 0;
+  const names = ["Water", "Chicken, Backs / Bones", "Chicken Feet", "Carrot Tops", "Nutmeg", "Oil, Canola Blend"];
+  f.stock.items.push(...names.map((name, i) => ({ quantity: 0.0001, unit: "oz", item: { ...f.butter, id: name, name, sku: i === 0 ? "007" : null } })));
+  const plan = buildMenuRollout(f, f.recipes, now);
+  assert.equal(plan.totalOpeningFoodCost, 0);
+  assert.deepEqual(plan.guideLines.map(line => line.name).sort(), ["Butter", "Greens", "Nutmeg", "Oil, Canola Blend"]);
+  assert.equal(plan.vendorGroups.flatMap(group => group.lines).length, 4);
+  assert.equal(isRolloutOrderable({ name: "Carrots, Baby w/ Tops" }), true);
+  assert.equal(isRolloutOrderable({ name: "Fruit, Watermelon" }), true);
+});
+
+test("hazelnut catalog flag cascades through pesto into the plated carrot matrix row", () => {
+  const f = fixture();
+  f.butter.allergens = "tree_nuts";
+  f.stock.name = "Carrot Top Pesto";
+  f.dish.name = "Plated, Blistered Carrot";
+  assert.ok(buildMenuRollout(f, f.recipes, now).rows[0].allergens.includes("tree_nuts"));
 });

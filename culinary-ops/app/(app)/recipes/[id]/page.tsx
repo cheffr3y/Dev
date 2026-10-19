@@ -443,6 +443,7 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
                     </Field>
                     <Field label="Category">
                       <Select name="category" defaultValue={recipe.category}>
+                        {!RECIPE_CATEGORIES.includes(recipe.category) && <option value={recipe.category}>{recipe.category}</option>}
                         {RECIPE_CATEGORIES.map((c) => (
                           <option key={c}>{c}</option>
                         ))}

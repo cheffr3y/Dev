@@ -20,6 +20,7 @@ node node_modules/prisma/build/index.js migrate resolve --applied 20260923000000
 "$PG_BIN/psql" "postgresql://prep_test@127.0.0.1:$PREP_TEST_PORT/prep_workflow_test" -v ON_ERROR_STOP=1 -q -f scripts/fixtures/prep-legacy.sql
 node node_modules/prisma/build/index.js migrate deploy
 node --import tsx --test lib/prep-workflow.integration.test.ts
+node scripts/test-annex-repairs.mjs
 if [ "${PREP_BROWSER_SMOKE:-0}" = "1" ]; then
   node --import tsx scripts/seed-prep-browser.ts
   export AUTH_SECRET='disposable-prep-browser-smoke-secret-2026'

@@ -2,9 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/session";
 import { loadMenuRollout } from "@/lib/menu-rollout-data";
-import { buildMenuRollout, PACKET_MODES, packetMode } from "@/lib/menu-rollout";
+import { buildMenuRollout, PACKET_MODES, packetMode, platedServingSpec } from "@/lib/menu-rollout";
 import { ALLERGENS, effectiveAllergens } from "@/lib/allergens";
-import { preciseNum, money, num, pct } from "@/lib/costing";
+import { money, num, pct } from "@/lib/costing";
 import { unitLabel } from "@/lib/units";
 import { AtelierHeader } from "@/components/AtelierHeader";
 import { CostAuditStamp, CostIntegrityBanner } from "@/components/CostAudit";
@@ -26,10 +26,10 @@ export default async function MenuPacket({ params, searchParams }: {
   const plan = buildMenuRollout(rollout, recipes);
   const byId = new Map(recipes.map(recipe => [recipe.id, recipe]));
   const printedAt = new Date();
-  const renderRecipe = (recipe: typeof recipes[number], scale: number, context: string, anchor: string, converted = true) => (
-    <MenuRecipeCard key={anchor} id={anchor} recipe={recipe} scale={scale}
+  const renderRecipe = (recipe: typeof recipes[number], kind: "plated" | "foundation", context: string, anchor: string, openingParBatches?: number) => (
+    <MenuRecipeCard key={anchor} id={anchor} recipe={recipe} kind={kind} openingParBatches={openingParBatches}
       allergenKeys={effectiveAllergens(recipe.id, byId)} printedAt={printedAt}
-      context={`${context} · ${rollout.name}`} converted={converted} />
+      context={`${context} · ${rollout.name}`} />
   );
   const header = (kicker: string) => <AtelierHeader title={rollout.name} venue={rollout.venue?.name ?? "Company-wide"} guests={rollout.expectedCovers} kicker={kicker} runTime="Opening par / launch preparation" />;
   return <div className="atelier-packet mx-auto max-w-[8.5in] text-ink">
@@ -44,8 +44,8 @@ export default async function MenuPacket({ params, searchParams }: {
       <h2 className="mt-8 border-b border-[#E2DDD5] pb-2 font-display text-2xl italic text-[#2C3E35]">Table of Contents</h2>
       <ol className="mt-4 space-y-3 font-mono text-xs">{PACKET_MODES.filter(option => option.mode !== "all" && show(option.mode)).map(option => <li key={option.mode}><a href={`#${option.mode}`} className="text-[#2C3E35]">{option.label}</a></li>)}</ol>
       {show("recipes") && <>
-        <p className="mt-5 text-xs text-zinc-500">Recipe quantities follow saved opening par batches. Baseline covers are reference only. Shared sub-recipes show combined demand across the menu.</p>
-        <div className="mt-5 grid grid-cols-2 gap-6 text-xs"><section><h3 className="mb-2 font-mono uppercase text-gold">Part A · Plated Menu Builds</h3>{plan.sections.map(section => <div key={section.name} className="mb-3"><h4 className="font-semibold">{section.name}</h4><ul>{section.rows.map(row => <li key={row.id} className="mt-1"><a href={`#dish-${row.id}`}>{row.title}<span className="block font-mono text-[9px] text-zinc-500">{preciseNum(row.parBatches)}× · {preciseNum(row.parBatches * row.recipe.yieldQty)} {unitLabel(row.recipe.yieldUnit)}</span></a></li>)}</ul></div>)}</section><section><h3 className="mb-2 font-mono uppercase text-gold">Part B · Foundational Sub-Recipes</h3><ul>{plan.dependencies.map(dependency => <li key={dependency.recipe.id} className="mt-1"><a href={`#sub-${dependency.recipe.id}`}>{dependency.recipe.name}<span className="block font-mono text-[9px] text-zinc-500">{preciseNum(dependency.openingBatches)}× · {preciseNum(dependency.openingYieldQty)} {unitLabel(dependency.recipe.yieldUnit)}</span></a></li>)}</ul></section></div>
+        <p className="mt-5 text-xs text-zinc-500">Part A shows one plated serving. Part B shows one standard batch. Opening pars inform the costing dossier.</p>
+        <div className="mt-5 grid grid-cols-2 gap-6 text-xs"><section><h3 className="mb-2 font-mono uppercase text-gold">Part A · Plated Menu Builds</h3>{plan.sections.map(section => <div key={section.name} className="mb-3"><h4 className="font-semibold">{section.name}</h4><ul>{section.rows.map(row => <li key={row.id} className="mt-1"><a href={`#dish-${row.id}`}>{row.title}<span className="block font-mono text-[9px] text-zinc-500">{platedServingSpec(row.recipe) ? "1× · 1 serving" : `1× standard batch · ${num(row.recipe.yieldQty)} ${unitLabel(row.recipe.yieldUnit)} · Verify serving yield`}</span></a></li>)}</ul></div>)}</section><section><h3 className="mb-2 font-mono uppercase text-gold">Part B · Foundational Sub-Recipes</h3><ul>{plan.dependencies.map(dependency => <li key={dependency.recipe.id} className="mt-1"><a href={`#sub-${dependency.recipe.id}`}>{dependency.recipe.name}<span className="block font-mono text-[9px] text-zinc-500">1× · {num(dependency.recipe.yieldQty)} {unitLabel(dependency.recipe.yieldUnit)}</span></a></li>)}</ul></section></div>
       </>}
     </section>
 
@@ -61,10 +61,9 @@ export default async function MenuPacket({ params, searchParams }: {
     </section>}
 
     {show("order-guide") && <section id="order-guide" className="atelier-packet-section atelier-paper print-sheet">
-      {header("02 // Launch Order Guide & Opening Par Sheet")}
-      <p className="mb-4 text-sm">{plan.orderLines.length} raw catalog items · Opening estimate {money(plan.totalOpeningFoodCost)}</p>
-      <MenuOrderGuide plan={plan} showPullSheet />
-      <CostAuditStamp unpriced={plan.priceGaps.unpriced.size} stale={plan.priceGaps.stale.size} date={printedAt} />
+      {header("02 // Vendor Order Guide")}
+      <p className="mb-4 text-sm">{plan.guideLines.length} orderable catalog items · Grouped by vendor and category</p>
+      <MenuOrderGuide plan={plan} />
     </section>}
 
     {show("allergens") && <section id="allergens" className="atelier-packet-section atelier-paper print-sheet">
@@ -75,8 +74,8 @@ export default async function MenuPacket({ params, searchParams }: {
     </section>}
 
     {show("recipes") && <div id="recipes" className="launch-recipe-book">
-      {plan.sections.flatMap(section => section.rows.map(row => renderRecipe(byId.get(row.recipeId)!, row.parBatches, `Part A · ${section.name} · Plated Menu Builds`, `dish-${row.id}`)))}
-      {plan.dependencies.map(dependency => renderRecipe(byId.get(dependency.recipe.id)!, dependency.openingBatches, `Part B · Foundational Sub-Recipes & Mise en Place · Used in: ${dependency.usedIn.join(", ")}`, `sub-${dependency.recipe.id}`, dependency.converted))}
+      {plan.sections.flatMap(section => section.rows.map(row => renderRecipe(byId.get(row.recipeId)!, "plated", `Part A · ${section.name} · Plated Menu Builds`, `dish-${row.id}`, row.parBatches)))}
+      {plan.dependencies.map(dependency => renderRecipe(byId.get(dependency.recipe.id)!, "foundation", `Part B · Foundational Sub-Recipes & Mise en Place · Used in: ${dependency.usedIn.join(", ")}`, `sub-${dependency.recipe.id}`))}
     </div>}
   </div>;
 }

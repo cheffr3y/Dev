@@ -41,7 +41,7 @@ export default async function MenuWorkspace({ params }: { params: Promise<{ id: 
       <td className="whitespace-nowrap text-xs text-amber-800">{row.priceGaps.unpriced.size > 0 && `⚠ ${row.priceGaps.unpriced.size} `}{row.priceGaps.stale.size > 0 && `⌛ ${row.priceGaps.stale.size}`}{!row.priceGaps.unpriced.size && !row.priceGaps.stale.size && "✓"}{canEdit && <button form={`menu-line-${row.id}`} className="mt-2 block text-gold underline">Save row</button>}</td>
     </tr>)}</tbody></table></div></Card>)}
     {canEdit && <Card className="mb-6 p-5"><h2 className="mb-4 font-display text-2xl italic text-[#2C3E35]">Add a dish</h2><MenuItemForm key={rollout.items.length} rolloutId={id} recipes={recipes.filter(recipe => !used.has(recipe.id))} nextSortOrder={Math.max(-1, ...rollout.items.map(item => item.sortOrder)) + 1} /></Card>}
-    <Card className="mb-6 p-5"><h2 className="mb-1 font-display text-2xl italic text-[#2C3E35]">Live Opening Order Guide</h2><p className="mb-5 font-mono text-xs text-zinc-500">Estimated opening food cost {money(plan.totalOpeningFoodCost)} · Updates when a dish is saved</p><MenuOrderGuide plan={plan} /></Card>
+    <Card className="mb-6 p-5"><h2 className="mb-1 font-display text-2xl italic text-[#2C3E35]">Vendor Order Guide</h2><p className="mb-5 font-mono text-xs text-zinc-500">Check stock and enter order quantities · Updates when a dish is saved</p><MenuOrderGuide plan={plan} /></Card>
     {rollout.notes && <Card className="mb-6 whitespace-pre-wrap p-5 text-sm">{rollout.notes}</Card>}
     {canEdit && <details><summary className="cursor-pointer text-sm text-gold">Rollout settings</summary><Card className="mt-3 p-5"><RolloutForm rollout={rollout} venues={venues} /></Card></details>}
   </div>;

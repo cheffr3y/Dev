@@ -1,14 +1,22 @@
-import { money, num } from "@/lib/costing";
+import { money } from "@/lib/costing";
 import type { MenuRolloutPlan } from "@/lib/menu-rollout";
 
-export function MenuOrderGuide({ plan, showPullSheet = false }: { plan: MenuRolloutPlan; showPullSheet?: boolean }) {
+export function MenuOrderGuide({ plan }: { plan: MenuRolloutPlan }) {
   return <div className="space-y-6">
-    {plan.openingPlan.shoppingList.unscaledRecipes.length > 0 && <p className="border-l-2 border-gold bg-[#F4F1EA] p-3 text-sm text-amber-900">Verify recipe yields: {plan.openingPlan.shoppingList.unscaledRecipes.join(", ")}. Pull quantities assume one base batch where the saved yield cannot scale.</p>}
-    {plan.vendorGroups.length === 0 && <p className="text-sm text-zinc-500">Set opening par batches to generate an order guide.</p>}
-    {plan.vendorGroups.map(vendor => <section key={vendor.id} className="atelier-vendor"><div className="atelier-vendor-heading mb-2 flex justify-between border-b border-[#E2DDD5] pb-2"><h3 className="font-display text-xl italic text-[#2C3E35]">{vendor.name}</h3><span className="font-mono text-xs">{money(vendor.estimatedCost)}</span></div>
-      <div className="overflow-x-auto"><table className="atelier-table w-full text-left text-xs"><thead><tr><th>Item / Category</th><th>SKU / GCODE</th><th>Pack</th><th>Required</th><th>Unit cost</th><th>Extended</th></tr></thead><tbody>{vendor.lines.map(line => <tr key={line.itemId}><td><span className="mr-2 font-mono">[ ]</span>{line.name}<span className="block text-[10px] text-zinc-500">{line.category}</span></td><td>{line.item.sku || "—"}<span className="block text-zinc-500">{line.item.gcode || "—"}</span></td><td>{line.item.packSize || "—"}</td><td className="font-mono tabular-nums">{line.purchaseQty != null ? `${num(line.purchaseQty)} ${line.item.unit}` : line.amounts.map(amount => `${num(amount.qty)} ${amount.unit}`).join(" + ")}{!line.converted && <span className="block text-amber-800">Verify purchase unit</span>}</td><td className="font-mono">{money(line.item.unitCost, 5)} / {line.item.unit}</td><td className="font-mono">{money(line.extendedCost)}{line.item.unitCost <= 0 && <span className="block text-red-700">Unpriced</span>}</td></tr>)}</tbody></table></div>
+    {plan.vendorGroups.length === 0 && <p className="text-sm text-zinc-500">Add menu recipes with orderable ingredients to generate a vendor guide.</p>}
+    {plan.vendorGroups.map(vendor => <section key={vendor.id} className="atelier-vendor">
+      <h3 className="atelier-vendor-heading mb-2 border-b border-[#E2DDD5] pb-2 font-display text-xl italic text-[#2C3E35]">{vendor.name}</h3>
+      <div className="overflow-x-auto"><table className="atelier-table w-full text-left text-xs">
+        <thead><tr><th aria-label="Check">[ ]</th><th>Item Name</th><th>Category</th><th>SKU / GCode</th><th>Pack Size</th><th>Unit Cost</th><th>Order Qty</th></tr></thead>
+        <tbody>{vendor.lines.map(line => <tr key={line.itemId}>
+          <td className="font-mono">[ ]</td><td>{line.name}</td><td>{line.category}</td>
+          <td>{line.item.sku || "—"}<span className="block text-zinc-500">{line.item.gcode || "—"}</span></td>
+          <td>{line.item.packSize || "—"}</td>
+          <td className="font-mono">{line.item.unitCost > 0 ? `${money(line.item.unitCost, 2)} / ${line.item.unit}` : "Unpriced"}</td>
+          <td><span className="inline-block min-w-16 border-b border-[#9A7B4F]" aria-label={`Order quantity for ${line.name}`}>&nbsp;</span></td>
+        </tr>)}</tbody>
+      </table></div>
     </section>)}
-    <p className="text-xs text-zinc-500">Required quantities are raw recipe demand, before pack rounding. Missing prices understate estimates; incompatible purchase units require review.</p>
-    {showPullSheet && <section className="atelier-pull-sheet"><h3 className="mb-4 font-display text-2xl italic text-[#2C3E35]">Storage Category Pull Sheet</h3><div className="grid grid-cols-2 gap-6">{plan.categoryGroups.map(group => <section key={group.category} className="atelier-category"><h4 className="border-b border-[#E2DDD5] pb-1 font-mono text-xs uppercase text-gold">{group.category}</h4><ul>{group.lines.map(line => <li key={line.itemId} className="flex justify-between gap-3 border-b border-dotted border-[#E2DDD5] py-2 text-xs"><span><span className="mr-2 font-mono">[ ]</span>{line.name}</span><span className="font-mono">{line.amounts.map(amount => `${num(amount.qty)} ${amount.unit}`).join(" + ")}</span></li>)}</ul></section>)}</div></section>}
+    {plan.vendorGroups.length > 0 && <p className="text-xs text-zinc-500">Check pantry staples on hand and enter order quantities in vendor packs as needed.</p>}
   </div>;
 }
