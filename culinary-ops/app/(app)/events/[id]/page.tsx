@@ -46,8 +46,8 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
   if (!event) notFound();
 
   // Cost rollup + aggregated prep/shopping list. Each menu line is scaled by its
-  // planned servings (interpreted in the recipe's own yield unit, so the factor
-  // is servings ÷ yield), and the shared engine explodes any sub-recipes into
+  // planned quantity in the recipe's own yield unit, so the factor
+  // is quantity ÷ yield, and the shared engine explodes any sub-recipes into
   // raw items — exactly what the banquet kitchen view does. The old rollup only
   // summed each recipe's direct ingredients, so dishes built from sub-recipes
   // showed $0 and contributed nothing to the prep list.
@@ -110,7 +110,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
             <thead className="bg-zinc-50 text-left font-mono text-[11px] uppercase tracking-[0.02em] text-zinc-600">
               <tr>
                 <th className="px-4 py-2 font-medium">Dish</th>
-                <th className="px-4 py-2 text-right font-medium">Servings</th>
+                <th className="px-4 py-2 text-right font-medium">Quantity</th>
                 <th className="px-4 py-2 text-right font-medium">Cost</th>
                 {canEdit && <th className="no-print"></th>}
               </tr>
@@ -140,17 +140,20 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                           <input
                             name="plannedServings"
                             type="number"
-                            step="1"
+                            step="any"
                             min="0"
-                            defaultValue={num(mi.plannedServings)}
+                            required
+                            aria-label={`${mi.recipe.name} quantity (${mi.recipe.yieldUnit})`}
+                            defaultValue={mi.plannedServings}
                             className="w-16 rounded border border-zinc-300 px-1.5 py-0.5 text-right text-sm"
                           />
+                          <span className="whitespace-nowrap">{mi.recipe.yieldUnit}</span>
                           <button className="no-print rounded border border-zinc-300 px-1.5 py-0.5 text-xs hover:bg-zinc-100">
                             ✓
                           </button>
                         </form>
                       ) : (
-                        num(mi.plannedServings)
+                        <span>{num(mi.plannedServings)} {mi.recipe.yieldUnit}</span>
                       )}
                     </td>
                     <td className="px-4 py-2 text-right text-zinc-700">{lc ? money(lc.cost) : "—"}</td>
@@ -173,7 +176,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
             <div className="border-t border-zinc-100 p-4 no-print">
               <AddDishForm
                 eventId={event.id}
-                defaultServings={event.guestCount || 0}
+                guestCount={event.guestCount || 0}
                 recipes={availableRecipes.map((r) => ({
                   id: r.id,
                   name: r.name,

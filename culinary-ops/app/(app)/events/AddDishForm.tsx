@@ -9,18 +9,20 @@ import { addEventMenuItem } from "./actions";
 type Recipe = { id: string; name: string; prodCode: string; yieldQty: number; yieldUnit: string };
 
 // Add a dish to an event's menu. Uses the searchable recipe picker (which shows
-// each recipe's yield) and gates the servings + Add button until a recipe is
-// chosen, so you always know what one batch makes before entering headcount.
+// each recipe's yield) and requests quantities in that recipe's yield unit.
 export function AddDishForm({
   eventId,
   recipes,
-  defaultServings,
+  guestCount,
 }: {
   eventId: string;
   recipes: Recipe[];
-  defaultServings: number;
+  guestCount: number;
 }) {
   const [recipe, setRecipe] = useState<Recipe | null>(null);
+  const defaultQuantity = recipe && /^(servings?|portions?)$/i.test(recipe.yieldUnit.trim())
+    ? guestCount
+    : "";
 
   return (
     <form action={addEventMenuItem} className="flex flex-wrap items-end gap-2">
@@ -33,9 +35,18 @@ export function AddDishForm({
           <RecipePicker recipes={recipes} onSelect={(r) => setRecipe(r as Recipe | null)} />
         </Field>
       </div>
-      <div className="w-28">
-        <Field label="Servings">
-          <Input name="plannedServings" type="number" min="0" defaultValue={defaultServings} disabled={!recipe} />
+      <div className="w-36">
+        <Field label={recipe ? `Quantity (${recipe.yieldUnit})` : "Quantity"}>
+          <Input
+            key={recipe?.id ?? "none"}
+            name="plannedServings"
+            type="number"
+            min="0"
+            step="any"
+            required
+            defaultValue={defaultQuantity}
+            disabled={!recipe}
+          />
         </Field>
       </div>
       <Button type="submit" disabled={!recipe}>
