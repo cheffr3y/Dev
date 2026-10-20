@@ -1,4 +1,5 @@
 import { RecipePrintSettings } from "@/components/RecipeDossier";
+import { BanquetSetupPacket } from "@/components/BanquetSetupSheet";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -45,7 +46,7 @@ export default async function WeekCookPacketPage({ params }: { params: Promise<{
   const [banquets, recipeRows] = await Promise.all([
     prisma.banquet.findMany({
       where: { date: { gte: start, lt: end } },
-      include: { menuItems: { orderBy: { createdAt: "asc" } } },
+      include: { venue: true, menuItems: { orderBy: { createdAt: "asc" } } },
       orderBy: [{ date: "asc" }, { name: "asc" }],
     }),
     // Full catalog so sub-recipes can be nested to any depth.
@@ -101,6 +102,8 @@ export default async function WeekCookPacketPage({ params }: { params: Promise<{
         </div>
       </div>
 
+      {banquets.map(banquet => <BanquetSetupPacket key={banquet.id} banquet={banquet}
+        menu={banquet.menuItems.map(m => ({ id: m.id, name: byId.get(m.recipeId)?.name ?? "Unknown recipe", orderedQty: m.orderedQty, unit: m.unit }))} />)}
       {dishes.length === 0 ? (
         <div className="rounded-xl border border-dashed border-zinc-300 bg-zinc-50 px-6 py-12 text-center">
           <p className="text-sm font-medium text-zinc-600">No dishes to build.</p>

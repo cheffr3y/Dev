@@ -1,0 +1,3 @@
+ALTER TABLE "Banquet"
+  ADD COLUMN "setupPlan" JSONB,
+  ADD COLUMN "setupRevision" INTEGER NOT NULL DEFAULT 0;

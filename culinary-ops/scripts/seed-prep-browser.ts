@@ -19,6 +19,12 @@ async function main() {
   const recipes = await prisma.recipe.findMany({
     where: { prodCode: { in: ["BEANS", "SCE"] } },
   });
+  await prisma.banquet.create({ data: {
+    id: "banquet-setup-smoke", name: "Banquet setup review", venueId: venues[0].id,
+    date: businessDate("2026-12-01"), guestCount: 150, timeLabel: "5–11 pm",
+    areas: "Ballroom", setupNotes: "Use two rows of bowls. Confirm power drop with banquet captain.",
+    menuItems: { create: recipes.map(r => ({ recipeId: r.id, orderedQty: 4, unit: "qt" })) },
+  } });
   await prisma.user.updateMany({
     where: {
       email: {

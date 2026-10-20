@@ -122,6 +122,14 @@ Method cues highlight stated techniques, durations, temperatures, and endpoints 
 
 Banquet and commissary cook packets keep immediate sub-recipes beside the main recipe, labeled with their parent and quantity needed. Deeper recipes print once in a numbered reference section at the back, with total demand across the packet and links from the component lines. Ingredients, methods, allergens, and critical notes remain available; prepared components can be pulled from stock. Commissary references use the frozen packet recipes and preserve links to separately printed lots.
 
+Banquets also have a saved **Setup & vessel pull** sheet: arrange BEO food lines
+and manual garnishes into stations, enter vessels and utensils by piece, and
+list shared equipment once per station. Staff can verify the consolidated pull
+checklist; quantity or allocation changes clear affected checks. Saved sheets
+print alone or at the front of individual and weekly cook packets. Apply
+`20261020000000_banquet_setup` before release. See the
+[setup and packing guide](docs/banquet-setup.md).
+
 ## Prep Orders
 
 `/prep-orders` opens **Daily Prep**: chefs order for their assigned venue and view the shared recipe totals and destination quantities. Managers/admins generate frozen prep sheets; all signed-in chefs can view and reprint them.

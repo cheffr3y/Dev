@@ -74,8 +74,8 @@ export async function createBanquet(formData: FormData) {
 export async function updateBanquet(formData: FormData) {
   await requireRole("MANAGER");
   const id = String(formData.get("id"));
-  await prisma.banquet.update({ where: { id }, data: parseBanquet(formData) });
-  revalidatePath(`/banquets/${id}`);
+  await prisma.banquet.update({ where: { id }, data: { ...parseBanquet(formData), setupRevision: { increment: 1 } } });
+  revalidatePath(`/banquets/${id}`, "layout");
 }
 
 export async function deleteBanquet(formData: FormData) {
@@ -118,7 +118,7 @@ export async function addBanquetMenuItem(formData: FormData) {
     );
   }
 
-  await prisma.banquetMenuItem.create({
+  await prisma.$transaction([prisma.banquetMenuItem.create({
     data: {
       banquetId: d.banquetId,
       recipeId: d.recipeId,
@@ -126,8 +126,8 @@ export async function addBanquetMenuItem(formData: FormData) {
       unit: d.unit,
       description: d.description || null,
     },
-  });
-  revalidatePath(`/banquets/${d.banquetId}`);
+  }), prisma.banquet.update({ where: { id: d.banquetId }, data: { setupRevision: { increment: 1 } } })]);
+  revalidatePath(`/banquets/${d.banquetId}`, "layout");
 }
 
 const editLineSchema = z.object({
@@ -145,17 +145,20 @@ export async function updateBanquetMenuItem(formData: FormData) {
     orderedQty: formData.get("orderedQty"),
     description: formData.get("description") || undefined,
   });
-  await prisma.banquetMenuItem.update({
-    where: { id: d.id },
+  await prisma.$transaction([prisma.banquetMenuItem.update({
+    where: { id: d.id, banquetId: d.banquetId },
     data: { orderedQty: d.orderedQty, description: d.description || null },
-  });
-  revalidatePath(`/banquets/${d.banquetId}`);
+  }), prisma.banquet.update({ where: { id: d.banquetId }, data: { setupRevision: { increment: 1 } } })]);
+  revalidatePath(`/banquets/${d.banquetId}`, "layout");
 }
 
 export async function removeBanquetMenuItem(formData: FormData) {
   await requireRole("MANAGER");
   const id = String(formData.get("id"));
   const banquetId = String(formData.get("banquetId"));
-  await prisma.banquetMenuItem.delete({ where: { id } });
-  revalidatePath(`/banquets/${banquetId}`);
+  await prisma.$transaction([
+    prisma.banquetMenuItem.delete({ where: { id, banquetId } }),
+    prisma.banquet.update({ where: { id: banquetId }, data: { setupRevision: { increment: 1 } } }),
+  ]);
+  revalidatePath(`/banquets/${banquetId}`, "layout");
 }

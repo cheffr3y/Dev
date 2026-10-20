@@ -410,6 +410,8 @@ model Banquet {
   specialInstructions String? // multi-line — service notes from the sheet
   setupNotes          String? // multi-line — linen / table setting / setup
   notes               String? // anything else
+  setupPlan           Json? // versioned station plan and quantity-sensitive packing checks
+  setupRevision       Int     @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

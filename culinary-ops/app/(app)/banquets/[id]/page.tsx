@@ -53,6 +53,9 @@ export default async function BanquetDetailPage({ params }: { params: Promise<{ 
           ← Banquets
         </Link>
         <div className="flex items-center gap-2">
+          <LinkButton href={`/banquets/${banquet.id}/setup`} variant="secondary">
+            Setup & vessel pull →
+          </LinkButton>
           <LinkButton href={`/banquets/${banquet.id}/prep-sheet`} variant="secondary">
             Prep sheet →
           </LinkButton>

@@ -1,4 +1,5 @@
 import { AtelierHeader } from "@/components/AtelierHeader";
+import { BanquetSetupPacket } from "@/components/BanquetSetupSheet";
 import { RecipePrintSettings } from "@/components/RecipeDossier";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -22,7 +23,7 @@ import {
 // deeper supporting recipes are scaled and collected at the back.
 
 function fmtDate(d: Date): string {
-  return d.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  return d.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
 }
 
 export default async function BanquetCookPacketPage({ params }: { params: Promise<{ id: string }> }) {
@@ -69,6 +70,7 @@ export default async function BanquetCookPacketPage({ params }: { params: Promis
           ← Back to banquet
         </Link>
         <div className="flex items-center gap-2">
+          <Link href={`/banquets/${banquet.id}/setup`} className="text-sm text-blue-600 hover:underline">Setup & vessel pull</Link>
           <Link href={`/banquets/${banquet.id}/prep-sheet`} className="text-sm text-blue-600 hover:underline">
             Prep sheet
           </Link>
@@ -76,6 +78,9 @@ export default async function BanquetCookPacketPage({ params }: { params: Promis
         </div>
       </div>
 
+      <BanquetSetupPacket banquet={banquet} menu={banquet.menuItems.map(m => ({
+        id: m.id, name: m.recipe.name, orderedQty: m.orderedQty, unit: m.unit,
+      }))} />
       {banquet.menuItems.length === 0 ? (
         <div className="rounded-xl border border-dashed border-zinc-300 bg-zinc-50 px-6 py-12 text-center">
           <p className="text-sm font-medium text-zinc-600">No dishes to build.</p>
@@ -83,7 +88,7 @@ export default async function BanquetCookPacketPage({ params }: { params: Promis
         </div>
       ) : (
         <div className="recipe-packet-content">
-          <div className="atelier-paper print-sheet"><AtelierHeader title={banquet.name} venue={banquet.venue.name} date={banquet.date} guests={banquet.guestCount} runTime={banquet.timeLabel} kicker="Banquet Cook Packet" /><p className="text-sm text-zinc-500">{banquet.menuItems.length} dishes · {references.size} deeper recipe references · Scaled to ordered counts.</p></div>
+          <div className="atelier-paper print-sheet"><AtelierHeader title={banquet.name} venue={banquet.venue.name} date={banquet.date} dateLabel={fmtDate(banquet.date)} guests={banquet.guestCount} runTime={banquet.timeLabel} kicker="Banquet Cook Packet" /><p className="text-sm text-zinc-500">{banquet.menuItems.length} dishes · {references.size} deeper recipe references · Scaled to ordered counts.</p></div>
 
           <div className="recipe-packet-builds mt-8 space-y-8">
             {dishes.map((d) => (
