@@ -329,13 +329,16 @@ body {
   .recipe-dossier {
     width: 100%;
     min-width: 0;
-    /* Letter minus two 0.4in margins; leave rounding room for pagination.
-       A minimum, rather than a fixed height, lets long recipes continue. */
-    min-height: calc(10.2in - 1px);
+    /* Let content set the height. Full-page flex minimums can push a tiny
+       footer onto a separate sheet when the print margins change. */
+    min-height: 0;
+    display: block;
+    background: #fff;
     font-size: 9pt;
     line-height: 1.35;
   }
   .recipe-sheet-body {
+    display: block;
     padding: 10px 0 0;
   }
   .recipe-hero {
@@ -437,29 +440,39 @@ body {
   .recipe-footer {
     padding-top: 12px;
   }
-  .recipe-colophon {
-    margin-top: 10px;
-    padding-top: 7px;
-    font-size: 6.5px;
-  }
   .recipe-packet-content {
     overflow: visible;
   }
-  .recipe-packet-builds,
-  .recipe-packet-builds > * {
+  .recipe-packet-builds {
     margin-block: 0 !important;
   }
-  .recipe-packet-card,
-  .recipe-supporting-builds,
-  .recipe-packet-notes {
-    break-before: page;
+  .recipe-packet-builds > * {
+    margin-block: 16px 0 !important;
   }
   .recipe-supporting-builds,
   .recipe-references {
-    margin-top: 0;
+    break-before: auto;
+    margin-top: 16px;
+  }
+  .recipe-packet-notes {
+    break-before: page;
+  }
+  .recipe-supporting-builds > h3,
+  .recipe-references > div:first-child,
+  .recipe-accent,
+  .recipe-masthead,
+  .recipe-hero,
+  .recipe-specs,
+  .recipe-context {
+    break-inside: avoid;
+    break-after: avoid;
   }
   .recipe-packet .recipe-dossier {
     font-size: 8.5pt;
+    /* Allow long recipes to use remaining space instead of pushing their
+       entire card to the next sheet. Individual rows/steps stay together. */
+    break-inside: auto;
+    margin-top: 16px;
   }
   .recipe-packet .recipe-hero {
     padding-block: 8px;
@@ -497,10 +510,6 @@ body {
   }
   .recipe-packet .recipe-footer {
     padding-top: 6px;
-  }
-  .recipe-packet .recipe-colophon {
-    margin-top: 6px;
-    padding-top: 5px;
   }
   .recipe-packet .break-before-page {
     margin-top: 0;

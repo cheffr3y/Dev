@@ -3,7 +3,6 @@ import { num } from "@/lib/costing";
 import { displayMeasure } from "@/lib/units";
 import { ALLERGENS } from "@/lib/allergens";
 import { splitStep } from "@/lib/method";
-import { LocalTime } from "./LocalTime";
 import { MethodCues } from "./MethodCues";
 import { groupMiseLines } from "@/lib/recipe-groups";
 
@@ -28,7 +27,17 @@ export type DossierRecipe = {
 };
 
 export function RecipePrintSettings() {
-  return <style>{"@media print { @page { size: letter portrait; margin: 0.4in; } }"}</style>;
+  return <style>{`@media print {
+    @page {
+      size: letter portrait;
+      margin: 0.4in 0.4in 0.55in;
+      @bottom-right {
+        content: "Page " counter(page) "/" counter(pages);
+        font: 8pt Arial, sans-serif;
+        color: #57554f;
+      }
+    }
+  }`}</style>;
 }
 
 export type MiseLine = {
@@ -70,7 +79,7 @@ export type RecipeDossierProps = {
 export function RecipeDossier({
   recipe, scale, allergenKeys, lines = [], weightInGrams = false,
   context,
-  children, footerNote, batchLabel, supporting = false, titleLevel = 2, id, className = "", printedAt = new Date(),
+  children, footerNote, batchLabel, supporting = false, titleLevel = 2, id, className = "",
 }: RecipeDossierProps) {
   const titleId = useId();
   const Title = titleLevel === 1 ? "h1" : titleLevel === 3 ? "h3" : "h2";
@@ -127,16 +136,7 @@ export function RecipeDossier({
         {context && <div className="recipe-context mt-3 text-[11px] leading-snug text-zinc-600">{context}</div>}
         {children ?? <RecipeDossierWorkspace recipe={recipe} lines={lines} scale={scale} weightInGrams={weightInGrams} />}
 
-        <footer className="recipe-footer mt-auto pt-6">
-          {footerNote}
-          <div className="recipe-signatures grid grid-cols-3 gap-6 pt-3 font-mono text-[8px] text-zinc-500">
-            {["Prepared By", "Date & Time", "Verified By (Chef / Sous)"].map(label => <p key={label} className="border-t border-[#D5CFC4] pt-1">{label}</p>)}
-          </div>
-          <div className="recipe-colophon mt-4 flex justify-between gap-3 border-t border-hairline pt-2 font-mono text-[7px] uppercase tracking-[0.08em] text-zinc-500">
-            <p>Mise // Culinary Archive · {recipe.prodCode} · V{recipe.version}</p>
-            <p className="text-right">Printed <LocalTime date={printedAt} mode="date" />{recipe.updatedAt && <> · Updated <LocalTime date={recipe.updatedAt} mode="date" /></>}</p>
-          </div>
-        </footer>
+        {footerNote && <div className="recipe-footer mt-4">{footerNote}</div>}
       </div>
     </article>
   );

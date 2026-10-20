@@ -104,7 +104,7 @@ test("packet keeps the first sub-recipe inline and prints deeper instructions on
   assert.doesNotMatch(main, /Emulsify the mayonnaise|Puree the roasted cloves|make /);
 
   const appendix = renderToStaticMarkup(<RecipeReferences references={references} byId={byId} />);
-  assert.match(appendix, /print:break-before-page/);
+  assert.doesNotMatch(appendix, /print:break-before-page/);
   assert.match(appendix, /Reference A.1 · Sub-recipe of Ranch dressing/);
   assert.match(textContent(appendix), /Total needed: 1.5 gal/);
   assert.match(textContent(appendix), /Total needed: 12 oz/);
@@ -180,7 +180,8 @@ test("dossier preserves fractional scaling, culinary stages, cues and inherited 
   assert.match(text, /25 each/);
   assert.match(html, /recipe-masthead/);
   assert.match(text, /2.5× Batch/);
-  assert.match(text, /Prepared By.*Date &amp; Time.*Verified By/);
+  assert.doesNotMatch(text, /Prepared By|Date &amp; Time|Verified By/);
+  assert.doesNotMatch(html, /recipe-signatures|recipe-colophon/);
   assert.match(text, /Garde Manger.*Lunch/);
   assert.match(text, /30m/);
   assert.match(text, /I\. House Sub-Recipes/);
@@ -256,7 +257,7 @@ test("editorial recursion stops cycles and consolidated festival builds retain p
 test("standalone and packet dossiers share grouping and preserve zero yield and time", () => {
   const { wraps } = referenceFixture();
   const html = renderToStaticMarkup(<RecipeDossier recipe={{ ...wraps, prepMinutes: 0, cookMinutes: 0, holdLifeDays: 0 }}
-    scale={0} allergenKeys={[]} titleLevel={1} lines={[
+    scale={0} allergenKeys={[]} titleLevel={1} footerNote={<p>Cost status: pending missing prices.</p>} lines={[
       { id: "lettuce", name: "Lettuce", quantity: 2, unit: "each", note: null, category: "Produce" },
     ]} />);
   assert.match(textContent(html), /0 each/);
@@ -264,4 +265,6 @@ test("standalone and packet dossiers share grouping and preserve zero yield and 
   assert.match(textContent(html), /0 Days/);
   assert.doesNotMatch(html, /recipe-stage-title/);
   assert.match(html, /<h1 /);
+  assert.match(textContent(html), /Cost status: pending missing prices/);
+  assert.doesNotMatch(textContent(html), /Prepared By|Verified By/);
 });

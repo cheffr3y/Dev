@@ -12,7 +12,7 @@ export function RecipeReferences({ references, byId, sharedRefs, weightInGrams =
   if (references.size === 0) return null;
 
   return (
-    <section className="recipe-references mt-10 print:break-before-page" aria-label="Sub-recipe references">
+    <section className="recipe-references mt-10" aria-label="Sub-recipe references">
       <div className="break-inside-avoid border-b border-hairline pb-2">
         <h2 className="font-display text-3xl italic text-[#2C3E35]">Sub-recipe references</h2>
         <p className="mt-1 text-xs text-zinc-600">
