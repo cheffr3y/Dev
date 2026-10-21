@@ -122,6 +122,7 @@ model Venue {
   banquets           Banquet[]
   festivals          Festival[] // festivals hinting at this venue's inventory
   menuRollouts       MenuRollout[]
+  toGoRollups        ToGoRollup[]
   prepLines          PrepOrderLine[] // production destined here
   prepOrders         PrepOrder[] // orders destined here
   cooks              Cook[] // kitchen roster scheduled at this venue
@@ -218,6 +219,7 @@ model Recipe {
   banquetItems      BanquetMenuItem[]
   festivalItems     FestivalMenuItem[]
   menuRolloutItems  MenuRolloutItem[]
+  toGoRollupItems   ToGoRollupItem[]
   prepLines         PrepOrderLine[]
   productionBatches ProductionBatch[]
   directTransfers   StockTransfer[]
@@ -306,6 +308,50 @@ model MenuRolloutItem {
   createdAt       DateTime @default(now())
 
   @@unique([rolloutId, recipeId])
+}
+
+// Holiday retail planning starts with sales estimates, before recipes,
+// package specs or final production quantities are necessarily known.
+model ToGoRollup {
+  id          String @id @default(cuid())
+  name        String
+  venueId     String?
+  venue       Venue? @relation(fields: [venueId], references: [id], onDelete: SetNull)
+  status      String @default("DRAFT")
+  orderCutoff String? // Chicago calendar date, YYYY-MM-DD
+  pickupNotes String?
+  notes       String?
+  items       ToGoRollupItem[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ToGoRollupItem {
+  id                 String @id @default(cuid())
+  rollupId           String
+  rollup             ToGoRollup @relation(fields: [rollupId], references: [id], onDelete: Cascade)
+  recipeId           String?
+  recipe             Recipe? @relation(fields: [recipeId], references: [id], onDelete: Restrict)
+  name               String
+  section            String @default("Sides")
+  description        String?
+  sellingUnit        String? // null = still deciding; lb, quart, kit, etc.
+  recipeQtyPerUnit   Float? // explicit mapping in the linked recipe's yield unit
+  recipeAmountUnit   String? // preserves that unit if the recipe yield unit changes later
+  price              Float? // per selling unit, never inferred from recipe menu price
+  packagingCost      Float? // per selling unit; zero is explicit, null is unknown
+  forecastQty        Float? // estimated SALES in selling units; null is not zero
+  productionQty      Float? // optional production target replaces forecast for prep only
+  actualSoldQty      Float? // optional post-sale learning; never drives production
+  confidence         String @default("NEW")
+  packingNotes       String?
+  customerInstructions String?
+  notes              String?
+  sortOrder          Int @default(0)
+  createdAt          DateTime @default(now())
+
+  @@index([rollupId, sortOrder])
+  @@index([recipeId])
 }
 
 // Per-venue current stock with par levels.

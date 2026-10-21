@@ -223,7 +223,7 @@ export async function deleteRecipe(formData: FormData) {
   // clear message instead of letting the Postgres FK violation crash the
   // request. Ingredients, changelog, and this recipe's own sub-recipe links
   // cascade away on their own.
-  const [prepLines, productionBatches, eventItems, banquetItems, usedIn, rolloutItems, festivalItems] = await Promise.all([
+  const [prepLines, productionBatches, eventItems, banquetItems, usedIn, rolloutItems, festivalItems, toGoItems] = await Promise.all([
     prisma.prepOrderLine.count({ where: { recipeId: id } }),
     prisma.productionBatch.count({ where: { recipeId: id } }),
     prisma.eventMenuItem.count({ where: { recipeId: id } }),
@@ -231,6 +231,7 @@ export async function deleteRecipe(formData: FormData) {
     prisma.recipeComponent.count({ where: { childId: id } }),
     prisma.menuRolloutItem.count({ where: { recipeId: id } }),
     prisma.festivalMenuItem.count({ where: { recipeId: id } }),
+    prisma.toGoRollupItem.count({ where: { recipeId: id } }),
   ]);
 
   const plural = (n: number, one: string, many = `${one}s`) =>
@@ -242,6 +243,7 @@ export async function deleteRecipe(formData: FormData) {
   if (banquetItems) blockers.push(plural(banquetItems, "banquet"));
   if (rolloutItems) blockers.push(plural(rolloutItems, "menu rollout"));
   if (festivalItems) blockers.push(plural(festivalItems, "festival"));
+  if (toGoItems) blockers.push(plural(toGoItems, "holiday / to-go item"));
   if (usedIn) blockers.push(`${plural(usedIn, "recipe")} (as a sub-recipe)`);
 
   if (blockers.length > 0) {

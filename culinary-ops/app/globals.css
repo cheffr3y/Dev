@@ -178,6 +178,18 @@ body {
   background: #f4f1ea;
 }
 .atelier-table tbody tr { border-bottom: 1px dotted #e2ddd5; }
+
+@media print {
+  body:has(.to-go-packet),
+  body:has(.to-go-packet) .min-h-screen { min-height: 0 !important; }
+  body:has(.to-go-packet) .flex:has(> main.print-full) { display: block; }
+  .to-go-packet { width: 100%; max-width: none; }
+  .to-go-print-section { break-before: page; }
+  .to-go-packet .overflow-x-auto { overflow: visible; }
+  .to-go-packet table { table-layout: auto; overflow-wrap: anywhere; }
+  .to-go-packet thead { display: table-header-group; }
+  .to-go-packet h2 { break-after: avoid; }
+}
 .allergen-matrix th,
 .allergen-matrix td { padding: 0.4rem 0.15rem; }
 .launch-recipe-sheet { margin-top: 2rem; }
