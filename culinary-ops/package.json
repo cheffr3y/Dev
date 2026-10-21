@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "prisma migrate deploy && next start",
     "lint": "eslint",
-    "test": "node --import tsx --test \"lib/schedule.test.ts\" \"lib/trivia-engine.test.ts\" \"lib/prep-accounting.test.ts\" \"lib/production.test.ts\" \"lib/prep-packet.test.tsx\" \"lib/method-cues.test.ts\" \"lib/allergens.test.tsx\" \"lib/ingredient-cleanup.test.ts\" \"lib/festival-accounting.test.ts\" \"app/(app)/schedule/schedule-ui.test.tsx\" \"lib/prep-costing.test.ts\" \"lib/prep-worksheet.test.ts\" \"lib/recipe-cost-sheet.test.tsx\" \"lib/menu-rollout.test.ts\" \"lib/recipe-groups.test.ts\" \"lib/menu-recipe-card.test.tsx\" \"lib/homestead.test.ts\" \"lib/annex-launch-repairs.test.ts\" \"lib/banquet-setup.test.tsx\" \"lib/to-go-rollup.test.ts\" \"lib/venue-directory.test.tsx\"",
+    "test": "node --import tsx --test \"lib/schedule.test.ts\" \"lib/trivia-engine.test.ts\" \"lib/prep-accounting.test.ts\" \"lib/production.test.ts\" \"lib/prep-packet.test.tsx\" \"lib/method-cues.test.ts\" \"lib/allergens.test.tsx\" \"lib/ingredient-cleanup.test.ts\" \"lib/festival-accounting.test.ts\" \"app/(app)/schedule/schedule-ui.test.tsx\" \"lib/prep-costing.test.ts\" \"lib/prep-worksheet.test.ts\" \"lib/recipe-cost-sheet.test.tsx\" \"lib/menu-rollout.test.ts\" \"lib/recipe-groups.test.ts\" \"lib/menu-recipe-card.test.tsx\" \"lib/homestead.test.ts\" \"lib/annex-launch-repairs.test.ts\" \"lib/banquet-setup.test.tsx\" \"lib/to-go-rollup.test.ts\" \"lib/venue-directory.test.tsx\" \"lib/hmr-copy.test.ts\" \"lib/hmr-proposal.test.tsx\"",
     "db:push": "prisma db push",
     "db:deploy": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",

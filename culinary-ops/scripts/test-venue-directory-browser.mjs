@@ -90,11 +90,12 @@ try {
 
   // Existing legacy selections survive an unrelated holiday settings save.
   await admin.goto(`${process.env.AUTH_URL}/to-go/venue-legacy-rollup`);
-  await admin.getByText("Rollup settings", { exact: true }).click();
+  await admin.getByText("Rollout settings", { exact: true }).click();
   const settings = admin.locator("#to-go-settings");
   assert.equal(await settings.locator('select[name="venueId"]').inputValue(), "venue-ambiguous-banquets");
+  await settings.locator("details > summary").click();
   await settings.getByLabel("Planning notes").fill("Keep the original location while reviewing.");
-  await save(admin, settings, "Save rollup settings");
+  await save(admin, settings, "Save rollout settings");
   assert.equal((await prisma.toGoRollup.findUniqueOrThrow({ where: { id: "venue-legacy-rollup" } })).venueId, "venue-ambiguous-banquets");
 
   await admin.goto(`${process.env.AUTH_URL}/prep-orders/venue-legacy-request`);
@@ -106,13 +107,13 @@ try {
 
   // A newly created holiday plan can select a room under its parent.
   await admin.goto(`${process.env.AUTH_URL}/to-go`);
-  await admin.getByText("+ New Holiday / To-Go Rollup", { exact: true }).click();
+  await admin.getByText("+ New HMR Rollout", { exact: true }).click();
   const create = admin.locator("#new-to-go-rollup");
   await create.getByLabel("Name", { exact: true }).fill("Room-specific holiday plan");
   await create.getByLabel("Start with", { exact: true }).selectOption("blank");
   const renards = directory.find(venue => venue.standardKey === "renards");
   await create.getByLabel("Venue", { exact: true }).selectOption(renards.id);
-  await save(admin, create, "Create holiday rollup");
+  await save(admin, create, "Create HMR rollout");
   await admin.waitForURL(/\/to-go\/[^/]+$/);
   const created = await prisma.toGoRollup.findFirstOrThrow({ where: { name: "Room-specific holiday plan" } });
   assert.equal(created.venueId, renards.id);
@@ -123,7 +124,7 @@ try {
   assert.equal(await admin.locator('input[name="name"]').count(), 0);
   await admin.screenshot({ path: `${output}/directory.png`, fullPage: true });
   await admin.goto(`${process.env.AUTH_URL}/to-go`);
-  await admin.getByText("+ New Holiday / To-Go Rollup", { exact: true }).click();
+  await admin.getByText("+ New HMR Rollout", { exact: true }).click();
   await admin.screenshot({ path: `${output}/holiday-selector.png`, fullPage: true });
 
   // A legacy home venue still resolves its own stock; it must not silently

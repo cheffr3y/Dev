@@ -32,7 +32,7 @@ const SECTIONS: Array<{ heading: string; items: NavItem[] }> = [
       { href: "/schedule", label: "Schedule", icon: "schedule" },
       { href: "/recipes", label: "Recipes & Builds", icon: "recipes" },
       { href: "/menus", label: "Menu Rollouts", icon: "recipes" },
-      { href: "/to-go", label: "Holiday & To-Go", icon: "orders" },
+      { href: "/to-go", label: "HMR Rollouts", icon: "orders" },
       {
         href: "/events",
         label: "Events",

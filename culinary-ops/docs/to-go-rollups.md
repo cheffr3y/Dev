@@ -1,71 +1,69 @@
-# Holiday and To Go Rollups
+# HMR Rollouts
 
-Open **Holiday & To-Go** beside Menu Rollouts. This is a separate planning book
-that shares the recipe and ingredient library. Managers edit; staff read and print.
+HMR Rollouts are menu proposals for recurring Home Meal Replacement programs,
+monthly specials and seasonal offerings. The workflow focuses on proposed dishes,
+menu descriptions, recipe food costs, proposed prices, and storage/reheating notes.
+Existing Holiday & To-Go records and `/to-go` links continue to work.
 
-Create a blank rollup or start with the 11 items in the chef's Thanksgiving menu.
-The starter copies names and descriptions, sets solid sides to lb, and leaves
-liquid sizes, small-bite formats, recipe links, quantities and prices undecided.
-It does not create duplicate recipes or assert customer dietary claims.
+## Propose the menu
 
-## Sales and production
+Create a blank menu by default, or explicitly select the Thanksgiving starter.
+Name and venue are the main setup fields. Dates, pickup details, status and
+planning notes are optional and collapsed.
 
-Enter estimated sales in each item's selling unit: lb/oz/kg, liquid volume, or
-each/dozen/kit/board/tray. Blank means unknown; zero is explicitly none. New items
-default to **New / untested** confidence. Add development notes as trials progress.
-Changing the selling unit clears quantity and pricing inputs in the editor so
-old numbers cannot silently become a different measure.
+Add an item by name or select a recipe. Choosing a recipe fills an empty item
+name and selects a compatible default selling unit (lb, quart or each). Existing
+item names and selected units are not overwritten. Only the item name is required.
+A menu description, proposed price, and storage/reheating notes can be developed
+as the proposal takes shape. Section and planning notes are optional disclosures;
+sort order is assigned automatically. Estimated demand remains optional and is
+collapsed, so proposing a menu does not require sales or production figures.
 
-The optional production target replaces estimated sales for recipe demand only.
-It does not change forecast revenue. Actual sold is a later comparison against
-the original estimate, and does not affect production demand. Totals by unit do
-not combine pounds, quarts and packages into a misleading unit count.
+Packaging, production targets, confidence scores and actual sales are not
+requested in the proposal editor. Their existing values remain stored and are
+preserved during an unrelated edit. Changing selling units resets unit-dependent
+numbers instead of silently interpreting old amounts in a different measure.
 
-Link existing recipes whenever ready. The selling unit converts to the saved
-recipe yield within its measurement family. For a kit or incompatible yield,
-enter an explicit recipe amount per selling unit, in the recipe's yield unit.
-For example, a kit containing 0.5 lb of a linked build needs 0.5 lb per kit.
-Never infer a serving weight or convert volume to weight without a chef's mapping.
-Changing the recipe clears the explicit mapping in the editor.
-Custom amounts also retain their measurement unit: a saved 0.5 lb per kit remains
-0.5 lb if the recipe later changes its yield to ounces. A change to an incompatible
-measurement family requires review. The editor can clear the amount and switch
-to the recipe's current yield unit when a new specification is needed.
+## Recipe costs and printouts
 
-Recipe demand includes nested sub-recipes and combines shared demand. Missing
-links, invalid yields, incompatible ingredients/components and cycles are flagged;
-affected positive-demand items are explicitly excluded rather than using the
-legacy same-unit fallback. Fractional batches stay fractional. These are planning
-quantities, not an inventory ledger or a customer order-entry system.
+The proposed price and recipe food cost share the same selling unit. Weights
+and liquid volumes convert within their families. A kit or incompatible yield
+requires an explicit amount of the recipe per selling unit to estimate food cost.
+Custom amounts retain their measurement unit if the recipe's yield changes later.
+Missing links, invalid yields, incompatible ingredient/component units, cycles,
+and missing prices leave food cost unavailable instead of guessing.
 
-## Costing and print books
+The costing view uses food cost only. Legacy packaging costs do not affect its
+food cost percentage or price-less-food-cost calculation. Stale ingredient prices
+stay visibly flagged. Price less food cost is before labor, overhead and other
+expenses; it is not net profit.
 
-Price and packaging cost are per selling unit, independent of a recipe's menu
-price. A blank packaging cost is unknown; enter 0 if none. Food cost is unavailable
-when conversion or ingredient pricing is incomplete. Stale prices retain their
-estimate and show a warning. Margin is after food and packaging, before labor,
-overhead and sales fees. Each summary reports the count of included items.
+**Print menu proposal** is the main output: item names, descriptions, proposed
+prices and storage/reheating notes. The complete proposal book also includes
+recipe costing, allergens, recipe/sub-recipe cards and the vendor checklist.
+Production quantities, packing sheets and actual-sales comparisons are excluded
+from the proposal book. Older direct forecast/packing packet URLs remain valid
+for existing bookmarks but are not offered in the proposal workflow.
 
-Print the complete holiday book or individual forecast/production, costing,
-packing/customer instructions, allergen, recipe or vendor sections. Recipes use
-their saved standard batch yields, including all nested dependencies, without
-plated-serving conversion. Allergen guides require review of accompaniments.
-The vendor checklist is manual and covers linked food recipes only; packaging
-supplies and unlinked menu items are explicitly outside that checklist.
+## Reuse next month
 
-## Delivery and checks
+Open **Copy for next month / another rollout**, enter the new name, and create
+an independent draft. The copy retains the venue, menu items, recipe links,
+selling specifications, proposed prices, descriptions and reheating notes.
+Legacy packing setup is also retained without being requested in the editor.
+Sales estimates, production targets, actual sold, confidence, period-specific
+notes, order cutoff and pickup dates reset. New IDs are generated for the rollout
+and items. The original proposal and shared recipes remain unchanged.
 
-The additive `20261020180000_to_go_rollups` migration creates two new tables.
-The existing production start command applies migrations before accepting traffic.
-No recipe data or existing menu rollout is modified by the migration.
+## Validation and delivery
 
-Run `npm test`, `npx tsc --noEmit`, `npm run lint`, and `npm run build`.
-Run `npm run test:to-go` for the isolated browser and migration check. Set
-`PREP_PLAYWRIGHT_MODULE` and `PREP_BROWSER_EXECUTABLE` if Playwright or Chromium
-are outside the default paths. `TO_GO_REVIEW_DIR` controls review screenshots/PDFs.
+No database migration is needed for this refinement. Existing data models and
+URLs stay in place. Managers edit and copy; staff read and print.
 
-The rollup unit tests cover weight/volume/package conversions, unknown versus zero,
-forecast versus production overrides, actual sales comparisons, incomplete costs,
-shared sub-recipes, cycles and mismatched nested units. The disposable browser
-harness exercises real creation, edits, permissions and packet output without
-reading or writing the application's database.
+Run `npm test`, `npx tsc --noEmit`, `npm run build`, and lint changed files.
+`npm run test:to-go` runs the real forms and print modes in a disposable PostgreSQL
+cluster. It verifies name-only entry, recipe autofill, visible reheating notes,
+food-only pricing, retention of old operational facts, independent monthly copies,
+role enforcement, proposal print modes, old bookmarks and mobile layout.
+Set `PREP_PLAYWRIGHT_MODULE` and `PREP_BROWSER_EXECUTABLE` when needed;
+`TO_GO_REVIEW_DIR` controls review screenshots and PDFs.

@@ -20,15 +20,17 @@ export const SELLING_UNITS = [
   { value: "tray", label: "tray", group: "Small bites / packages" },
 ] as const;
 export const TO_GO_PACKETS = [
-  { value: "all", label: "Complete holiday book" },
-  { value: "forecast", label: "Sales forecast & production" },
-  { value: "costing", label: "Costing & pricing" },
-  { value: "packing", label: "Packing & customer instructions" },
+  { value: "proposal", label: "Menu proposal" },
+  { value: "all", label: "Complete proposal book" },
+  { value: "costing", label: "Recipe costs & proposed pricing" },
   { value: "allergens", label: "Allergen guide" },
   { value: "recipes", label: "Recipe & sub-recipe book" },
   { value: "order-guide", label: "Vendor checklist" },
 ] as const;
-export type ToGoPacketMode = typeof TO_GO_PACKETS[number]["value"];
+export type ToGoPacketMode = typeof TO_GO_PACKETS[number]["value"] | "forecast" | "packing";
 export function toGoPacketMode(value: string | string[] | undefined): ToGoPacketMode {
-  return TO_GO_PACKETS.find(packet => packet.value === value)?.value ?? "all";
+  // Existing saved operational packet links continue to resolve, but are not
+  // offered in the menu-proposal workflow.
+  if (value === "forecast" || value === "packing") return value;
+  return TO_GO_PACKETS.find(packet => packet.value === value)?.value ?? "proposal";
 }
