@@ -1,88 +1,26 @@
 import { prisma } from "@/lib/prisma";
-import { requireRole, getCurrentUser } from "@/lib/session";
+import { requireRole } from "@/lib/session";
 import { Badge, Button, Card, Field, Input, PageHeader, Textarea } from "@/components/ui";
-import { createVenue, updateVenue, deleteVenue } from "./actions";
+import { updateVenue } from "./actions";
 
-function VenueFields({ venue }: { venue?: { name: string; code: string; address: string | null; notes: string | null } }) {
-  return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-      <Field label="Name">
-        <Input name="name" required defaultValue={venue?.name} placeholder="Downtown Kitchen" />
-      </Field>
-      <Field label="Code">
-        <Input name="code" required maxLength={6} defaultValue={venue?.code} placeholder="DT" />
-      </Field>
-      <div className="col-span-2">
-        <Field label="Address">
-          <Input name="address" defaultValue={venue?.address ?? ""} placeholder="120 Market St" />
-        </Field>
-      </div>
-      <div className="col-span-2 md:col-span-4">
-        <Field label="Notes">
-          <Textarea name="notes" defaultValue={venue?.notes ?? ""} />
-        </Field>
-      </div>
-    </div>
-  );
-}
+const usage = { select: { users: true, events: true, banquets: true, menuRollouts: true, toGoRollups: true, orderGuides: true, inventory: true } } as const;
 
 export default async function VenuesPage() {
-  // Managers and admins reach this page.
   await requireRole("MANAGER");
-  const user = await getCurrentUser();
-  const isAdmin = user?.role === "ADMIN";
-
-  const venues = await prisma.venue.findMany({
-    include: { _count: { select: { events: true, orderGuides: true, inventory: true, users: true } } },
-    orderBy: { name: "asc" },
-  });
-
-  return (
-    <div>
-      <PageHeader title="Venues" subtitle="Physical locations you operate." />
-
-      <details className="mb-5">
-        <summary className="cursor-pointer text-sm font-medium text-blue-600">+ Add venue</summary>
-        <Card className="mt-2 p-4">
-          <form action={createVenue} className="space-y-3">
-            <VenueFields />
-            <Button type="submit">Add venue</Button>
-          </form>
-        </Card>
-      </details>
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {venues.map((v) => (
-          <Card key={v.id} className="p-4">
-            <div className="flex items-start justify-between">
-              <div>
-                <h3 className="font-medium text-zinc-900">{v.name}</h3>
-                {v.address && <p className="text-sm text-zinc-500">{v.address}</p>}
-              </div>
-              <Badge color="blue">{v.code}</Badge>
-            </div>
-            <p className="mt-3 text-xs text-zinc-400">
-              {v._count.users} users · {v._count.events} events · {v._count.orderGuides} guides · {v._count.inventory} stocked
-            </p>
-            <div className="mt-3 flex items-center gap-3 border-t border-zinc-100 pt-3">
-              <details className="flex-1">
-                <summary className="cursor-pointer text-xs text-blue-600">edit</summary>
-                <form action={updateVenue} className="mt-2 space-y-3">
-                  <input type="hidden" name="id" value={v.id} />
-                  <VenueFields venue={{ name: v.name, code: v.code, address: v.address, notes: v.notes }} />
-                  <Button type="submit" variant="secondary">Save</Button>
-                </form>
-              </details>
-              {isAdmin && (
-                <form action={deleteVenue}>
-                  <input type="hidden" name="id" value={v.id} />
-                  <button className="text-xs text-red-500 hover:underline">delete</button>
-                </form>
-              )}
-            </div>
-          </Card>
-        ))}
-      </div>
-    </div>
-  );
+  const venues = await prisma.venue.findMany({ include: { _count: usage }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }] });
+  type Venue = typeof venues[number];
+  function Details({ venue }: { venue: Venue }) {
+    return <div className="space-y-2"><div className="flex items-start justify-between gap-3"><h3 className="font-medium text-ink">{venue.name}</h3><Badge>{venue.code}</Badge></div>
+      {venue.address && <p className="text-sm text-zinc-500">{venue.address}</p>}
+      <p className="text-xs text-zinc-500">{venue._count.users} users · {venue._count.events + venue._count.banquets} events · {venue._count.menuRollouts + venue._count.toGoRollups} rollups · {venue._count.orderGuides} guides · {venue._count.inventory} stocked</p>
+      <details><summary className="cursor-pointer text-xs text-gold">Edit address / notes</summary><form action={updateVenue} className="mt-3 space-y-3"><input type="hidden" name="id" value={venue.id} /><Field label="Address"><Input name="address" maxLength={1000} defaultValue={venue.address ?? ""} /></Field><Field label="Notes"><Textarea name="notes" maxLength={5000} defaultValue={venue.notes ?? ""} /></Field><Button variant="secondary">Save location details</Button></form></details>
+    </div>;
+  }
+  const standard = venues.filter(venue => venue.standardKey != null);
+  const legacy = venues.filter(venue => venue.standardKey == null);
+  return <div><PageHeader title="Venues & Rooms" subtitle="One company directory for menus, holiday rollups, events, prep and scheduling." />
+    <p className="mb-6 text-sm text-zinc-600">Rooms appear under their parent venue in location selectors throughout the app. Select the overall venue when a plan covers the whole property.</p>
+    <div className="grid gap-5 lg:grid-cols-2">{standard.filter(venue => !venue.parentId).map(venue => <Card key={venue.id} className="p-5"><Details venue={venue} />{standard.some(room => room.parentId === venue.id) && <div className="mt-4 space-y-4 border-l-2 border-hairline pl-4">{standard.filter(room => room.parentId === venue.id).map(room => <Details key={room.id} venue={room} />)}</div>}</Card>)}</div>
+    {legacy.length > 0 && <details className="mt-8"><summary className="cursor-pointer text-sm text-gold">Legacy locations · {legacy.length} records retained</summary><p className="my-4 text-sm text-zinc-600">These records retain their existing users, stock, events and accounting history. They are excluded from new location choices. Existing assignments remain visible when editing or reviewing past activity.</p><div className="grid gap-4 lg:grid-cols-2">{legacy.map(venue => <Card key={venue.id} className="p-5"><Details venue={venue} /></Card>)}</div></details>}
+  </div>;
 }

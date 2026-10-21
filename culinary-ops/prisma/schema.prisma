@@ -112,6 +112,11 @@ model Venue {
   code      String   @unique // short label e.g. "DT", "WH"
   address   String?
   notes     String?
+  standardKey String? @unique // stable identity in the company venue and room directory
+  parentId  String?
+  parent    Venue? @relation("VenueRooms", fields: [parentId], references: [id], onDelete: Restrict)
+  rooms     Venue[] @relation("VenueRooms")
+  sortOrder Int @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

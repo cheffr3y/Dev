@@ -1,3 +1,4 @@
+import { VenueOptions } from "@/components/VenueOptions";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import { getVenues } from "@/lib/venue";
@@ -46,11 +47,7 @@ export default async function UsersPage() {
               <Field label="Home venue">
                 <Select name="homeVenueId" defaultValue="">
                   <option value="">— none —</option>
-                  {venues.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.name}
-                    </option>
-                  ))}
+                  <VenueOptions venues={venues} />
                 </Select>
               </Field>
             </div>
@@ -94,11 +91,7 @@ export default async function UsersPage() {
                         <Field label="Home venue">
                           <Select name="homeVenueId" defaultValue={u.homeVenueId ?? ""}>
                             <option value="">— none —</option>
-                            {venues.map((v) => (
-                              <option key={v.id} value={v.id}>
-                                {v.name}
-                              </option>
-                            ))}
+                            <VenueOptions venues={venues} current={u.homeVenue} />
                           </Select>
                         </Field>
                       </div>

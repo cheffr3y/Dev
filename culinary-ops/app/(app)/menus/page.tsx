@@ -1,3 +1,4 @@
+import { getVenues } from "@/lib/venue";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireUser, hasRole } from "@/lib/session";
@@ -12,7 +13,7 @@ export default async function MenusPage() {
   const [rollouts, recipes, venues] = await Promise.all([
     prisma.menuRollout.findMany({ include: { venue: true, items: true }, orderBy: { updatedAt: "desc" } }),
     prisma.recipe.findMany({ include: menuRecipeInclude }),
-    prisma.venue.findMany({ orderBy: { name: "asc" } }),
+    getVenues(),
   ]);
   return <div>
     <PageHeader title="Menu Rollouts" subtitle="Engineer the menu. Prepare the launch. Give every station one source of truth." />

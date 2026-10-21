@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { VENUE_DIRECTORY } from "../lib/venue-directory";
 
 const prisma = new PrismaClient();
 
@@ -46,18 +47,21 @@ async function main() {
   await prisma.dayNote.deleteMany();
   await prisma.scheduleNote.deleteMany();
   await prisma.user.deleteMany();
+  await prisma.venue.updateMany({ data: { parentId: null } });
   await prisma.venue.deleteMany();
 
   // --- Venues ---
-  const downtown = await prisma.venue.create({
-    data: { name: "Downtown Kitchen", code: "DT", address: "120 Market St" },
-  });
-  const waterfront = await prisma.venue.create({
-    data: { name: "Waterfront Grill", code: "WF", address: "8 Harbor Way" },
-  });
-  const catering = await prisma.venue.create({
-    data: { name: "Catering Commissary", code: "CC", address: "44 Industrial Blvd" },
-  });
+  const directory = new Map<string, { id: string }>();
+  for (const [sortOrder, entry] of VENUE_DIRECTORY.entries()) {
+    const venue = await prisma.venue.create({ data: {
+      id: `venue-standard-${entry.key}`, name: entry.name, code: entry.code,
+      standardKey: entry.key, parentId: entry.parentKey ? directory.get(entry.parentKey)!.id : null, sortOrder,
+    } });
+    directory.set(entry.key, venue);
+  }
+  const downtown = directory.get("foxtown-brewpub")!;
+  const waterfront = directory.get("station")!;
+  const catering = directory.get("foxtown-heritage-meats")!;
 
   // --- Users ---
   const pw = await bcrypt.hash("password123", 10);
@@ -241,7 +245,7 @@ async function main() {
 
   // --- Order Guides ---
   const dtSysco = await prisma.orderGuide.create({
-    data: { name: "Downtown — Sysco Weekly", venueId: downtown.id, vendorId: sysco.id },
+    data: { name: "Foxtown Brewpub — Sysco Weekly", venueId: downtown.id, vendorId: sysco.id },
   });
   await prisma.orderGuideLine.createMany({
     data: [
@@ -253,7 +257,7 @@ async function main() {
   });
 
   const wfSeafood = await prisma.orderGuide.create({
-    data: { name: "Waterfront — Harbor Seafood", venueId: waterfront.id, vendorId: seafood.id },
+    data: { name: "The Station — Harbor Seafood", venueId: waterfront.id, vendorId: seafood.id },
   });
   await prisma.orderGuideLine.createMany({
     data: [
@@ -270,7 +274,7 @@ async function main() {
       date: new Date(Date.now() + 14 * 86400000),
       guestCount: 120,
       status: "CONFIRMED",
-      location: "Waterfront Ballroom",
+      location: "The Station",
       notes: "Plated 3-course. Confirm dietary restrictions with client.",
       menuItems: {
         create: [
@@ -311,8 +315,8 @@ async function main() {
       timeLabel: "5:00 pm – 1:00 am",
       guestCount: 62,
       status: "CONFIRMED",
-      location: "Foxtown Station",
-      areas: "Opitz Hall",
+      location: "The Station",
+      areas: "Opitz",
       salesManager: "Michelle Banaszak",
       contactName: "Sarah Miller",
       contactEmail: "contact@example.com",

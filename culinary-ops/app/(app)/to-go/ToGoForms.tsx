@@ -1,5 +1,8 @@
 "use client";
 
+import { VenueOptions } from "@/components/VenueOptions";
+
+
 import { useActionState, useState } from "react";
 import { ComboPicker } from "@/components/ComboPicker";
 import { Button, Field, Input, Select, Textarea } from "@/components/ui";
@@ -11,14 +14,14 @@ const initial: ToGoFormState = { error: "", saved: false };
 function Feedback({ state }: { state: ToGoFormState }) {
   return <>{state.error && <p role="alert" className="text-sm text-red-700">{state.error}</p>}{state.saved && <p role="status" className="text-xs text-sage">Saved. Rollup and print books updated.</p>}</>;
 }
-type Header = { id: string; name: string; venueId: string | null; status: string; notes: string | null; orderCutoff: string | null; pickupNotes: string | null };
+type Header = { venue?: import("@/lib/venue-directory").VenueChoice | null; id: string; name: string; venueId: string | null; status: string; notes: string | null; orderCutoff: string | null; pickupNotes: string | null };
 export function ToGoHeaderForm({ rollup, venues }: { rollup?: Header; venues: { id: string; name: string }[] }) {
   const [state, action, pending] = useActionState(saveToGoRollup, initial);
   return <form action={action} className="space-y-4" id={rollup ? "to-go-settings" : "new-to-go-rollup"}>
     <input type="hidden" name="id" value={rollup?.id ?? ""} />
     <div className="grid gap-3 sm:grid-cols-2">
       <Field label="Name"><Input name="name" required maxLength={200} defaultValue={rollup?.name} placeholder="Butchershop Thanksgiving 2026" /></Field>
-      <Field label="Venue"><Select aria-label="Venue" name="venueId" defaultValue={rollup?.venueId ?? ""}><option value="">Company-wide</option>{venues.map(venue => <option key={venue.id} value={venue.id}>{venue.name}</option>)}</Select></Field>
+      <Field label="Venue"><Select aria-label="Venue" name="venueId" defaultValue={rollup?.venueId ?? ""}><option value="">Company-wide</option><VenueOptions venues={venues} current={rollup?.venue} /></Select></Field>
       {!rollup && <Field label="Start with"><Select aria-label="Start with" name="starter" defaultValue="thanksgiving"><option value="thanksgiving">Butchershop Thanksgiving menu · 11 items</option><option value="blank">Blank rollup</option></Select></Field>}
       <Field label="Status"><Select aria-label="Status" name="status" defaultValue={rollup?.status ?? "DRAFT"}>{TO_GO_STATUSES.map(status => <option key={status}>{status}</option>)}</Select></Field>
       <Field label="Order cutoff"><Input name="orderCutoff" type="date" defaultValue={rollup?.orderCutoff ?? ""} /></Field>

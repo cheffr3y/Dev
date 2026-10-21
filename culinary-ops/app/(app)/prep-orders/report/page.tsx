@@ -1,3 +1,5 @@
+import { getVenues } from "@/lib/venue";
+import { VenueOptions } from "@/components/VenueOptions";
 import Link from "next/link";
 import { requirePrepUser } from "@/lib/prep-session";
 import { getPrepReport } from "@/lib/prep-accounting-report";
@@ -17,7 +19,7 @@ export default async function AccountingPage({
       p.to ?? p.from ?? chicagoToday(),
       p.venue,
     ),
-    prisma.venue.findMany({ orderBy: { name: "asc" }, take: 200 }),
+    getVenues({ includeLegacy: true }),
     prisma.transferReportRun.findMany({
       orderBy: { createdAt: "desc" },
       take: 10,
@@ -49,11 +51,7 @@ export default async function AccountingPage({
         />
         <Select aria-label="Venue" name="venue" defaultValue={p.venue ?? ""}>
           <option value="">All venues</option>
-          {venues.map((v) => (
-            <option key={v.id} value={v.id}>
-              {v.name}
-            </option>
-          ))}
+          <VenueOptions venues={venues} includeLegacy />
         </Select>
         <Button>Apply</Button>
       </form>

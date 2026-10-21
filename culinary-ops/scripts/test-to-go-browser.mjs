@@ -13,7 +13,7 @@ const output = process.env.TO_GO_REVIEW_DIR || "/tmp/to-go-review";
 await mkdir(output, { recursive: true });
 const passwordHash = await bcrypt.hash("local-smoke-only", 4);
 await prisma.user.createMany({ data: ["MANAGER", "STAFF"].map(role => ({ name: role, email: `${role.toLowerCase()}@local.test`, passwordHash, role })) });
-const venue = await prisma.venue.create({ data: { name: "Disposable Butchershop", code: "BUT" } });
+const venue = await prisma.venue.findUniqueOrThrow({ where: { standardKey: "foxtown-heritage-meats" } });
 const vendor = await prisma.vendor.create({ data: { name: "Holiday Vendor" } });
 const butter = await prisma.item.create({ data: { name: "Butter", category: "Dairy", allergens: "milk", unit: "lb", unitCost: 4, vendorId: vendor.id, sku: "BUT-001", priceUpdatedAt: new Date() } });
 const potatoes = await prisma.recipe.create({ data: { name: "Holiday Mashed Potatoes", prodCode: "HMP", yieldQty: 10, yieldUnit: "lb", instructions: "Mash — Fold in the butter until smooth.", items: { create: { itemId: butter.id, quantity: 5, unit: "lb" } } } });
@@ -40,8 +40,8 @@ async function save(page, form, button) {
   const responsePromise = page.waitForResponse(response => response.request().method() === "POST" && response.url().includes("/to-go"));
   await form.getByRole("button", { name: button, exact: true }).click();
   const request = await requestPromise;
-  await responsePromise;
-  await page.waitForLoadState("networkidle");
+  await (await responsePromise).finished();
+  await page.waitForLoadState("domcontentloaded");
   return { headers: request.headers(), body: request.postDataBuffer() };
 }
 try {

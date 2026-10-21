@@ -1,3 +1,4 @@
+import { getVenues } from "@/lib/venue";
 import Link from "next/link";
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
@@ -68,11 +69,7 @@ export default async function CloseoutPage({
       orderBy: { name: "asc" },
       take: 500,
     }),
-    prisma.venue.findMany({
-      select: { id: true, name: true },
-      orderBy: { name: "asc" },
-      take: 200,
-    }),
+    getVenues({ includeLegacy: true }),
     prisma.item.findMany({
       select: { id: true, name: true, unit: true },
       orderBy: { name: "asc" },

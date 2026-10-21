@@ -1,3 +1,5 @@
+import { getVenues } from "@/lib/venue";
+import { VenueOptions } from "@/components/VenueOptions";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requirePrepUser } from "@/lib/prep-session";
@@ -34,7 +36,7 @@ export default async function RequestsPage({
       orderBy: { forDate: "asc" },
       take: 200,
     }),
-    prisma.venue.findMany({ orderBy: { name: "asc" }, take: 200 }),
+    getVenues({ includeIds: [user.homeVenueId] }),
   ]);
   return (
     <div>
@@ -58,15 +60,7 @@ export default async function RequestsPage({
             </Field>
             <Field label="Venue">
               <Select name="destinationVenueId" required>
-                {venues
-                  .filter(
-                    (v) => user.role === "ADMIN" || v.id === user.homeVenueId,
-                  )
-                  .map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.name}
-                    </option>
-                  ))}
+                <VenueOptions venues={venues.filter(v => user.role === "ADMIN" || v.id === user.homeVenueId)} includeLegacy />
               </Select>
             </Field>
             <Field label="Notes">

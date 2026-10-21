@@ -1,3 +1,4 @@
+import { VenueOptions } from "@/components/VenueOptions";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -302,11 +303,7 @@ export default async function FestivalOverviewPage({ params }: { params: Promise
                 <Field label="Venue (inventory hint)">
                   <Select name="venueId" defaultValue={festival.venueId ?? ""}>
                     <option value="">— none —</option>
-                    {venues.map((v) => (
-                      <option key={v.id} value={v.id}>
-                        {v.name}
-                      </option>
-                    ))}
+                    <VenueOptions venues={venues} current={festival.venue} />
                   </Select>
                 </Field>
               </div>

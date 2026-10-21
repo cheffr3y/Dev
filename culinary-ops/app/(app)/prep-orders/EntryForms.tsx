@@ -1,4 +1,7 @@
 "use client";
+
+import { VenueOptions } from "@/components/VenueOptions";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Field, Input, Select } from "@/components/ui";
@@ -118,11 +121,7 @@ export function SupplyEditor({
               }
             >
               <option value="">Source venue</option>
-              {venues.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.name}
-                </option>
-              ))}
+              <VenueOptions venues={venues} current={venues.find(venue => venue.id === s.venueId)} />
             </Select>
           </Field>
           <Field label="Quantity supplied">
@@ -427,11 +426,7 @@ export function EntryForm({
         ) : (
           <Field label="Receiving venue">
             <Select name="venueId" required>
-              {venues.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.name}
-                </option>
-              ))}
+              <VenueOptions venues={venues} />
             </Select>
           </Field>
         )}
@@ -553,11 +548,7 @@ export function EntryForm({
             <div className="mt-2 grid gap-3 sm:grid-cols-2">
               <Field label="Venue">
                 <Select name="extraVenue">
-                  {venues.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.name}
-                    </option>
-                  ))}
+                  <VenueOptions venues={venues} />
                 </Select>
               </Field>
               <Field label={`Sent (${r?.yieldUnit})`}>

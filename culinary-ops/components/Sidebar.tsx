@@ -63,7 +63,7 @@ const SECTIONS: Array<{ heading: string; items: NavItem[] }> = [
 const ADMIN_SECTION: { heading: string; items: NavItem[] } = {
   heading: "Admin",
   items: [
-    { href: "/venues", label: "Venues", icon: "venues" },
+    { href: "/venues", label: "Venues & Rooms", icon: "venues" },
     { href: "/admin/users", label: "Users", icon: "users" },
   ],
 };

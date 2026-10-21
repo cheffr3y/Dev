@@ -1,5 +1,8 @@
 "use client";
 
+import { VenueOptions } from "@/components/VenueOptions";
+
+
 import { useActionState } from "react";
 import { ComboPicker } from "@/components/ComboPicker";
 import { Button, Field, Input, Select, Textarea } from "@/components/ui";
@@ -10,7 +13,7 @@ const initial: MenuFormState = { error: "", saved: false };
 function Feedback({ state }: { state: MenuFormState }) {
   return <>{state.error && <p role="alert" className="text-sm text-red-700">{state.error}</p>}{state.saved && <p role="status" className="text-xs text-sage">Saved. Estimates and packets are current.</p>}</>;
 }
-type Header = { id: string; name: string; subtitle: string | null; venueId: string | null; targetFcp: number; expectedCovers: number; status: string; notes: string | null };
+type Header = { venue?: import("@/lib/venue-directory").VenueChoice | null; id: string; name: string; subtitle: string | null; venueId: string | null; targetFcp: number; expectedCovers: number; status: string; notes: string | null };
 export function RolloutForm({ rollout, venues }: { rollout?: Header; venues: { id: string; name: string }[] }) {
   const [state, action, pending] = useActionState(saveRollout, initial);
   return <form action={action} className="space-y-4">
@@ -18,7 +21,7 @@ export function RolloutForm({ rollout, venues }: { rollout?: Header; venues: { i
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       <Field label="Name"><Input name="name" required maxLength={200} defaultValue={rollout?.name} placeholder="Annex Fall Lounge Menu" /></Field>
       <Field label="Subtitle"><Input name="subtitle" defaultValue={rollout?.subtitle ?? ""} placeholder="Seasonal launch · Q4 2026" /></Field>
-      <Field label="Venue"><Select aria-label="Venue" name="venueId" defaultValue={rollout?.venueId ?? ""}><option value="">Company-wide</option>{venues.map(venue => <option key={venue.id} value={venue.id}>{venue.name}</option>)}</Select></Field>
+      <Field label="Venue"><Select aria-label="Venue" name="venueId" defaultValue={rollout?.venueId ?? ""}><option value="">Company-wide</option><VenueOptions venues={venues} current={rollout?.venue} /></Select></Field>
       <Field label="Target food cost %"><Input name="targetFcp" type="number" min="0.1" max="100" step="0.1" required defaultValue={rollout?.targetFcp ?? 28} /></Field>
       <Field label="Baseline covers"><Input name="expectedCovers" type="number" min="0" step="1" required defaultValue={rollout?.expectedCovers ?? 100} /></Field>
       <Field label="Status"><Select aria-label="Status" name="status" defaultValue={rollout?.status ?? "DRAFT"}>{ROLLOUT_STATUSES.map(status => <option key={status}>{status}</option>)}</Select></Field>

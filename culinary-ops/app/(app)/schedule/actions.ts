@@ -1,5 +1,7 @@
 "use server";
 
+import { standardLocationText } from "@/lib/venue-directory";
+
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
@@ -245,7 +247,7 @@ export async function setDayEvents(input: { venueId: string; date: string; event
           eventName: e.eventName?.trim() || null,
           people: e.people ?? null,
           time: e.time?.trim() || null,
-          location: e.location?.trim() || null,
+          location: standardLocationText(e.location),
           body: e.body?.trim() || null,
           sortOrder: i,
         },

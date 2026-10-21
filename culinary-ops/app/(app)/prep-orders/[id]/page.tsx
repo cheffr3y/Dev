@@ -5,6 +5,7 @@ import { hasRole } from "@/lib/session";
 import { requirePrepUser } from "@/lib/prep-session";
 import { canOrderForVenue } from "@/lib/prep-access";
 import { getVenues, getActiveVenue } from "@/lib/venue";
+import { VenueOptions } from "@/components/VenueOptions";
 import {
   Button,
   Card,
@@ -35,7 +36,7 @@ export default async function PrepOrderDetailPage({
       where: { id },
       include: {
         submittedBy: { select: { name: true } },
-        destinationVenue: { select: { name: true, code: true } },
+        destinationVenue: true,
         lines: {
           include: {
             recipe: { select: { name: true, prodCode: true, yieldUnit: true } },
@@ -60,7 +61,7 @@ export default async function PrepOrderDetailPage({
       },
       orderBy: { name: "asc" },
     }),
-    getVenues(),
+    getVenues({ includeIds: [user.homeVenueId] }),
     getActiveVenue(user.homeVenueId),
   ]);
 
@@ -196,16 +197,7 @@ export default async function PrepOrderDetailPage({
                         order.destinationVenueId ?? active?.id ?? venues[0]?.id
                       }
                     >
-                      {venues
-                        .filter(
-                          (v) =>
-                            user.role === "ADMIN" || v.id === user.homeVenueId,
-                        )
-                        .map((v) => (
-                          <option key={v.id} value={v.id}>
-                            {v.name}
-                          </option>
-                        ))}
+                      <VenueOptions venues={venues.filter(v => user.role === "ADMIN" || v.id === user.homeVenueId)} current={order.destinationVenue} />
                     </Select>
                   </Field>
                 </div>

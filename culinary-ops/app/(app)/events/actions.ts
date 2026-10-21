@@ -1,5 +1,7 @@
 "use server";
 
+import { standardLocationText } from "@/lib/venue-directory";
+
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -32,7 +34,7 @@ function parseEvent(formData: FormData) {
     date: new Date(d.date),
     guestCount: d.guestCount,
     status: d.status,
-    location: d.location || null,
+    location: standardLocationText(d.location),
     notes: d.notes || null,
   };
 }

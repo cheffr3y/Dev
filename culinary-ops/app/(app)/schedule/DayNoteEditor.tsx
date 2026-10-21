@@ -1,5 +1,7 @@
 "use client";
 
+import { LocationInput } from "@/components/LocationInput";
+
 import { useEffect, useRef, useState, useTransition } from "react";
 import { DayEventsContent, hasDayEvent, type DayEventLite } from "./schedule-ui";
 import { setDayEvents } from "./actions";
@@ -168,10 +170,10 @@ export function DayNoteEditor({
                     </div>
                     <label className="block">
                       <span className="mb-1 block text-xs font-medium text-zinc-600">Location</span>
-                      <input
+                      <LocationInput
                         value={event.location ?? ""}
                         onChange={(e) => updateAt(i, { location: e.target.value })}
-                        placeholder="Annex"
+                        placeholder="Select a venue / room or enter an offsite location"
                         className={field}
                       />
                     </label>

@@ -1,3 +1,4 @@
+import { getVenues } from "@/lib/venue";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireUser, hasRole } from "@/lib/session";
@@ -8,7 +9,7 @@ export default async function ToGoPage() {
   const user = await requireUser();
   const [rollups, venues] = await Promise.all([
     prisma.toGoRollup.findMany({ include: { venue: true, _count: { select: { items: true } } }, orderBy: { updatedAt: "desc" } }),
-    prisma.venue.findMany({ orderBy: { name: "asc" } }),
+    getVenues(),
   ]);
   return <div><PageHeader title="Holiday & To-Go Rollups" subtitle="Plan the offering, estimate sales and prepare the holiday book." />
     <Card className="mb-6 p-5"><p className="text-sm text-zinc-600">Start with a best guess. Sell solid sides by weight, liquids by volume, and new small bites in the format you choose. Link recipes as they’re ready; refine production targets later.</p></Card>

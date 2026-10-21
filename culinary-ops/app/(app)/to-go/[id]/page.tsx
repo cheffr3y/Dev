@@ -1,9 +1,9 @@
+import { getVenues } from "@/lib/venue";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { loadToGoRollup } from "@/lib/to-go-data";
 import { buildToGoRollup } from "@/lib/to-go-rollup";
 import { TO_GO_PACKETS } from "@/lib/to-go-options";
-import { prisma } from "@/lib/prisma";
 import { requireUser, hasRole } from "@/lib/session";
 import { money, num } from "@/lib/costing";
 import { Card, CardHeader, LinkButton, PageHeader, StatCard } from "@/components/ui";
@@ -16,7 +16,7 @@ import { removeToGoItem } from "../actions";
 export default async function ToGoWorkspace({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser();
   const { id } = await params;
-  const [[rollup, recipes], venues] = await Promise.all([loadToGoRollup(id), prisma.venue.findMany({ orderBy: { name: "asc" } })]);
+  const [[rollup, recipes], venues] = await Promise.all([loadToGoRollup(id), getVenues()]);
   if (!rollup) notFound();
   const canEdit = hasRole(user, "MANAGER");
   const plan = buildToGoRollup(rollup, recipes);

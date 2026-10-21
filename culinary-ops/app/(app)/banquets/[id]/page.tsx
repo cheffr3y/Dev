@@ -1,3 +1,5 @@
+import { LocationInput } from "@/components/LocationInput";
+import { VenueOptions } from "@/components/VenueOptions";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -299,11 +301,7 @@ export default async function BanquetDetailPage({ params }: { params: Promise<{ 
               </Field>
               <Field label="Venue">
                 <Select name="venueId" defaultValue={banquet.venueId}>
-                  {venues.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.name}
-                    </option>
-                  ))}
+                  <VenueOptions venues={venues} current={banquet.venue} />
                 </Select>
               </Field>
               <Field label="Date">
@@ -325,10 +323,10 @@ export default async function BanquetDetailPage({ params }: { params: Promise<{ 
                 </Select>
               </Field>
               <Field label="Location">
-                <Input name="location" defaultValue={banquet.location ?? ""} />
+                <LocationInput name="location" defaultValue={banquet.location ?? ""} />
               </Field>
               <Field label="Area(s) / room">
-                <Input name="areas" defaultValue={banquet.areas ?? ""} />
+                <LocationInput name="areas" defaultValue={banquet.areas ?? ""} />
               </Field>
               <Field label="Sales manager">
                 <Input name="salesManager" defaultValue={banquet.salesManager ?? ""} />

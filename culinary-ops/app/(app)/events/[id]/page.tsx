@@ -1,3 +1,5 @@
+import { LocationInput } from "@/components/LocationInput";
+import { VenueOptions } from "@/components/VenueOptions";
 import { AtelierHeader } from "@/components/AtelierHeader";
 import { RecipePrintSettings } from "@/components/RecipeDossier";
 import { CostAuditStamp } from "@/components/CostAudit";
@@ -249,11 +251,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
               </Field>
               <Field label="Venue">
                 <Select name="venueId" defaultValue={event.venueId}>
-                  {venues.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.name}
-                    </option>
-                  ))}
+                  <VenueOptions venues={venues} current={event.venue} />
                 </Select>
               </Field>
               <Field label="Date">
@@ -272,7 +270,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                 </Select>
               </Field>
               <Field label="Location">
-                <Input name="location" defaultValue={event.location ?? ""} />
+                <LocationInput name="location" defaultValue={event.location ?? ""} />
               </Field>
             </div>
             <Field label="Notes">

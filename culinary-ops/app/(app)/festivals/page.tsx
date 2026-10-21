@@ -1,3 +1,4 @@
+import { VenueOptions } from "@/components/VenueOptions";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireUser, hasRole } from "@/lib/session";
@@ -44,11 +45,7 @@ export default async function FestivalsPage() {
                 <Field label="Venue (inventory hint)" hint="Optional — festivals count their own on-hand">
                   <Select name="venueId" defaultValue="">
                     <option value="">— none —</option>
-                    {venues.map((v) => (
-                      <option key={v.id} value={v.id}>
-                        {v.name}
-                      </option>
-                    ))}
+                    <VenueOptions venues={venues} />
                   </Select>
                 </Field>
                 <Field label="Expected attendance">

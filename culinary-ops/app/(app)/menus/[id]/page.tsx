@@ -1,8 +1,8 @@
+import { getVenues } from "@/lib/venue";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { loadMenuRollout } from "@/lib/menu-rollout-data";
 import { buildMenuRollout, PACKET_MODES } from "@/lib/menu-rollout";
-import { prisma } from "@/lib/prisma";
 import { requireUser, hasRole } from "@/lib/session";
 import { money, num, pct, preciseNum } from "@/lib/costing";
 import { Card, CardHeader, Input, LinkButton, PageHeader, StatCard } from "@/components/ui";
@@ -14,7 +14,7 @@ import { removeRolloutItem } from "../actions";
 export default async function MenuWorkspace({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser();
   const { id } = await params;
-  const [[rollout, recipes], venues] = await Promise.all([loadMenuRollout(id), prisma.venue.findMany({ orderBy: { name: "asc" } })]);
+  const [[rollout, recipes], venues] = await Promise.all([loadMenuRollout(id), getVenues()]);
   if (!rollout) notFound();
   const canEdit = hasRole(user, "MANAGER");
   const plan = buildMenuRollout(rollout, recipes);

@@ -1,3 +1,4 @@
+import { getVenues } from "@/lib/venue";
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { requirePrepUser } from "@/lib/prep-session";
@@ -34,11 +35,7 @@ export default async function TransferPage({
       orderBy: { name: "asc" },
       take: 500,
     }),
-    prisma.venue.findMany({
-      select: { id: true, name: true },
-      orderBy: { name: "asc" },
-      take: 200,
-    }),
+    getVenues({ includeLegacy: true }),
     prisma.item.findMany({
       select: { id: true, name: true, unit: true },
       orderBy: { name: "asc" },

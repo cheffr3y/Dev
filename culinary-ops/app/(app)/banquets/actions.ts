@@ -1,5 +1,7 @@
 "use server";
 
+import { standardLocationText } from "@/lib/venue-directory";
+
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -52,8 +54,8 @@ function parseBanquet(formData: FormData) {
     timeLabel: d.timeLabel || null,
     guestCount: d.guestCount,
     status: d.status,
-    location: d.location || null,
-    areas: d.areas || null,
+    location: standardLocationText(d.location),
+    areas: standardLocationText(d.areas),
     contactName: d.contactName || null,
     contactEmail: d.contactEmail || null,
     contactPhone: d.contactPhone || null,
