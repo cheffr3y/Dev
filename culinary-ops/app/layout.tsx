@@ -1,29 +1,60 @@
 import type { Metadata, Viewport } from "next";
-import { Cormorant_Garamond, JetBrains_Mono, IBM_Plex_Mono, Inter, Playfair_Display } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
-// "The French Laundry" type pairing: a high-contrast serif for page titles
-// and summary numbers, a clean sans for navigation, and true mono for measures.
-const serif = Playfair_Display({
+// Keep workspace and packet typography in the repo so builds never depend on
+// Google Fonts responses. Sources and licenses are recorded in ./fonts/.
+const serif = localFont({
   variable: "--font-serif",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  style: ["normal", "italic"],
+  src: [
+    { path: "./fonts/playfair-display-normal-400-700-latin.woff2", weight: "400 700", style: "normal" },
+    { path: "./fonts/playfair-display-italic-400-700-latin.woff2", weight: "400 700", style: "italic" },
+  ],
+  display: "swap",
+  fallback: ["Georgia", "serif"],
+  adjustFontFallback: "Times New Roman",
 });
 
-const sans = Inter({
+const sans = localFont({
   variable: "--font-sans-fallback",
-  subsets: ["latin"],
+  src: "./fonts/inter-normal-100-900-latin.woff2",
+  weight: "100 900",
+  style: "normal",
+  display: "swap",
+  fallback: ["Arial", "sans-serif"],
 });
 
-const mono = IBM_Plex_Mono({
+const mono = localFont({
   variable: "--font-monospace",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  src: [
+    { path: "./fonts/ibm-plex-mono-normal-400-latin.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/ibm-plex-mono-normal-500-latin.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/ibm-plex-mono-normal-600-latin.woff2", weight: "600", style: "normal" },
+  ],
+  display: "swap",
+  fallback: ["monospace"],
+  adjustFontFallback: false,
 });
 
-const atelierSerif = Cormorant_Garamond({ variable: "--font-atelier-serif", subsets: ["latin"], weight: ["400", "500", "600", "700"], style: ["normal", "italic"] });
-const atelierMono = JetBrains_Mono({ variable: "--font-atelier-mono", subsets: ["latin"], weight: ["400", "500", "600"] });
+const atelierSerif = localFont({
+  variable: "--font-atelier-serif",
+  src: [
+    { path: "./fonts/cormorant-garamond-normal-400-700-latin.woff2", weight: "400 700", style: "normal" },
+    { path: "./fonts/cormorant-garamond-italic-400-700-latin.woff2", weight: "400 700", style: "italic" },
+  ],
+  display: "swap",
+  fallback: ["Georgia", "serif"],
+  adjustFontFallback: "Times New Roman",
+});
+const atelierMono = localFont({
+  variable: "--font-atelier-mono",
+  src: "./fonts/jetbrains-mono-normal-400-600-latin.woff2",
+  weight: "400 600",
+  style: "normal",
+  display: "swap",
+  fallback: ["monospace"],
+  adjustFontFallback: false,
+});
 
 export const metadata: Metadata = {
   title: "Mise — Culinary Operations",

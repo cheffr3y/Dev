@@ -144,6 +144,8 @@ See the [daily prep and closeout guide](docs/prep-orders-guide.md) for the workf
 
 ## Deployment
 
+Fonts are bundled in [`app/fonts`](app/fonts/README.md) and loaded with `next/font/local`. Production builds do not fetch Google Fonts, avoiding intermittent upstream font URL parsing failures.
+
 Homestead adds the independent `HomesteadSave` table in `20261019000000_homestead_saves`. The existing `npm start` migration step applies it before serving `/homestead`. Saves are scoped to the authenticated user; optimistic revisions reject stale writes from other sessions. Garden resources never affect operational inventory, recipes, or accounting. See [the Homestead guide](docs/homestead.md) for gameplay, recovery and verification.
 
 Ingredient allergen tagging adds the nullable `Item.allergens` column in `20261016000000_ingredient_allergens`. Apply the migration with `prisma migrate deploy` before releasing this application version. Existing ingredients remain untagged until reviewed; existing recipe allergen selections are preserved.
