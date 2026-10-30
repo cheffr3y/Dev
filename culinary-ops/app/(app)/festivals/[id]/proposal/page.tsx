@@ -107,7 +107,7 @@ export default async function FestivalProposalPage({ params }: { params: Promise
         <FestivalTabs festivalId={festival.id} />
       </div>
 
-      <article className="mx-auto max-w-5xl bg-white print:max-w-none">
+      <article className="paper-preview mx-auto max-w-5xl bg-white print:max-w-none">
         <header className="border-b-2 border-ink pb-5">
           <div className="flex items-start justify-between gap-6">
             <div>

@@ -1,14 +1,14 @@
 @import "tailwindcss";
 
 :root {
-  /* Off-white / cream workspace, near-black ink. */
+  /* Paper defaults. Screen workspace overrides are scoped to .ops-theme. */
   --background: #f9f9f8;
   --foreground: #1a1a1a;
 
   /*
    * Weekly-schedule design tokens. One source of truth for the editor, the
    * posted view, and the printed sheet so the three never drift. Values alias
-   * the shared "French Laundry" palette above rather than inventing new hues —
+   * the shared paper palette rather than inventing new hues —
    * every fill stays a light warm neutral that survives grayscale printing.
    */
   --sched-bg-page: #f9f9f8; /* workspace behind the card */
@@ -48,10 +48,8 @@
 }
 
 /*
- * "The French Laundry" design tokens — sophisticated, minimalist, gallery-like.
- * Semantic names for new component code, plus the stock Tailwind ramps
- * (zinc/blue/red/amber/emerald) remapped to the documented values so existing
- * utility classes inherit the refined palette without per-page edits.
+ * Paper tokens also serve unauthenticated pages. The workspace overrides them
+ * only on screen; printed packets never inherit dark surfaces or light ink.
  */
 @theme {
   /* Brand & surfaces */
@@ -121,6 +119,181 @@ body {
   color: var(--foreground);
   font-feature-settings: "liga" 1, "calt" 1;
   -webkit-font-smoothing: antialiased;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono, var(--font-monospace)), monospace;
+}
+
+/* Keep these screen-only. Packet previews reset to the paper palette below. */
+@media screen {
+  .ops-theme {
+    color-scheme: dark;
+    --color-primary: #2563eb;
+    --color-ink: #f1f5f9;
+    --color-charcoal: #0c1423;
+    --color-navy: #0c1423;
+    --color-canvas: #151f30;
+    --color-cream: #0e1625;
+    --color-stone: #1c293c;
+    --color-hairline: #2c3a50;
+    --color-gold: #93b4f5;
+    --color-gold-soft: #b4ccff;
+    --color-pale-gold: #202e46;
+    --color-sage: #6ee7b7;
+    --color-sage-soft: #a7f3d0;
+    --color-pale-sage: #10392f;
+    --color-focus: #60a5fa;
+    --color-form-focus: #60a5fa;
+    --color-zinc-50: #1b2739;
+    --color-zinc-100: #233047;
+    --color-zinc-200: #2c3a50;
+    --color-zinc-300: #42526a;
+    --color-zinc-400: #94a3b8;
+    --color-zinc-500: #a4b1c4;
+    --color-zinc-600: #bfcbda;
+    --color-zinc-700: #d6dfeb;
+    --color-zinc-800: #e2e8f0;
+    --color-zinc-900: #f1f5f9;
+    --color-zinc-950: #f8fafc;
+    --color-blue-100: #172f53;
+    --color-blue-600: #93c5fd;
+    --color-blue-700: #bfdbfe;
+    --color-red-50: #3a1b2b;
+    --color-red-100: #4c2033;
+    --color-red-200: #713044;
+    --color-red-500: #fb7185;
+    --color-red-600: #fda4af;
+    --color-red-700: #fecdd3;
+    --color-amber-50: #352a16;
+    --color-amber-100: #473519;
+    --color-amber-200: #695023;
+    --color-amber-300: #8b682c;
+    --color-amber-600: #fbbf24;
+    --color-amber-700: #fcd34d;
+    --color-amber-800: #fde68a;
+    --color-amber-900: #fef3c7;
+    --color-emerald-100: #10392f;
+    --color-emerald-600: #34d399;
+    --color-emerald-700: #6ee7b7;
+    --sched-bg-page: var(--color-cream);
+    --sched-bg-card: var(--color-canvas);
+    --sched-text: var(--color-ink);
+    --sched-text-secondary: var(--color-zinc-600);
+    --sched-text-muted: var(--color-zinc-400);
+    --sched-border: var(--color-hairline);
+    --sched-border-strong: var(--color-zinc-300);
+    --sched-fill-header: var(--color-zinc-50);
+    --sched-fill-weekend: #222b3c;
+    --sched-fill-totals: var(--color-zinc-100);
+    --sched-fill-active: #202e43;
+  }
+
+  /* Legacy white surfaces use the card token; true paper resets it to white. */
+  .ops-theme .bg-white { background-color: var(--color-canvas); }
+  .ops-theme .bg-white\/70 { background-color: color-mix(in srgb, var(--color-canvas) 70%, transparent); }
+  .ops-theme .hover\:bg-white:hover { background-color: var(--color-zinc-50); }
+  .ops-theme .bg-zinc-900 { background-color: var(--color-primary); }
+  .ops-theme .bg-primary.hover\:bg-zinc-700:hover { background-color: #1d4ed8; }
+
+  /* Preserve the culinary paper system in on-screen document previews too. */
+  .ops-theme :is(.recipe-dossier, .atelier-packet, .atelier-event, .atelier-paper, .print-sheet, .schedule-print, .paper-preview) {
+    color-scheme: light;
+    color: #1a1a1a;
+    background-color: #fff;
+    --color-primary: #1a1a1a;
+    --color-ink: #1a1a1a;
+    --color-charcoal: #1a1a1a;
+    --color-canvas: #ffffff;
+    --color-cream: #f9f9f8;
+    --color-stone: #f1efea;
+    --color-hairline: #e5e5e5;
+    --color-gold: #9c7c50;
+    --color-gold-soft: #c8b18c;
+    --color-pale-gold: #f5efe4;
+    --color-sage: #5c6e54;
+    --color-sage-soft: #aab69f;
+    --color-pale-sage: #eaefe6;
+    --color-focus: #9c7c50;
+    --color-form-focus: #9c7c50;
+    --color-zinc-50: #f7f6f4;
+    --color-zinc-100: #efedea;
+    --color-zinc-200: #e5e5e5;
+    --color-zinc-300: #d6d4cf;
+    --color-zinc-400: #9a9892;
+    --color-zinc-500: #76746e;
+    --color-zinc-600: #57554f;
+    --color-zinc-700: #3a3833;
+    --color-zinc-800: #262420;
+    --color-zinc-900: #1a1a1a;
+    --color-zinc-950: #000000;
+    --color-blue-100: #eef1f4;
+    --color-blue-600: #3e4c5e;
+    --color-blue-700: #2e3a48;
+    --color-red-50: #f6ecea;
+    --color-red-100: #ebd3cf;
+    --color-red-200: #dbb3ac;
+    --color-red-500: #a33d31;
+    --color-red-600: #8c3328;
+    --color-red-700: #6e281f;
+    --color-amber-50: #f7f1e8;
+    --color-amber-100: #efe3d2;
+    --color-amber-200: #fde68a;
+    --color-amber-300: #c8b18c;
+    --color-amber-600: #9c7c50;
+    --color-amber-700: #7e6440;
+    --color-amber-800: #92400e;
+    --color-amber-900: #5c4a30;
+    --color-emerald-100: #eaefe6;
+    --color-emerald-600: #5c6e54;
+    --color-emerald-700: #44523e;
+    --sched-border: #e5e5e5;
+    --sched-border-strong: #d6d4cf;
+    --sched-fill-header: #f7f6f4;
+    --sched-fill-weekend: #f6f1e7;
+    --sched-fill-totals: #f2f0eb;
+    --sched-fill-active: #faf7f1;
+  }
+
+  /* Dense operational grids, with bounded scrolling and an opaque header.
+     Exclude paper and the schedule's purpose-built shift grid. */
+  .ops-theme table:not(:where(.recipe-dossier *, .atelier-packet *, .atelier-event *, .atelier-paper *, .print-sheet *, .schedule-print *, .paper-preview *, .table-fixed, .setup-table)) {
+    line-height: 1.35;
+  }
+  .ops-theme table:not(:where(.recipe-dossier *, .atelier-packet *, .atelier-event *, .atelier-paper *, .print-sheet *, .schedule-print *, .paper-preview *, .table-fixed, .setup-table)) :is(th, td) {
+    padding-block: 0.125rem;
+  }
+  .ops-theme .overflow-x-auto:has(> table):not(:where(.recipe-dossier *, .atelier-packet *, .atelier-event *, .atelier-paper *, .print-sheet *, .schedule-print *, .paper-preview *)):not(:has(> .table-fixed, > .setup-table)),
+  .ops-theme .data-table-scroll {
+    max-height: 70dvh;
+    overflow: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-zinc-300) var(--color-canvas);
+  }
+  .ops-theme table:not(:where(.recipe-dossier *, .atelier-packet *, .atelier-event *, .atelier-paper *, .print-sheet *, .schedule-print *, .paper-preview *, .table-fixed, .setup-table)) thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--color-zinc-50);
+    box-shadow: inset 0 -1px var(--color-hairline);
+  }
+  .data-table-scroll:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+  .ops-theme .atelier-header:not(:where(.atelier-packet *, .atelier-event *, .atelier-paper *)) {
+    border-color: var(--color-hairline);
+  }
+  .ops-theme .atelier-header:not(:where(.atelier-packet *, .atelier-event *, .atelier-paper *)) .atelier-title {
+    color: var(--color-ink);
+    font-family: var(--font-sans-fallback), sans-serif;
+    font-size: 1.5rem;
+    font-weight: 600;
+  }
+  .ops-theme .atelier-header:not(:where(.atelier-packet *, .atelier-event *, .atelier-paper *)) .atelier-metadata {
+    border-color: var(--color-hairline);
+  }
 }
 
 /* Serif display gets refined optical tuning. */
@@ -316,6 +489,7 @@ body {
   }
   body {
     background: #fff;
+    color: #000;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
   }

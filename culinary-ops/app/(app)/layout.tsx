@@ -25,13 +25,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   ]);
 
   return (
-    <div className="flex min-h-screen bg-cream">
+    <div className="ops-theme flex min-h-screen bg-cream text-ink">
       {/* Sidebar */}
       <DesktopSidebar role={user.role} />
 
       {/* Main column */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="no-print sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-hairline bg-cream/80 px-4 py-3 backdrop-blur md:px-6">
+        <header className="no-print sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-hairline bg-cream/95 px-4 backdrop-blur md:px-6">
           <div className="flex items-center gap-2 md:gap-4">
             <MobileNav role={user.role} />
             <span className="font-display text-lg leading-none text-ink md:hidden">Mise</span>
@@ -45,14 +45,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               </p>
             </div>
             <form action={signOutAction}>
-              <button className="rounded-full border border-hairline px-4 py-1.5 text-sm tracking-wide text-zinc-600 transition-colors hover:border-ink hover:text-ink">
+              <button className="rounded-md border border-hairline px-3 py-1.5 text-xs font-medium text-zinc-600 transition-colors hover:border-ink hover:text-ink">
                 Sign out
               </button>
             </form>
           </div>
         </header>
 
-        <main className="print-full mx-auto w-full max-w-[100rem] flex-1 px-4 py-6 md:px-6 md:py-10">{children}</main>
+        <main className="print-full mx-auto w-full max-w-[100rem] flex-1 px-4 py-5 md:px-6 md:py-6">{children}</main>
       </div>
     </div>
   );

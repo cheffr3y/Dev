@@ -46,8 +46,8 @@ export function RecipeCosting({ costs }: { costs: RecipeCostSheet }) {
                   {!line.converted && <span className="block text-[9px] font-normal text-amber-800">Unit mismatch — verify cost</span>}
                 </th>
                 <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono tabular-nums">{num(line.quantity)} {unitLabel(line.unit)}</td>
-                <td className="px-2 py-1.5 text-right font-mono tabular-nums">{money(line.unitCost, 5)} / {line.costUnit}</td>
-                <td className="py-1.5 pl-2 text-right font-mono tabular-nums">{money(line.cost)}</td>
+                <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">{money(line.unitCost, 5)} / {line.costUnit}</td>
+                <td className="whitespace-nowrap py-1.5 pl-2 text-right tabular-nums">{money(line.cost)}</td>
               </tr>
             ))}
             <tr className="font-medium">

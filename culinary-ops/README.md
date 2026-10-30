@@ -24,6 +24,8 @@ Built with Next.js (App Router), TypeScript, Prisma, and PostgreSQL. Role-based 
 
 See the [kitchen and accounting guide](docs/prep-orders-guide.md) and [migration / rollout checklist](docs/prep-orders-rollout.md).
 
+See [ROADMAP.md](ROADMAP.md) for the commercial product direction and implementation checklist, starting with the UI foundation and navigation in Chunk 1.
+
 ### Roles
 - **Staff** — view everything, take inventory counts.
 - **Manager** — all of the above plus manage recipes, ingredients, vendors, order guides, events, and venues.

@@ -48,8 +48,9 @@ export function MobileNav({ role }: { role: string }) {
         return;
       }
       if (e.key !== "Tab" || !panelRef.current) return;
-      const focusables =
-        panelRef.current.querySelectorAll<HTMLElement>("a[href], button");
+      const focusables = Array.from(
+        panelRef.current.querySelectorAll<HTMLElement>("a[href], button"),
+      ).filter(element => element.getClientRects().length > 0);
       if (focusables.length === 0) return;
       const first = focusables[0];
       const last = focusables[focusables.length - 1];
@@ -125,7 +126,7 @@ export function MobileNav({ role }: { role: string }) {
               aria-label="Navigation"
               tabIndex={-1}
               className={cn(
-                "relative flex h-full w-72 max-w-[85vw] flex-col bg-charcoal shadow-2xl outline-none transition-transform duration-200 ease-out motion-reduce:transition-none",
+                "ops-theme relative flex h-full w-72 max-w-[85vw] flex-col bg-charcoal shadow-2xl outline-none transition-transform duration-200 ease-out motion-reduce:transition-none",
                 "pt-[calc(1.25rem+env(safe-area-inset-top))] pb-[calc(1.25rem+env(safe-area-inset-bottom))] pl-[calc(0.75rem+env(safe-area-inset-left))] pr-3",
                 open ? "translate-x-0" : "-translate-x-full",
               )}

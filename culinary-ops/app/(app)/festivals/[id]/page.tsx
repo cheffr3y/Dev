@@ -137,7 +137,7 @@ export default async function FestivalOverviewPage({ params }: { params: Promise
             <li key={s.n}>
               <Link href={s.href} className="block px-5 py-4 transition-colors hover:bg-zinc-50">
                 <span className="flex items-center gap-2">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-ink font-mono text-xs text-white">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary font-mono text-xs text-white">
                     {s.n}
                   </span>
                   <span className="font-medium text-zinc-900">{s.label}</span>

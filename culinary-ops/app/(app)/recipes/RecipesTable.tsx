@@ -99,59 +99,60 @@ export function RecipesTable({ rows }: { rows: RecipeRow[] }) {
       </div>
 
       <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <div className="data-table-scroll overflow-x-auto" role="region" aria-label="Recipe costs" tabIndex={0}>
+          <table className="w-full text-xs">
             <thead className="bg-zinc-50 text-left font-mono text-[11px] uppercase tracking-[0.02em] text-zinc-600">
               <tr>
-                <th className="px-6 py-4 font-medium">Recipe</th>
-                <th className="px-6 py-4 font-medium">Category</th>
-                <th className="px-6 py-4 text-right font-medium">Cost</th>
-                <th className="px-6 py-4 text-right font-medium">Cost / yield unit</th>
-                <th className="px-6 py-4 text-right font-medium">Menu</th>
-                <th className="px-6 py-4 text-right font-medium">Food %</th>
+                <th className="px-3 py-1 font-medium">Recipe</th>
+                <th className="px-3 py-1 font-medium">Category</th>
+                <th className="px-3 py-1 font-medium">Price status</th>
+                <th className="px-3 py-1 text-right tabular-nums font-medium">Cost</th>
+                <th className="px-3 py-1 text-right tabular-nums font-medium">Cost / yield unit</th>
+                <th className="px-3 py-1 text-right tabular-nums font-medium">Menu</th>
+                <th className="px-3 py-1 text-right tabular-nums font-medium">Food %</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-100">
+            <tbody className="divide-y divide-hairline">
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-zinc-400">
+                  <td colSpan={7} className="px-4 py-8 text-center text-zinc-400">
                     {rows.length === 0 ? "No recipes yet." : "No recipes match your filters."}
                   </td>
                 </tr>
               )}
               {filtered.map((r) => (
                 <tr key={r.id} className="hover:bg-zinc-50">
-                  <td className="px-6 py-4">
+                  <td className="px-3 py-1">
                     <Link href={`/recipes/${r.id}`} className="font-medium text-zinc-800 hover:underline">
                       {r.name}
                     </Link>
                     {r.station && <span className="ml-2 text-xs text-zinc-400">{r.station}</span>}
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-3 py-1">
                     <Badge>{r.category}</Badge>
                   </td>
-                  <td className="px-6 py-4 text-right text-zinc-600">
-                    {money(r.cost)}
+                  <td className="whitespace-nowrap px-3 py-1">
                     {r.unpriced > 0 && (
                       <span
-                        className="ml-1.5 text-xs font-medium text-red-600"
                         title={`${r.unpriced} ingredient${r.unpriced === 1 ? "" : "s"} with no price — cost understated`}
                       >
-                        ⚠{r.unpriced}
+                        <Badge color="amber">Missing {r.unpriced}</Badge>
                       </span>
                     )}
                     {r.stale > 0 && (
                       <span
-                        className="ml-1.5 text-xs font-medium text-amber-600"
+                        className={r.unpriced > 0 ? "ml-1" : undefined}
                         title={`${r.stale} ingredient${r.stale === 1 ? "" : "s"} not re-costed recently`}
                       >
-                        ⌛{r.stale}
+                        <Badge color="amber">Stale {r.stale}</Badge>
                       </span>
                     )}
+                    {r.unpriced === 0 && r.stale === 0 && <Badge color="green">Current</Badge>}
                   </td>
-                  <td className="px-6 py-4 text-right text-zinc-600">{money(r.perUnit, 5)} / {r.costUnit}</td>
-                  <td className="px-6 py-4 text-right text-zinc-600">{r.menuPrice ? money(r.menuPrice, 5) : "—"}</td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="whitespace-nowrap px-3 py-1 text-right tabular-nums text-zinc-600">{money(r.cost)}</td>
+                  <td className="px-3 py-1 text-right tabular-nums text-zinc-600">{money(r.perUnit, 5)} / {r.costUnit}</td>
+                  <td className="px-3 py-1 text-right tabular-nums text-zinc-600">{r.menuPrice ? money(r.menuPrice, 5) : "—"}</td>
+                  <td className="px-3 py-1 text-right tabular-nums">
                     {r.fcp == null ? (
                       <span className="text-zinc-400">—</span>
                     ) : (
@@ -190,8 +191,8 @@ function Chip({
       className={cn(
         "rounded-full px-3 py-1 transition-colors",
         active
-          ? "bg-zinc-900 text-white"
-          : "border border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300",
+          ? "border border-transparent bg-primary text-white"
+          : "border border-hairline bg-canvas text-zinc-600 hover:border-zinc-400",
       )}
     >
       {children}
