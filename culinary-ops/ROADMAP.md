@@ -278,6 +278,24 @@ A user can attach the October 31, 2026 screenshot to a smoking lot and use local
 
 ---
 
+## Chunk 10: Monthly Operating Calendar & Invoice Ingredient Prices
+**Goal:** Track daily gross sales, actual labor dollars and food purchases by invoice date in a visual monthly calendar, and match invoice lines to existing ingredients for supplier price history.
+
+**User decisions — November 1, 2026:** Use gross sales; attribute food spend to the invoice date. Prioritize this work ahead of the remaining cleanup/smoking chunks. Manual reviewed matching is in scope; paid AI and automatic catalog-price posting remain deferred.
+
+### Checklist
+- [x] Venue/month calendar with daily detail entry, gross sales, labor dollars, food purchases and percentages, monthly recorded totals, missing-versus-zero handling, mobile layout and CSV.
+- [x] Invoice-dated purchases/credits with document links, correction/void history, explicit food review, duplicate prevention and no prep-ledger/inventory writes.
+- [x] Reviewed invoice line entry matched to the existing ingredient database; explicit quantity/pack/unit conversion, paid prices, supplier/date provenance, unmatched/non-food rows, and credits.
+- [x] Ingredient price-history charts and tables by supplier with compatible-unit comparisons, same-supplier changes and invoice links. Preserve catalog prices until deliberately edited through the existing workflow.
+- [x] Confirm the reviewed food-line total into the calendar once per invoice. Later line edits require reconfirming the total and reopen daily food review.
+
+**Implementation status — November 1, 2026:** Implemented. Production build/TypeScript, targeted ESLint, 206 unit checks and 39 disposable-PostgreSQL checks passed. Desktop/mobile browser checks cover daily gross sales/labor/food entry, invoice matching and normalized prices, explicit food-total confirmation, CSV, interrupted-response recovery, permissions and unchanged catalog/ledger records. Existing invoice PDF/photo upload, preview/download, duplicate detection and accounting-export regressions passed. A production PDF asset-path issue discovered during regression testing was fixed. Calendar, invoice and ingredient-history screenshots were visually reviewed.
+
+See [operating-calendar.md](docs/operating-calendar.md) for operation, scope, deployment and verification. Requires `20261101030000_operating_calendar`, applied by normal startup. Existing records are preserved without invented historical purchases. Food purchases remain distinct from inventory-adjusted food cost.
+
+---
+
 ## Future: AI Invoice Assistance & Spending Controls (Deferred)
 **Status:** Not scheduled or enabled. Compact document storage works independently.
 

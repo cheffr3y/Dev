@@ -20,6 +20,10 @@ Open the full invoice to inspect all pages and small print. The on-page preview 
 
 Uploading, viewing and downloading make **no OpenAI calls** and never change catalog prices, stock or accounting ledger entries.
 
+## Manual line matching and monthly tracking
+
+Stored invoices now support manually reviewed line items matched to the ingredient database, normalized paid-unit prices, supplier history, and explicit food-total confirmation into the monthly gross-sales/labor/food calendar. See [operating-calendar.md](operating-calendar.md). Uploading a document alone still makes no purchase entry and changes no catalog prices.
+
 ## Future AI work
 
 AI extraction, matching, automated price proposals and margin approval are deferred in the roadmap. Before activation, benchmark a cheaper model, measure actual cost, add explicit opt-in extraction, record usage and enforce an application spending cap. Keep archive access available even when AI budgets are exhausted. Existing extraction/review helper code and historical review tables are internal groundwork; active routes do not invoke them. No API key is needed for this version.

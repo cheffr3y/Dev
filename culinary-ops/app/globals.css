@@ -988,3 +988,33 @@ body {
   .purchasing-table tbody tr:nth-child(even), .beo-revision tbody tr:nth-child(even) { background: #f4f4f5 !important; print-color-adjust: exact; }
   .beo-revision { color: #000 !important; border: 2px solid #000 !important; background: #fff !important; }
 }
+
+.operating-workspace { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+.operating-weekdays, .operating-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.operating-weekdays { color: var(--color-zinc-500); text-align: center; font-size: 12px; padding-bottom: 8px; }
+.operating-grid { border-top: 1px solid var(--color-hairline); border-left: 1px solid var(--color-hairline); }
+.operating-day, .operating-empty { border-right: 1px solid var(--color-hairline); border-bottom: 1px solid var(--color-hairline); min-height: 138px; min-width: 0; }
+.operating-day { text-align: left; padding: 8px; background: var(--color-canvas); color: var(--color-ink); }
+.operating-day:hover { background: var(--color-stone); }
+.operating-day[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--color-focus); background: var(--color-pale-gold); }
+.operating-day:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; position: relative; }
+.operating-day-heading { display: flex; justify-content: space-between; align-items: center; font-weight: 600; font-size: 13px; }
+.operating-today { font-size: 10px; margin-left: 4px; color: var(--color-gold); }
+.operating-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-zinc-300); flex-shrink: 0; }
+.operating-dot.complete { background: var(--color-sage); }
+.operating-dot.pending { background: #d6a54b; }
+.operating-cell-values { display: grid; gap: 4px; margin-top: 10px; font-size: 11px; }
+.operating-cell-values > span { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 2px; }
+.operating-cell-values > span > span { color: var(--color-zinc-500); }
+.operating-cell-values strong { font-variant-numeric: tabular-nums; font-weight: 500; }
+.operating-cell-rates { display: block; font-size: 10px; color: var(--color-zinc-500); margin-top: 8px; }
+.operating-cell-compact { display: none; }
+@media (max-width: 1250px) { .operating-workspace { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 600px) {
+  .operating-day, .operating-empty { min-height: 66px; }
+  .operating-day { padding: 6px 4px; }
+  .operating-day-heading { font-size: 12px; }
+  .operating-today, .operating-cell-values, .operating-cell-rates { display: none; }
+  .operating-cell-compact { display: block; margin-top: 9px; font-size: 11px; font-variant-numeric: tabular-nums; }
+  .operating-detail input, .operating-detail select, .operating-detail textarea { font-size: 16px; }
+}

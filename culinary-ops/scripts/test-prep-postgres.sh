@@ -21,6 +21,7 @@ node node_modules/prisma/build/index.js migrate resolve --applied 20260923000000
 node node_modules/prisma/build/index.js migrate deploy
 node --import tsx --test lib/prep-workflow.integration.test.ts
 node --import tsx --test lib/event-planning.integration.test.ts
+node --import tsx --test lib/operating-calendar.integration.test.ts
 node scripts/test-annex-repairs.mjs
 if [ "${PREP_BROWSER_SMOKE:-0}" = "1" ]; then
   node --import tsx scripts/seed-prep-browser.ts
@@ -33,9 +34,21 @@ if [ "${PREP_BROWSER_SMOKE:-0}" = "1" ]; then
   export AUTH_SECRET='disposable-prep-browser-smoke-secret-2026'
   export AUTH_URL='http://localhost:3107'
   export AUTH_TRUST_HOST=true
-  node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3107 &
+  if [ "${PREP_BROWSER_DEV:-0}" = "1" ]; then
+    node node_modules/next/dist/bin/next dev --webpack --hostname 127.0.0.1 --port 3107 &
+  else
+    node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3107 &
+  fi
   PREP_SERVER_PID=$!
   trap 'kill "$PREP_SERVER_PID" 2>/dev/null || true; cleanup' EXIT
+  if [ "${OPERATING_CALENDAR_BROWSER_SMOKE:-0}" = "1" ]; then
+    node -e 'const url="http://localhost:3107/login"; (async()=>{for(let attempt=0;attempt<50;attempt++){try{if((await fetch(url)).ok) return;}catch{}await new Promise(resolve=>setTimeout(resolve,200));}process.exit(1);})()'
+    node scripts/test-operating-calendar-browser.mjs
+    if [ "${ACCOUNTING_INVOICES_BROWSER_SMOKE:-0}" = "1" ]; then
+      node scripts/test-accounting-invoices-browser.mjs
+    fi
+    exit 0
+  fi
   if [ "${EVENT_PLANNING_BROWSER_SMOKE:-0}" = "1" ]; then
     node -e 'const url="http://localhost:3107/login"; (async()=>{for(let attempt=0;attempt<50;attempt++){try{if((await fetch(url)).ok) return;}catch{}await new Promise(resolve=>setTimeout(resolve,200));}process.exit(1);})()'
     node scripts/test-event-planning-browser.mjs

@@ -1,8 +1,7 @@
 import sharp from "sharp";
 import { PDFDocument } from "pdf-lib";
 import { createCanvas } from "@napi-rs/canvas";
-import { createRequire } from "node:module";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { createHash } from "node:crypto";
 import { invoiceFileType } from "./invoice-parser";
@@ -24,8 +23,9 @@ export async function compactInvoice(source: Uint8Array): Promise<CompactInvoice
     preview = await sharp(data).resize({ width: 900, withoutEnlargement: true }).jpeg({ quality: 78 }).toBuffer();
   } else {
     const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-    const require = createRequire(join(process.cwd(), "package.json"));
-    const root = dirname(require.resolve("pdfjs-dist/package.json"));
+    // These assets are explicitly included in Next's deployment tracing.
+    // A computed createRequire() is rewritten by webpack and loses .resolve.
+    const root = join(process.cwd(), "node_modules", "pdfjs-dist");
     pdfjs.GlobalWorkerOptions.workerSrc = pathToFileURL(join(root,"legacy/build/pdf.worker.mjs")).href;
     const task = pdfjs.getDocument({ data: new Uint8Array(source), useSystemFonts: false, standardFontDataUrl: join(root,"standard_fonts/"), wasmUrl: join(root,"wasm/"), maxImageSize: 60_000_000, verbosity: 0 });
     try {

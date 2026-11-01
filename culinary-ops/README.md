@@ -19,12 +19,15 @@ Built with Next.js (App Router), TypeScript, Prisma, and PostgreSQL. Role-based 
 | **Festivals** | Forecast sales from attendance and menu mix, scale recipes and nested sub-recipes, build prep/order guides, and produce a live **proposal P&L** with labor, fees, event expenses, break-even revenue, and target-margin pricing. |
 | **Banquets** | Transcribe a **Banquet Event Order (BEO)**: the header (contact, service window, room, special instructions, setup) plus food lines that link each recipe to its **ordered count**. Every dish scales by the ordered amount into one **aggregated prep / pull sheet** (sub-recipes exploded to raw items, summed by category), with a printable kitchen prep sheet. Customer pricing & beverage/additional charges are out of scope — this is the kitchen side of the BEO. |
 | **Prep Orders** | Shared Daily Prep for chef ordering and printing; an admin-only daily worksheet for actuals, ingredient deductions, closeout, and CSV/Excel accounting exports. |
+| **Monthly Tracker** | Calendar of daily gross sales, labor dollars and invoice-dated food purchases, with reviewed invoice-to-ingredient matching, supplier price history and monthly CSV. Manager/admin access. |
 | **Vendors / Venues / Users** | Manage suppliers, locations, and team access. |
 | **Break Room · Homestead** | A personal Willowbrook Acre garden with crops, landmark restorations and six animal friends. Available to every signed-in role, with account autosaves and JSON backup/import. |
 
 See the [kitchen and accounting guide](docs/prep-orders-guide.md) and [migration / rollout checklist](docs/prep-orders-rollout.md).
 
 See [ROADMAP.md](ROADMAP.md) for the commercial product direction and implementation checklist. Chunks 1–7 are implemented. Chunk 4 is limited to QR project start/finish logging and admin review. Chunk 5 adds keyboard catalog editing, rapid ingredient entry, and recipe/ingredient side panels; see the [editing guide](docs/workspace-editing.md). Chunk 6 adds configurable accounting codes, expanded exports and compact invoice photo/PDF storage; see the [accounting and invoice guide](docs/accounting-invoices.md). AI extraction and spending controls are deferred to a future roadmap feature; invoice storage uses no AI calls. Chunk 7 adds menu margin comparisons, locked BEO change tracking, event-specific production sheets, and selected-event combined purchasing; see the [event and purchasing guide](docs/event-production-planning.md). Chunk 8 (repository cleanup) is next.
+
+The monthly operating tracker and manual invoice line matching are implemented as Chunk 10; see the [calendar and invoice-price guide](docs/operating-calendar.md).
 
 Chunk 9 plans a **smoking program** with multi-product runs, thermometer photo records, cook checkpoints, actual yields, searchable history, and printable QR smoke sheets. Browser-local OCR drafts screenshot summary fields for confirmation, with manual entry available and no paid AI service required. Paid AI fallback and graph reconstruction are deferred. See [the smoking-program roadmap](ROADMAP.md#chunk-9-smoking-program--batch-logs--thermometer-photos).
 
