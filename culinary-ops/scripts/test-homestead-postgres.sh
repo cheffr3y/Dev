@@ -19,13 +19,12 @@ trap cleanup EXIT
 export DATABASE_URL="postgresql://homestead_test@127.0.0.1:$HOMESTEAD_TEST_PORT/homestead_test?connection_limit=8"
 export HOMESTEAD_DISPOSABLE_DB=1
 node node_modules/prisma/build/index.js migrate deploy
-node --import tsx --test lib/homestead-storage.integration.test.ts
+node --import tsx --test lib/games/homestead-storage.integration.test.ts
 if [ "${HOMESTEAD_BROWSER_SMOKE:-0}" = "1" ]; then
   export AUTH_SECRET='disposable-homestead-browser-secret-2026'
   export AUTH_URL='http://localhost:3108'
   export AUTH_TRUST_HOST=true
   node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3108 &
   HOMESTEAD_SERVER_PID=$!
-  node -e 'const url="http://localhost:3108/login"; (async()=>{for(let attempt=0;attempt<100;attempt++){try{if((await fetch(url)).ok) return;}catch{}await new Promise(resolve=>setTimeout(resolve,200));}process.exit(1);})()'
-  if [ "${HOMESTEAD_PREVIEW_ONLY:-0}" = "1" ]; then wait "$HOMESTEAD_SERVER_PID"; else node scripts/test-homestead-browser.mjs; fi
+  if [ "${HOMESTEAD_PREVIEW_ONLY:-0}" = "1" ]; then wait "$HOMESTEAD_SERVER_PID"; else node scripts/browser/run.mjs homestead; fi
 fi

@@ -1,7 +1,7 @@
 import { RecipeBuildCard, type RecipeTreeNode } from "./RecipeBuild";
-import { num } from "@/lib/costing";
-import { displayMeasure } from "@/lib/units";
-import type { RecipeReferencePlan } from "@/lib/recipe-references";
+import { num } from "@/lib/recipes/costing";
+import { displayMeasure } from "@/lib/recipes/units";
+import type { RecipeReferencePlan } from "@/lib/recipes/recipe-references";
 
 export function RecipeReferences({ references, byId, sharedRefs, weightInGrams = false, referencePrefix = "", contextLabel }: {
   references: RecipeReferencePlan;

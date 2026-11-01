@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { normalizeRoomCode } from "@/lib/trivia-engine";
+import { prisma } from "@/lib/db/prisma";
+import { normalizeRoomCode } from "@/lib/games/trivia-engine";
 import { TriviaPlayClient } from "./TriviaPlayClient";
 
 export default async function PlayGamePage({

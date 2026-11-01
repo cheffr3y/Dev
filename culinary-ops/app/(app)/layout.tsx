@@ -1,9 +1,9 @@
-import { requirePrepUser } from "@/lib/prep-session";
-import { prisma } from "@/lib/prisma";
+import { requirePrepUser } from "@/lib/auth/prep-session";
+import { prisma } from "@/lib/db/prisma";
 import { DesktopSidebar } from "@/components/DesktopSidebar";
 import { MobileNav } from "@/components/MobileNav";
 import { CommandSearch } from "@/components/CommandSearch";
-import { signOutAction } from "@/lib/auth-actions";
+import { signOutAction } from "@/lib/auth/auth-actions";
 
 const ROLE_LABEL: Record<string, string> = {
   ADMIN: "Admin",

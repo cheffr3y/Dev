@@ -3,9 +3,9 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Input, Select, Textarea } from "./ui";
-import { money } from "@/lib/costing";
-import type { FoodExpenseData, OperatingDayData, OperatingEdit } from "@/lib/operating-calendar";
-import type { OperatingSaveResult } from "@/lib/operating-calendar-data";
+import { money } from "@/lib/recipes/costing";
+import type { FoodExpenseData, OperatingDayData, OperatingEdit } from "@/lib/accounting/operating-calendar";
+import type { OperatingSaveResult } from "@/lib/accounting/operating-calendar-data";
 
 const inputDollars = (cents: number | null | undefined) => cents == null ? "" : (cents / 100).toFixed(2);
 async function save(input: OperatingEdit) {

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { headers } from "next/headers";
 import QRCode from "qrcode";
-import { publicOrigin } from "@/lib/production-job-options";
+import { publicOrigin } from "@/lib/production/production-job-options";
 
 export async function ProductionJobQr({ href, label = "Scan to start / finish" }: { href: string; label?: string }) {
   const h = await headers();

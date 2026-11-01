@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { requireUser, hasRole } from "@/lib/session";
-import { buildForecast } from "@/lib/festival";
-import { banquetRecipeSelect, buildBanquetPlan, type BanquetLine } from "@/lib/banquet";
-import { money, num, priceGapNames } from "@/lib/costing";
+import { prisma } from "@/lib/db/prisma";
+import { requireUser, hasRole } from "@/lib/auth/session";
+import { buildForecast } from "@/lib/menus/festival";
+import { banquetRecipeSelect, buildBanquetPlan, type BanquetLine } from "@/lib/banquets/banquet";
+import { money, num, priceGapNames } from "@/lib/recipes/costing";
 import { Badge, Card, CardHeader, LinkButton, PageHeader } from "@/components/ui";
 import { PriceIntegrityNotice } from "@/components/PriceIntegrityNotice";
-import { STATUS_COLOR } from "@/lib/event-status";
+import { STATUS_COLOR } from "@/lib/banquets/event-status";
 import { FestivalTabs } from "../FestivalTabs";
 import { AccountingWorksheet } from "./AccountingWorksheet";
 

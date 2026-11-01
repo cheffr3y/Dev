@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { getCurrentUser } from "@/lib/session";
-import { prisma } from "@/lib/prisma";
-import { saveWorkspaceCell } from "@/lib/workspace-editing";
-import { buildCostMap } from "@/lib/costing";
-import { effectiveAllergens } from "@/lib/allergens";
+import { getCurrentUser } from "@/lib/auth/session";
+import { prisma } from "@/lib/db/prisma";
+import { saveWorkspaceCell } from "@/lib/workspace/workspace-editing";
+import { buildCostMap } from "@/lib/recipes/costing";
+import { effectiveAllergens } from "@/lib/recipes/allergens";
 
 async function actor() {
   const session = await getCurrentUser();

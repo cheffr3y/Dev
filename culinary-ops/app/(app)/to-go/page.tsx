@@ -1,7 +1,7 @@
-import { getVenues } from "@/lib/venue";
+import { getVenues } from "@/lib/venues/venue";
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
-import { requireUser, hasRole } from "@/lib/session";
+import { prisma } from "@/lib/db/prisma";
+import { requireUser, hasRole } from "@/lib/auth/session";
 import { Badge, Card, PageHeader } from "@/components/ui";
 import { ToGoHeaderForm } from "./ToGoForms";
 

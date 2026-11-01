@@ -1,7 +1,7 @@
 import { revalidatePath } from "next/cache";
-import { getPrepUser } from "@/lib/prep-session";
-import { prisma } from "@/lib/prisma";
-import { saveOperatingRecord } from "@/lib/operating-calendar-data";
+import { getPrepUser } from "@/lib/auth/prep-session";
+import { prisma } from "@/lib/db/prisma";
+import { saveOperatingRecord } from "@/lib/accounting/operating-calendar-data";
 
 export async function POST(request: Request) {
   const user = await getPrepUser();

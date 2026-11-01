@@ -2,12 +2,12 @@
 
 import { useActionState, useState } from "react";
 import { VenueOptions } from "@/components/VenueOptions";
-import type { VenueChoice } from "@/lib/venue-directory";
+import type { VenueChoice } from "@/lib/venues/venue-directory";
 import { ComboPicker } from "@/components/ComboPicker";
 import { Button, Field, Input, Select, Textarea } from "@/components/ui";
-import { SELLING_UNITS, TO_GO_STATUSES } from "@/lib/to-go-options";
-import { convertQty, unitFamily } from "@/lib/units";
-import type { ToGoLine } from "@/lib/to-go-rollup";
+import { SELLING_UNITS, TO_GO_STATUSES } from "@/lib/menus/to-go-options";
+import { convertQty, unitFamily } from "@/lib/recipes/units";
+import type { ToGoLine } from "@/lib/menus/to-go-rollup";
 import { copyHmrRollout, saveToGoItem, saveToGoRollup, type ToGoFormState } from "./actions";
 
 const initial: ToGoFormState = { error: "", saved: false };

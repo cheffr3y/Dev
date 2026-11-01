@@ -32,7 +32,7 @@ The schema is additive and historical tables remain present, but old application
 
 ## Implementation notes
 
-- Central service: `lib/prep-workflow.ts`; server actions validate data and check the current database role. Serializable transactions, day-guard writes, operation keys plus canonical payload hashes, unique constraints and five bounded retries protect concurrent writes. Every command saves its result atomically with its operation receipt.
+- Central service: `lib/prep/prep-workflow.ts`; server actions validate data and check the current database role. Serializable transactions, day-guard writes, operation keys plus canonical payload hashes, unique constraints and five bounded retries protect concurrent writes. Every command saves its result atomically with its operation receipt.
 - Cost snapshots contain only the reachable recipe graph (maximum 500 recipes), captured catalog information, quantities, split weights, rates and supply facts. Missing amounts stay nullable. Production labor is calculated once from the root standard. Currency allocation is integer cents with stable request ordering.
 - Food, production labor and dishwasher cost are allocated over delivered, kept and production-waste quantities. Only delivery rows create venue charges. No inventory, FIFO, opening count or running balance is maintained.
 - Operations and amendments retain author IDs. Credits and waste link back to the transfer; reversal snapshots link to replacement IDs. Immutable export snapshots preserve the shared report output and membership.

@@ -1,7 +1,7 @@
 "use server";
-import { prisma } from "@/lib/prisma";
-import { requireActiveUser } from "@/lib/session";
-import { ACCOUNTING_CATEGORIES } from "@/lib/categories";
+import { prisma } from "@/lib/db/prisma";
+import { requireActiveUser } from "@/lib/auth/session";
+import { ACCOUNTING_CATEGORIES } from "@/lib/ingredients/categories";
 import { revalidatePath } from "next/cache";
 export async function saveMappings(form: FormData) {
   await requireActiveUser("ADMIN");

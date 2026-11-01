@@ -1,5 +1,5 @@
 import type { NextAuthConfig } from "next-auth";
-import { safeReturnTo } from "./lib/login-return";
+import { safeReturnTo } from "./lib/auth/login-return";
 
 // Edge-safe config (no DB/bcrypt). Shared by middleware and the full
 // Node-runtime auth in auth.ts.

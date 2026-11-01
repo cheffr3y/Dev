@@ -2,8 +2,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Button, Card, StatCard } from "@/components/ui";
-import { money, pct } from "@/lib/costing";
-import { buildOperatingMonth, type OperatingDayData, type FoodExpenseData } from "@/lib/operating-calendar";
+import { money, pct } from "@/lib/recipes/costing";
+import { buildOperatingMonth, type OperatingDayData, type FoodExpenseData } from "@/lib/accounting/operating-calendar";
 import { FoodExpenseForm, OperatingDayForm, type InvoiceChoice } from "@/components/OperatingEntryForms";
 const amount = (cents: number | null) => cents == null ? "—" : money(cents / 100);
 const shortAmount = (cents: number | null) => cents == null ? "—" : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 1 }).format(cents / 100);

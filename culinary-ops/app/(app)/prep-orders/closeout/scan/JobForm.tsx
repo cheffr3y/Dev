@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Field, Input, Textarea } from "@/components/ui";
-import { durationLabel, elapsedMinutes, type JobSource } from "@/lib/production-job-options";
+import { durationLabel, elapsedMinutes, type JobSource } from "@/lib/production/production-job-options";
 import { startJob, finishJob, reviewJob } from "./actions";
 
 export function JobForm({ source, cookName, job, canFinish, admin, currentTime }: {

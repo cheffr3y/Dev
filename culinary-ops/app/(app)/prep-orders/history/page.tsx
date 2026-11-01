@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/session";
-import { prepReportDates } from "@/lib/prep-report";
+import { prisma } from "@/lib/db/prisma";
+import { requireUser } from "@/lib/auth/session";
+import { prepReportDates } from "@/lib/prep/prep-report";
 import { Card, PageHeader, Input, Button } from "@/components/ui";
 export default async function HistoryPage({
   searchParams,

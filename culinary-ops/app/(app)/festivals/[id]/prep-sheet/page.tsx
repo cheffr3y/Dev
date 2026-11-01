@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/session";
-import { money, num, buildPriceGapMap } from "@/lib/costing";
-import { unitLabel } from "@/lib/units";
-import { buildForecast } from "@/lib/festival";
-import { buildDayPlan, banquetRecipeSelect, type BanquetParty } from "@/lib/banquet";
+import { prisma } from "@/lib/db/prisma";
+import { requireUser } from "@/lib/auth/session";
+import { money, num, buildPriceGapMap } from "@/lib/recipes/costing";
+import { unitLabel } from "@/lib/recipes/units";
+import { buildForecast } from "@/lib/menus/festival";
+import { buildDayPlan, banquetRecipeSelect, type BanquetParty } from "@/lib/banquets/banquet";
 import { PrintButton } from "@/components/PrintButton";
 import { PriceIntegrityNotice } from "@/components/PriceIntegrityNotice";
 import { FestivalTabs } from "../FestivalTabs";

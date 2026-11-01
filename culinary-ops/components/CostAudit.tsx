@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PRICE_STALE_DAYS } from "@/lib/costing";
+import { PRICE_STALE_DAYS } from "@/lib/recipes/costing";
 import { LocalTime } from "./LocalTime";
 import { Badge } from "./ui";
 

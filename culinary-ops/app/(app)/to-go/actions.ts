@@ -3,11 +3,11 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { requireActiveUser } from "@/lib/session";
-import { toGoHeaderSchema, toGoLineSchema } from "@/lib/to-go-validation";
-import { THANKSGIVING_STARTER } from "@/lib/to-go-starter";
-import { hmrCopyData } from "@/lib/hmr-copy";
+import { prisma } from "@/lib/db/prisma";
+import { requireActiveUser } from "@/lib/auth/session";
+import { toGoHeaderSchema, toGoLineSchema } from "@/lib/menus/to-go-validation";
+import { THANKSGIVING_STARTER } from "@/lib/menus/to-go-starter";
+import { hmrCopyData } from "@/lib/menus/hmr-copy";
 
 export type ToGoFormState = { error: string; saved: boolean };
 function message(error: unknown) {

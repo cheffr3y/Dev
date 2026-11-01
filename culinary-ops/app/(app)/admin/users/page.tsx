@@ -1,7 +1,7 @@
 import { VenueOptions } from "@/components/VenueOptions";
-import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/lib/session";
-import { getVenues } from "@/lib/venue";
+import { prisma } from "@/lib/db/prisma";
+import { requireRole } from "@/lib/auth/session";
+import { getVenues } from "@/lib/venues/venue";
 import { Badge, Button, Card, Field, Input, PageHeader, Select } from "@/components/ui";
 import { createUser, updateUser, deleteUser } from "./actions";
 

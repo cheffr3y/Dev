@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/session";
-import { getActiveVenue } from "@/lib/venue";
+import { prisma } from "@/lib/db/prisma";
+import { requireUser } from "@/lib/auth/session";
+import { getActiveVenue } from "@/lib/venues/venue";
 import { PrintController } from "@/components/PrintController";
 import { PrintSpecHeader } from "@/components/PrintSpecHeader";
 import { cn } from "@/components/ui";
@@ -18,7 +18,7 @@ import {
   thisWeekStart,
   weekDays,
   weekNumberLabel,
-} from "@/lib/schedule";
+} from "@/lib/schedule/schedule";
 import {
   DayHeadContent,
   DayEventsContent,

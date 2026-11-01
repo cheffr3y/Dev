@@ -1,5 +1,5 @@
-import { getPrepUser } from "@/lib/prep-session";
-import { prisma } from "@/lib/prisma";
+import { getPrepUser } from "@/lib/auth/prep-session";
+import { prisma } from "@/lib/db/prisma";
 export const runtime="nodejs";
 export async function GET(request:Request) {
  const user=await getPrepUser();if(!user || user.role==="STAFF") return new Response("Unauthorized",{status:403});

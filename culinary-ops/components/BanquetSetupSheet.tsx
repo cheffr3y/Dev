@@ -1,5 +1,5 @@
 import { BanquetRevision, type BanquetRevisionData } from "./BanquetRevision";
-import { aggregateSetup, CATEGORY_LABELS, readSetup, resolveSetup, setupWarnings, type BanquetSetup, type SetupMenuItem, type SetupResource } from "../lib/banquet-setup";
+import { aggregateSetup, CATEGORY_LABELS, readSetup, resolveSetup, setupWarnings, type BanquetSetup, type SetupMenuItem, type SetupResource } from "../lib/banquets/banquet-setup";
 
 export type SetupEvent = {
   name: string; venue: string; date: string; guestCount: number; timeLabel: string | null;

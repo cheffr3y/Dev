@@ -2,10 +2,10 @@
 
 import { InspectorLink } from "@/components/InspectorLink";
 import { useState } from "react";
-import { num } from "@/lib/costing";
-import { allowedUnitsFor, defaultUnitFor, unitLabel } from "@/lib/units";
+import { num } from "@/lib/recipes/costing";
+import { allowedUnitsFor, defaultUnitFor, unitLabel } from "@/lib/recipes/units";
 import { Badge } from "@/components/ui";
-import { prepStatusLabel, PREP_STATUS_COLOR, type PrepStatus } from "@/lib/prep";
+import { prepStatusLabel, PREP_STATUS_COLOR, type PrepStatus } from "@/lib/prep/prep";
 import { updatePrepLine, removePrepLine } from "./actions";
 
 export type PrepLineCardData = {

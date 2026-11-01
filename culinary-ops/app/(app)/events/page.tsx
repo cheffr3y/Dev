@@ -1,13 +1,13 @@
 import { LocationInput } from "@/components/LocationInput";
 import { VenueOptions } from "@/components/VenueOptions";
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
-import { requireUser, hasRole } from "@/lib/session";
-import { getVenues, getActiveVenue } from "@/lib/venue";
+import { prisma } from "@/lib/db/prisma";
+import { requireUser, hasRole } from "@/lib/auth/session";
+import { getVenues, getActiveVenue } from "@/lib/venues/venue";
 import { Badge, Button, Card, EmptyState, Field, Input, PageHeader, Select, Textarea } from "@/components/ui";
 import { EventsTabs } from "@/components/EventsTabs";
 import { createEvent } from "./actions";
-import { STATUS_COLOR, EVENT_STATUSES as STATUSES, statusLabel } from "@/lib/event-status";
+import { STATUS_COLOR, EVENT_STATUSES as STATUSES, statusLabel } from "@/lib/banquets/event-status";
 
 export default async function EventsPage() {
   const user = await requireUser();

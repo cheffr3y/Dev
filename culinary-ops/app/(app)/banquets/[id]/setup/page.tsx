@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { hasRole } from "@/lib/session";
-import { requirePrepUser } from "@/lib/prep-session";
-import { baselineInclude, captureBaseline } from "@/lib/banquet-baseline";
-import { loadBanquetRevision } from "@/lib/banquet-baseline-data";
+import { prisma } from "@/lib/db/prisma";
+import { hasRole } from "@/lib/auth/session";
+import { requirePrepUser } from "@/lib/auth/prep-session";
+import { baselineInclude, captureBaseline } from "@/lib/banquets/banquet-baseline";
+import { loadBanquetRevision } from "@/lib/banquets/banquet-baseline-data";
 import { BanquetRevision } from "@/components/BanquetRevision";
 import { LockBaseline } from "./LockBaseline";
-import { readSetup } from "@/lib/banquet-setup";
+import { readSetup } from "@/lib/banquets/banquet-setup";
 import { SetupEditor } from "./SetupEditor";
 
 export default async function BanquetSetupPage({ params }: { params: Promise<{ id: string }> }) {

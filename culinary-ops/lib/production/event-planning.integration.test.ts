@@ -1,0 +1,76 @@
+import test, { before, after } from "node:test";
+import assert from "node:assert/strict";
+import { prisma } from "../db/prisma";
+import { businessDate } from "../prep/prep-dates";
+import { captureBaseline, baselineInclude } from "../banquets/banquet-baseline";
+import { lockBaselineForUser, loadBanquetRevision } from "../banquets/banquet-baseline-data";
+import { loadProductionPlanning } from "./production-planning-data";
+import { buildPurchasingList } from "./production-planning";
+import { freezePacket } from "../prep/prep-packets";
+const url = new URL(process.env.DATABASE_URL ?? "postgresql://invalid");
+if (process.env.PREP_DISPOSABLE_DB !== "1" || url.hostname !== "127.0.0.1" || url.pathname !== "/prep_workflow_test") throw new Error("Disposable PostgreSQL harness required.");
+let admin: string, staff: string;
+const date = "2027-02-10";
+before(async () => {
+  admin = (await prisma.user.findUniqueOrThrow({ where: { email: "admin@local.test" } })).id;
+  staff = (await prisma.user.findUniqueOrThrow({ where: { email: "staff@local.test" } })).id;
+  await prisma.venue.create({ data: { id: "planning-venue", name: "Planning Hall", code: "PLAN" } });
+  await prisma.vendor.create({ data: { id: "planning-vendor", name: "Planning Produce" } });
+  await prisma.item.create({ data: { id: "planning-item", name: "Planning tomatoes", category: "Produce", unit: "lb", unitCost: 2, yieldFactor: 0.8, packQty: 5, packUnit: "lb", vendorId: "planning-vendor", priceUpdatedAt: new Date() } });
+  await prisma.recipe.create({ data: { id: "planning-sauce", name: "Planning sauce", prodCode: "P01", yieldQty: 2, yieldUnit: "qt", items: { create: { itemId: "planning-item", quantity: 1, unit: "lb" } } } });
+  await prisma.recipe.create({ data: { id: "planning-dish", name: "Planning dinner plate", prodCode: "P02", yieldQty: 1, yieldUnit: "each", menuPrice: 10, components: { create: { childId: "planning-sauce", quantity: 2, unit: "qt" } } } });
+  for (const [id, name, qty, time, note] of [["planning-wedding", "Planning Wedding", 6, "5pm", "Wedding garnish only"], ["planning-dinner", "Planning Corporate Dinner", 4, "7pm", "Corporate garnish only"]] as const) {
+    await prisma.banquet.create({ data: { id, name, date: businessDate(date), venueId: "planning-venue", guestCount: 80, timeLabel: time, specialInstructions: note, menuItems: { create: { id: `${id}-line`, recipeId: "planning-dish", orderedQty: qty, unit: "each", description: note } } } });
+  }
+  await prisma.banquet.create({ data: { id: "planning-cancelled", name: "Cancelled planning event", date: businessDate(date), venueId: "planning-venue", status: "CANCELLED" } });
+  await prisma.festival.create({ data: { id: "planning-festival", name: "Planning Festival", venueId: "planning-venue", date: businessDate(date), expectedAttendance: 10, captureRate: 1, bufferPct: 0, tents: { create: { id: "planning-tent", name: "Tent" } }, menuItems: { create: [{ id: "planning-fest-line", tentId: "planning-tent", recipeId: "planning-dish", name: "Dinner", mixPct: 1, chefOverride: 3 }, { id: "planning-forecast-only", tentId: "planning-tent", name: "Unlinked", mixPct: 0 }] } } });
+  await prisma.toGoRollup.create({ data: { id: "planning-retail", name: "Planning Retail", status: "ACTIVE", orderCutoff: date, venueId: "planning-venue", items: { create: [{ id: "planning-retail-mapped", name: "Sauce kit", recipeId: "planning-sauce", sellingUnit: "kit", recipeQtyPerUnit: 2, recipeAmountUnit: "qt", productionQty: 3 }, { id: "planning-retail-unmapped", name: "Unmapped kit", recipeId: "planning-sauce", sellingUnit: "kit", forecastQty: 5 }] } } });
+  await prisma.toGoRollup.create({ data: { id: "planning-undated", name: "Undated retail", status: "ACTIVE" } });
+  await prisma.prepOrder.create({ data: { id: "planning-prep", submittedByUserId: admin, destinationVenueId: "planning-venue", forDate: businessDate(date), lines: { create: { id: "planning-prep-line", recipeId: "planning-sauce", destinationVenueId: "planning-venue", requestedQty: 4, requestedUnit: "qt" } } } });
+  await prisma.menuRollout.create({ data: { id: "planning-menu", name: "Planning Menu", venueId: "planning-venue", targetFcp: 15, items: { create: { recipeId: "planning-dish", section: "Entrees" } } } });
+});
+after(() => prisma.$disconnect());
+test("BEO baseline is manager-only, rejects stale previews, and concurrent/lost-response retries preserve one immutable reference", async () => {
+  const event = await prisma.banquet.findUniqueOrThrow({ where: { id: "planning-wedding" }, include: baselineInclude });
+  const expected = JSON.stringify(captureBaseline(event));
+  assert.match((await lockBaselineForUser(staff, event.id, expected)).error!, /Manager/);
+  assert.match((await lockBaselineForUser(admin, event.id, "{}")).error!, /changed/);
+  const responses = await Promise.all([lockBaselineForUser(admin, event.id, expected), lockBaselineForUser(admin, event.id, expected)]);
+  assert.deepEqual(responses, [{}, {}]);
+  const saved = await prisma.banquetBaseline.findUniqueOrThrow({ where: { banquetId: event.id } });
+  await assert.rejects(prisma.banquetBaseline.update({ where: { banquetId: event.id }, data: { createdBy: staff } }), /cannot be changed/);
+  await prisma.banquet.update({ where: { id: event.id }, data: { guestCount: 115, timeLabel: "6pm", specialInstructions: "Wedding dairy-free allergy plate" } });
+  const revision = await loadBanquetRevision(event.id);
+  assert.equal(revision!.snapshot.guestCount, 80); assert.equal(revision!.current.guestCount, 115);
+  assert.deepEqual(await lockBaselineForUser(admin, event.id, "{}"), {});
+  assert.equal((await prisma.banquetBaseline.findUniqueOrThrow({ where: { banquetId: event.id } })).createdAt.toISOString(), saved.createdAt.toISOString());
+});
+test("date-scoped sources keep events separate, forecast and retail mappings exact, and read-only purchasing changes no requests or ledger", async () => {
+  const before = { batches: await prisma.productionBatch.count(), transfers: await prisma.stockTransfer.count(), requests: JSON.stringify(await prisma.prepOrderLine.findMany({ orderBy: { id: "asc" } })) };
+  const data = await loadProductionPlanning(date, date);
+  assert.ok(!data.sources.some(s => s.id.includes("cancelled") || s.id.includes("undated")));
+  const wedding = data.sources.find(s => s.id === "banquet:planning-wedding")!, dinner = data.sources.find(s => s.id === "banquet:planning-dinner")!;
+  assert.equal(wedding.lines[0].quantity, 6); assert.equal(dinner.lines[0].quantity, 4);
+  assert.match(wedding.notes, /Wedding/); assert.match(dinner.notes, /Corporate/);
+  const shopping = buildPurchasingList([wedding, dinner], data.recipes, data.items);
+  assert.equal(shopping.rows[0].quantity, 12.5); assert.deepEqual(shopping.rows[0].contributions.map(c => c.quantity), [7.5, 5]);
+  assert.equal(data.sources.find(s => s.id === "festival:planning-festival")!.lines[0].quantity, 3);
+  const retail = data.sources.find(s => s.id === "to-go:planning-retail")!;
+  assert.equal(retail.lines[0].quantity, 6); assert.ok(retail.lines[1].warning); assert.match(retail.dateLabel, /cutoff/);
+  assert.ok((await loadProductionPlanning(date, date, true)).sources.some(s => s.id === "to-go:planning-undated"));
+  assert.equal(await prisma.productionBatch.count(), before.batches); assert.equal(await prisma.stockTransfer.count(), before.transfers);
+  assert.equal(JSON.stringify(await prisma.prepOrderLine.findMany({ orderBy: { id: "asc" } })), before.requests);
+});
+test("printed daily prep purchases use their frozen daily packet and never current edited recipe quantities", async () => {
+  await freezePacket(admin, "planning-freeze-day", { date });
+  const original = JSON.stringify(await prisma.prepPacketSnapshot.findMany({ orderBy: { id: "asc" } }));
+  const line = await prisma.recipeItem.findFirstOrThrow({ where: { recipeId: "planning-sauce" } });
+  await prisma.recipeItem.update({ where: { id: line.id }, data: { quantity: 99 } });
+  const data = await loadProductionPlanning(date, date);
+  const prep = data.sources.find(s => s.id === "prep:planning-prep:printed")!;
+  assert.ok(prep.recipes); assert.equal(prep.lines[0].warning, undefined); assert.match(prep.packetHref, /day-2027-02-10/);
+  const shopping = buildPurchasingList([prep], data.recipes, data.items);
+  assert.equal(shopping.rows[0].quantity, 2.5);
+  assert.equal(JSON.stringify(await prisma.prepPacketSnapshot.findMany({ orderBy: { id: "asc" } })), original);
+  await prisma.recipeItem.update({ where: { id: line.id }, data: { quantity: 1 } });
+});

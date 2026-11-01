@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { isoDate, thisWeekStart } from "@/lib/schedule";
+import { isoDate, thisWeekStart } from "@/lib/schedule/schedule";
 
 // /schedule always lands on the current week's grid.
 export default function SchedulePage() {

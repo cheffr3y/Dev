@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { prisma } from "../lib/prisma";
+import { prisma } from "../lib/db/prisma";
 
 async function main() {
   const email = process.argv[2]?.trim().toLowerCase();

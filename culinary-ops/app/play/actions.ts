@@ -1,15 +1,15 @@
 "use server";
 
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/db/prisma";
 import {
   PLAYERS_PER_GAME,
   isAnswerInTime,
   normalizeRoomCode,
   questionClock,
   scoreAnswer,
-} from "@/lib/trivia-engine";
-import { advanceGameIfDue, createGame, newPlayerToken } from "@/lib/trivia";
+} from "@/lib/games/trivia-engine";
+import { advanceGameIfDue, createGame, newPlayerToken } from "@/lib/games/trivia";
 
 // Public, token-scoped mutations for the play surface. No session — a player
 // (host included) is whoever holds a TriviaPlayer token for the game found by

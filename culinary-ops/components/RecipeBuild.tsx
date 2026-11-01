@@ -9,11 +9,11 @@ import type { Prisma } from "@prisma/client";
 // always how many full batches of THIS recipe to make — a parent's scale is
 // folded into it before the child renders.
 
-import { num, componentBatchFactor } from "@/lib/costing";
-import { displayMeasure } from "@/lib/units";
-import { effectiveAllergens } from "@/lib/allergens";
+import { num, componentBatchFactor } from "@/lib/recipes/costing";
+import { displayMeasure } from "@/lib/recipes/units";
+import { effectiveAllergens } from "@/lib/recipes/allergens";
 import { RecipeDossier, RecipeDossierWorkspace, type DossierRecipe, type MiseLine, type RecipeDossierProps } from "./RecipeDossier";
-import type { RecipeReferencePlan } from "@/lib/recipe-references";
+import type { RecipeReferencePlan } from "@/lib/recipes/recipe-references";
 
 // Catalog node used for recursive sub-build rendering.
 export type RecipeTreeNode = DossierRecipe & {

@@ -1,11 +1,11 @@
 import { IngredientPriceHistory } from "@/components/IngredientPriceHistory";
-import { requirePrepUser } from "@/lib/prep-session";
+import { requirePrepUser } from "@/lib/auth/prep-session";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { hasRole } from "@/lib/session";
-import { money, num } from "@/lib/costing";
-import { duplicateIngredientGroups } from "@/lib/ingredient-cleanup";
+import { prisma } from "@/lib/db/prisma";
+import { hasRole } from "@/lib/auth/session";
+import { money, num } from "@/lib/recipes/costing";
+import { duplicateIngredientGroups } from "@/lib/ingredients/ingredient-cleanup";
 import { IngredientFields } from "@/components/IngredientFields";
 import { AllergenBadges } from "@/components/AllergenBadges";
 import { Button, Card, CardHeader, LinkButton, PageHeader } from "@/components/ui";

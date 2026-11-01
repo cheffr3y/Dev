@@ -7,7 +7,7 @@
 // here is what stops the posted and printed views from drifting apart.
 
 import { cn } from "@/components/ui";
-import { fmtTimeRange } from "@/lib/schedule";
+import { fmtTimeRange } from "@/lib/schedule/schedule";
 
 // ── Shared row/day shapes ──────────────────────────────────────────────────
 export type CookLite = { id: string; name: string; role: string | null };

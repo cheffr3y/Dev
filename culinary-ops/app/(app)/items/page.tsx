@@ -1,17 +1,17 @@
-import { prisma } from "@/lib/prisma";
-import { requireUser, hasRole } from "@/lib/session";
-import { money, priceFreshness, PRICE_STALE_DAYS } from "@/lib/costing";
+import { prisma } from "@/lib/db/prisma";
+import { requireUser, hasRole } from "@/lib/auth/session";
+import { money, priceFreshness, PRICE_STALE_DAYS } from "@/lib/recipes/costing";
 import { Badge, Button, Card, Input, PageHeader, LinkButton } from "@/components/ui";
 import { createItem, deleteItem } from "./actions";
 import { AllergenBadges } from "@/components/AllergenBadges";
 import Link from "next/link";
 import { IngredientFields } from "@/components/IngredientFields";
-import { INGREDIENT_CATEGORIES } from "@/lib/ingredient-fields";
-import { duplicateIngredientGroups, ingredientNameKey } from "@/lib/ingredient-cleanup";
-import { ingredientUsageSelect } from "@/lib/ingredient-replacement";
+import { INGREDIENT_CATEGORIES } from "@/lib/ingredients/ingredient-fields";
+import { duplicateIngredientGroups, ingredientNameKey } from "@/lib/ingredients/ingredient-cleanup";
+import { ingredientUsageSelect } from "@/lib/ingredients/ingredient-replacement";
 import { EditGrid } from "@/components/EditGrid";
 import { CatalogCell } from "@/components/CatalogCells";
-import { ingredientIntegrity } from "@/lib/morning-pulse";
+import { ingredientIntegrity } from "@/lib/dashboard/morning-pulse";
 
 export default async function ItemsPage({
   searchParams,

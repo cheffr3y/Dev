@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { randomUUID } from "node:crypto";
-import { prisma } from "@/lib/prisma";
-import { requirePrepUser } from "@/lib/prep-session";
-import { hasRole } from "@/lib/session";
-import { businessDate, chicagoToday } from "@/lib/prep-dates";
-import { groupPrepRequests } from "@/lib/prep-worksheet";
+import { prisma } from "@/lib/db/prisma";
+import { requirePrepUser } from "@/lib/auth/prep-session";
+import { hasRole } from "@/lib/auth/session";
+import { businessDate, chicagoToday } from "@/lib/prep/prep-dates";
+import { groupPrepRequests } from "@/lib/prep/prep-worksheet";
 import { Card, PageHeader, Input, Button, LinkButton } from "@/components/ui";
 import { generateDailyPacket } from "./actions";
 

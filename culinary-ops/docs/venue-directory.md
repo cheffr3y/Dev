@@ -24,7 +24,7 @@ plans covering the entire property. Room IDs remain separate operational
 destinations; grouping does not combine stock, change venue permissions or
 move accounting charges to the parent automatically.
 
-`lib/venue-directory.ts` defines the names, known aliases and grouping.
+`lib/venues/venue-directory.ts` defines the names, known aliases and grouping.
 `components/VenueOptions.tsx` renders the same options in every workflow.
 `getVenues()` returns the standard directory; current legacy selections remain
 available when editing, and reports retain legacy locations for historical

@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/session";
-import { buildForecast } from "@/lib/festival";
-import { buildFestivalAccounting } from "@/lib/festival-accounting";
-import { banquetRecipeSelect, buildBanquetPlan, type BanquetLine } from "@/lib/banquet";
-import { money, num, priceGapNames } from "@/lib/costing";
+import { prisma } from "@/lib/db/prisma";
+import { requireUser } from "@/lib/auth/session";
+import { buildForecast } from "@/lib/menus/festival";
+import { buildFestivalAccounting } from "@/lib/menus/festival-accounting";
+import { banquetRecipeSelect, buildBanquetPlan, type BanquetLine } from "@/lib/banquets/banquet";
+import { money, num, priceGapNames } from "@/lib/recipes/costing";
 import { Badge } from "@/components/ui";
 import { PrintButton } from "@/components/PrintButton";
-import { STATUS_COLOR, statusLabel } from "@/lib/event-status";
+import { STATUS_COLOR, statusLabel } from "@/lib/banquets/event-status";
 import { FestivalTabs } from "../FestivalTabs";
 
 export default async function FestivalProposalPage({ params }: { params: Promise<{ id: string }> }) {

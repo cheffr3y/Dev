@@ -3,9 +3,9 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { requireActiveUser } from "@/lib/session";
-import { ROLLOUT_STATUSES } from "@/lib/menu-rollout";
+import { prisma } from "@/lib/db/prisma";
+import { requireActiveUser } from "@/lib/auth/session";
+import { ROLLOUT_STATUSES } from "@/lib/menus/menu-rollout";
 
 const optionalText = z.string().trim().max(5000).transform(value => value || null);
 const headerSchema = z.object({

@@ -1,6 +1,6 @@
 import { InspectorLink } from "./InspectorLink";
-import { money } from "@/lib/costing";
-import type { MenuRolloutPlan } from "@/lib/menu-rollout";
+import { money } from "@/lib/recipes/costing";
+import type { MenuRolloutPlan } from "@/lib/menus/menu-rollout";
 
 export function MenuOrderGuide({ plan }: { plan: MenuRolloutPlan }) {
   return <div className="space-y-6">

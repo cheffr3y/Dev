@@ -6,14 +6,14 @@ import { VenueOptions } from "@/components/VenueOptions";
 import { useActionState } from "react";
 import { ComboPicker } from "@/components/ComboPicker";
 import { Button, Field, Input, Select, Textarea } from "@/components/ui";
-import { ROLLOUT_STATUSES } from "@/lib/menu-rollout";
+import { ROLLOUT_STATUSES } from "@/lib/menus/menu-rollout";
 import { saveRollout, saveRolloutItem, type MenuFormState } from "./actions";
 
 const initial: MenuFormState = { error: "", saved: false };
 function Feedback({ state }: { state: MenuFormState }) {
   return <>{state.error && <p role="alert" className="text-sm text-red-700">{state.error}</p>}{state.saved && <p role="status" className="text-xs text-sage">Saved. Estimates and packets are current.</p>}</>;
 }
-type Header = { venue?: import("@/lib/venue-directory").VenueChoice | null; id: string; name: string; subtitle: string | null; venueId: string | null; targetFcp: number; expectedCovers: number; status: string; notes: string | null };
+type Header = { venue?: import("@/lib/venues/venue-directory").VenueChoice | null; id: string; name: string; subtitle: string | null; venueId: string | null; targetFcp: number; expectedCovers: number; status: string; notes: string | null };
 export function RolloutForm({ rollout, venues }: { rollout?: Header; venues: { id: string; name: string }[] }) {
   const [state, action, pending] = useActionState(saveRollout, initial);
   return <form action={action} className="space-y-4">

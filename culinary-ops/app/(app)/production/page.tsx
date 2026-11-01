@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { requirePrepUser } from "@/lib/prep-session";
-import { hasRole } from "@/lib/session";
-import { chicagoToday } from "@/lib/prep-dates";
-import { addDays, isoDate } from "@/lib/banquet-week";
-import { planningRange, buildPurchasingList } from "@/lib/production-planning";
-import { loadProductionPlanning } from "@/lib/production-planning-data";
-import { preciseNum } from "@/lib/costing";
+import { requirePrepUser } from "@/lib/auth/prep-session";
+import { hasRole } from "@/lib/auth/session";
+import { chicagoToday } from "@/lib/prep/prep-dates";
+import { addDays, isoDate } from "@/lib/banquets/banquet-week";
+import { planningRange, buildPurchasingList } from "@/lib/production/production-planning";
+import { loadProductionPlanning } from "@/lib/production/production-planning-data";
+import { preciseNum } from "@/lib/recipes/costing";
 import { Card, PageHeader } from "@/components/ui";
 import { PrintController } from "@/components/PrintController";
 import { PrintSpecHeader } from "@/components/PrintSpecHeader";

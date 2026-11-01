@@ -1,11 +1,11 @@
 import { RecipePrintSettings } from "@/components/RecipeDossier";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/session";
-import { componentBatchFactor, num } from "@/lib/costing";
-import { buildForecast, type ForecastRow } from "@/lib/festival";
-import { unitLabel } from "@/lib/units";
+import { prisma } from "@/lib/db/prisma";
+import { requireUser } from "@/lib/auth/session";
+import { componentBatchFactor, num } from "@/lib/recipes/costing";
+import { buildForecast, type ForecastRow } from "@/lib/menus/festival";
+import { unitLabel } from "@/lib/recipes/units";
 import { PrintButton } from "@/components/PrintButton";
 import { LocalTime } from "@/components/LocalTime";
 import {

@@ -1,10 +1,10 @@
-import { getVenues } from "@/lib/venue";
+import { getVenues } from "@/lib/venues/venue";
 import { VenueOptions } from "@/components/VenueOptions";
 import Link from "next/link";
-import { requirePrepUser } from "@/lib/prep-session";
-import { getPrepReport } from "@/lib/prep-accounting-report";
-import { chicagoToday } from "@/lib/prep-dates";
-import { prisma } from "@/lib/prisma";
+import { requirePrepUser } from "@/lib/auth/prep-session";
+import { getPrepReport } from "@/lib/prep/prep-accounting-report";
+import { chicagoToday } from "@/lib/prep/prep-dates";
+import { prisma } from "@/lib/db/prisma";
 import { PageHeader, Input, Button, Select, Card } from "@/components/ui";
 export default async function AccountingPage({
   searchParams,

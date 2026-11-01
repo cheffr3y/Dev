@@ -7,8 +7,8 @@ import { useRouter } from "next/navigation";
 import { Button, Field, Input, Select } from "@/components/ui";
 import { RecipePicker } from "@/components/RecipePicker";
 import { submitPrepOperation } from "./workflow-actions";
-import { convertQty } from "@/lib/units";
-import type { Supply } from "@/lib/prep-costing";
+import { convertQty } from "@/lib/recipes/units";
+import type { Supply } from "@/lib/prep/prep-costing";
 type Recipe = {
   id: string;
   name: string;

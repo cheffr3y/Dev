@@ -1,4 +1,4 @@
-import { groupedVenueChoices, type VenueChoice } from "@/lib/venue-directory";
+import { groupedVenueChoices, type VenueChoice } from "@/lib/venues/venue-directory";
 import { Fragment } from "react";
 
 // Identical company choices in server and client forms. Current legacy values

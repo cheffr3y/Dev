@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { requireUser, hasRole } from "@/lib/session";
+import { prisma } from "@/lib/db/prisma";
+import { requireUser, hasRole } from "@/lib/auth/session";
 import { OrderGuideGrid } from "@/components/OrderGuideGrid";
 import { Button, Card, CardHeader, PageHeader } from "@/components/ui";
 import { PrintButton } from "@/components/PrintButton";

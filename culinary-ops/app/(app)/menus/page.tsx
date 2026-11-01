@@ -1,10 +1,10 @@
-import { getVenues } from "@/lib/venue";
+import { getVenues } from "@/lib/venues/venue";
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
-import { requireUser, hasRole } from "@/lib/session";
-import { buildMenuRollout, PACKET_MODES, ROLLOUT_STATUSES } from "@/lib/menu-rollout";
-import { menuRecipeInclude } from "@/lib/menu-rollout-data";
-import { pct } from "@/lib/costing";
+import { prisma } from "@/lib/db/prisma";
+import { requireUser, hasRole } from "@/lib/auth/session";
+import { buildMenuRollout, PACKET_MODES, ROLLOUT_STATUSES } from "@/lib/menus/menu-rollout";
+import { menuRecipeInclude } from "@/lib/menus/menu-rollout-data";
+import { pct } from "@/lib/recipes/costing";
 import { Badge, Card, PageHeader } from "@/components/ui";
 import { RolloutForm } from "./MenuForms";
 

@@ -1,19 +1,19 @@
-import { loadBanquetRevision } from "@/lib/banquet-baseline-data";
+import { loadBanquetRevision } from "@/lib/banquets/banquet-baseline-data";
 import { AtelierHeader } from "@/components/AtelierHeader";
 import { BanquetSetupPacket } from "@/components/BanquetSetupSheet";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/session";
-import { num, componentBatchFactor } from "@/lib/costing";
-import { unitLabel } from "@/lib/units";
+import { prisma } from "@/lib/db/prisma";
+import { requireUser } from "@/lib/auth/session";
+import { num, componentBatchFactor } from "@/lib/recipes/costing";
+import { unitLabel } from "@/lib/recipes/units";
 import { PrintController } from "@/components/PrintController";
 import { PrintSpecHeader } from "@/components/PrintSpecHeader";
 import { ProductionJobQr } from "@/components/ProductionJobQr";
-import { jobScanHref } from "@/lib/production-job-options";
+import { jobScanHref } from "@/lib/production/production-job-options";
 import { LocalTime } from "@/components/LocalTime";
 import { RecipeReferences } from "@/components/RecipeReferences";
-import { buildRecipeReferences, type RecipeReferencePlan } from "@/lib/recipe-references";
+import { buildRecipeReferences, type RecipeReferencePlan } from "@/lib/recipes/recipe-references";
 import {
   RecipeBuildCard,
   buildRecipeTree,

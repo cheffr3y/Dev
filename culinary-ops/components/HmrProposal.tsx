@@ -1,6 +1,6 @@
-import type { ToGoPlan } from "@/lib/to-go-rollup";
-import { money, pct } from "@/lib/costing";
-import { ALLERGENS } from "@/lib/allergens";
+import type { ToGoPlan } from "@/lib/menus/to-go-rollup";
+import { money, pct } from "@/lib/recipes/costing";
+import { ALLERGENS } from "@/lib/recipes/allergens";
 
 export function HmrProposal({ plan }: { plan: ToGoPlan }) {
   return <div className="space-y-6">{plan.sections.map(section => <section key={section.name}>

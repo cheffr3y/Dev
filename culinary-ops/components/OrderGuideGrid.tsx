@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
-import { money, num } from "@/lib/costing";
-import { guideAmounts, type GuideRow, type EditValue, type CatalogItem } from "@/lib/workspace-options";
+import { money, num } from "@/lib/recipes/costing";
+import { guideAmounts, type GuideRow, type EditValue, type CatalogItem } from "@/lib/workspace/workspace-options";
 import { CatalogCell, catalogColumns } from "./CatalogCells";
 import { InlineCell } from "./InlineCell";
 import { EditGrid } from "./EditGrid";

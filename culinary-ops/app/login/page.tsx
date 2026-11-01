@@ -1,4 +1,4 @@
-import { safeReturnTo } from "@/lib/login-return";
+import { safeReturnTo } from "@/lib/auth/login-return";
 import { LoginForm } from "./LoginForm";
 import { Card } from "@/components/ui";
 

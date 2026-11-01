@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/session";
-import { effectiveAllergens } from "@/lib/allergens";
-import { buildPriceGapMap } from "@/lib/costing";
+import { prisma } from "@/lib/db/prisma";
+import { requireUser } from "@/lib/auth/session";
+import { effectiveAllergens } from "@/lib/recipes/allergens";
+import { buildPriceGapMap } from "@/lib/recipes/costing";
 import { CostAuditStamp } from "@/components/CostAudit";
-import { recipeCostSheet } from "@/lib/recipe-cost-sheet";
+import { recipeCostSheet } from "@/lib/recipes/recipe-cost-sheet";
 import { PrintController, PrintOptionLink } from "@/components/PrintController";
 import { PrintSpecHeader } from "@/components/PrintSpecHeader";
-import { printScale, printOptionHref, type PrintQuery } from "@/lib/print-options";
+import { printScale, printOptionHref, type PrintQuery } from "@/lib/printing/print-options";
 import { RecipeDossier, RecipeDossierWorkspace, type MiseLine } from "@/components/RecipeDossier";
 import { RecipeCosting } from "@/components/RecipeCosting";
 

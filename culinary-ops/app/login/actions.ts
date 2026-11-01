@@ -2,7 +2,7 @@
 
 import { AuthError, CredentialsSignin } from "next-auth";
 import { signIn } from "@/auth";
-import { safeReturnTo } from "@/lib/login-return";
+import { safeReturnTo } from "@/lib/auth/login-return";
 
 export async function authenticate(
   _prevState: string | undefined,

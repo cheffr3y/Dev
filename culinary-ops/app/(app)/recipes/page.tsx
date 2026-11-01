@@ -1,10 +1,10 @@
-import { prisma } from "@/lib/prisma";
-import { requireUser, hasRole } from "@/lib/session";
-import { buildCostMap, buildPriceGapMap, costPerYieldUnit, costUnitLabel, foodCostPct } from "@/lib/costing";
+import { prisma } from "@/lib/db/prisma";
+import { requireUser, hasRole } from "@/lib/auth/session";
+import { buildCostMap, buildPriceGapMap, costPerYieldUnit, costUnitLabel, foodCostPct } from "@/lib/recipes/costing";
 import { Button, Card, Field, Input, PageHeader, Select } from "@/components/ui";
 import { createRecipe } from "./actions";
 import { RecipesTable } from "./RecipesTable";
-import { RECIPE_CATEGORIES } from "@/lib/categories";
+import { RECIPE_CATEGORIES } from "@/lib/ingredients/categories";
 
 export default async function RecipesPage({ searchParams }: { searchParams: Promise<{ new?: string }> }) {
   const params = await searchParams;

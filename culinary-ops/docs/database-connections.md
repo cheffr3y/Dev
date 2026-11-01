@@ -1,6 +1,6 @@
 # Database connections
 
-The web app shares one Prisma client per Node process. `lib/database-url.ts` supplies defaults only when a PostgreSQL URL does not already specify them:
+The web app shares one Prisma client per Node process. `lib/db/database-url.ts` supplies defaults only when a PostgreSQL URL does not already specify them:
 
 | Parameter | Default | Purpose |
 | --- | --- | --- |

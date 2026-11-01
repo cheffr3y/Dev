@@ -1,11 +1,11 @@
-import { getVenues } from "@/lib/venue";
+import { getVenues } from "@/lib/venues/venue";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { loadToGoRollup } from "@/lib/to-go-data";
-import { buildToGoRollup } from "@/lib/to-go-rollup";
-import { TO_GO_PACKETS } from "@/lib/to-go-options";
-import { requireUser, hasRole } from "@/lib/session";
-import { money, num } from "@/lib/costing";
+import { loadToGoRollup } from "@/lib/menus/to-go-data";
+import { buildToGoRollup } from "@/lib/menus/to-go-rollup";
+import { TO_GO_PACKETS } from "@/lib/menus/to-go-options";
+import { requireUser, hasRole } from "@/lib/auth/session";
+import { money, num } from "@/lib/recipes/costing";
 import { Card, CardHeader, LinkButton, PageHeader, StatCard } from "@/components/ui";
 import { CostIntegrityBanner } from "@/components/CostAudit";
 import { HmrAllergens, HmrPricing } from "@/components/HmrProposal";

@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { loadFrozenPacket } from "@/lib/prep-packets";
-import { requireUser } from "@/lib/session";
-import { buildShoppingList, type ShoppingRecipeNode } from "@/lib/shopping";
+import { loadFrozenPacket } from "@/lib/prep/prep-packets";
+import { requireUser } from "@/lib/auth/session";
+import { buildShoppingList, type ShoppingRecipeNode } from "@/lib/purchasing/shopping";
 import { ShoppingListBody } from "@/components/ShoppingList";
 import { PrintButton } from "@/components/PrintButton";
 

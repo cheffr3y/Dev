@@ -1,6 +1,6 @@
-import { getPrepUser } from "@/lib/prep-session";
-import { exportSnapshot, reportSheets } from "@/lib/prep-accounting-report";
-import { createXlsx } from "@/lib/xlsx";
+import { getPrepUser } from "@/lib/auth/prep-session";
+import { exportSnapshot, reportSheets } from "@/lib/prep/prep-accounting-report";
+import { createXlsx } from "@/lib/accounting/xlsx";
 export const runtime = "nodejs";
 export async function GET(request: Request) {
   const user = await getPrepUser();

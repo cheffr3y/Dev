@@ -1,16 +1,16 @@
-import { getVenues } from "@/lib/venue";
+import { getVenues } from "@/lib/venues/venue";
 import Link from "next/link";
 import { randomUUID } from "node:crypto";
-import { prisma } from "@/lib/prisma";
-import { requirePrepUser } from "@/lib/prep-session";
-import { loadCostRecipes } from "@/lib/prep-workflow";
-import { groupPrepRequests } from "@/lib/prep-worksheet";
+import { prisma } from "@/lib/db/prisma";
+import { requirePrepUser } from "@/lib/auth/prep-session";
+import { loadCostRecipes } from "@/lib/prep/prep-workflow";
+import { groupPrepRequests } from "@/lib/prep/prep-worksheet";
 import { DailyWorksheet } from "./DailyWorksheet";
-import { businessDate, chicagoToday } from "@/lib/prep-dates";
-import { readCost } from "@/lib/prep-costing";
+import { businessDate, chicagoToday } from "@/lib/prep/prep-dates";
+import { readCost } from "@/lib/prep/prep-costing";
 import { Card, PageHeader, Input, Button, LinkButton } from "@/components/ui";
 import { ProductionJobQr } from "@/components/ProductionJobQr";
-import { durationLabel, elapsedMinutes } from "@/lib/production-job-options";
+import { durationLabel, elapsedMinutes } from "@/lib/production/production-job-options";
 import { EntryForm, CloseDayForm } from "../EntryForms";
 export default async function CloseoutPage({
   searchParams,

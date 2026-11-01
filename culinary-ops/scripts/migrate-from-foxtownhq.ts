@@ -38,7 +38,7 @@ import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { Client } from "pg";
 import { randomBytes } from "crypto";
-import { generateProdCode } from "../lib/prep";
+import { generateProdCode } from "../lib/prep/prep";
 
 type RoleName = "ADMIN" | "MANAGER" | "STAFF";
 

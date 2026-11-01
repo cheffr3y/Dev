@@ -5,10 +5,10 @@ import { useRouter } from "next/navigation";
 import { Button, Card, Input, Select } from "./ui";
 import { ComboPicker, type ComboOption } from "./ComboPicker";
 import { FoodExpenseForm, OperatingHistory, type InvoiceChoice } from "./OperatingEntryForms";
-import { money, preciseNum } from "@/lib/costing";
-import type { InvoicePurchaseData, InvoicePurchaseInput } from "@/lib/invoice-purchases";
-import type { FoodExpenseData } from "@/lib/operating-calendar";
-import type { OperatingSaveResult } from "@/lib/operating-calendar-data";
+import { money, preciseNum } from "@/lib/recipes/costing";
+import type { InvoicePurchaseData, InvoicePurchaseInput } from "@/lib/invoices/invoice-purchases";
+import type { FoodExpenseData } from "@/lib/accounting/operating-calendar";
+import type { OperatingSaveResult } from "@/lib/accounting/operating-calendar-data";
 
 function PurchaseLineForm({ invoiceId, vendorId, vendors, venues, items, line, defaults, done, dirty }: {
   invoiceId: string; vendorId: string | null; vendors: { id: string; name: string }[]; venues: { id: string; name: string }[]; items: ComboOption[];

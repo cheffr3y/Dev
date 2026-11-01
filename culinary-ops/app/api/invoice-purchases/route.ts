@@ -1,6 +1,6 @@
-import { getPrepUser } from "@/lib/prep-session";
-import { prisma } from "@/lib/prisma";
-import { saveInvoicePurchase } from "@/lib/invoice-purchases-data";
+import { getPrepUser } from "@/lib/auth/prep-session";
+import { prisma } from "@/lib/db/prisma";
+import { saveInvoicePurchase } from "@/lib/invoices/invoice-purchases-data";
 import { revalidatePath } from "next/cache";
 export async function POST(request: Request) {
   const user = await getPrepUser();

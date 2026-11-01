@@ -208,7 +208,7 @@ model Recipe {
   instructions String? // prep steps, plating notes
   photoUrl     String?
 
-  // Production / lot identity (see lib/prep.ts)
+  // Production / lot identity (see lib/prep/prep.ts)
   prodCode     String @unique // 3-char auto-generated code used in lot numbers
   holdLifeDays Int? // optional shelf life in days; drives use-by on labels
 
@@ -782,7 +782,7 @@ model TransferReportInclusion {
 // with a chef override that wins when entered and a buffer % on top. Final prep
 // portions scale recipe builds and roll up into a vendor-grouped order guide
 // that applies yield factors, subtracts per-festival on-hand, and rounds up to
-// pack size. All derived numbers are computed live (lib/festival.ts) and never
+// pack size. All derived numbers are computed live (lib/menus/festival.ts) and never
 // stored. Percents are stored as fractions 0–1; the UI shows whole %.
 // ---------------------------------------------------------------------------
 model Festival {

@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Badge, Card, cn } from "@/components/ui";
 import { CostIntegrityBanner } from "@/components/CostAudit";
-import { money, pct } from "@/lib/costing";
+import { money, pct } from "@/lib/recipes/costing";
 
 // Costing (including nested sub-recipes) is done on the server; this island
 // only filters/renders, so it ships numbers already reduced per recipe.

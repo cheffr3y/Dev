@@ -1,11 +1,11 @@
 import { WorkspaceInspector } from "@/components/WorkspaceInspector";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { hasRole } from "@/lib/session";
-import { requirePrepUser } from "@/lib/prep-session";
-import { canOrderForVenue } from "@/lib/prep-access";
-import { getVenues, getActiveVenue } from "@/lib/venue";
+import { prisma } from "@/lib/db/prisma";
+import { hasRole } from "@/lib/auth/session";
+import { requirePrepUser } from "@/lib/auth/prep-session";
+import { canOrderForVenue } from "@/lib/prep/prep-access";
+import { getVenues, getActiveVenue } from "@/lib/venues/venue";
 import { VenueOptions } from "@/components/VenueOptions";
 import {
   Button,
@@ -20,7 +20,7 @@ import {
   Textarea,
 } from "@/components/ui";
 import { updatePrepOrder, deletePrepOrder, generatePacket } from "../actions";
-import { isOpenStatus } from "@/lib/prep";
+import { isOpenStatus } from "@/lib/prep/prep";
 import { PrepLineCard } from "../PrepLineCard";
 import { AddLineForm } from "../AddLineForm";
 

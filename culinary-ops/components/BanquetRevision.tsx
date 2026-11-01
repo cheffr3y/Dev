@@ -1,4 +1,4 @@
-import { baselineChanges, baselineFieldLabel, baselineSchema, type BaselineSnapshot } from "@/lib/banquet-baseline";
+import { baselineChanges, baselineFieldLabel, baselineSchema, type BaselineSnapshot } from "@/lib/banquets/banquet-baseline";
 
 export type BanquetRevisionData = { snapshot: BaselineSnapshot; createdAt: string; updatedAt: string; current: BaselineSnapshot };
 export function BanquetRevision({ data }: { data?: BanquetRevisionData | null }) {

@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { requireUser, hasRole } from "@/lib/session";
-import { money, num } from "@/lib/costing";
-import { buildForecast } from "@/lib/festival";
+import { prisma } from "@/lib/db/prisma";
+import { requireUser, hasRole } from "@/lib/auth/session";
+import { money, num } from "@/lib/recipes/costing";
+import { buildForecast } from "@/lib/menus/festival";
 import { Badge, Card, CardHeader, PageHeader } from "@/components/ui";
-import { STATUS_COLOR } from "@/lib/event-status";
+import { STATUS_COLOR } from "@/lib/banquets/event-status";
 import { updateFestivalMenuItem, removeFestivalMenuItem, linkRecipeToMenuItem } from "../../actions";
 import { AddMenuItemForm } from "../../AddMenuItemForm";
 import { FestivalTabs } from "../FestivalTabs";

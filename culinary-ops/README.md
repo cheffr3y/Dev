@@ -25,7 +25,7 @@ Built with Next.js (App Router), TypeScript, Prisma, and PostgreSQL. Role-based 
 
 See the [kitchen and accounting guide](docs/prep-orders-guide.md) and [migration / rollout checklist](docs/prep-orders-rollout.md).
 
-See [ROADMAP.md](ROADMAP.md) for the commercial product direction and implementation checklist. Chunks 1–7 are implemented. Chunk 4 is limited to QR project start/finish logging and admin review. Chunk 5 adds keyboard catalog editing, rapid ingredient entry, and recipe/ingredient side panels; see the [editing guide](docs/workspace-editing.md). Chunk 6 adds configurable accounting codes, expanded exports and compact invoice photo/PDF storage; see the [accounting and invoice guide](docs/accounting-invoices.md). AI extraction and spending controls are deferred to a future roadmap feature; invoice storage uses no AI calls. Chunk 7 adds menu margin comparisons, locked BEO change tracking, event-specific production sheets, and selected-event combined purchasing; see the [event and purchasing guide](docs/event-production-planning.md). Chunk 8 (repository cleanup) is next.
+See [ROADMAP.md](ROADMAP.md) for the commercial product direction and implementation checklist. Chunks 1–8 are implemented. Chunk 4 is limited to QR project start/finish logging and admin review. Chunk 5 adds keyboard catalog editing, rapid ingredient entry, and recipe/ingredient side panels; see the [editing guide](docs/workspace-editing.md). Chunk 6 adds configurable accounting codes, expanded exports and compact invoice photo/PDF storage; see the [accounting and invoice guide](docs/accounting-invoices.md). AI extraction and spending controls are deferred to a future roadmap feature; invoice storage uses no AI calls. Chunk 7 adds menu margin comparisons, locked BEO change tracking, event-specific production sheets, and selected-event combined purchasing; see the [event and purchasing guide](docs/event-production-planning.md). Chunk 8 organizes domain modules, isolates game layouts, archives one-off scripts and unifies browser checks; see the [repository guide](docs/repository-structure.md). Chunk 9 (the smoking program) is next.
 
 The monthly operating tracker and manual invoice line matching are implemented as Chunk 10; see the [calendar and invoice-price guide](docs/operating-calendar.md).
 
@@ -108,14 +108,20 @@ app/
     prep-orders/         Prep orders (entry, cook packet, back-entry, report + CSV)
     vendors/ venues/     Supplier & location management
     admin/users/         User & role management (admin)
-lib/                     prisma client, session/RBAC, costing, venue context
+  (games)/               Separate signed-in Homestead and trivia host layout
+  play/                  Public trivia room/player surface
+lib/                     Domain folders; see docs/repository-structure.md
 components/              UI primitives, sidebar, venue switcher
 prisma/                  schema.prisma + seed.ts
 scripts/dev-setup.sh     Local Postgres bootstrap
+scripts/browser/         Shared browser runner, harness and workflow cases
+scripts/archive/         Completed one-off backfills and launch repairs
 ```
 
+See the [repository and test guide](docs/repository-structure.md) for domain ownership, game-layout boundaries, browser suite selection and archived-script usage.
+
 ## Costing model
-`line cost = converted quantity × item.unitCost`, summed per recipe. Recipe quantities convert automatically between units in the same family (`lib/units.ts`) — volume (tsp, tbsp, fl oz, cup, pt, qt, gal, mL, L) and weight (g, kg, oz, lb) — so an item costed per `gal` can be used by the `tbsp` in a recipe. When units aren't convertible (e.g. `cup` of an item costed per `lb`), costing falls back to the legacy same-unit assumption and the recipe page flags the line with a *unit mismatch* badge.
+`line cost = converted quantity × item.unitCost`, summed per recipe. Recipe quantities convert automatically between units in the same family (`lib/recipes/units.ts`) — volume (tsp, tbsp, fl oz, cup, pt, qt, gal, mL, L) and weight (g, kg, oz, lb) — so an item costed per `gal` can be used by the `tbsp` in a recipe. When units aren't convertible (e.g. `cup` of an item costed per `lb`), costing falls back to the legacy same-unit assumption and the recipe page flags the line with a *unit mismatch* badge.
 
 ## Printable recipe cards
 
@@ -192,13 +198,13 @@ old database read-only, and leaves it intact as your backup.
 
 `npm test` runs the unit checks; `npm run test:transactions` starts a disposable PostgreSQL database and exercises production, deductions, closeout, and immutable exports. It does not use the application database.
 
-For the functional browser check, build first, then run `PREP_BROWSER_SMOKE=1 npm run test:transactions` and, in another terminal, `node scripts/test-prep-browser.mjs`. The harness serves disposable fixtures on `http://localhost:3107` and removes its database on exit. The browser check requires Playwright; `PREP_PLAYWRIGHT_MODULE` can point to a bundled module and `PREP_BROWSER_EXECUTABLE` to an existing Chromium executable. Stop the harness after testing. This check verifies ordering, access controls, credits, unsaved entries, closeout, and downloads without a visual-review loop.
+For the functional browser check, build first, then run `PREP_BROWSER_SMOKE=1 npm run test:transactions` and, in another terminal, `node scripts/browser/run.mjs prep`. The harness serves disposable fixtures on `http://localhost:3107` and removes its database on exit. The browser check requires Playwright; `PREP_PLAYWRIGHT_MODULE` can point to a bundled module and `PREP_BROWSER_EXECUTABLE` to an existing Chromium executable. Stop the harness after testing. This check verifies ordering, access controls, credits, unsaved entries, closeout, and downloads without a visual-review loop.
 
-Against the same disposable harness, `node scripts/test-ingredient-allergens-browser.mjs` checks ingredient tag creation/clearing, nested recipe inheritance, manual recipe selections, printed profiles, and staff read-only access. Set `INGREDIENT_REVIEW_DIR` to save UI screenshots.
+Against the same disposable harness, `node scripts/browser/run.mjs ingredient-allergens` checks ingredient tag creation/clearing, nested recipe inheritance, manual recipe selections, printed profiles, and staff read-only access. Set `INGREDIENT_REVIEW_DIR` to save UI screenshots.
 
-`node scripts/test-ingredient-cleanup-browser.mjs` uses the same harness to verify full ingredient edits, recipe-line edits, reviewed duplicate consolidation, compatible quantity conversion, retained notes and manager-only access.
+`node scripts/browser/run.mjs ingredient-cleanup` uses the same harness to verify full ingredient edits, recipe-line edits, reviewed duplicate consolidation, compatible quantity conversion, retained notes and manager-only access.
 
-`node scripts/test-recipe-costing-browser.mjs` uses the disposable harness to check costing prints, kitchen-copy toggles, nested sub-recipe costs, 2×/4× batches, and yield-unit labels with gram precision. It changes only disposable fixture yields and writes review screenshots/PDFs to `/tmp/recipe-costing-review` (override with `RECIPE_REVIEW_DIR`).
+`node scripts/browser/run.mjs recipe-costing` uses the disposable harness to check costing prints, kitchen-copy toggles, nested sub-recipe costs, 2×/4× batches, and yield-unit labels with gram precision. It changes only disposable fixture yields and writes review screenshots/PDFs to `/tmp/recipe-costing-review` (override with `RECIPE_REVIEW_DIR`).
 
 `MORNING_PULSE_BROWSER_SMOKE=1 PREP_BROWSER_SMOKE=1 bash scripts/test-prep-postgres.sh` adds disposable dashboard fixtures and verifies venue/date/status filtering, ingredient integrity, nested menu margins, closeout boundaries, role-based actions, keyboard navigation, recipe creation, XLSX downloads/errors, one-time printing, and mobile layout. Use the same Playwright module/executable overrides described above. Review screenshots and the weekly packet PDF are saved to `/tmp/morning-pulse-review` (override with `PULSE_REVIEW_DIR`).
 

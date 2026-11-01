@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Card, cn } from "@/components/ui";
-import type { StateView } from "@/lib/trivia-engine";
+import type { StateView } from "@/lib/games/trivia-engine";
 import { joinGame, requestRematch, startGame, submitAnswer } from "../actions";
 
 const POLL_MS = 2000;

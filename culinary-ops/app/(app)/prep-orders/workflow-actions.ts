@@ -1,6 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { requirePrepUser } from "@/lib/prep-session";
+import { requirePrepUser } from "@/lib/auth/prep-session";
 import {
   confirmProduction,
   previewProduction,
@@ -9,7 +9,7 @@ import {
   completeTransferCost,
   recordReturn,
   correctTransfer,
-} from "@/lib/prep-workflow";
+} from "@/lib/prep/prep-workflow";
 export async function submitPrepOperation(
   kind: string,
   key: string,

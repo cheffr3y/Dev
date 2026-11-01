@@ -4,7 +4,7 @@ import { useActionState, useState } from "react";
 import { ComboPicker } from "./ComboPicker";
 import { AllergenBadges } from "./AllergenBadges";
 import { Button, Field, Input, Textarea } from "./ui";
-import { money } from "@/lib/costing";
+import { money } from "@/lib/recipes/costing";
 import { updateRecipeIngredient } from "@/app/(app)/recipes/actions";
 
 export type IngredientOption = { id: string; name: string; unit: string; unitCost: number; category: string; sku: string | null; gcode: string | null; allergens: string | null; vendor: { name: string } | null };

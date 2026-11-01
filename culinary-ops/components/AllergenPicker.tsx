@@ -1,4 +1,4 @@
-import { MAJOR_ALLERGENS, COMMON_ALLERGENS, type Allergen } from "@/lib/allergens";
+import { MAJOR_ALLERGENS, COMMON_ALLERGENS, type Allergen } from "@/lib/recipes/allergens";
 
 // Ingredient/manual recipe tags post as repeated `allergen` fields.
 // Inherited tags are displayed but never copied into manual selections.

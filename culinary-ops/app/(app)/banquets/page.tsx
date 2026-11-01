@@ -1,13 +1,13 @@
 import { VenueOptions } from "@/components/VenueOptions";
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
-import { requireUser, hasRole } from "@/lib/session";
-import { getVenues, getActiveVenue } from "@/lib/venue";
-import { isoDate, startOfUtcWeek, addDays, fmtWeekRange } from "@/lib/banquet-week";
+import { prisma } from "@/lib/db/prisma";
+import { requireUser, hasRole } from "@/lib/auth/session";
+import { getVenues, getActiveVenue } from "@/lib/venues/venue";
+import { isoDate, startOfUtcWeek, addDays, fmtWeekRange } from "@/lib/banquets/banquet-week";
 import { Badge, Button, Card, EmptyState, Field, Input, LinkButton, PageHeader, Select } from "@/components/ui";
 import { EventsTabs } from "@/components/EventsTabs";
 import { createBanquet } from "./actions";
-import { STATUS_COLOR } from "@/lib/event-status";
+import { STATUS_COLOR } from "@/lib/banquets/event-status";
 
 export default async function BanquetsPage() {
   const user = await requireUser();

@@ -1,6 +1,6 @@
-import { num } from "@/lib/costing";
-import { unitLabel } from "@/lib/units";
-import { platedServingSpec } from "@/lib/menu-rollout";
+import { num } from "@/lib/recipes/costing";
+import { unitLabel } from "@/lib/recipes/units";
+import { platedServingSpec } from "@/lib/menus/menu-rollout";
 import { RecipeDossier, type DossierRecipe, type MiseLine } from "./RecipeDossier";
 
 type MenuCardRecipe = DossierRecipe & {

@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/lib/session";
+import { prisma } from "@/lib/db/prisma";
+import { requireRole } from "@/lib/auth/session";
 
 const schema = z.object({
   name: z.string().trim().min(1, "Name is required"),

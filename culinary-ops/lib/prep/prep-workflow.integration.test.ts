@@ -1,0 +1,1221 @@
+import test, { before, after } from "node:test";
+import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
+import { prisma } from "../db/prisma";
+import {
+  confirmProduction,
+  previewProduction,
+  recordPickup,
+  closeDay,
+  recordReturn,
+  completeTransferCost,
+  correctTransfer,
+} from "./prep-workflow";
+import { freezePacket, loadFrozenPacket } from "./prep-packets";
+import {
+  getPrepReport,
+  exportSnapshot,
+  reportCsv,
+  reportSheets,
+} from "./prep-accounting-report";
+import { startProductionJob, finishProductionJob, reviewProductionJob } from "../production/production-jobs";
+import { readCost } from "./prep-costing";
+import { businessDate } from "./prep-dates";
+import { effectiveAllergens } from "../recipes/allergens";
+import { buildRecipeTree } from "../../components/RecipeBuild";
+import { ingredientReplacementPreview, replaceIngredientRecipes } from "../ingredients/ingredient-replacement";
+const url = new URL(process.env.DATABASE_URL ?? "postgresql://invalid");
+if (
+  process.env.PREP_DISPOSABLE_DB !== "1" ||
+  url.hostname !== "127.0.0.1" ||
+  url.pathname !== "/prep_workflow_test"
+)
+  throw new Error(
+    "Transaction tests require the disposable local test harness.",
+  );
+let admin: string,
+  staff: string,
+  chefManager: string,
+  venueA: string,
+  venueB: string,
+  recipeId: string,
+  itemId: string;
+const key = () => randomUUID();
+const pickup = (date: string, extra: Record<string, unknown> = {}) => ({
+  date,
+  recipeId,
+  quantity: 10,
+  unit: "qt",
+  venueId: venueA,
+  dishwasherMinutes: 10,
+  ...extra,
+});
+async function requests(date: string, amounts = [10, 12]) {
+  return Promise.all(
+    amounts.map(async (q, i) => {
+      const o = await prisma.prepOrder.create({
+        data: {
+          forDate: businessDate(date),
+          destinationVenueId: i === 0 ? venueA : venueB,
+          submittedByUserId: admin,
+        },
+      });
+      return prisma.prepOrderLine.create({
+        data: {
+          prepOrderId: o.id,
+          recipeId,
+          destinationVenueId: i === 0 ? venueA : venueB,
+          requestedQty: q,
+          requestedUnit: "qt",
+        },
+      });
+    }),
+  );
+}
+before(async () => {
+  const u = await prisma.user.create({
+    data: {
+      name: "Admin",
+      email: "admin@local.test",
+      passwordHash: "unused",
+      role: "ADMIN",
+    },
+  });
+  admin = u.id;
+  staff = (
+    await prisma.user.create({
+      data: {
+        name: "Staff",
+        email: "staff@local.test",
+        passwordHash: "unused",
+        role: "STAFF",
+      },
+    })
+  ).id;
+  venueA = (await prisma.venue.create({ data: { name: "Butcher", code: "B" } }))
+    .id;
+  venueB = (
+    await prisma.venue.create({ data: { name: "Foxtown Brewing", code: "F" } })
+  ).id;
+  await prisma.user.update({
+    where: { id: staff },
+    data: { homeVenueId: venueA },
+  });
+  chefManager = (
+    await prisma.user.create({
+      data: {
+        name: "Chef Manager",
+        email: "manager@local.test",
+        passwordHash: "unused",
+        role: "MANAGER",
+        homeVenueId: venueA,
+      },
+    })
+  ).id;
+  itemId = (
+    await prisma.item.create({
+      data: { name: "Cream", unit: "qt", unitCost: 2, gcode: "C" },
+    })
+  ).id;
+  recipeId = (
+    await prisma.recipe.create({
+      data: {
+        name: "Sauce",
+        prodCode: "SCE",
+        yieldQty: 22,
+        yieldUnit: "qt",
+        productionPersonMinutes: 60,
+        instructions: "Original recipe instructions",
+        items: { create: { itemId, quantity: 22, unit: "qt" } },
+      },
+    })
+  ).id;
+  await prisma.inventoryItem.create({
+    data: { venueId: venueA, itemId, quantity: 123, unit: "qt" },
+  });
+});
+after(async () => {
+  await prisma.$disconnect();
+});
+
+async function mergeFixture(sourceUnit = "lb", targetUnit = "oz") {
+  const source = await prisma.item.create({ data: { name: "Roma Tomato", unit: sourceUnit, unitCost: 1, allergens: "milk" } });
+  const target = await prisma.item.create({ data: { name: "Tomato, Roma", unit: targetUnit, unitCost: 2, gcode: "KEEP", allergens: "soy" } });
+  const recipe = await prisma.recipe.create({ data: { name: "Merge test recipe", prodCode: randomUUID(), yieldQty: 1, yieldUnit: "each",
+    items: { create: [{ itemId: source.id, quantity: 1, unit: sourceUnit, note: "diced" }, { itemId: target.id, quantity: 8, unit: targetUnit, note: "peeled" }] } } });
+  return { source, target, recipe };
+}
+test("ingredient consolidation combines recipe quantities/notes atomically, keeps canonical metadata and frozen history", async () => {
+  const { source, target, recipe } = await mergeFixture();
+  const captured = { ingredientId: source.id, name: source.name, quantity: 1, unit: "lb" };
+  const frozen = await prisma.prepPacketSnapshot.create({ data: { scope: randomUUID(), authorId: admin, contents: captured } });
+  const preview = await ingredientReplacementPreview(prisma, source.id, target.id);
+  const result = await replaceIngredientRecipes(prisma, { sourceId: source.id, targetId: target.id, fingerprint: preview.fingerprint, removeSource: true, authorId: admin });
+  assert.deepEqual(result, { replaced: 1, removed: true });
+  const remaining = await prisma.recipeItem.findMany({ where: { recipeId: recipe.id } });
+  assert.equal(remaining.length, 1); assert.equal(remaining[0].quantity, 24); assert.equal(remaining[0].unit, "oz");
+  assert.equal(remaining[0].note, "peeled\ndiced");
+  assert.equal(await prisma.item.findUnique({ where: { id: source.id } }), null);
+  const kept = await prisma.item.findUniqueOrThrow({ where: { id: target.id } });
+  assert.equal(kept.unitCost, 2); assert.equal(kept.gcode, "KEEP"); assert.equal(kept.allergens, "milk,soy");
+  assert.equal((await prisma.recipe.findUniqueOrThrow({ where: { id: recipe.id } })).version, 2);
+  assert.equal(await prisma.recipeChange.count({ where: { recipeId: recipe.id, summary: "Replaced ingredient" } }), 1);
+  assert.deepEqual((await prisma.prepPacketSnapshot.findUniqueOrThrow({ where: { id: frozen.id } })).contents, captured);
+});
+test("ingredient replacement rejects stale reviews and unauthorized users without changing recipe lines", async () => {
+  const { source, target, recipe } = await mergeFixture();
+  const preview = await ingredientReplacementPreview(prisma, source.id, target.id);
+  const input = { sourceId: source.id, targetId: target.id, fingerprint: preview.fingerprint, removeSource: true, authorId: staff };
+  await assert.rejects(replaceIngredientRecipes(prisma, input), /Manager/);
+  await prisma.recipeItem.updateMany({ where: { recipeId: recipe.id, itemId: source.id }, data: { quantity: 3 } });
+  await assert.rejects(replaceIngredientRecipes(prisma, { ...input, authorId: admin }), /usage changed/);
+  assert.equal(await prisma.recipeItem.count({ where: { recipeId: recipe.id } }), 2);
+});
+test("non-recipe usage blocks consolidation; recipe-only substitution preserves inventory and target tags", async () => {
+  const { source, target } = await mergeFixture();
+  const inventory = await prisma.inventoryItem.create({ data: { venueId: venueA, itemId: source.id, quantity: 5, par: 2, unit: "lb" } });
+  const preview = await ingredientReplacementPreview(prisma, source.id, target.id);
+  const input = { sourceId: source.id, targetId: target.id, fingerprint: preview.fingerprint, removeSource: true, authorId: chefManager };
+  await assert.rejects(replaceIngredientRecipes(prisma, input), /Inventory/);
+  await replaceIngredientRecipes(prisma, { ...input, removeSource: false });
+  assert.deepEqual(await prisma.inventoryItem.findUnique({ where: { id: inventory.id } }), inventory);
+  assert.ok(await prisma.item.findUnique({ where: { id: source.id } }));
+  assert.equal((await prisma.item.findUniqueOrThrow({ where: { id: target.id } })).allergens, "soy");
+});
+test("incompatible recipe collisions roll back and unused duplicates can be consolidated", async () => {
+  const { source, target, recipe } = await mergeFixture("fl oz", "gallon");
+  await prisma.recipeItem.updateMany({ where: { recipeId: recipe.id, itemId: source.id }, data: { unit: "oz" } });
+  const preview = await ingredientReplacementPreview(prisma, source.id, target.id);
+  const input = { sourceId: source.id, targetId: target.id, fingerprint: preview.fingerprint, removeSource: true, authorId: admin };
+  await assert.rejects(replaceIngredientRecipes(prisma, input), /Cannot combine/);
+  assert.equal(await prisma.recipeItem.count({ where: { recipeId: recipe.id } }), 2);
+  await prisma.item.update({ where: { id: source.id }, data: { unit: "case", packQty: 6, packUnit: "lb" } });
+  await prisma.item.update({ where: { id: target.id }, data: { unit: "case", packQty: 12, packUnit: "lb" } });
+  const packages = await ingredientReplacementPreview(prisma, source.id, target.id);
+  await assert.rejects(replaceIngredientRecipes(prisma, { ...input, fingerprint: packages.fingerprint }), /Package measurements differ/);
+  await prisma.recipeItem.deleteMany({ where: { recipeId: recipe.id, itemId: source.id } });
+  const unused = await ingredientReplacementPreview(prisma, source.id, target.id);
+  assert.deepEqual(await replaceIngredientRecipes(prisma, { ...input, fingerprint: unused.fingerprint }), { replaced: 0, removed: true });
+});
+test("concurrent confirmation returns one shared production and two linked deliveries", async () => {
+  const date = "2026-09-01",
+    lines = await requests(date);
+  const input = {
+    date,
+    recipeId,
+    quantity: 22,
+    unit: "qt",
+    cookName: "Cook",
+    dishwasherMinutes: 10,
+    deliveries: lines.map((l, i) => ({
+      venueId: l.destinationVenueId,
+      requestLineId: l.id,
+      quantity: i === 0 ? 10 : 12,
+    })),
+  };
+  const op = key();
+  const results = await Promise.all([
+    confirmProduction(admin, op, input),
+    confirmProduction(admin, op, input),
+  ]);
+  assert.deepEqual(results[0], results[1]);
+  const t = await prisma.stockTransfer.findMany({
+    where: { batchId: results[0].batchId },
+  });
+  assert.equal(t.length, 2);
+  assert.equal(
+    t.reduce((n, t) => n + Math.round(t.totalTransferCost! * 100), 0),
+    6767,
+  );
+  assert.ok(t.every((t) => t.requestLineId));
+  await assert.rejects(
+    confirmProduction(admin, op, { ...input, quantity: 23 }),
+    /different contents/,
+  );
+});
+test("retained output creates no transfer and shortages require notes and close requests", async () => {
+  const date = "2026-09-02",
+    [line] = await requests(date, [12]);
+  const input = {
+    date,
+    recipeId,
+    quantity: 22,
+    unit: "qt",
+    cookName: "Cook",
+    dishwasherMinutes: 0,
+    deliveries: [{ venueId: venueA, requestLineId: line.id, quantity: 10 }],
+  };
+  await assert.rejects(
+    confirmProduction(admin, key(), input),
+    /shortage needs a note/,
+  );
+  const r = await confirmProduction(admin, key(), {
+    ...input,
+    deliveries: [
+      { ...input.deliveries[0], shortageNote: "Ingredient shortage" },
+    ],
+  });
+  const batch = await prisma.productionBatch.findUniqueOrThrow({
+    where: { id: r.batchId! },
+    include: { transfers: true },
+  });
+  assert.equal(batch.retainedQty, 12);
+  assert.equal(batch.transfers.length, 1);
+  assert.equal(
+    (await prisma.prepOrderLine.findUniqueOrThrow({ where: { id: line.id } }))
+      .status,
+    "SHORT",
+  );
+  await closeDay(admin, key(), { date });
+  await assert.rejects(confirmProduction(admin, key(), input), /closed/);
+});
+test("cross-day pickups capture current estimates without batches or inventory changes; concurrent replays deduplicate", async () => {
+  const batches = await prisma.productionBatch.count(),
+    stock = await prisma.inventoryItem.findMany();
+  const op = key(),
+    input = pickup("2026-09-03");
+  const [a, b] = await Promise.all([
+    recordPickup(admin, op, input),
+    recordPickup(admin, op, input),
+  ]);
+  assert.deepEqual(a, b);
+  const first = await prisma.stockTransfer.findUniqueOrThrow({
+    where: { id: a.transferId },
+  });
+  assert.equal(first.batchId, null);
+  assert.equal(first.foodCostBeforeExclusions, 20);
+  await prisma.item.update({ where: { id: itemId }, data: { unitCost: 3 } });
+  const c = await recordPickup(admin, key(), pickup("2026-09-04"));
+  assert.equal(
+    (
+      await prisma.stockTransfer.findUniqueOrThrow({
+        where: { id: c.transferId },
+      })
+    ).foodCostBeforeExclusions,
+    30,
+  );
+  assert.equal(
+    (
+      await prisma.stockTransfer.findUniqueOrThrow({
+        where: { id: a.transferId },
+      })
+    ).foodCostBeforeExclusions,
+    20,
+  );
+  assert.equal(await prisma.productionBatch.count(), batches);
+  assert.deepEqual(await prisma.inventoryItem.findMany(), stock);
+  await prisma.item.update({ where: { id: itemId }, data: { unitCost: 2 } });
+});
+test("missing information permits closeout; linked completion preserves original and captured values", async () => {
+  const missing = await prisma.item.create({
+    data: { name: "Unpriced", unit: "qt", unitCost: 0, gcode: null },
+  });
+  const r = await prisma.recipe.create({
+    data: {
+      name: "Pending recipe",
+      prodCode: "PND",
+      yieldQty: 1,
+      yieldUnit: "qt",
+      productionPersonMinutes: null,
+      items: {
+        create: [
+          { itemId: missing.id, quantity: 1, unit: "qt" },
+          { itemId, quantity: 1, unit: "qt" },
+        ],
+      },
+    },
+  });
+  const p = await recordPickup(
+    admin,
+    key(),
+    pickup("2026-09-05", {
+      recipeId: r.id,
+      quantity: 1,
+      dishwasherMinutes: null,
+    }),
+  );
+  const original = await prisma.stockTransfer.findUniqueOrThrow({
+    where: { id: p.transferId },
+  });
+  assert.equal(original.totalTransferCost, null);
+  const op = key();
+  const [a, b] = await Promise.all([
+    closeDay(admin, op, { date: "2026-09-05" }),
+    closeDay(admin, op, { date: "2026-09-05" }),
+  ]);
+  assert.deepEqual(a, b);
+  const report = await getPrepReport("2026-09-05", "2026-09-05");
+  assert.equal(report.tables[0].rows.length, 0);
+  assert.ok(report.tables[2].rows.length >= 4);
+  const line = await prisma.recipeItem.findFirstOrThrow({
+    where: { recipeId: r.id, itemId: missing.id },
+  });
+  await prisma.item.update({ where: { id: itemId }, data: { unitCost: 999 } });
+  await completeTransferCost(admin, key(), {
+    transferId: p.transferId,
+    date: "2026-09-06",
+    reason: "Price verified, no labor",
+    patch: {
+      prices: { [line.id]: 4 },
+      gcodes: { [line.id]: "U" },
+      productionMinutes: 0,
+      dishwasherMinutes: 0,
+    },
+  });
+  const latest = await prisma.prepAmendment.findFirstOrThrow({
+    where: { transferId: p.transferId },
+  });
+  assert.equal(readCost(latest.costingSnapshot)?.charge.total, 600);
+  const unchanged = await prisma.stockTransfer.findUniqueOrThrow({
+    where: { id: p.transferId },
+  });
+  assert.equal(unchanged.totalTransferCost, null);
+  assert.deepEqual(unchanged.costingSnapshot, original.costingSnapshot);
+  const late = await getPrepReport("2026-09-06", "2026-09-06");
+  assert.equal(
+    late.tables.find((t) => t.name === "Late Cost Completions")?.rows.length,
+    1,
+  );
+  assert.equal(late.tables[0].rows.length, 0);
+  await prisma.item.update({ where: { id: itemId }, data: { unitCost: 2 } });
+});
+test("confirmation serializes against closeout and cannot enter a closed day", async () => {
+  const date = "2026-09-07",
+    input = {
+      date,
+      recipeId,
+      quantity: 22,
+      unit: "qt",
+      cookName: "Cook",
+      dishwasherMinutes: 0,
+      deliveries: [],
+    };
+  const outcomes = await Promise.allSettled([
+    confirmProduction(admin, key(), input),
+    closeDay(admin, key(), { date }),
+  ]);
+  assert.ok(outcomes.some((x) => x.status === "fulfilled"));
+  const close = await prisma.productionCloseout.findUnique({
+    where: { businessDate: businessDate(date) },
+  });
+  assert.ok(close?.finalizedAt);
+  const batches = await prisma.productionBatch.findMany({
+    where: { producedOn: businessDate(date) },
+  });
+  assert.ok(batches.every((b) => b.finalizedAt));
+  await assert.rejects(recordPickup(admin, key(), pickup(date)), /closed/);
+});
+test("concurrent full returns create one credit/waste and cannot exceed quantity or money", async () => {
+  const p = await recordPickup(
+    admin,
+    key(),
+    pickup("2026-09-08", {
+      supplies: [
+        {
+          itemId,
+          quantity: 2,
+          unit: "qt",
+          venueId: venueA,
+          note: "Venue cream",
+          shared: false,
+        },
+      ],
+    }),
+  );
+  await closeDay(admin, key(), { date: "2026-09-08" });
+  const original = await prisma.stockTransfer.findUniqueOrThrow({
+      where: { id: p.transferId },
+    }),
+    op = key(),
+    input = {
+      transferId: p.transferId,
+      date: "2026-09-09",
+      quantity: 10,
+      reason: "Returned by venue",
+    };
+  const [a, b] = await Promise.all([
+    recordReturn(admin, op, input),
+    recordReturn(admin, op, input),
+  ]);
+  assert.deepEqual(a, b);
+  assert.equal(
+    await prisma.finishedStockAdjustment.count({
+      where: { transferId: p.transferId },
+    }),
+    1,
+  );
+  const waste = await prisma.finishedStockAdjustment.findFirstOrThrow({
+    where: { transferId: p.transferId },
+  });
+  assert.equal(waste.quantity, -10);
+  assert.equal(waste.type, "WASTE");
+  const amendment = await prisma.prepAmendment.findUniqueOrThrow({
+    where: { id: a.amendmentId },
+  });
+  assert.equal(
+    (amendment.costingSnapshot as { charge: { total: number } }).charge.total,
+    Math.round(original.totalTransferCost! * 100),
+  );
+  await assert.rejects(recordReturn(admin, key(), input), /exceed/);
+  await closeDay(admin, key(), { date: "2026-09-09" });
+  const report = await getPrepReport("2026-09-08", "2026-09-09");
+  assert.equal(report.tables[0].rows[0][7], 0);
+});
+test("concurrent returns with different keys and dates cannot over-refund", async () => {
+  const p = await recordPickup(admin, key(), pickup("2026-09-10"));
+  const results = await Promise.allSettled([
+    recordReturn(admin, key(), {
+      transferId: p.transferId,
+      date: "2026-09-11",
+      quantity: 6,
+      reason: "One",
+    }),
+    recordReturn(admin, key(), {
+      transferId: p.transferId,
+      date: "2026-09-12",
+      quantity: 6,
+      reason: "Two",
+    }),
+  ]);
+  assert.equal(results.filter((r) => r.status === "fulfilled").length, 1);
+  const returned = await prisma.prepAmendment.findMany({
+    where: { transferId: p.transferId, kind: "RETURN" },
+  });
+  assert.equal(returned.length, 1);
+});
+test("closed corrections reverse and replace without rewriting originals", async () => {
+  const p = await recordPickup(admin, key(), pickup("2026-09-13"));
+  await closeDay(admin, key(), { date: "2026-09-13" });
+  const original = await prisma.stockTransfer.findUniqueOrThrow({
+    where: { id: p.transferId },
+  });
+  const c = await correctTransfer(admin, key(), {
+    transferId: p.transferId,
+    date: "2026-09-14",
+    reason: "Wrong venue and quantity",
+    replacement: pickup("2026-09-14", { venueId: venueB, quantity: 8 }),
+  });
+  assert.deepEqual(
+    await prisma.stockTransfer.findUniqueOrThrow({
+      where: { id: p.transferId },
+    }),
+    original,
+  );
+  const replacement = await prisma.stockTransfer.findUniqueOrThrow({
+    where: { id: c.replacementId },
+  });
+  assert.equal(replacement.correctionOfId, p.transferId);
+  assert.equal(replacement.venueId, venueB);
+  assert.equal(replacement.quantity, 8);
+  await assert.rejects(
+    correctTransfer(admin, key(), {
+      transferId: p.transferId,
+      date: "2026-09-14",
+      reason: "Again",
+      replacement: pickup("2026-09-14"),
+    }),
+    /already been reversed/,
+  );
+});
+test("frozen packets preserve nested recipe contents and separate requests across catalog edits", async () => {
+  const date = "2026-09-15",
+    lines = await requests(date);
+  await prisma.item.update({ where: { id: itemId }, data: { allergens: "milk" } });
+  const frozen = await freezePacket(admin, key(), { date });
+  const before = await loadFrozenPacket(frozen.scope);
+  assert.ok(before);
+  assert.deepEqual(effectiveAllergens(recipeId, buildRecipeTree(before.allRecipes)), ["milk"]);
+  assert.equal(before?.order.lines.length, 2);
+  assert.notEqual(before?.order.lines[0].id, before?.order.lines[1].id);
+  assert.equal(before?.order.lines[0].lot, before?.order.lines[1].lot);
+  await prisma.recipe.update({
+    where: { id: recipeId },
+    data: { instructions: "New instructions", version: 2 },
+  });
+  await prisma.item.update({ where: { id: itemId }, data: { allergens: "soy" } });
+  const live = await prisma.recipe.findMany({ include: { items: { include: { item: true } }, components: true } });
+  assert.deepEqual(effectiveAllergens(recipeId, new Map(live.map(row => [row.id, row]))), ["soy"]);
+  assert.deepEqual(await loadFrozenPacket(frozen.scope), before);
+  assert.deepEqual(await freezePacket(admin, key(), { date }), frozen);
+  assert.equal(
+    await prisma.prepOrderLine.count({
+      where: { id: { in: lines.map((l) => l.id) }, status: "PRINTED" },
+    }),
+    2,
+  );
+  await prisma.item.update({ where: { id: itemId }, data: { allergens: null } });
+});
+test("legacy completed requests stay separate, existing batch transfers readable, exports immutable and consistent", async () => {
+  const [line] = await requests("2026-09-16", [2]);
+  await prisma.prepOrderLine.update({
+    where: { id: line.id },
+    data: {
+      status: "MADE",
+      actualQty: 2,
+      actualUnit: "qt",
+      allocatedCost: 4,
+      enteredAt: new Date(),
+    },
+  });
+  await assert.rejects(
+    confirmProduction(admin, key(), {
+      date: "2026-09-16",
+      recipeId,
+      quantity: 2,
+      unit: "qt",
+      cookName: "Cook",
+      dishwasherMinutes: 0,
+      deliveries: [{ requestLineId: line.id, venueId: venueA, quantity: 2 }],
+    }),
+    /read-only/,
+  );
+  const batch = await prisma.productionBatch.create({
+    data: {
+      recipeId,
+      lot: "LEGACY",
+      producedOn: businessDate("2026-09-16"),
+      outputQty: 10,
+      outputUnit: "qt",
+      enteredByUserId: admin,
+    },
+  });
+  await prisma.stockTransfer.create({
+    data: {
+      batchId: batch.id,
+      venueId: venueA,
+      quantity: 2,
+      unit: "qt",
+      sourceType: "PLANNED",
+      transferDate: businessDate("2026-09-16"),
+      foodCostBeforeExclusions: 4,
+      netFoodCost: 4,
+      productionLaborCost: 1,
+      dishwasherLaborCost: 1,
+      totalTransferCost: 6,
+      enteredByUserId: admin,
+      finalizedAt: new Date(),
+    },
+  });
+  const report = await getPrepReport("2026-09-16", "2026-09-16");
+  assert.equal(report.tables[0].rows[0][7], 6);
+  assert.equal(
+    report.tables.find((t) => t.name === "Legacy Production")?.rows.length,
+    1,
+  );
+  const count = await prisma.stockTransfer.count();
+  const run = await exportSnapshot("2026-09-16", "2026-09-16");
+  assert.deepEqual(run.report, report);
+  assert.deepEqual(
+    reportSheets(report, run.id).map((s) => s.rows),
+    report.tables.map((t) => t.rows),
+  );
+  assert.ok(reportCsv(report, run.id).includes("Legacy Production"));
+  await prisma.item.update({ where: { id: itemId }, data: { unitCost: 100 } });
+  assert.deepEqual(await exportSnapshot(null, null, null, run.id), run);
+  assert.equal(await prisma.stockTransfer.count(), count);
+  await prisma.item.update({ where: { id: itemId }, data: { unitCost: 2 } });
+});
+test("server rejects staff, excess production deliveries, malformed dates and absent operation keys", async () => {
+  await assert.rejects(
+    recordPickup(staff, key(), pickup("2026-09-17")),
+    /Admin/,
+  );
+  await assert.rejects(
+    recordPickup(admin, "", pickup("2026-09-17")),
+    /operation key/,
+  );
+  await assert.rejects(
+    recordPickup(admin, key(), pickup("2026-02-30")),
+    /Invalid business date/,
+  );
+  await assert.rejects(
+    confirmProduction(admin, key(), {
+      date: "2026-09-17",
+      recipeId,
+      quantity: 2,
+      unit: "qt",
+      cookName: "Cook",
+      dishwasherMinutes: 0,
+      deliveries: [{ venueId: venueA, quantity: 3 }],
+    }),
+    /exceed/,
+  );
+});
+
+test("shared ingredient supply holds every affected venue charge without allocating or excluding labor", async () => {
+  const date = "2026-09-18";
+  const r = await confirmProduction(admin, key(), {
+    date,
+    recipeId,
+    quantity: 22,
+    unit: "qt",
+    cookName: "Cook",
+    dishwasherMinutes: 10,
+    deliveries: [
+      {
+        venueId: venueA,
+        quantity: 10,
+        supplies: [
+          {
+            itemId,
+            quantity: 2,
+            unit: "qt",
+            venueId: venueA,
+            note: "Shared cream for both destinations",
+            shared: true,
+          },
+        ],
+      },
+      { venueId: venueB, quantity: 12 },
+    ],
+  });
+  const rows = await prisma.stockTransfer.findMany({
+    where: { id: { in: r.transfers } },
+  });
+  assert.equal(rows.length, 2);
+  assert.ok(
+    rows.every(
+      (t) =>
+        t.accountingState === "PENDING" &&
+        t.totalTransferCost === null &&
+        t.productionLaborCost! > 0 &&
+        t.dishwasherLaborCost! > 0,
+    ),
+  );
+  await closeDay(admin, key(), { date });
+  assert.equal((await getPrepReport(date, date)).tables[0].rows.length, 0);
+});
+test("cost completion after closeout is allowed on the closed day; originals and audit records are protected", async () => {
+  const date = "2026-09-19",
+    p = await recordPickup(
+      admin,
+      key(),
+      pickup(date, { dishwasherMinutes: null }),
+    );
+  await closeDay(admin, key(), { date });
+  const completed = await completeTransferCost(admin, key(), {
+    transferId: p.transferId,
+    date,
+    reason: "Dishwasher signed paper",
+    patch: { dishwasherMinutes: 0 },
+  });
+  assert.equal((await getPrepReport(date, date)).tables[0].rows.length, 1);
+  await assert.rejects(
+    prisma.stockTransfer.update({
+      where: { id: p.transferId },
+      data: { quantity: 99 },
+    }),
+    /immutable/,
+  );
+  await assert.rejects(
+    prisma.stockTransfer.delete({ where: { id: p.transferId } }),
+    /immutable/,
+  );
+  await assert.rejects(
+    prisma.prepAmendment.update({
+      where: { id: completed.amendmentId },
+      data: { reason: "overwrite" },
+    }),
+    /immutable/,
+  );
+  const run = await exportSnapshot(date, date);
+  await assert.rejects(
+    prisma.transferReportRun.update({
+      where: { stableId: run.id },
+      data: { snapshot: {} },
+    }),
+    /immutable/,
+  );
+});
+test("zero output closes shortages without inventing production; ordinary waste is distinct from return waste", async () => {
+  const date = "2026-09-20",
+    [line] = await requests(date, [10]);
+  const result = await confirmProduction(admin, key(), {
+    date,
+    recipeId,
+    quantity: 0,
+    unit: "qt",
+    cookName: "Cook",
+    dishwasherMinutes: 0,
+    deliveries: [
+      {
+        requestLineId: line.id,
+        venueId: venueA,
+        quantity: 0,
+        shortageNote: "Not made; equipment failed",
+      },
+    ],
+  });
+  assert.equal(result.batchId, null);
+  assert.equal(result.transfers.length, 0);
+  await closeDay(admin, key(), { date });
+  const r = await confirmProduction(admin, key(), {
+    date: "2026-09-21",
+    recipeId,
+    quantity: 22,
+    unit: "qt",
+    cookName: "Cook",
+    waste: 2,
+    wasteReason: "Scorched",
+    dishwasherMinutes: 0,
+    deliveries: [{ venueId: venueA, quantity: 10 }],
+  });
+  const b = await prisma.productionBatch.findUniqueOrThrow({
+    where: { id: r.batchId! },
+  });
+  assert.equal(b.retainedQty, 10);
+  const w = await prisma.finishedStockAdjustment.findFirstOrThrow({
+    where: { batchId: b.id },
+  });
+  assert.equal(w.quantity, -2);
+  assert.equal(w.transferId, null);
+  assert.equal(w.amendmentId, null);
+});
+
+test("non-destructive migration preserves exact legacy amounts and never converts historical requests", async () => {
+  const line = await prisma.prepOrderLine.findUniqueOrThrow({
+    where: { id: "legacy-line" },
+  });
+  assert.equal(line.allocatedCost, 4.1234567);
+  assert.equal(line.productionBatchId, null);
+  assert.equal(
+    await prisma.stockTransfer.count({ where: { requestLineId: line.id } }),
+    0,
+  );
+  const t = await prisma.stockTransfer.findUniqueOrThrow({
+    where: { id: "legacy-transfer" },
+  });
+  assert.equal(t.foodCostBeforeExclusions, 4.1234567);
+  assert.equal(t.productionLaborCost, 1.1111111);
+  assert.equal(t.dishwasherLaborCost, 0.2222222);
+  assert.equal(t.totalTransferCost, 5.45679);
+  assert.equal(t.batchId, "legacy-batch");
+  assert.equal(t.accountingState, "LEGACY");
+  await assert.rejects(
+    prisma.prepOrderLine.update({
+      where: { id: line.id },
+      data: { actualQty: 10 },
+    }),
+    /immutable/,
+  );
+});
+
+test("supplies attached to entirely retained production remain visible in accounting support", async () => {
+  const date = "2026-09-22";
+  const r = await confirmProduction(admin, key(), {
+    date,
+    recipeId,
+    quantity: 22,
+    unit: "qt",
+    cookName: "Cook",
+    dishwasherMinutes: 0,
+    deliveries: [],
+    productionSupplies: [
+      {
+        itemId,
+        venueId: venueA,
+        quantity: 2,
+        unit: "qt",
+        note: "Cream supplied for retained prep",
+        shared: true,
+      },
+    ],
+  });
+  assert.equal(r.transfers.length, 0);
+  const report = await getPrepReport(date, date);
+  const facts = report.tables.find(
+    (t) => t.name === "Supplied Ingredients",
+  )!.rows;
+  assert.equal(facts.length, 1);
+  assert.equal(facts[0][5], "Cream supplied for retained prep");
+  assert.equal(report.tables[0].rows.length, 0);
+});
+
+test("correction after a partial return reverses only the remaining charge; zero replacement cancels delivery", async () => {
+  const p = await recordPickup(admin, key(), pickup("2026-10-01"));
+  const original = await prisma.stockTransfer.findUniqueOrThrow({
+    where: { id: p.transferId },
+  });
+  const ret = await recordReturn(admin, key(), {
+    transferId: p.transferId,
+    date: "2026-10-02",
+    quantity: 3,
+    reason: "Returned portion",
+  });
+  const credit = await prisma.prepAmendment.findUniqueOrThrow({
+    where: { id: ret.amendmentId },
+  });
+  const r = await correctTransfer(admin, key(), {
+    transferId: p.transferId,
+    date: "2026-10-03",
+    reason: "Cancel remaining delivery",
+    replacement: pickup("2026-10-03", { quantity: 0, dishwasherMinutes: 0 }),
+  });
+  const reversal = await prisma.prepAmendment.findUniqueOrThrow({
+      where: { id: r.amendmentId },
+    }),
+    replacement = await prisma.stockTransfer.findUniqueOrThrow({
+      where: { id: r.replacementId },
+    });
+  const creditCents = (credit.costingSnapshot as { charge: { total: number } })
+      .charge.total,
+    reversalCents = (reversal.costingSnapshot as { charge: { total: number } })
+      .charge.total;
+  assert.equal(
+    creditCents + reversalCents,
+    Math.round(original.totalTransferCost! * 100),
+  );
+  assert.equal(reversal.quantity, 7);
+  assert.equal(replacement.quantity, 0);
+  assert.equal(replacement.totalTransferCost, 0);
+  assert.equal(
+    await prisma.finishedStockAdjustment.count({
+      where: { transferId: p.transferId },
+    }),
+    1,
+  );
+});
+
+test("back-office operations reject managers while prep packet generation remains available", async () => {
+  await assert.rejects(
+    recordPickup(chefManager, key(), pickup("2026-11-01")),
+    /Admin authorization/,
+  );
+  await assert.rejects(
+    closeDay(chefManager, key(), { date: "2026-11-01" }),
+    /Admin authorization/,
+  );
+  const [line] = await requests("2026-11-01", [10]);
+  const packet = await freezePacket(chefManager, key(), {
+    orderId: line.prepOrderId,
+  });
+  assert.ok(await loadFrozenPacket(packet.scope));
+});
+
+test("Borracho Beans preview, saved deductions and accounting exports agree", async () => {
+  const date = "2026-11-02";
+  const bacon = await prisma.item.create({
+    data: { name: "Bacon", unit: "lb", unitCost: 4, gcode: "BACON" },
+  });
+  const beans = await prisma.recipe.create({
+    data: {
+      name: "Borracho Beans",
+      prodCode: "BEANS",
+      yieldQty: 8,
+      yieldUnit: "qt",
+      productionPersonMinutes: 60,
+      items: { create: { itemId: bacon.id, quantity: 2, unit: "lb" } },
+    },
+  });
+  const lines = await Promise.all(
+    [venueA, venueB].map(async (venueId) => {
+      const order = await prisma.prepOrder.create({
+        data: {
+          forDate: businessDate(date),
+          submittedByUserId: admin,
+          destinationVenueId: venueId,
+        },
+      });
+      return prisma.prepOrderLine.create({
+        data: {
+          prepOrderId: order.id,
+          recipeId: beans.id,
+          destinationVenueId: venueId,
+          requestedQty: 4,
+          requestedUnit: "qt",
+        },
+      });
+    }),
+  );
+  const payload = {
+    date,
+    recipeId: beans.id,
+    quantity: 8,
+    unit: "qt",
+    cookName: "Jeff",
+    notes: "Brewpub supplied the bacon.",
+    dishwasherMinutes: 20,
+    deliveries: lines.map((l) => ({
+      requestLineId: l.id,
+      venueId: l.destinationVenueId,
+      quantity: 4,
+      supplies:
+        l.destinationVenueId === venueB
+          ? [
+              {
+                itemId: bacon.id,
+                venueId: venueB,
+                quantity: 1,
+                unit: "lb",
+                note: "Brewpub supplied the bacon.",
+                shared: false,
+              },
+            ]
+          : [],
+    })),
+  };
+  const before = await prisma.productionBatch.count();
+  const preview = await previewProduction(payload);
+  assert.equal(
+    await prisma.productionBatch.count(),
+    before,
+    "preview must not write",
+  );
+  const credited = preview.find((p) => p.venueId === venueB)!.charge;
+  const other = preview.find((p) => p.venueId === venueA)!.charge;
+  assert.equal(credited.excluded, 400);
+  assert.equal(other.excluded, 0);
+  const baseline = await previewProduction({
+    ...payload,
+    deliveries: payload.deliveries.map((d) => ({ ...d, supplies: [] })),
+  });
+  const beforeCredit = baseline.find((p) => p.venueId === venueB)!.charge;
+  assert.equal(credited.production, beforeCredit.production);
+  assert.equal(credited.dishwasher, beforeCredit.dishwasher);
+  assert.equal(beforeCredit.total! - credited.total!, 400);
+  const op = key();
+  const result = await confirmProduction(admin, op, payload);
+  assert.deepEqual(await confirmProduction(admin, op, payload), result);
+  const saved = await prisma.stockTransfer.findMany({
+    where: { batchId: result.batchId },
+  });
+  for (const transfer of saved)
+    assert.deepEqual(
+      readCost(transfer.costingSnapshot)!.charge,
+      preview.find((p) => p.requestLineId === transfer.requestLineId)!.charge,
+    );
+  assert.equal(
+    (
+      await prisma.productionBatch.findUniqueOrThrow({
+        where: { id: result.batchId! },
+      })
+    ).notes,
+    payload.notes,
+  );
+  await closeDay(admin, key(), { date });
+  const exported = await exportSnapshot(date, date);
+  const report = await getPrepReport(date, date);
+  assert.deepEqual(exported.report.tables, report.tables);
+  assert.ok(reportCsv(exported.report, exported.id).includes(payload.notes));
+  assert.ok(
+    reportSheets(exported.report, exported.id).some(
+      (s) =>
+        s.name === "Production Notes" &&
+        s.rows.some((r) => r.includes(payload.notes)),
+    ),
+  );
+  await prisma.item.update({ where: { id: bacon.id }, data: { unitCost: 50 } });
+  assert.deepEqual(
+    (await exportSnapshot(null, null, null, exported.id)).report,
+    exported.report,
+  );
+});
+
+test("preview rejects excessive deductions and zero-delivery supplies, and preserves zero-production notes", async () => {
+  const date = "2026-11-03";
+  const [line] = await requests(date, [10]);
+  const payload = {
+    date,
+    recipeId,
+    quantity: 10,
+    unit: "qt",
+    cookName: "Cook",
+    dishwasherMinutes: null,
+    deliveries: [
+      {
+        requestLineId: line.id,
+        venueId: venueA,
+        quantity: 10,
+        supplies: [
+          {
+            itemId,
+            venueId: venueA,
+            quantity: 1000,
+            unit: "qt",
+            note: "Too much",
+            shared: false,
+          },
+        ],
+      },
+    ],
+  };
+  await assert.rejects(previewProduction(payload), /exceeds this delivery/);
+  const pending = await previewProduction({
+    ...payload,
+    deliveries: [{ ...payload.deliveries[0], supplies: [] }],
+  });
+  assert.equal(pending[0].charge.total, null);
+  assert.ok(
+    pending[0].charge.issues.some((i) => i.startsWith("LABOR:dishwasher")),
+  );
+  await assert.rejects(
+    previewProduction({
+      ...payload,
+      quantity: 0,
+      deliveries: [
+        { ...payload.deliveries[0], quantity: 0, shortageNote: "Not made" },
+      ],
+    }),
+    /greater than zero/,
+  );
+  const zero = {
+    ...payload,
+    quantity: 0,
+    notes: "Bacon delivery never arrived",
+    deliveries: [
+      {
+        ...payload.deliveries[0],
+        quantity: 0,
+        shortageNote: "Not made",
+        supplies: [],
+      },
+    ],
+  };
+  assert.deepEqual(await previewProduction(zero), []);
+  await confirmProduction(admin, key(), zero);
+  assert.match(
+    (await prisma.prepOrderLine.findUniqueOrThrow({ where: { id: line.id } }))
+      .notes!,
+    /Bacon delivery never arrived/,
+  );
+  assert.ok(
+    reportCsv(await getPrepReport(date, date), "test").includes(zero.notes),
+  );
+});
+
+
+test("QR prep jobs preserve start/finish facts, deduplicate scans and require admin review before charges", async () => {
+  const date = "2027-02-15", lines = await requests(date);
+  await freezePacket(admin, key(), { date });
+  const beforeBatches = await prisma.productionBatch.count(), beforeTransfers = await prisma.stockTransfer.count();
+  const source = { kind: "PREP", lineId: lines[0].id, scale: 2 };
+  const [first, replay] = await Promise.all([startProductionJob(staff, source, "CJ"), startProductionJob(staff, source, "CJ")]);
+  assert.equal(first.id, replay.id);
+  assert.equal(first.expectedQty, 44);
+  const input = { date, recipeId, quantity: 22, unit: "qt", cookName: "CJ", dishwasherMinutes: 0, deliveries: lines.map(line => ({ requestLineId: line.id, venueId: line.destinationVenueId, quantity: line.requestedQty })) };
+  await assert.rejects(confirmProduction(admin, key(), input), /review.*project logs/);
+  await assert.rejects(closeDay(admin, key(), { date }), /review cook project logs/);
+  const other = await prisma.user.create({ data: { name: "Other cook", email: "qr-other@local.test", passwordHash: "unused", role: "STAFF" } });
+  const finish = { jobId: first.id, actualQty: 22, actualUnit: "qt", notes: "Labeled, dated, and placed on the pickup rack.", labeledAndDated: true };
+  await assert.rejects(finishProductionJob(other.id, finish), /Only the cook/);
+  await assert.rejects(finishProductionJob(staff, { ...finish, actualUnit: "lb" }), /compatible/);
+  await assert.rejects(finishProductionJob(staff, { ...finish, labeledAndDated: false }));
+  const completed = await finishProductionJob(staff, finish);
+  const repeated = await finishProductionJob(staff, finish);
+  assert.equal(completed.finishedAt!.getTime(), repeated.finishedAt!.getTime());
+  assert.ok(completed.finishedAt! >= completed.startedAt);
+  assert.equal(completed.startedByUserId, staff);
+  assert.equal(completed.finishedByUserId, staff);
+  await assert.rejects(finishProductionJob(staff, { ...finish, actualQty: 23 }), /already been submitted/);
+  assert.equal(await prisma.productionBatch.count(), beforeBatches);
+  assert.equal(await prisma.stockTransfer.count(), beforeTransfers);
+  await assert.rejects(reviewProductionJob(staff, first.id, ""), /Admin/);
+  await assert.rejects(reviewProductionJob(chefManager, first.id, ""), /Admin/);
+  await assert.rejects(reviewProductionJob(admin, first.id, "", { quantity: 23, unit: "qt" }), /Explain the yield correction/);
+  await reviewProductionJob(admin, first.id, "Yield and notes checked.", { quantity: 23, unit: "qt" });
+  const reviewed = await reviewProductionJob(admin, first.id, "Repeated click");
+  assert.equal(reviewed.reviewNote, "Yield and notes checked.");
+  assert.equal(reviewed.actualQty, 22);
+  assert.equal(reviewed.reviewedQty, 23);
+  await assert.rejects(prisma.productionJob.update({ where: { id: first.id }, data: { actualQty: 1 } }), /immutable/);
+  await assert.rejects(prisma.productionJob.delete({ where: { id: first.id } }), /preserved/);
+  await confirmProduction(admin, key(), input);
+  await closeDay(admin, key(), { date });
+  assert.equal((await prisma.productionJob.findUniqueOrThrow({ where: { id: first.id } })).actualQty, 22);
+});
+
+test("banquet QR logs record real project facts without creating prep ledger entries; completed targets are read-only", async () => {
+  const banquet = await prisma.banquet.create({ data: { name: "QR test banquet", date: businessDate("2027-02-16"), venueId: venueA, menuItems: { create: { recipeId, orderedQty: 12, unit: "qt" } } }, include: { menuItems: true } });
+  const source = { kind: "BANQUET", lineId: banquet.menuItems[0].id };
+  const batches = await prisma.productionBatch.count(), transfers = await prisma.stockTransfer.count();
+  const job = await startProductionJob(chefManager, source, "Lead cook");
+  assert.equal(job.expectedQty, 12);
+  await assert.rejects(reviewProductionJob(admin, job.id, ""), /Finish the project/);
+  await finishProductionJob(chefManager, { jobId: job.id, actualQty: 11.5, actualUnit: "qt", notes: "Lower yield than planned.", labeledAndDated: true });
+  await reviewProductionJob(admin, job.id, "Discussed yield variance.");
+  assert.equal(await prisma.productionBatch.count(), batches);
+  assert.equal(await prisma.stockTransfer.count(), transfers);
+  await assert.rejects(startProductionJob(staff, { kind: "PREP", lineId: "missing", scale: 1 }, "CJ"), /printed lot/);
+  const cancelled = await prisma.banquet.create({ data: { name: "Cancelled QR event", status: "CANCELLED", date: businessDate("2027-02-17"), venueId: venueA, menuItems: { create: { recipeId, orderedQty: 1, unit: "qt" } } }, include: { menuItems: true } });
+  await assert.rejects(startProductionJob(staff, { kind: "BANQUET", lineId: cancelled.menuItems[0].id }, "CJ"), /completed or cancelled/);
+});
+
+test("inline catalog edits preserve unrelated fields, freshness and concurrent changes", async () => {
+  const { saveWorkspaceCell } = await import("../workspace/workspace-editing");
+  const ingredient = await prisma.item.create({ data: { name: "Inline cost fixture", unit: "lb", unitCost: 4, packQty: 40, packUnit: "lb", yieldFactor: 0.5, allergens: "milk", priceUpdatedAt: new Date("2026-01-01") } });
+  const edit = (field: string, expected: string | number | null, value: string) => ({ entity: "item", id: ingredient.id, field, expected, value });
+  assert.deepEqual(await saveWorkspaceCell(prisma, chefManager, edit("packSize", null, "40 lb case")), { ok: true, value: "40 lb case" });
+  const packed = await prisma.item.findUniqueOrThrow({ where: { id: ingredient.id } });
+  assert.equal(packed.priceUpdatedAt!.toISOString(), "2026-01-01T00:00:00.000Z"); assert.equal(packed.packQty, 40); assert.equal(packed.yieldFactor, 0.5); assert.equal(packed.allergens, "milk");
+  const competing = await Promise.all([saveWorkspaceCell(prisma, admin, edit("unitCost", 4, "5")), saveWorkspaceCell(prisma, chefManager, edit("unitCost", 4, "6"))]);
+  assert.equal(competing.filter(result => result.ok).length, 1);
+  const current = await prisma.item.findUniqueOrThrow({ where: { id: ingredient.id } });
+  assert.ok([5, 6].includes(current.unitCost)); assert.ok(current.priceUpdatedAt! > packed.priceUpdatedAt!);
+  assert.deepEqual(await saveWorkspaceCell(prisma, admin, edit("unitCost", 4, String(current.unitCost))), { ok: true, value: current.unitCost });
+  const conflict = await saveWorkspaceCell(prisma, admin, edit("unitCost", 4, "7"));
+  assert.equal(conflict.ok, false); assert.equal("current" in conflict && conflict.current, current.unitCost);
+  assert.equal((await saveWorkspaceCell(prisma, admin, edit("vendorId", null, "missing-vendor"))).ok, false);
+  assert.equal((await saveWorkspaceCell(prisma, admin, edit("unitCost", current.unitCost, ""))).ok, false);
+  assert.equal((await saveWorkspaceCell(prisma, admin, edit("packQty", 40, "5"))).ok, false);
+});
+
+test("inline edits check current database roles and keep guide units separate from catalog units", async () => {
+  const { saveWorkspaceCell } = await import("../workspace/workspace-editing");
+  const ingredient = await prisma.item.create({ data: { name: "Inline guide fixture", unit: "lb", unitCost: 4 } });
+  const guide = await prisma.orderGuide.create({ data: { name: "Inline guide", venueId: venueA, lines: { create: { itemId: ingredient.id, par: 16, unit: "oz" } } }, include: { lines: true } });
+  const edit = { entity: "guideLine", id: guide.lines[0].id, field: "par", expected: 16, value: "32" };
+  assert.equal((await saveWorkspaceCell(prisma, staff, edit)).ok, false);
+  assert.deepEqual(await saveWorkspaceCell(prisma, chefManager, edit), { ok: true, value: 32 });
+  assert.equal((await prisma.item.findUniqueOrThrow({ where: { id: ingredient.id } })).unit, "lb");
+  assert.equal((await prisma.orderGuideLine.findUniqueOrThrow({ where: { id: edit.id } })).unit, "oz");
+  const demoted = await prisma.user.create({ data: { name: "Demoted editor", email: `demoted-${key()}@local.test`, passwordHash: "unused", role: "STAFF" } });
+  assert.equal((await saveWorkspaceCell(prisma, demoted.id, { entity: "item", id: ingredient.id, field: "unitCost", expected: 4, value: "9" })).ok, false);
+});
+
+test("inspector yield edits record one audit change, preserve batches and deduplicate retries", async () => {
+  const { saveWorkspaceCell } = await import("../workspace/workspace-editing");
+  const recipe = await prisma.recipe.create({ data: { name: "Inspector yield fixture", prodCode: `I${key()}`, yieldQty: 4, yieldUnit: "qt" } });
+  const batches = await prisma.productionBatch.count(), snapshots = await prisma.prepPacketSnapshot.count();
+  const edit = { entity: "recipe", id: recipe.id, field: "yieldQty", expected: 4, value: "8" };
+  assert.deepEqual(await saveWorkspaceCell(prisma, chefManager, edit), { ok: true, value: 8 });
+  assert.deepEqual(await saveWorkspaceCell(prisma, chefManager, edit), { ok: true, value: 8 });
+  assert.equal((await prisma.recipe.findUniqueOrThrow({ where: { id: recipe.id } })).version, 2);
+  const history = await prisma.recipeChange.findMany({ where: { recipeId: recipe.id } });
+  assert.equal(history.length, 1); assert.equal(history[0].userId, chefManager); assert.match(history[0].detail!, /4 → 8/);
+  assert.equal((await saveWorkspaceCell(prisma, admin, { ...edit, expected: 8, value: "0" })).ok, false);
+  assert.equal(await prisma.productionBatch.count(), batches); assert.equal(await prisma.prepPacketSnapshot.count(), snapshots);
+});
+
+test("invoice review previews nested cost changes, applies atomically once and preserves audit/export facts", async () => {
+  const { invoicePreview, applyInvoice } = await import("../invoices/invoices");
+  const vendor = await prisma.vendor.create({data:{name:"Invoice supplier"}});
+  const ingredient = await prisma.item.create({data:{name:"Invoice test butter",unit:"lb",unitCost:4,gcode:"KEEP",allergens:"milk"}});
+  const child = await prisma.recipe.create({data:{name:"Invoice child",prodCode:`IC${key()}`,yieldQty:2,yieldUnit:"qt",items:{create:{itemId:ingredient.id,quantity:1,unit:"lb"}}}});
+  const parent = await prisma.recipe.create({data:{name:"Invoice parent",prodCode:`IP${key()}`,yieldQty:4,yieldUnit:"each",menuPrice:10,components:{create:{childId:child.id,quantity:1,unit:"qt"}}}});
+  const draft = await prisma.invoiceImport.create({data:{fileHash:key(),filename:"test.pdf",createdBy:admin,extracted:{vendorName:vendor.name,invoiceNumber:"TEST",invoiceDate:"2026-11-01",currency:"USD",lines:[{description:ingredient.name,sku:"NEW-SKU",gcode:null,packSize:"40 lb case",quantity:1,unitPrice:320,priceUnit:"case",packQuantity:40,packUnit:"lb",extendedTotal:320,notes:null}]}}});
+  const review={vendorId:vendor.id,confirmedUsd:true,decisions:[{line:0,itemId:ingredient.id,unitCost:8,expectedCost:4,expectedUnit:"lb",expectedUpdatedAt:ingredient.updatedAt.toISOString(),acknowledge:true}]};
+  const preview=await invoicePreview(prisma,draft.id,review);
+  const impact=preview.impact.find(row=>row.id===parent.id)!; assert.equal(impact.before,2); assert.equal(impact.after,4); assert.equal(impact.beforeFcp,5); assert.equal(impact.afterFcp,10);
+  const batches=await prisma.productionBatch.count();
+  await assert.rejects(applyInvoice(prisma,staff,draft.id,review,preview.signature),/Manager/);
+  await applyInvoice(prisma,chefManager,draft.id,review,preview.signature);
+  await applyInvoice(prisma,chefManager,draft.id,review,preview.signature);
+  const saved=await prisma.item.findUniqueOrThrow({where:{id:ingredient.id}}); assert.equal(saved.unitCost,8);assert.equal(saved.gcode,"KEEP");assert.equal(saved.allergens,"milk");
+  assert.equal(await prisma.vendorQuote.count({where:{invoiceId:draft.id}}),1);
+  assert.equal(await prisma.productionBatch.count(),batches);
+  await assert.rejects(prisma.invoiceImport.update({where:{id:draft.id},data:{filename:"tampered"}}),/preserved/);
+});
+
+test("accounting mappings are optional, exported snapshots freeze mappings, and stale invoice previews cannot apply", async()=>{
+  const {invoicePreview,applyInvoice}=await import("../invoices/invoices");
+  const ingredient=await prisma.item.create({data:{name:"Stale invoice item",unit:"lb",unitCost:2}}), vendor=await prisma.vendor.create({data:{name:"Stale supplier"}});
+  const draft=await prisma.invoiceImport.create({data:{fileHash:key(),filename:"stale.pdf",createdBy:admin,extracted:{vendorName:vendor.name,invoiceNumber:null,invoiceDate:null,currency:"USD",lines:[{description:ingredient.name,sku:null,gcode:null,packSize:null,quantity:1,unitPrice:3,priceUnit:"lb",packQuantity:null,packUnit:null,extendedTotal:3,notes:null}]}}});
+  const review={vendorId:vendor.id,confirmedUsd:true,decisions:[{line:0,itemId:ingredient.id,unitCost:3,expectedCost:2,expectedUnit:"lb",expectedUpdatedAt:ingredient.updatedAt.toISOString(),acknowledge:true}]};
+  const preview=await invoicePreview(prisma,draft.id,review);await prisma.item.update({where:{id:ingredient.id},data:{unitCost:4}});
+  await assert.rejects(applyInvoice(prisma,admin,draft.id,review,preview.signature),/changed/);
+  assert.equal((await prisma.invoiceImport.findUniqueOrThrow({where:{id:draft.id}})).appliedAt,null);
+  const exported=await exportSnapshot("2026-12-01","2026-12-31");
+  assert.ok(exported.report.tables.some(table=>table.name==="Executive Summary"));assert.ok(exported.report.tables.some(table=>table.name==="Inter-Venue Transfers"));assert.ok(exported.report.tables.some(table=>table.name==="Line-Item Detail"));
+  await prisma.accountingMapping.create({data:{kind:"VENUE",sourceKey:venueA,code:"ACCT-A"}});
+  const replay=await exportSnapshot(null,null,null,exported.id);assert.deepEqual(replay.report,exported.report);
+});

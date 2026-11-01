@@ -1,9 +1,9 @@
-import { getVenues } from "@/lib/venue";
-import { loadInvoicePurchases } from "@/lib/invoice-purchases-data";
+import { getVenues } from "@/lib/venues/venue";
+import { loadInvoicePurchases } from "@/lib/invoices/invoice-purchases-data";
 import { InvoicePurchaseReview } from "@/components/InvoicePurchaseReview";
 import Link from "next/link";
-import { requirePrepUser } from "@/lib/prep-session";
-import { prisma } from "@/lib/prisma";
+import { requirePrepUser } from "@/lib/auth/prep-session";
+import { prisma } from "@/lib/db/prisma";
 import { PageHeader, Card } from "@/components/ui";
 import { InvoiceArchive } from "./InvoiceArchive";
 const size=(bytes:number)=>bytes<1024*1024?`${Math.round(bytes/1024)} KB`:`${(bytes/1024/1024).toFixed(2)} MB`;
