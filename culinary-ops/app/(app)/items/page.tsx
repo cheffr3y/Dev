@@ -25,7 +25,7 @@ export default async function ItemsPage({
   const [items, vendors] = await Promise.all([
     // Load the whole catalog so price-coverage counts are global, then filter
     // in memory — the master list is small and this keeps the counts honest.
-    prisma.item.findMany({ include: { vendor: true, _count: { select: ingredientUsageSelect } }, orderBy: [{ category: "asc" }, { name: "asc" }] }),
+    prisma.item.findMany({ include: { vendor: true, _count: { select: { ...ingredientUsageSelect, quotes: true } } }, orderBy: [{ category: "asc" }, { name: "asc" }] }),
     prisma.vendor.findMany({ orderBy: { name: "asc" } }),
   ]);
 
@@ -74,6 +74,7 @@ export default async function ItemsPage({
         action={canEdit ? <LinkButton href="/items/cleanup">Review duplicates ({groups.length})</LinkButton> : undefined}
       />
 
+      {canEdit && <Link href="/vendors/invoices" className="mb-4 inline-block text-sm text-blue-600 underline">Invoice documents</Link>}
       {flag === "integrity" && <p className="mb-4 text-sm text-amber-700">Showing in-use ingredients with missing costs, units, or vendors. <Link href="/items" className="underline">View all ingredients</Link></p>}
 
       {/* Price coverage — theo food cost is only as honest as these prices. */}

@@ -1,3 +1,4 @@
+import { accountingCategory } from "./categories";
 import { prisma } from "./prisma";
 import { Prisma } from "@prisma/client";
 import { json, type Tx } from "./prep-workflow";
@@ -285,6 +286,11 @@ export async function calculatePrepReport(
       w.enteredByUserId,
     ]),
   };
+  const mappings = await tx.accountingMapping.findMany();
+  const catalog = await tx.item.findMany({ select: { id: true, category: true } });
+  const categoryById = new Map(catalog.map(item => [item.id, accountingCategory(item.category)]));
+  const code = (kind: string, key: string) => mappings.find(mapping => mapping.kind === kind && mapping.sourceKey === key)?.code ?? null;
+  const lineDetail: ReportTable = { name: "Line-Item Detail", headers: ["Transfer ID", "Date", "Venue", "Venue code", "Ingredient", "GCODE", "Accounting category", "GL account", "Quantity", "Unit", "Captured unit price", "Net food", "Cost review", "Mapping review", "Charge status"], rows: [], currencyColumns: [10,11] };
   const totals = new Map<string, number[]>();
   const add = (venue: string, c: Charge, credit = false) => {
     const v = totals.get(venue) ?? [0, 0, 0, 0, 0, 0, 0];
@@ -437,7 +443,7 @@ export async function calculatePrepReport(
           ]);
     }
     if (s) {
-      for (const r of c.ingredients)
+      for (const r of c.ingredients) {
         ingredients.rows.push([
           t.stableId,
           r.name,
@@ -449,6 +455,9 @@ export async function calculatePrepReport(
           dollar(r.excluded),
           dollar(r.net),
         ]);
+        const category = categoryById.get(r.itemId) ?? "Other";
+        lineDetail.rows.push([t.stableId, date(t.transferDate), t.venue.name, code("VENUE", t.venueId), r.name, r.gcode, category, code("CATEGORY", category), r.quantity, r.unit, r.price, dollar(r.net), r.price == null || r.price <= 0 || r.net == null ? "MISSING COST / REVIEW" : "Captured cost", !code("CATEGORY", category) || !code("VENUE", t.venueId) ? "UNMAPPED" : "Mapped", issues.length ? "Pending / support only" : "Ready / ingredient support"]);
+      }
       const ratio =
         s.capture.weights[s.capture.share] /
         s.capture.weights.reduce((a, b) => a + b, 0);
@@ -590,6 +599,16 @@ export async function calculatePrepReport(
   summary.rows = [...totals]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([venue, n]) => [venue, ...n.map((x) => x / 100)]);
+  labor.headers.push("Production GL account", "Dishwasher GL account", "Mapping review");
+  for (const row of labor.rows) row.push(code("LABOR", "Production labor"), code("LABOR", "Dishwasher labor"), !code("LABOR", "Production labor") || !code("LABOR", "Dishwasher labor") ? "UNMAPPED" : "Mapped");
+  const detailedIds = new Set(lineDetail.rows.map(row => row[0]));
+  for (const row of ingredients.rows) {
+    if (detailedIds.has(row[0])) continue;
+    const transfer = transfers.find(transfer => transfer.stableId === row[0]);
+    lineDetail.rows.push([row[0], transfer ? date(transfer.transferDate) : null, transfer?.venue.name ?? null, transfer ? code("VENUE", transfer.venueId) : null, row[1], row[2], "Historical category unavailable", null, row[3], row[4], row[5], row[8], row[5] == null || Number(row[5]) <= 0 || row[8] == null ? "MISSING COST / REVIEW" : "Captured cost", "UNMAPPED", "Historical ingredient support — verify charge status"]);
+  }
+  const interVenue: ReportTable = { name: "Inter-Venue Transfers", headers: ["Record ID", "Date", "Source", "Source code", "Destination", "Destination code", "Recipe", "Quantity", "Unit", "Net charge", "Kind", "Original transfer", "Mapping review"], currencyColumns: [9], rows: ready.rows.map(row => { const original = transfers.find(transfer => transfer.stableId === row[0] || transfer.stableId === row[13]); const destination = original ? sourceVenues.find(venue => venue.id === original.venueId) : undefined; return [row[0], row[1], "Production", code("VENUE", "PRODUCTION"), row[2], destination ? code("VENUE", destination.id) : null, row[3], row[4], row[5], row[11], row[12], row[13], !destination || !code("VENUE", destination.id) || !code("VENUE", "PRODUCTION") ? "UNMAPPED" : "Mapped"]; }) };
+  const executive: ReportTable = { name: "Executive Summary", headers: ["Metric", "Value"], rows: [["From", range.from], ["To", range.to], ["Ready net charges", summary.rows.reduce((sum, row) => sum + Number(row[7] ?? 0), 0)], ["Ready charge / credit records", ready.rows.length], ["Pending issues (excluded)", pending.rows.length], ["Unmapped ingredient support lines", lineDetail.rows.filter(row => row[13] === "UNMAPPED").length], ["Mapping basis", "Codes and current catalog categories captured at export; historical costs are unchanged"], ["Posting", "Review export in accounting; no automatic posting"]] };
   return {
     version: 2,
     from: range.from,
@@ -607,6 +626,9 @@ export async function calculatePrepReport(
       late,
       historical,
       productionNotes,
+      executive,
+      interVenue,
+      lineDetail,
     ],
     transferIds: transfers.map((t) => t.id),
     transferStableIds: transfers.map((t) => t.stableId),
@@ -686,4 +708,10 @@ export function reportCsv(report: PrepAccountingReport, runId: string) {
   ]
     .map((r) => r.map(csvCell).join(","))
     .join("\r\n");
+}
+
+export function reportTableCsv(report: PrepAccountingReport, name: string) {
+  const table = report.tables.find(table => table.name === name);
+  if (!table) throw new Error("Unknown report table.");
+  return [table.headers, ...table.rows].map(row => row.map(csvCell).join(",")).join("\r\n");
 }

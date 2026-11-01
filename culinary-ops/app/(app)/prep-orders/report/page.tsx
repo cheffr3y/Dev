@@ -36,6 +36,7 @@ export default async function AccountingPage({
         title="Accounting"
         subtitle="Review venue totals, resolve missing costs, and download for accounting."
       />
+      <Link href="/prep-orders/report/mappings" className="mb-4 inline-block text-sm text-blue-600 underline">Configure accounting codes</Link>
       <form className="mb-5 flex flex-wrap gap-3">
         <Input
           aria-label="From date"
@@ -62,6 +63,7 @@ export default async function AccountingPage({
         >
           Download CSV
         </a>
+        <a className="text-blue-700" href={`/prep-orders/report/export?${query}&table=Inter-Venue%20Transfers`}>Transfer CSV (single table)</a>
         <a
           className="text-blue-700"
           href={`/prep-orders/report/export-xlsx?${query}`}

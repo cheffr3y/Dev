@@ -113,7 +113,7 @@ Validation: TypeScript, targeted ESLint, production build, 173 unit checks, 24 d
 ## Chunk 4: QR Project Start / Finish & Admin Review
 **Goal:** Scan a prep or banquet project when work starts, finish after labeling/dating, and capture actual elapsed time, yield, and notes for review.
 
-**Scope — October 31, 2026:** QR project logging is the only retained work from the original Chunk 4. The combined packet/compiler, station filters, and label generator remain removed. Chunk 5 follows this work; Chunk 6 is now the next active roadmap item.
+**Scope — October 31, 2026:** QR project logging is the only retained work from the original Chunk 4. The combined packet/compiler, station filters, and label generator remain removed. Chunk 5 follows this work; Chunks 5 and 6 are now implemented.
 
 ### Checklist
 - [x] **Project-specific printed QR codes:** Prep lot recipe cards, banquet cook cards and prep-sheet food lines, weekly banquet project selection, and daily worksheet recipe groups open the matching project on a phone. Printed copy multipliers remain attached to prep targets. Sign-in returns to the scanned project.
@@ -162,30 +162,24 @@ See [workspace-editing.md](docs/workspace-editing.md) for operation and verifica
 
 ---
 
-## Chunk 6: Accounting Pipeline, GL Mapping & AI Invoice Photo Parser
-**Goal:** Make accounting reconciliation effortless, automate multi-vendor price matching via photo/PDF uploads, and track inter-venue transfers.
-
-**Target Files:**
-* `lib/categories.ts`
-* `lib/venue.ts`
-* `lib/costing.ts`
-* `lib/prep-accounting-report.ts`
-* `app/(app)/prep-orders/report/page.tsx`
-* `app/(app)/prep-orders/report/export-xlsx/route.ts`
-* `app/(app)/prep-orders/report/export/route.ts`
-* `app/(app)/festivals/[id]/accounting/AccountingWorksheet.tsx`
-* `app/(app)/vendors/page.tsx`
-* `app/(app)/items/page.tsx`
+## Chunk 6: Accounting Pipeline & Compact Invoice Documents
+**Goal:** Improve accounting exports and keep readable invoice photos/PDFs for reference without AI usage.
 
 ### Checklist
-- [ ] **GL Account Code Mapping:** Add General Ledger (GL) code mapping to ingredient categories (`lib/categories.ts`) and venues (`lib/venue.ts`) so every item and transfer automatically carries its accounting category (e.g., Meat/Seafood, Produce, Dairy, Dry Goods, Paper/Disposables).
-- [ ] **ERP-Ready XLSX/CSV Exports:** Upgrade `export-xlsx/route.ts` and `export/route.ts` (using `lib/xlsx.ts`) to generate multi-tab workbooks (Executive Summary, Inter-Venue Transfers, Line-Item Detail with missing-cost flags).
-- [ ] **AI Invoice Photo/PDF Ingestion Dropzone:** Build an upload route under `/vendors` or `/items` allowing you to drag-and-drop a PDF invoice or snap a photo of a paper invoice.
-- [ ] **Vision LLM Parsing & Cross-Vendor Matching Engine:** Automatically extract vendor names, line items, pack sizes, SKUs, and pricing from invoice photos, matching them against your master inventory items even when switching between vendors (e.g., Sysco vs. US Foods).
-- [ ] **Price Intelligence & Margin Impact Preview:** Present an audit modal before updating database prices: showing price deltas (>5% warning), identifying the cheapest active vendor option, and calculating the exact ripple effect on recipe and menu food cost percentages.
+- [x] **Optional accounting mappings:** Admin-configured category/labor GL accounts and venue cost centers. Leave unknown codes blank and flag unmapped exports.
+- [x] **Expanded exports:** Executive Summary, Inter-Venue Transfers, Line-Item Detail with cost/mapping flags, and a single-table transfer CSV. Preserve existing ledger values and immutable export snapshots.
+- [x] **Invoice document archive:** Upload/drop a PDF or photo, or take a phone photo. Optional vendor, invoice number and notes. Store a compact, readable document in PostgreSQL with authenticated first-page preview, full-size view, download, and duplicate detection.
+- [x] **Legibility-aware compression:** Rotate photos, reduce their longest edge to 2600 pixels and compress to JPEG (or a smaller PNG for crisp text). Raster PDF copies target 150 dpi, retain every page and its dimensions, and are stored only when smaller than the source. Already compact digital PDFs keep their original sharp text. Input limit 8 MB / 20 PDF pages.
 
-### Copy-Paste Agent Prompt for Chunk 6
-> Read `lib/prep-accounting-report.ts`, `lib/xlsx.ts`, `app/(app)/prep-orders/report/page.tsx`, `app/(app)/prep-orders/report/export-xlsx/route.ts`, and `lib/costing.ts`. Execute **Chunk 6** of `ROADMAP.md`: add GL category/venue code mappings, upgrade the accounting XLSX export into a multi-sheet executive workbook, and build the AI Invoice Photo/PDF Dropzone with Vision LLM parsing, cross-vendor item matching, and pre-commit ripple effect margin preview. Verify with `npx tsc --noEmit`.
+### Scope decision — November 1, 2026
+
+AI extraction, cross-vendor matching, automated price proposals and API spending controls are **future work**, listed below. The active invoice upload/view/download flow makes no AI calls and requires no API key. Previous AI extraction/review helpers remain internal groundwork, with no active UI or API route to invoke them. Legacy invoice review records are preserved.
+
+Deployment requires `20261101000000_accounting_invoice_review` and `20261101010000_invoice_document_archive`, applied by normal `npm start`. Runtime: Node 22.13+ (24 recommended). Compact document bytes and previews are database-backed, so there is no dependence on ephemeral server disk or a new cloud-storage account. Include these tables in normal database backups.
+
+Validation: production build/TypeScript, targeted ESLint, 187 unit checks and 31 disposable-PostgreSQL transaction checks. Browser checks cover photo/PDF uploads, stored preview/download, duplicate detection, malformed inputs, disabled AI routes, unchanged prices/ledger, permissions, mobile layout and accounting exports. A two-page scan shrank from 1,243,706 to 368,723 bytes; a sample photo from 1,093,354 to 321,703 bytes. Sample digital PDFs remained unchanged when already smaller. Both stored scan pages and seven-point footers were visually reviewed at 150 dpi. Savings vary with source quality/content.
+
+See [accounting-invoices.md](docs/accounting-invoices.md).
 
 ---
 
@@ -234,3 +228,16 @@ See [workspace-editing.md](docs/workspace-editing.md) for operation and verifica
 
 ### Copy-Paste Agent Prompt for Chunk 8
 > Execute **Chunk 8** of `ROADMAP.md`: move `homestead` and `trivia` into an `app/(games)` route group, archive completed one-off backfill/repair scripts into `scripts/archive/`, organize `lib/` into domain folders (updating imports cleanly across the repo), and clean up `.DS_Store` in `.gitignore`. Run `npx tsc --noEmit` and the test suite to verify zero broken imports.
+
+---
+
+## Future: AI Invoice Assistance & Spending Controls (Deferred)
+**Status:** Not scheduled or enabled. Compact document storage works independently.
+
+- [ ] Benchmark a lower-cost vision model on real invoices, pack sizes, decimals and credits before choosing a default; measure accuracy and actual billed cost.
+- [ ] Add explicit opt-in extraction from an already stored invoice, with saved results reused on later views.
+- [ ] Track actual billed input/output/reasoning tokens, model and per-invoice cost, including failed attempts and retries where reported.
+- [ ] Add an app-enforced monthly spending cap, conservative per-request reservations, document/page limits, rate/concurrency controls and budget alerts. Stop AI work when the cap is reached while keeping document storage available. Provider dashboard budgets alone are not a hard app cap.
+- [ ] Explain estimated cost before extraction and show actual usage afterward.
+- [ ] Restore reviewed extraction, vendor-specific SKU/GCODE and cross-vendor matching, explicit pack-unit/USD checks, recent vendor comparison, >5% price warnings and recipe/menu margin previews before an admin/manager applies any catalog changes.
+- [ ] Revalidate proposals before saving, preserve original facts and review history, and prevent duplicate extraction charges during concurrent uploads/retries.

@@ -21,3 +21,16 @@ export const RECIPE_CATEGORIES = [
   "Beverage",
   "Other",
 ];
+
+// Category labels remain useful before accounting supplies account numbers.
+export function accountingCategory(category: string) {
+  if (["Protein", "Poultry", "Seafood"].includes(category)) return "Meat / Seafood";
+  if (category === "Produce") return "Produce";
+  if (category === "Dairy") return "Dairy";
+  if (category === "Paper & Disposables") return "Paper / Disposables";
+  if (category === "Cleaning & Chemicals") return "Cleaning / Chemicals";
+  if (category === "Beverage") return "Beverage";
+  if (category === "Other" || !category) return "Other";
+  return "Dry Goods / Other Food";
+}
+export const ACCOUNTING_CATEGORIES = ["Meat / Seafood", "Produce", "Dairy", "Dry Goods / Other Food", "Paper / Disposables", "Cleaning / Chemicals", "Beverage", "Other"];

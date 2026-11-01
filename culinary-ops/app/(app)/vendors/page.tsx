@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireUser, hasRole } from "@/lib/session";
 import { Button, Card, Field, Input, PageHeader, Textarea } from "@/components/ui";
@@ -35,7 +36,7 @@ export default async function VendorsPage() {
   const user = await requireUser();
   const canEdit = hasRole(user, "MANAGER");
   const vendors = await prisma.vendor.findMany({
-    include: { _count: { select: { items: true, orderGuides: true } } },
+    include: { _count: { select: { items: true, orderGuides: true, quotes: true } } },
     orderBy: { name: "asc" },
   });
 
@@ -43,6 +44,7 @@ export default async function VendorsPage() {
     <div>
       <PageHeader title="Vendors" subtitle="Suppliers and their contact details." />
 
+      {canEdit && <Link href="/vendors/invoices" className="mb-4 inline-block text-sm text-blue-600 underline">Store invoice photos / PDFs</Link>}
       {canEdit && (
         <details className="mb-5">
           <summary className="cursor-pointer text-sm font-medium text-blue-600">+ Add vendor</summary>
@@ -87,7 +89,7 @@ export default async function VendorsPage() {
                 </details>
                 <form action={deleteVendor}>
                   <input type="hidden" name="id" value={v.id} />
-                  <button className="text-xs text-red-500 hover:underline">delete</button>
+                  <button disabled={v._count.quotes > 0} title={v._count.quotes > 0 ? "Invoice quote history preserves this vendor" : undefined} className="text-xs text-red-500 hover:underline disabled:opacity-40">delete</button>
                 </form>
               </div>
             )}

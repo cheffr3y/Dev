@@ -1185,3 +1185,37 @@ test("inspector yield edits record one audit change, preserve batches and dedupl
   assert.equal((await saveWorkspaceCell(prisma, admin, { ...edit, expected: 8, value: "0" })).ok, false);
   assert.equal(await prisma.productionBatch.count(), batches); assert.equal(await prisma.prepPacketSnapshot.count(), snapshots);
 });
+
+test("invoice review previews nested cost changes, applies atomically once and preserves audit/export facts", async () => {
+  const { invoicePreview, applyInvoice } = await import("./invoices");
+  const vendor = await prisma.vendor.create({data:{name:"Invoice supplier"}});
+  const ingredient = await prisma.item.create({data:{name:"Invoice test butter",unit:"lb",unitCost:4,gcode:"KEEP",allergens:"milk"}});
+  const child = await prisma.recipe.create({data:{name:"Invoice child",prodCode:`IC${key()}`,yieldQty:2,yieldUnit:"qt",items:{create:{itemId:ingredient.id,quantity:1,unit:"lb"}}}});
+  const parent = await prisma.recipe.create({data:{name:"Invoice parent",prodCode:`IP${key()}`,yieldQty:4,yieldUnit:"each",menuPrice:10,components:{create:{childId:child.id,quantity:1,unit:"qt"}}}});
+  const draft = await prisma.invoiceImport.create({data:{fileHash:key(),filename:"test.pdf",createdBy:admin,extracted:{vendorName:vendor.name,invoiceNumber:"TEST",invoiceDate:"2026-11-01",currency:"USD",lines:[{description:ingredient.name,sku:"NEW-SKU",gcode:null,packSize:"40 lb case",quantity:1,unitPrice:320,priceUnit:"case",packQuantity:40,packUnit:"lb",extendedTotal:320,notes:null}]}}});
+  const review={vendorId:vendor.id,confirmedUsd:true,decisions:[{line:0,itemId:ingredient.id,unitCost:8,expectedCost:4,expectedUnit:"lb",expectedUpdatedAt:ingredient.updatedAt.toISOString(),acknowledge:true}]};
+  const preview=await invoicePreview(prisma,draft.id,review);
+  const impact=preview.impact.find(row=>row.id===parent.id)!; assert.equal(impact.before,2); assert.equal(impact.after,4); assert.equal(impact.beforeFcp,5); assert.equal(impact.afterFcp,10);
+  const batches=await prisma.productionBatch.count();
+  await assert.rejects(applyInvoice(prisma,staff,draft.id,review,preview.signature),/Manager/);
+  await applyInvoice(prisma,chefManager,draft.id,review,preview.signature);
+  await applyInvoice(prisma,chefManager,draft.id,review,preview.signature);
+  const saved=await prisma.item.findUniqueOrThrow({where:{id:ingredient.id}}); assert.equal(saved.unitCost,8);assert.equal(saved.gcode,"KEEP");assert.equal(saved.allergens,"milk");
+  assert.equal(await prisma.vendorQuote.count({where:{invoiceId:draft.id}}),1);
+  assert.equal(await prisma.productionBatch.count(),batches);
+  await assert.rejects(prisma.invoiceImport.update({where:{id:draft.id},data:{filename:"tampered"}}),/preserved/);
+});
+
+test("accounting mappings are optional, exported snapshots freeze mappings, and stale invoice previews cannot apply", async()=>{
+  const {invoicePreview,applyInvoice}=await import("./invoices");
+  const ingredient=await prisma.item.create({data:{name:"Stale invoice item",unit:"lb",unitCost:2}}), vendor=await prisma.vendor.create({data:{name:"Stale supplier"}});
+  const draft=await prisma.invoiceImport.create({data:{fileHash:key(),filename:"stale.pdf",createdBy:admin,extracted:{vendorName:vendor.name,invoiceNumber:null,invoiceDate:null,currency:"USD",lines:[{description:ingredient.name,sku:null,gcode:null,packSize:null,quantity:1,unitPrice:3,priceUnit:"lb",packQuantity:null,packUnit:null,extendedTotal:3,notes:null}]}}});
+  const review={vendorId:vendor.id,confirmedUsd:true,decisions:[{line:0,itemId:ingredient.id,unitCost:3,expectedCost:2,expectedUnit:"lb",expectedUpdatedAt:ingredient.updatedAt.toISOString(),acknowledge:true}]};
+  const preview=await invoicePreview(prisma,draft.id,review);await prisma.item.update({where:{id:ingredient.id},data:{unitCost:4}});
+  await assert.rejects(applyInvoice(prisma,admin,draft.id,review,preview.signature),/changed/);
+  assert.equal((await prisma.invoiceImport.findUniqueOrThrow({where:{id:draft.id}})).appliedAt,null);
+  const exported=await exportSnapshot("2026-12-01","2026-12-31");
+  assert.ok(exported.report.tables.some(table=>table.name==="Executive Summary"));assert.ok(exported.report.tables.some(table=>table.name==="Inter-Venue Transfers"));assert.ok(exported.report.tables.some(table=>table.name==="Line-Item Detail"));
+  await prisma.accountingMapping.create({data:{kind:"VENUE",sourceKey:venueA,code:"ACCT-A"}});
+  const replay=await exportSnapshot(null,null,null,exported.id);assert.deepEqual(replay.report,exported.report);
+});

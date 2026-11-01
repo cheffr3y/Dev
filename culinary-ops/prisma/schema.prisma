@@ -153,6 +153,8 @@ model Vendor {
 
   items       Item[]
   orderGuides OrderGuide[]
+  quotes VendorQuote[]
+  invoiceDocuments InvoiceDocument[]
 }
 
 // Master catalog item / ingredient / purchasable product.
@@ -180,6 +182,7 @@ model Item {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
+  quotes VendorQuote[]
   recipeItems     RecipeItem[]
   inventoryItems  InventoryItem[]
   orderGuideLines OrderGuideLine[]
@@ -1136,4 +1139,64 @@ model PrepAmendment {
   @@unique([transferId, revision])
   @@index([transferId, createdAt])
   @@index([adjustmentDate])
+}
+
+// Configurable accounting references; no invented account numbers.
+model AccountingMapping {
+  id        String @id @default(cuid())
+  kind      String
+  sourceKey String
+  code      String
+  updatedAt DateTime @updatedAt
+  @@unique([kind, sourceKey])
+}
+
+model InvoiceImport {
+  id          String @id @default(cuid())
+  fileHash    String @unique
+  filename    String
+  extracted   Json
+  createdBy   String
+  createdAt   DateTime @default(now())
+  appliedAt   DateTime?
+  appliedBy   String?
+  review      Json?
+  quotes VendorQuote[]
+}
+
+model VendorQuote {
+  id         String @id @default(cuid())
+  itemId     String
+  item Item @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  vendorId   String
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  sku        String?
+  packSize   String?
+  unit       String
+  unitCost   Float
+  quotedAt   DateTime
+  invoiceId  String
+  invoice InvoiceImport @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  active     Boolean @default(true)
+  @@unique([itemId, vendorId])
+  @@index([itemId])
+}
+
+// Readable compact document archive, independent of AI extraction and pricing.
+model InvoiceDocument {
+  id            String @id @default(cuid())
+  fileHash      String @unique
+  filename      String
+  mime          String
+  data          Bytes
+  preview       Bytes
+  originalBytes Int
+  storedBytes   Int
+  pages         Int
+  createdBy     String
+  createdAt     DateTime @default(now())
+  vendorId      String?
+  vendor        Vendor? @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  invoiceNumber String?
+  notes         String?
 }

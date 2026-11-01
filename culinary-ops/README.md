@@ -24,7 +24,7 @@ Built with Next.js (App Router), TypeScript, Prisma, and PostgreSQL. Role-based 
 
 See the [kitchen and accounting guide](docs/prep-orders-guide.md) and [migration / rollout checklist](docs/prep-orders-rollout.md).
 
-See [ROADMAP.md](ROADMAP.md) for the commercial product direction and implementation checklist. Chunks 1–5 are implemented. Chunk 4 is limited to QR project start/finish logging and admin review. Chunk 5 adds keyboard catalog editing, rapid ingredient entry, and recipe/ingredient side panels; see the [editing guide](docs/workspace-editing.md). Chunk 6 (accounting and invoice ingestion) is next.
+See [ROADMAP.md](ROADMAP.md) for the commercial product direction and implementation checklist. Chunks 1–6 are implemented. Chunk 4 is limited to QR project start/finish logging and admin review. Chunk 5 adds keyboard catalog editing, rapid ingredient entry, and recipe/ingredient side panels; see the [editing guide](docs/workspace-editing.md). Chunk 6 adds configurable accounting codes, expanded exports and compact invoice photo/PDF storage; see the [accounting and invoice guide](docs/accounting-invoices.md). AI extraction and spending controls are deferred to a future roadmap feature; invoice storage uses no AI calls. Chunk 7 (menu/event planning) is next.
 
 Use **⌘K / Ctrl+K** to search recipes/ingredients or run actions: print this week’s banquet packet, download week-to-date prep accounting (Sunday through today), open daily closeout/prep, review duplicate ingredients, or create a recipe. Actions follow existing role permissions; closeout and accounting are admin-only.
 
@@ -40,7 +40,7 @@ The **active venue** selector in the header scopes the Inventory and Order Guide
 ## Quick start
 
 ### Option A — one command (local Postgres)
-Requires Node 18+ and the PostgreSQL server binaries installed.
+Requires Node 22.13+ (Node 24 recommended) and the PostgreSQL server binaries installed.
 
 ```bash
 npm install

@@ -39,7 +39,7 @@ export async function deleteItem(formData: FormData) {
   // Inventory/festival relations cascade on deletion, so verify every usage
   // within the same serializable transaction before removing an unused item.
   await prisma.$transaction(async tx => {
-    const existing = await tx.item.findUniqueOrThrow({ where: { id }, include: { _count: { select: { recipeItems: true, inventoryItems: true, orderGuideLines: true, festivalOnHand: true } } } });
+    const existing = await tx.item.findUniqueOrThrow({ where: { id }, include: { _count: { select: { recipeItems: true, inventoryItems: true, orderGuideLines: true, festivalOnHand: true, quotes: true } } } });
     if (Object.values(existing._count).some(count => count > 0)) throw new Error("Ingredient is still used. Review its usage and replace recipe references before deleting.");
     await tx.item.delete({ where: { id } });
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
