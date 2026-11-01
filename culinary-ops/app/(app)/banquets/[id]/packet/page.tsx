@@ -1,3 +1,4 @@
+import { loadBanquetRevision } from "@/lib/banquet-baseline-data";
 import { AtelierHeader } from "@/components/AtelierHeader";
 import { BanquetSetupPacket } from "@/components/BanquetSetupSheet";
 import Link from "next/link";
@@ -79,7 +80,7 @@ export default async function BanquetCookPacketPage({ params }: { params: Promis
       </div>
 
       <PrintSpecHeader venue={banquet.venue.name} title={banquet.name} targetDate={banquet.date} printedAt={new Date()} />
-      <BanquetSetupPacket banquet={banquet} menu={banquet.menuItems.map(m => ({
+      <BanquetSetupPacket revisionData={await loadBanquetRevision(id)} banquet={banquet} menu={banquet.menuItems.map(m => ({
         id: m.id, name: m.recipe.name, orderedQty: m.orderedQty, unit: m.unit,
       }))} />
       {banquet.menuItems.length === 0 ? (

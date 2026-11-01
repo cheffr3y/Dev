@@ -148,6 +148,8 @@ export type RecipeBuildProps = {
   sharedRefs?: Map<string, string>;
   weightInGrams?: boolean;
   references?: RecipeReferencePlan;
+  referencePrefix?: string;
+  contextLabel?: string;
 };
 
 type BuildCardProps = RecipeBuildProps & Pick<RecipeDossierProps,
@@ -159,7 +161,7 @@ export function RecipeBuildCard({ context, projectCode, id, className = "", supp
       <RecipeDossier recipe={build.node} scale={build.totalBatches}
         allergenKeys={effectiveAllergens(build.node.id, build.byId)}
         weightInGrams={build.weightInGrams} supporting={supporting}
-        context={context} projectCode={projectCode} id={id}
+        context={build.contextLabel ? <><p className="mb-2 font-semibold">{build.contextLabel}</p>{context}</> : context} projectCode={projectCode} id={id}
         className={`${supporting ? "" : "recipe-packet-card"} ${className}`}>
         <RecipeBuildBody {...build} renderSubBuilds={false} />
       </RecipeDossier>
@@ -185,7 +187,7 @@ export function RecipeBuildBody({ renderSubBuilds = true, ...build }: RecipeBuil
       note: <>Sub-recipe · {child.prodCode}{component.note ? ` — ${component.note}` : ""}
         <span className="block font-sans text-[9px] not-italic">
           {sharedRef ? `pull from ${sharedRef}` : reference ? (
-            <a href={`#recipe-reference-${child.id}`} className="underline underline-offset-2">Reference {reference.label} at the back</a>
+            <a href={`#${build.referencePrefix ?? ""}recipe-reference-${child.id}`} className="underline underline-offset-2">Reference {reference.label} at the back</a>
           ) : "see sub-recipe below ↓"}
         </span>
       </>,

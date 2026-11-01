@@ -1,3 +1,5 @@
+import { loadBanquetRevision } from "@/lib/banquet-baseline-data";
+import { BanquetRevision } from "@/components/BanquetRevision";
 import { WorkspaceInspector } from "@/components/WorkspaceInspector";
 import { InspectorLink } from "@/components/InspectorLink";
 import { LocationInput } from "@/components/LocationInput";
@@ -50,6 +52,7 @@ export default async function BanquetDetailPage({ params }: { params: Promise<{ 
   const pickerRecipes = recipeRows.map((r) => ({ id: r.id, name: r.name, prodCode: r.prodCode, yieldQty: r.yieldQty, yieldUnit: r.yieldUnit }));
   const hasAccount = banquet.salesManager || banquet.contactName || banquet.contactEmail || banquet.contactPhone;
 
+  const revisionData = await loadBanquetRevision(id);
   return (
     <WorkspaceInspector><div>
       <div className="no-print mb-4 flex items-center justify-between">
@@ -74,6 +77,8 @@ export default async function BanquetDetailPage({ params }: { params: Promise<{ 
         subtitle={[banquet.venue.name, banquet.location, banquet.areas].filter(Boolean).join(" · ")}
         action={<Badge color={STATUS_COLOR[banquet.status]}>{banquet.status.toLowerCase()}</Badge>}
       />
+
+      <BanquetRevision data={revisionData} />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard

@@ -975,3 +975,16 @@ body {
   .workspace-inspector > div:first-child { flex-wrap: wrap; }
   .inspector-dossier .recipe-storage ul { grid-template-columns: 1fr; }
 }
+
+/* Event identity stays visible on paper; purchasing totals never become cook work. */
+.beo-revision table { table-layout: fixed; }
+.beo-revision th, .beo-revision td { overflow-wrap: anywhere; }
+@media print {
+  .event-work-sheet + .event-work-sheet, .event-cook-packet + .event-cook-packet { break-before: page; }
+  .event-work-sheet thead, .purchasing-table thead { display: table-header-group; }
+  .event-work-sheet tr, .purchasing-table tr, .beo-revision tr { break-inside: avoid; }
+  .event-work-sheet .overflow-x-auto, .production-planning .overflow-x-auto { overflow: visible; }
+  .event-work-sheet .print-write-in, .purchasing-table .print-write-in { min-height: 28px; height: 28px; }
+  .purchasing-table tbody tr:nth-child(even), .beo-revision tbody tr:nth-child(even) { background: #f4f4f5 !important; print-color-adjust: exact; }
+  .beo-revision { color: #000 !important; border: 2px solid #000 !important; background: #fff !important; }
+}

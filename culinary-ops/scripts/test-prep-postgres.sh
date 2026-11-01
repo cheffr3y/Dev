@@ -20,6 +20,7 @@ node node_modules/prisma/build/index.js migrate resolve --applied 20260923000000
 "$PG_BIN/psql" "postgresql://prep_test@127.0.0.1:$PREP_TEST_PORT/prep_workflow_test" -v ON_ERROR_STOP=1 -q -f scripts/fixtures/prep-legacy.sql
 node node_modules/prisma/build/index.js migrate deploy
 node --import tsx --test lib/prep-workflow.integration.test.ts
+node --import tsx --test lib/event-planning.integration.test.ts
 node scripts/test-annex-repairs.mjs
 if [ "${PREP_BROWSER_SMOKE:-0}" = "1" ]; then
   node --import tsx scripts/seed-prep-browser.ts
@@ -35,6 +36,16 @@ if [ "${PREP_BROWSER_SMOKE:-0}" = "1" ]; then
   node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3107 &
   PREP_SERVER_PID=$!
   trap 'kill "$PREP_SERVER_PID" 2>/dev/null || true; cleanup' EXIT
+  if [ "${EVENT_PLANNING_BROWSER_SMOKE:-0}" = "1" ]; then
+    node -e 'const url="http://localhost:3107/login"; (async()=>{for(let attempt=0;attempt<50;attempt++){try{if((await fetch(url)).ok) return;}catch{}await new Promise(resolve=>setTimeout(resolve,200));}process.exit(1);})()'
+    node scripts/test-event-planning-browser.mjs
+    node scripts/test-banquet-setup-browser.mjs
+    if [ "${PRINT_CONTROLLER_BROWSER_SMOKE:-0}" = "1" ]; then
+      node scripts/test-print-controller-browser.mjs
+      node scripts/test-recipe-costing-browser.mjs
+    fi
+    exit 0
+  fi
   if [ "${ACCOUNTING_INVOICES_BROWSER_SMOKE:-0}" = "1" ]; then
     node -e 'const url="http://localhost:3107/login"; (async()=>{for(let attempt=0;attempt<50;attempt++){try{if((await fetch(url)).ok) return;}catch{}await new Promise(resolve=>setTimeout(resolve,200));}process.exit(1);})()'
     node scripts/test-accounting-invoices-browser.mjs

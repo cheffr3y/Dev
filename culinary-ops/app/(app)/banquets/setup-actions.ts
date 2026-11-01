@@ -5,6 +5,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireActiveUser } from "@/lib/session";
 import { aggregateSetup, readSetup, resolveSetup, retainPacking, setupSchema } from "@/lib/banquet-setup";
+import { lockBaselineForUser } from "@/lib/banquet-baseline-data";
 
 const targetSchema = z.object({ id: z.string().min(1), revision: z.number().int().min(0) });
 const stale = "This setup changed in another session. Reload the page before making more changes.";
@@ -13,6 +14,14 @@ function refresh(id: string) {
   revalidatePath(`/banquets/${id}/setup`);
   revalidatePath(`/banquets/${id}/packet`);
   revalidatePath("/banquets/week/[date]/packet", "page");
+}
+export async function lockBanquetBaseline(id: string, expected: string) {
+  const user = await requireActiveUser("MANAGER");
+  z.string().min(1).max(150).parse(id);
+  z.string().max(500000).parse(expected);
+  const result = await lockBaselineForUser(user.id, id, expected);
+  refresh(id);
+  return result;
 }
 export async function saveBanquetSetup(id: string, revision: number, input: unknown) {
   await requireActiveUser("MANAGER");

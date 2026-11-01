@@ -3,11 +3,13 @@ import { num } from "@/lib/costing";
 import { displayMeasure } from "@/lib/units";
 import type { RecipeReferencePlan } from "@/lib/recipe-references";
 
-export function RecipeReferences({ references, byId, sharedRefs, weightInGrams = false }: {
+export function RecipeReferences({ references, byId, sharedRefs, weightInGrams = false, referencePrefix = "", contextLabel }: {
   references: RecipeReferencePlan;
   byId: Map<string, RecipeTreeNode>;
   sharedRefs?: Map<string, string>;
   weightInGrams?: boolean;
+  referencePrefix?: string;
+  contextLabel?: string;
 }) {
   if (references.size === 0) return null;
 
@@ -23,7 +25,7 @@ export function RecipeReferences({ references, byId, sharedRefs, weightInGrams =
         {[...references.values()].map((reference) => {
           const { node } = reference;
           const needed = displayMeasure(reference.totalBatches * node.yieldQty, node.yieldUnit, weightInGrams);
-          return <RecipeBuildCard key={node.id} id={`recipe-reference-${node.id}`}
+          return <RecipeBuildCard key={node.id} id={`${referencePrefix}recipe-reference-${node.id}`} referencePrefix={referencePrefix} contextLabel={contextLabel}
             node={node} byId={byId} totalBatches={reference.totalBatches}
             compact depth={1} stack={new Set()} supporting
             sharedRefs={sharedRefs} weightInGrams={weightInGrams} references={references}
