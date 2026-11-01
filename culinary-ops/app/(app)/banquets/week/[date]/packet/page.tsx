@@ -1,17 +1,17 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { requirePrepUser } from "@/lib/prep-session";
-import { num, componentBatchFactor } from "@/lib/costing";
-import { dateFromParam, startOfUtcWeek, addDays, isoDate, fmtWeekRange } from "@/lib/banquet-week";
-import { loadBanquetRevision } from "@/lib/banquet-baseline-data";
+import { prisma } from "@/lib/db/prisma";
+import { requirePrepUser } from "@/lib/auth/prep-session";
+import { num, componentBatchFactor } from "@/lib/recipes/costing";
+import { dateFromParam, startOfUtcWeek, addDays, isoDate, fmtWeekRange } from "@/lib/banquets/banquet-week";
+import { loadBanquetRevision } from "@/lib/banquets/banquet-baseline-data";
 import { PrintController } from "@/components/PrintController";
 import { PrintSpecHeader } from "@/components/PrintSpecHeader";
 import { BanquetSetupPacket } from "@/components/BanquetSetupSheet";
 import { ProductionJobQr } from "@/components/ProductionJobQr";
-import { jobScanHref } from "@/lib/production-job-options";
+import { jobScanHref } from "@/lib/production/production-job-options";
 import { RecipeReferences } from "@/components/RecipeReferences";
-import { buildRecipeReferences } from "@/lib/recipe-references";
+import { buildRecipeReferences } from "@/lib/recipes/recipe-references";
 import { RecipeBuildCard, buildRecipeTree, recipeTreeSelect } from "@/components/RecipeBuild";
 
 // Weekly convenience printing preserves one complete, independent event packet

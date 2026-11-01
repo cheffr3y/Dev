@@ -1,4 +1,4 @@
-import { printTargetDate } from "@/lib/print-options";
+import { printTargetDate } from "@/lib/printing/print-options";
 
 export function PrintPageRules({ landscape = false }: { landscape?: boolean }) {
   return <style>{`@media print {

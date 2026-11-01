@@ -1,7 +1,7 @@
-import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/session";
-import { getActiveVenue } from "@/lib/venue";
-import { money, num } from "@/lib/costing";
+import { prisma } from "@/lib/db/prisma";
+import { requireUser } from "@/lib/auth/session";
+import { getActiveVenue } from "@/lib/venues/venue";
+import { money, num } from "@/lib/recipes/costing";
 import { Badge, Card, EmptyState, PageHeader, StatCard } from "@/components/ui";
 import { updateInventory, removeInventoryItem } from "./actions";
 import { AddItemForm } from "./AddItemForm";

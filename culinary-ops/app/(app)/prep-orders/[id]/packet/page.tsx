@@ -1,20 +1,20 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { loadFrozenPacket } from "@/lib/prep-packets";
-import { requireUser } from "@/lib/session";
-import { num } from "@/lib/costing";
-import { convertQty, unitLabel } from "@/lib/units";
-import { buildShoppingList, type ShoppingRecipeNode } from "@/lib/shopping";
+import { loadFrozenPacket } from "@/lib/prep/prep-packets";
+import { requireUser } from "@/lib/auth/session";
+import { num } from "@/lib/recipes/costing";
+import { convertQty, unitLabel } from "@/lib/recipes/units";
+import { buildShoppingList, type ShoppingRecipeNode } from "@/lib/purchasing/shopping";
 import { PrepCoolingLog } from "@/components/PrepCoolingLog";
 import { PrintController, PrintQueryFields } from "@/components/PrintController";
 import { PrintSpecHeader, ScaledProductionBanner } from "@/components/PrintSpecHeader";
-import { printScale, type PrintQuery } from "@/lib/print-options";
+import { printScale, type PrintQuery } from "@/lib/printing/print-options";
 import { ProductionJobQr } from "@/components/ProductionJobQr";
-import { jobScanHref } from "@/lib/production-job-options";
+import { jobScanHref } from "@/lib/production/production-job-options";
 import { LocalTime } from "@/components/LocalTime";
 import { ShoppingListBody } from "@/components/ShoppingList";
 import { RecipeReferences } from "@/components/RecipeReferences";
-import { buildRecipeReferences, type RecipeReferencePlan } from "@/lib/recipe-references";
+import { buildRecipeReferences, type RecipeReferencePlan } from "@/lib/recipes/recipe-references";
 import {
   RecipeBuildCard,
   buildRecipeTree,

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { requirePrepUser } from "@/lib/prep-session";
-import { prisma } from "@/lib/prisma";
+import { requirePrepUser } from "@/lib/auth/prep-session";
+import { prisma } from "@/lib/db/prisma";
 export default async function BackEntryPage({
   params,
 }: {

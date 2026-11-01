@@ -1,7 +1,7 @@
 import { type NextRequest } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { buildStateView, normalizeRoomCode } from "@/lib/trivia-engine";
-import { advanceGameIfDue } from "@/lib/trivia";
+import { prisma } from "@/lib/db/prisma";
+import { buildStateView, normalizeRoomCode } from "@/lib/games/trivia-engine";
+import { advanceGameIfDue } from "@/lib/games/trivia";
 
 // Poll endpoint — both phones GET this every ~2s. Public by design (see
 // auth.config.ts): a room code scopes everything, an optional player token

@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { requirePrepUser } from "@/lib/prep-session";
-import { dateFromParam, startOfUtcWeek, addDays, isoDate, fmtWeekRange } from "@/lib/banquet-week";
+import { prisma } from "@/lib/db/prisma";
+import { requirePrepUser } from "@/lib/auth/prep-session";
+import { dateFromParam, startOfUtcWeek, addDays, isoDate, fmtWeekRange } from "@/lib/banquets/banquet-week";
 import { PageHeader, LinkButton, Card } from "@/components/ui";
-import { preciseNum } from "@/lib/costing";
+import { preciseNum } from "@/lib/recipes/costing";
 import { PrintController } from "@/components/PrintController";
 import { PrintSpecHeader } from "@/components/PrintSpecHeader";
 

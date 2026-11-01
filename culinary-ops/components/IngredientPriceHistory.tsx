@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
-import { convertQty } from "@/lib/units";
-import { money, pct, preciseNum } from "@/lib/costing";
+import { prisma } from "@/lib/db/prisma";
+import { convertQty } from "@/lib/recipes/units";
+import { money, pct, preciseNum } from "@/lib/recipes/costing";
 import { Card, CardHeader } from "./ui";
 
 export async function IngredientPriceHistory({ itemId, unit }: { itemId: string; unit: string }) {

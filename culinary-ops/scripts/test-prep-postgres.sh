@@ -19,19 +19,32 @@ export PREP_DISPOSABLE_DB=1
 node node_modules/prisma/build/index.js migrate resolve --applied 20260923000000_existing_schema
 "$PG_BIN/psql" "postgresql://prep_test@127.0.0.1:$PREP_TEST_PORT/prep_workflow_test" -v ON_ERROR_STOP=1 -q -f scripts/fixtures/prep-legacy.sql
 node node_modules/prisma/build/index.js migrate deploy
-node --import tsx --test lib/database-pool.integration.test.ts
-node --import tsx --test lib/prep-workflow.integration.test.ts
-node --import tsx --test lib/event-planning.integration.test.ts
-node --import tsx --test lib/operating-calendar.integration.test.ts
-node scripts/test-annex-repairs.mjs
+node --import tsx --test lib/db/database-pool.integration.test.ts
+node --import tsx --test lib/prep/prep-workflow.integration.test.ts
+node --import tsx --test lib/production/event-planning.integration.test.ts
+node --import tsx --test lib/accounting/operating-calendar.integration.test.ts
+node scripts/archive/test-annex-repairs.mjs
 if [ "${PREP_BROWSER_SMOKE:-0}" = "1" ]; then
+  BROWSER_SELECTED=()
+  if [ -n "${BROWSER_SUITES:-}" ]; then read -r -a BROWSER_SELECTED <<< "$BROWSER_SUITES"; fi
+  # Keep existing flags working; multiple flags now run every requested suite.
+  for pair in \
+    "MORNING_PULSE_BROWSER_SMOKE:morning-pulse" "MENU_ROLLOUT_BROWSER_SMOKE:menu-rollout" \
+    "PRINT_CONTROLLER_BROWSER_SMOKE:print-controller" "PRODUCTION_JOBS_BROWSER_SMOKE:production-jobs" \
+    "WORKSPACE_BROWSER_SMOKE:workspace" "ACCOUNTING_INVOICES_BROWSER_SMOKE:accounting-invoices" \
+    "OPERATING_CALENDAR_BROWSER_SMOKE:operating-calendar" "EVENT_PLANNING_BROWSER_SMOKE:event-planning"; do
+    flag="${pair%%:*}"
+    if [ "${!flag:-0}" = "1" ]; then BROWSER_SELECTED+=("${pair#*:}"); fi
+  done
+  case " ${BROWSER_SELECTED[*]} " in *" event-planning "*) BROWSER_SELECTED+=("banquet-setup");; esac
+  case " ${BROWSER_SELECTED[*]} " in *" print-controller "*) BROWSER_SELECTED+=("recipe-costing");; esac
   node --import tsx scripts/seed-prep-browser.ts
-  if [ "${MORNING_PULSE_BROWSER_SMOKE:-0}" = "1" ]; then
-    node --import tsx scripts/seed-morning-pulse-browser.ts
-  fi
-  if [ "${PRINT_CONTROLLER_BROWSER_SMOKE:-0}" = "1" ] || [ "${PRODUCTION_JOBS_BROWSER_SMOKE:-0}" = "1" ] || [ "${WORKSPACE_BROWSER_SMOKE:-0}" = "1" ] || [ "${ACCOUNTING_INVOICES_BROWSER_SMOKE:-0}" = "1" ]; then
-    node --import tsx scripts/seed-print-controller-browser.ts
-  fi
+  case " ${BROWSER_SELECTED[*]} " in *" morning-pulse "*) node --import tsx scripts/seed-morning-pulse-browser.ts;; esac
+  for suite in "${BROWSER_SELECTED[@]}"; do
+    case "$suite" in workspace|event-planning|banquet-setup|print-controller|recipe-costing|production-jobs|accounting-invoices)
+      node --import tsx scripts/seed-print-controller-browser.ts; break;;
+    esac
+  done
   export AUTH_SECRET='disposable-prep-browser-smoke-secret-2026'
   export AUTH_URL='http://localhost:3107'
   export AUTH_TRUST_HOST=true
@@ -42,54 +55,10 @@ if [ "${PREP_BROWSER_SMOKE:-0}" = "1" ]; then
   fi
   PREP_SERVER_PID=$!
   trap 'kill "$PREP_SERVER_PID" 2>/dev/null || true; cleanup' EXIT
-  if [ "${OPERATING_CALENDAR_BROWSER_SMOKE:-0}" = "1" ]; then
-    node -e 'const url="http://localhost:3107/login"; (async()=>{for(let attempt=0;attempt<50;attempt++){try{if((await fetch(url)).ok) return;}catch{}await new Promise(resolve=>setTimeout(resolve,200));}process.exit(1);})()'
-    node scripts/test-operating-calendar-browser.mjs
-    if [ "${ACCOUNTING_INVOICES_BROWSER_SMOKE:-0}" = "1" ]; then
-      node scripts/test-accounting-invoices-browser.mjs
-    fi
-    exit 0
+  if [ "${#BROWSER_SELECTED[@]}" -gt 0 ]; then
+    node scripts/browser/run.mjs "${BROWSER_SELECTED[@]}"
+  else
+    # Preserve the manual fixture-server workflow when no suites are selected.
+    wait "$PREP_SERVER_PID"
   fi
-  if [ "${EVENT_PLANNING_BROWSER_SMOKE:-0}" = "1" ]; then
-    node -e 'const url="http://localhost:3107/login"; (async()=>{for(let attempt=0;attempt<50;attempt++){try{if((await fetch(url)).ok) return;}catch{}await new Promise(resolve=>setTimeout(resolve,200));}process.exit(1);})()'
-    node scripts/test-event-planning-browser.mjs
-    node scripts/test-banquet-setup-browser.mjs
-    if [ "${PRINT_CONTROLLER_BROWSER_SMOKE:-0}" = "1" ]; then
-      node scripts/test-print-controller-browser.mjs
-      node scripts/test-recipe-costing-browser.mjs
-    fi
-    exit 0
-  fi
-  if [ "${ACCOUNTING_INVOICES_BROWSER_SMOKE:-0}" = "1" ]; then
-    node -e 'const url="http://localhost:3107/login"; (async()=>{for(let attempt=0;attempt<50;attempt++){try{if((await fetch(url)).ok) return;}catch{}await new Promise(resolve=>setTimeout(resolve,200));}process.exit(1);})()'
-    node scripts/test-accounting-invoices-browser.mjs
-    exit 0
-  fi
-  if [ "${WORKSPACE_BROWSER_SMOKE:-0}" = "1" ]; then
-    node -e 'const url="http://localhost:3107/login"; (async()=>{for(let attempt=0;attempt<50;attempt++){try{if((await fetch(url)).ok) return;}catch{}await new Promise(resolve=>setTimeout(resolve,200));}process.exit(1);})()'
-    node scripts/test-workspace-browser.mjs
-    exit 0
-  fi
-  if [ "${PRODUCTION_JOBS_BROWSER_SMOKE:-0}" = "1" ]; then
-    node -e 'const url="http://localhost:3107/login"; (async()=>{for(let attempt=0;attempt<50;attempt++){try{if((await fetch(url)).ok) return;}catch{}await new Promise(resolve=>setTimeout(resolve,200));}process.exit(1);})()'
-    node scripts/test-production-jobs-browser.mjs
-    exit 0
-  fi
-  if [ "${PRINT_CONTROLLER_BROWSER_SMOKE:-0}" = "1" ]; then
-    node -e 'const url="http://localhost:3107/login"; (async()=>{for(let attempt=0;attempt<50;attempt++){try{if((await fetch(url)).ok) return;}catch{}await new Promise(resolve=>setTimeout(resolve,200));}process.exit(1);})()'
-    node scripts/test-print-controller-browser.mjs
-    node scripts/test-recipe-costing-browser.mjs
-    exit 0
-  fi
-  if [ "${MORNING_PULSE_BROWSER_SMOKE:-0}" = "1" ]; then
-    node -e 'const url="http://localhost:3107/login"; (async()=>{for(let attempt=0;attempt<50;attempt++){try{if((await fetch(url)).ok) return;}catch{}await new Promise(resolve=>setTimeout(resolve,200));}process.exit(1);})()'
-    node scripts/test-morning-pulse-browser.mjs
-    exit 0
-  fi
-  if [ "${MENU_ROLLOUT_BROWSER_SMOKE:-0}" = "1" ]; then
-    node -e 'const url="http://localhost:3107/login"; (async()=>{for(let attempt=0;attempt<50;attempt++){try{if((await fetch(url)).ok) return;}catch{}await new Promise(resolve=>setTimeout(resolve,200));}process.exit(1);})()'
-    node scripts/test-menu-rollout-browser.mjs
-    exit 0
-  fi
-  wait "$PREP_SERVER_PID"
 fi

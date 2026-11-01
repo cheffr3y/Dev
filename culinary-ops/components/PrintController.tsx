@@ -3,7 +3,7 @@
 import { useTransition, type ComponentProps, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { MAX_PRINT_SCALE, PRINT_SCALE_OPTIONS, validPrintScale } from "@/lib/print-options";
+import { MAX_PRINT_SCALE, PRINT_SCALE_OPTIONS, validPrintScale } from "@/lib/printing/print-options";
 import { PrintButton } from "./PrintButton";
 
 export function PrintController({ children, className = "", allowScale = false, scale = 1, label = "Print / save PDF" }: {

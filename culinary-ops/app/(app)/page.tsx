@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { hasRole } from "@/lib/session";
-import { requirePrepUser } from "@/lib/prep-session";
-import { getActiveVenue } from "@/lib/venue";
-import { loadMorningPulse } from "@/lib/morning-pulse-data";
-import { addDays, fmtShortDate } from "@/lib/banquet-week";
-import { businessDate } from "@/lib/prep-dates";
-import { pct } from "@/lib/costing";
+import { hasRole } from "@/lib/auth/session";
+import { requirePrepUser } from "@/lib/auth/prep-session";
+import { getActiveVenue } from "@/lib/venues/venue";
+import { loadMorningPulse } from "@/lib/dashboard/morning-pulse-data";
+import { addDays, fmtShortDate } from "@/lib/banquets/banquet-week";
+import { businessDate } from "@/lib/prep/prep-dates";
+import { pct } from "@/lib/recipes/costing";
 import { Badge, Card, CardHeader, LinkButton, PageHeader } from "@/components/ui";
 
 export default async function DashboardPage() {

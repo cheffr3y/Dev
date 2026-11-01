@@ -1,7 +1,7 @@
-import { getPrepUser } from "@/lib/prep-session";
-import { prisma } from "@/lib/prisma";
-import { loadOperatingMonth } from "@/lib/operating-calendar-data";
-import { operatingMonth, buildOperatingMonth, operatingCsv } from "@/lib/operating-calendar";
+import { getPrepUser } from "@/lib/auth/prep-session";
+import { prisma } from "@/lib/db/prisma";
+import { loadOperatingMonth } from "@/lib/accounting/operating-calendar-data";
+import { operatingMonth, buildOperatingMonth, operatingCsv } from "@/lib/accounting/operating-calendar";
 
 export async function GET(request: Request) {
   const user = await getPrepUser();

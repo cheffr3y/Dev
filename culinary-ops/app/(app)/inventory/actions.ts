@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/session";
+import { prisma } from "@/lib/db/prisma";
+import { requireUser } from "@/lib/auth/session";
 
 // All authenticated users can take inventory counts.
 

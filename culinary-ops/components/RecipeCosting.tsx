@@ -1,7 +1,7 @@
 import { useId } from "react";
-import { money, num, pct } from "@/lib/costing";
-import { unitLabel } from "@/lib/units";
-import type { RecipeCostSheet } from "@/lib/recipe-cost-sheet";
+import { money, num, pct } from "@/lib/recipes/costing";
+import { unitLabel } from "@/lib/recipes/units";
+import type { RecipeCostSheet } from "@/lib/recipes/recipe-cost-sheet";
 
 export function RecipeCosting({ costs }: { costs: RecipeCostSheet }) {
   const titleId = useId();

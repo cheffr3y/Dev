@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
-import { requirePrepUser } from "@/lib/prep-session";
-import { businessDate, chicagoToday } from "@/lib/prep-dates";
-import { durationLabel, elapsedMinutes } from "@/lib/production-job-options";
+import { prisma } from "@/lib/db/prisma";
+import { requirePrepUser } from "@/lib/auth/prep-session";
+import { businessDate, chicagoToday } from "@/lib/prep/prep-dates";
+import { durationLabel, elapsedMinutes } from "@/lib/production/production-job-options";
 import { Card, PageHeader, Badge } from "@/components/ui";
 export default async function ProductionJobsPage({ searchParams }: { searchParams: Promise<{ date?: string }> }) {
   await requirePrepUser("ADMIN");

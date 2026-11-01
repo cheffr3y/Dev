@@ -1,12 +1,12 @@
 "use server";
 
-import { standardLocationText } from "@/lib/venue-directory";
+import { standardLocationText } from "@/lib/venues/venue-directory";
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/lib/session";
-import { addDays, isoDate, startOfUtcWeek } from "@/lib/schedule";
+import { prisma } from "@/lib/db/prisma";
+import { requireRole } from "@/lib/auth/session";
+import { addDays, isoDate, startOfUtcWeek } from "@/lib/schedule/schedule";
 
 // A shift/note change ripples to the week grid and its print view. Derive the
 // week from the affected day so we revalidate exactly the page that shows it.

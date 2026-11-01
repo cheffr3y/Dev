@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { cn } from "@/components/ui";
-import { computeTotals, fmtHours, shiftHours } from "@/lib/schedule";
+import { computeTotals, fmtHours, shiftHours } from "@/lib/schedule/schedule";
 import { clearShift, upsertShift } from "./actions";
 import { DayNoteEditor } from "./DayNoteEditor";
 import {

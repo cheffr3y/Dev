@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/lib/session";
-import { duplicateIngredientGroups } from "@/lib/ingredient-cleanup";
-import { ingredientUsageSelect } from "@/lib/ingredient-replacement";
-import { money } from "@/lib/costing";
+import { prisma } from "@/lib/db/prisma";
+import { requireRole } from "@/lib/auth/session";
+import { duplicateIngredientGroups } from "@/lib/ingredients/ingredient-cleanup";
+import { ingredientUsageSelect } from "@/lib/ingredients/ingredient-replacement";
+import { money } from "@/lib/recipes/costing";
 import { IngredientMergePicker } from "@/components/IngredientMergePicker";
 import { Card, CardHeader, PageHeader } from "@/components/ui";
-import { ingredientIntegrity } from "@/lib/morning-pulse";
+import { ingredientIntegrity } from "@/lib/dashboard/morning-pulse";
 
 export default async function IngredientCleanupPage({ searchParams }: { searchParams: Promise<{ source?: string; done?: string }> }) {
   await requireRole("MANAGER");

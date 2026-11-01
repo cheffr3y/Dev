@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { requireUser, hasRole } from "@/lib/session";
+import { prisma } from "@/lib/db/prisma";
+import { requireUser, hasRole } from "@/lib/auth/session";
 import {
   recipeCost,
   buildPriceGapMap,
@@ -14,15 +14,15 @@ import {
   money,
   pct,
   num,
-} from "@/lib/costing";
-import { unitLabel, displayMeasure } from "@/lib/units";
-import { allergenLabels, effectiveAllergens, inheritedAllergenSources, parseAllergens } from "@/lib/allergens";
+} from "@/lib/recipes/costing";
+import { unitLabel, displayMeasure } from "@/lib/recipes/units";
+import { allergenLabels, effectiveAllergens, inheritedAllergenSources, parseAllergens } from "@/lib/recipes/allergens";
 import { Badge, Button, Card, CardHeader, Field, Input, LinkButton, PageHeader, Select, Textarea } from "@/components/ui";
 import { AllergenPicker } from "@/components/AllergenPicker";
 import { AllergenBadges } from "@/components/AllergenBadges";
 import { RecipeIngredientEditor } from "@/components/RecipeIngredientEditor";
 import { MethodEditor } from "@/components/MethodEditor";
-import { splitStep } from "@/lib/method";
+import { splitStep } from "@/lib/recipes/method";
 import { SubRecipeForm } from "../SubRecipeForm";
 import { AddIngredientForm } from "../AddIngredientForm";
 import {
@@ -31,7 +31,7 @@ import {
   deleteRecipe,
   removeSubRecipe,
 } from "../actions";
-import { RECIPE_CATEGORIES } from "@/lib/categories";
+import { RECIPE_CATEGORIES } from "@/lib/ingredients/categories";
 import { CostIntegrityBanner } from "@/components/CostAudit";
 import { LocalTime } from "@/components/LocalTime";
 

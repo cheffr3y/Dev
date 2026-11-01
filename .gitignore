@@ -1,2 +1,5 @@
 # Local Postgres data (if created at repo root by older runs)
 /.pgdata
+
+# macOS Finder metadata at any depth
+.DS_Store

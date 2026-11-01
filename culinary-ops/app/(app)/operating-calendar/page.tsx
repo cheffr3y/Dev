@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { requirePrepUser } from "@/lib/prep-session";
-import { getActiveVenue, getVenues } from "@/lib/venue";
-import { prisma } from "@/lib/prisma";
-import { chicagoToday } from "@/lib/prep-dates";
-import { operatingMonth } from "@/lib/operating-calendar";
-import { loadOperatingMonth } from "@/lib/operating-calendar-data";
+import { requirePrepUser } from "@/lib/auth/prep-session";
+import { getActiveVenue, getVenues } from "@/lib/venues/venue";
+import { prisma } from "@/lib/db/prisma";
+import { chicagoToday } from "@/lib/prep/prep-dates";
+import { operatingMonth } from "@/lib/accounting/operating-calendar";
+import { loadOperatingMonth } from "@/lib/accounting/operating-calendar-data";
 import { PageHeader, Button, Input, Select, Card } from "@/components/ui";
 import { OperatingCalendar } from "./OperatingCalendar";
 

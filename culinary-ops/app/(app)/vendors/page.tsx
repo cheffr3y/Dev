@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
-import { requireUser, hasRole } from "@/lib/session";
+import { prisma } from "@/lib/db/prisma";
+import { requireUser, hasRole } from "@/lib/auth/session";
 import { Button, Card, Field, Input, PageHeader, Textarea } from "@/components/ui";
 import { createVendor, updateVendor, deleteVendor } from "./actions";
 

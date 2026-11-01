@@ -1,4 +1,4 @@
-import { allergenLabel, parseAllergens } from "@/lib/allergens";
+import { allergenLabel, parseAllergens } from "@/lib/recipes/allergens";
 
 export function AllergenBadges({ allergens }: { allergens: string | null | undefined }) {
   const keys = parseAllergens(allergens);

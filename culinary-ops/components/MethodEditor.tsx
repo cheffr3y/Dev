@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 
-import { joinStep, splitStep } from "@/lib/method";
+import { joinStep, splitStep } from "@/lib/recipes/method";
 
 let uid = 0;
 const nextId = () => `step-${uid++}`;

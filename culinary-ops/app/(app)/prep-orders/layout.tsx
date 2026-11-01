@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requirePrepUser } from "@/lib/prep-session";
+import { requirePrepUser } from "@/lib/auth/prep-session";
 export default async function PrepLayout({
   children,
 }: {

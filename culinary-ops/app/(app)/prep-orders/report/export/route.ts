@@ -1,5 +1,5 @@
-import { getPrepUser } from "@/lib/prep-session";
-import { exportSnapshot, reportCsv, reportTableCsv } from "@/lib/prep-accounting-report";
+import { getPrepUser } from "@/lib/auth/prep-session";
+import { exportSnapshot, reportCsv, reportTableCsv } from "@/lib/prep/prep-accounting-report";
 export async function GET(request: Request) {
   const user = await getPrepUser();
   if (!user || user.role !== "ADMIN")

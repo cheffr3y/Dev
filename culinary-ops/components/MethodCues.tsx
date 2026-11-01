@@ -1,4 +1,4 @@
-import { methodCues, type MethodCueKind } from "@/lib/method-cues";
+import { methodCues, type MethodCueKind } from "@/lib/recipes/method-cues";
 
 const LABELS: Record<MethodCueKind, string> = {
   technique: "Technique", time: "Time", temperature: "Temperature", endpoint: "Endpoint",

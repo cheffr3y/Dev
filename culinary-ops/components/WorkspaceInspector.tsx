@@ -7,8 +7,8 @@ import { RecipeDossier, type DossierRecipe } from "./RecipeDossier";
 import { InlineCell } from "./InlineCell";
 import { CatalogCell, catalogColumns } from "./CatalogCells";
 import { Button } from "./ui";
-import { money, num } from "@/lib/costing";
-import type { CatalogItem } from "@/lib/workspace-options";
+import { money, num } from "@/lib/recipes/costing";
+import type { CatalogItem } from "@/lib/workspace/workspace-options";
 import { AllergenBadges } from "./AllergenBadges";
 
 type InspectorData = { kind: "item"; canEdit: boolean; item: CatalogItem; vendors: { id: string; name: string }[] } | {

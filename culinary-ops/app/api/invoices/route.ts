@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
-import { getPrepUser } from "@/lib/prep-session";
-import { prisma } from "@/lib/prisma";
-import { compactInvoice, INVOICE_UPLOAD_LIMIT } from "@/lib/invoice-storage";
+import { getPrepUser } from "@/lib/auth/prep-session";
+import { prisma } from "@/lib/db/prisma";
+import { compactInvoice, INVOICE_UPLOAD_LIMIT } from "@/lib/invoices/invoice-storage";
 export const runtime = "nodejs";
 export const maxDuration = 120;
 async function actor() { const user = await getPrepUser(); return user && user.role !== "STAFF" ? user : null; }

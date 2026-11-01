@@ -1,9 +1,9 @@
-import { getVenues } from "@/lib/venue";
+import { getVenues } from "@/lib/venues/venue";
 import { VenueOptions } from "@/components/VenueOptions";
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
-import { requirePrepUser } from "@/lib/prep-session";
-import { chicagoToday } from "@/lib/prep-dates";
+import { prisma } from "@/lib/db/prisma";
+import { requirePrepUser } from "@/lib/auth/prep-session";
+import { chicagoToday } from "@/lib/prep/prep-dates";
 import { createPrepOrder } from "../actions";
 import {
   Button,

@@ -1,4 +1,4 @@
-import { pct } from "@/lib/costing";
+import { pct } from "@/lib/recipes/costing";
 
 export function MenuCostBar({ value, target, stale }: { value: number | null; target: number; stale?: boolean }) {
   if (value == null) return <span className="text-xs font-semibold text-amber-700">Needs cost / price review</span>;

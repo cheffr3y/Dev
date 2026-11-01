@@ -3,10 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
-import { requireRole, requireActiveUser } from "@/lib/session";
-import { parseIngredientForm } from "@/lib/ingredient-fields";
-import { replaceIngredientRecipes } from "@/lib/ingredient-replacement";
+import { prisma } from "@/lib/db/prisma";
+import { requireRole, requireActiveUser } from "@/lib/auth/session";
+import { parseIngredientForm } from "@/lib/ingredients/ingredient-fields";
+import { replaceIngredientRecipes } from "@/lib/ingredients/ingredient-replacement";
 
 export async function createItem(formData: FormData) {
   await requireRole("MANAGER");

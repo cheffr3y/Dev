@@ -1,6 +1,6 @@
 import type { Item } from "@prisma/client";
-import { INGREDIENT_CATEGORIES } from "@/lib/ingredient-fields";
-import { parseAllergens } from "@/lib/allergens";
+import { INGREDIENT_CATEGORIES } from "@/lib/ingredients/ingredient-fields";
+import { parseAllergens } from "@/lib/recipes/allergens";
 import { AllergenPicker } from "./AllergenPicker";
 import { Field, Input, Select } from "./ui";
 

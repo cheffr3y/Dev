@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
-import { VENUE_DIRECTORY } from "../lib/venue-directory";
+import { VENUE_DIRECTORY } from "../lib/venues/venue-directory";
 
 const prisma = new PrismaClient();
 

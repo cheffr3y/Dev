@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useId, useRef, useState } from "react";
-import type { EditEntity, EditResult, EditValue } from "@/lib/workspace-options";
-import { parseCellValue } from "@/lib/workspace-options";
+import type { EditEntity, EditResult, EditValue } from "@/lib/workspace/workspace-options";
+import { parseCellValue } from "@/lib/workspace/workspace-options";
 
 export function InlineCell({ entity, id, field, value, label, options, row, column = field, onValue, onSaved }: {
   entity: EditEntity; id: string; field: string; value: EditValue; label: string;

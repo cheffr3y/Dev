@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { ComboPicker, type ComboOption } from "./ComboPicker";
-import { num } from "@/lib/costing";
+import { num } from "@/lib/recipes/costing";
 
 type Recipe = { id: string; name: string; prodCode: string; yieldUnit?: string; yieldQty?: number };
 

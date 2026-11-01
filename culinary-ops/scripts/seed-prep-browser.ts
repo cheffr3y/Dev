@@ -1,6 +1,6 @@
 // Only used by the disposable PostgreSQL browser harness.
-import { prisma } from "../lib/prisma";
-import { businessDate } from "../lib/prep-dates";
+import { prisma } from "../lib/db/prisma";
+import { businessDate } from "../lib/prep/prep-dates";
 import { hash } from "bcryptjs";
 async function main() {
   const url = new URL(process.env.DATABASE_URL ?? "postgresql://invalid");

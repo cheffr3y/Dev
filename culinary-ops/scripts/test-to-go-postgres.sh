@@ -24,5 +24,4 @@ export AUTH_TRUST_HOST=true
 node node_modules/prisma/build/index.js migrate deploy
 node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port "$TO_GO_SERVER_PORT" >"$TO_GO_TEST_DIR/next.log" 2>&1 &
 TO_GO_SERVER_PID=$!
-node -e 'const url=process.env.AUTH_URL+"/login"; (async()=>{for(let i=0;i<100;i++){try{if((await fetch(url)).ok)return;}catch{} await new Promise(resolve=>setTimeout(resolve,200));}process.exit(1);})()'
-if ! node scripts/test-to-go-browser.mjs; then cat "$TO_GO_TEST_DIR/next.log"; exit 1; fi
+if ! node scripts/browser/run.mjs to-go; then cat "$TO_GO_TEST_DIR/next.log"; exit 1; fi

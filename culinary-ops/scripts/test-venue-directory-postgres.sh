@@ -31,5 +31,4 @@ export AUTH_URL="http://localhost:$VENUE_SERVER_PORT"
 export AUTH_TRUST_HOST=true
 node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port "$VENUE_SERVER_PORT" >"$VENUE_TEST_DIR/next.log" 2>&1 &
 VENUE_SERVER_PID=$!
-node -e 'const url=process.env.AUTH_URL+"/login"; (async()=>{for(let i=0;i<100;i++){try{if((await fetch(url)).ok)return;}catch{}await new Promise(resolve=>setTimeout(resolve,200));}process.exit(1);})()'
-if ! node --import tsx scripts/test-venue-directory-browser.mjs; then cat "$VENUE_TEST_DIR/next.log"; exit 1; fi
+if ! node scripts/browser/run.mjs venue-directory; then cat "$VENUE_TEST_DIR/next.log"; exit 1; fi

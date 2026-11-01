@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/lib/session";
-import { ingredientReplacementPreview } from "@/lib/ingredient-replacement";
-import { money, num } from "@/lib/costing";
+import { prisma } from "@/lib/db/prisma";
+import { requireRole } from "@/lib/auth/session";
+import { ingredientReplacementPreview } from "@/lib/ingredients/ingredient-replacement";
+import { money, num } from "@/lib/recipes/costing";
 import { AllergenBadges } from "@/components/AllergenBadges";
 import { Button, Card, CardHeader, PageHeader } from "@/components/ui";
 import { applyIngredientReplacement } from "../actions";

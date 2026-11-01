@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, type ComponentProps } from "react";
-import { VENUE_DIRECTORY } from "@/lib/venue-directory";
+import { VENUE_DIRECTORY } from "@/lib/venues/venue-directory";
 import { Input } from "./ui";
 
 export function LocationInput(props: ComponentProps<"input">) {

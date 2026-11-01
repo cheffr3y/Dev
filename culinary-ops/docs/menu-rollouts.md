@@ -53,7 +53,7 @@ rollout tables and ingredient grouping fields. Recipes referenced by rollouts
 cannot be deleted until removed from those rollouts.
 
 Run `npm test`, `npx tsc --noEmit`, and `npm run build` for the unit, type, and build
-checks. `lib/menu-rollout.test.ts` covers nested costs, converted vendor quantities,
+checks. `lib/menus/menu-rollout.test.ts` covers nested costs, converted vendor quantities,
 deduplicated dependencies, inherited allergens, price gaps, and empty rollouts.
 
 The browser harness uses its own disposable PostgreSQL cluster and demo accounts:

@@ -1,17 +1,17 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireUser } from "@/lib/session";
-import { loadMenuRollout } from "@/lib/menu-rollout-data";
-import { buildMenuRollout, PACKET_MODES, packetMode, platedServingSpec } from "@/lib/menu-rollout";
-import { ALLERGENS, effectiveAllergens } from "@/lib/allergens";
-import { money, num, pct } from "@/lib/costing";
-import { unitLabel } from "@/lib/units";
+import { requireUser } from "@/lib/auth/session";
+import { loadMenuRollout } from "@/lib/menus/menu-rollout-data";
+import { buildMenuRollout, PACKET_MODES, packetMode, platedServingSpec } from "@/lib/menus/menu-rollout";
+import { ALLERGENS, effectiveAllergens } from "@/lib/recipes/allergens";
+import { money, num, pct } from "@/lib/recipes/costing";
+import { unitLabel } from "@/lib/recipes/units";
 import { AtelierHeader } from "@/components/AtelierHeader";
 import { CostAuditStamp, CostIntegrityBanner } from "@/components/CostAudit";
 import { MenuOrderGuide } from "@/components/MenuOrderGuide";
 import { PrintController, PrintOptionLink } from "@/components/PrintController";
 import { PrintSpecHeader } from "@/components/PrintSpecHeader";
-import { printOptionHref, type PrintQuery } from "@/lib/print-options";
+import { printOptionHref, type PrintQuery } from "@/lib/printing/print-options";
 import { MenuRecipeCard } from "@/components/MenuRecipeCard";
 import { LocalTime } from "@/components/LocalTime";
 

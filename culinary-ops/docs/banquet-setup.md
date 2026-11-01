@@ -43,7 +43,7 @@ this version (normal `npm start` already does this). It adds nullable
 `Banquet.setupPlan` JSON and `setupRevision` with a zero default; existing events
 and recipes are preserved.
 
-`node --import tsx --test lib/banquet-setup.test.tsx` covers aggregation, independent
+`node --import tsx --test lib/banquets/banquet-setup.test.tsx` covers aggregation, independent
 counts, packing invalidation, validation, missing links and printed content.
 The disposable PostgreSQL browser harness can run
-`node scripts/test-banquet-setup-browser.mjs` after the production build.
+`node scripts/browser/run.mjs banquet-setup` after the production build.

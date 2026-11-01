@@ -1,4 +1,4 @@
-import { loadBanquetRevision } from "@/lib/banquet-baseline-data";
+import { loadBanquetRevision } from "@/lib/banquets/banquet-baseline-data";
 import { BanquetRevision } from "@/components/BanquetRevision";
 import { WorkspaceInspector } from "@/components/WorkspaceInspector";
 import { InspectorLink } from "@/components/InspectorLink";
@@ -6,14 +6,14 @@ import { LocationInput } from "@/components/LocationInput";
 import { VenueOptions } from "@/components/VenueOptions";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { requireUser, hasRole } from "@/lib/session";
-import { getVenues } from "@/lib/venue";
-import { money, num } from "@/lib/costing";
-import { unitLabel } from "@/lib/units";
-import { buildBanquetPlan, banquetRecipeSelect, type BanquetLine } from "@/lib/banquet";
+import { prisma } from "@/lib/db/prisma";
+import { requireUser, hasRole } from "@/lib/auth/session";
+import { getVenues } from "@/lib/venues/venue";
+import { money, num } from "@/lib/recipes/costing";
+import { unitLabel } from "@/lib/recipes/units";
+import { buildBanquetPlan, banquetRecipeSelect, type BanquetLine } from "@/lib/banquets/banquet";
 import { Badge, Button, Card, CardHeader, Field, Input, LinkButton, PageHeader, Select, StatCard, Textarea } from "@/components/ui";
-import { STATUS_COLOR, EVENT_STATUSES as STATUSES, statusLabel } from "@/lib/event-status";
+import { STATUS_COLOR, EVENT_STATUSES as STATUSES, statusLabel } from "@/lib/banquets/event-status";
 import { AddBanquetItemForm } from "../AddBanquetItemForm";
 import { updateBanquetMenuItem, removeBanquetMenuItem, updateBanquet, deleteBanquet } from "../actions";
 

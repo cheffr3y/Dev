@@ -1,6 +1,6 @@
 "use client";
 import { InlineCell } from "./InlineCell";
-import type { CatalogItem, EditValue } from "@/lib/workspace-options";
+import type { CatalogItem, EditValue } from "@/lib/workspace/workspace-options";
 export const catalogColumns = [
   ["vendorId", "Vendor"], ["sku", "Item #"], ["gcode", "GCODE"], ["packSize", "Pack size"], ["unit", "Cost unit"], ["unitCost", "Unit cost"],
 ] as const;

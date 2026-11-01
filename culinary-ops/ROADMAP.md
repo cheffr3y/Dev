@@ -190,9 +190,9 @@ See [accounting-invoices.md](docs/accounting-invoices.md).
 * `app/(app)/menus/[id]/page.tsx`
 * `app/(app)/banquets/[id]/setup/SetupEditor.tsx`
 * `components/BanquetSetupSheet.tsx`
-* `lib/banquet-setup.ts`
+* `lib/banquets/banquet-setup.ts`
 * `app/(app)/production/page.tsx`
-* `lib/production.ts`
+* `lib/production/production.ts`
 
 ### Checklist
 - [x] **Menu Rollout Margin Matrix (`menus/[id]/page.tsx`):** Add a commercial summary bar at the top of every menu showing Category Average Food Cost %, Average Contribution Margin (`$`), and visual progress bars on each dish comparing actual cost % to your target threshold.
@@ -215,7 +215,7 @@ Apply `20261101020000_event_production_planning` before release; normal `npm sta
 Validation: production build (webpack), TypeScript, targeted ESLint, 200 unit checks and 34 disposable-PostgreSQL checks passed. Desktop/mobile browser coverage verifies source selection/totals/warnings, event separation, live menu margin refresh, BEO locks/revisions, date validation, role restrictions and unchanged frozen/ledger data. Existing banquet-setup, print-controller and recipe-costing browser regressions passed. The purchasing PDF and all four sample weekly-event pages were rendered and visually reviewed; event names remain attached to supporting recipes.
 
 ### Copy-Paste Agent Prompt for Chunk 7
-> Read `app/(app)/menus/[id]/page.tsx`, `app/(app)/banquets/[id]/setup/SetupEditor.tsx`, `components/BanquetSetupSheet.tsx`, `lib/banquet-setup.ts`, and `app/(app)/production/page.tsx`. Execute **Chunk 7** of `ROADMAP.md`: add category menu margin summaries and dish cost bars, implement locked Banquet BEO baselines with change details on screen and print, and build event-based production planning in `/production`. Preserve separate cook work/packets for every event, including the weekly banquet packet. Add a purchaser-facing combined shopping list for explicitly selected source events/jobs; preserve source contributions, units, conversion warnings and missing mapping warnings. Do not combine production batches. Verify date/selection/source demand, nested recipe math, incompatible units, permissions, event instruction visibility, baseline diffs, print usability, and unchanged historical snapshots/accounting. Run TypeScript and relevant tests/build/browser/print checks.
+> Read `app/(app)/menus/[id]/page.tsx`, `app/(app)/banquets/[id]/setup/SetupEditor.tsx`, `components/BanquetSetupSheet.tsx`, `lib/banquets/banquet-setup.ts`, and `app/(app)/production/page.tsx`. Execute **Chunk 7** of `ROADMAP.md`: add category menu margin summaries and dish cost bars, implement locked Banquet BEO baselines with change details on screen and print, and build event-based production planning in `/production`. Preserve separate cook work/packets for every event, including the weekly banquet packet. Add a purchaser-facing combined shopping list for explicitly selected source events/jobs; preserve source contributions, units, conversion warnings and missing mapping warnings. Do not combine production batches. Verify date/selection/source demand, nested recipe math, incompatible units, permissions, event instruction visibility, baseline diffs, print usability, and unchanged historical snapshots/accounting. Run TypeScript and relevant tests/build/browser/print checks.
 
 ---
 
@@ -225,21 +225,29 @@ Validation: production build (webpack), TypeScript, targeted ESLint, 200 unit ch
 **Target Files:**
 * `lib/*`
 * `scripts/*`
-* `app/(app)/homestead/*`
-* `app/(app)/trivia/*`
+* `app/(games)/homestead/*`
+* `app/(games)/trivia/*`
 * `.gitignore`
 
 ### Checklist
-- [ ] **Organize `lib/` into Domain Folders (with barrel re-exports or clean import updates):**
+- [x] **Organize `lib/` into Domain Folders (with barrel re-exports or clean import updates):**
   * `lib/recipes/` (`costing.ts`, `recipe-cost-sheet.ts`, `recipe-groups.ts`, `recipe-references.ts`, `method.ts`, `method-cues.ts`, `allergens.ts`, `units.ts`)
   * `lib/prep/` (`prep.ts`, `prep-workflow.ts`, `prep-costing.ts`, `prep-accounting-report.ts`, `prep-packets.ts`, `prep-worksheet.ts`, `prep-dates.ts`)
   * `lib/banquets/` (`banquet.ts`, `banquet-setup.ts`, `banquet-week.ts`, `event-status.ts`)
   * `lib/menus/` (`menu-rollout.ts`, `menu-rollout-data.ts`, `to-go-rollup.ts`, `festival.ts`, `festival-accounting.ts`)
   * `lib/games/` (`homestead.ts`, `homestead-storage.ts`, `trivia.ts`, `trivia-engine.ts`, `trivia-custom.ts`, `trivia-fallback.ts`)
-- [ ] **Route Group Isolation for Games:** Move `app/(app)/homestead` and `app/(app)/trivia` into `app/(games)/homestead` and `app/(games)/trivia` with their own dedicated layout so they are completely decoupled from the culinary operations shell.
-- [ ] **Archive One-Off Launch & Backfill Scripts:** Move `lib/annex-launch-repairs.ts`, `scripts/repair-annex-launch.ts`, and completed `scripts/backfill-*.ts` files into `scripts/archive/` so they don't clutter active application logic.
-- [ ] **Consolidate Browser Test Scripts:** Unify the standalone `scripts/test-*-browser.mjs` files into a clean test runner setup.
-- [ ] **Git Hygiene:** Remove `.DS_Store` from git tracking (`git rm --cached .DS_Store`) and ensure `.DS_Store` is in the root `.gitignore`.
+- [x] **Route Group Isolation for Games:** Move `app/(app)/homestead` and `app/(app)/trivia` into `app/(games)/homestead` and `app/(games)/trivia` with their own dedicated layout so they are completely decoupled from the culinary operations shell.
+- [x] **Archive One-Off Launch & Backfill Scripts:** Keep the completed Annex launch repair, its helper/regressions, and historical backfills under `scripts/archive/`, with existing operator package commands preserved.
+- [x] **Consolidate Browser Test Scripts:** Unify the standalone `scripts/test-*-browser.mjs` files into a clean test runner setup.
+- [x] **Git Hygiene:** Remove `.DS_Store` from git tracking (`git rm --cached .DS_Store`) and ensure `.DS_Store` is in the root `.gitignore`.
+
+### Implementation status — November 1, 2026
+
+Implemented. Domain modules and colocated tests use explicit updated imports across the app, API routes, components, fixtures and operator scripts. Games have an independent authenticated layout at the same public URLs, without loading the operations sidebar or catalog-search queries. Public trivia joining remains separate. Completed backfills and the Annex repair/helper/regressions are archived; operator commands retain their preview/apply protections. Finder metadata is no longer tracked and is ignored at the repository root.
+
+Browser checks use one suite registry/runner with shared Chromium setup, local origin, server readiness and disposable-database validation; all requested legacy smoke flags run instead of exiting after the first. Unit checks discover colocated tests automatically. Existing Homestead lint issues were resolved by giving ordinary functions non-hook names and deferring/canceling local-save hydration safely. Regression checks also exposed floating-point noise in the executive accounting export total; it now sums the existing captured integer cents before converting to dollars once. Existing ledger facts and saved export snapshots are unchanged.
+
+Validation: production build (webpack), standalone TypeScript, full ESLint, 209 unit checks, 40 operational PostgreSQL checks plus the Homestead persistence check passed. Eleven desktop/mobile browser suites cover game authentication/layout separation and saves, workspace editing, monthly calendar/invoice prices, invoice photo/PDF storage, To-Go, venue migration preservation, event-specific purchasing/BEO changes, banquet setup, shared print controls and recipe costing. Runner discovery and unknown-suite/remote-database rejection were checked. Game screenshots were visually reviewed. No database migration or dependency change is required. See [repository-structure.md](docs/repository-structure.md).
 
 ### Copy-Paste Agent Prompt for Chunk 8
 > Execute **Chunk 8** of `ROADMAP.md`: move `homestead` and `trivia` into an `app/(games)` route group, archive completed one-off backfill/repair scripts into `scripts/archive/`, organize `lib/` into domain folders (updating imports cleanly across the repo), and clean up `.DS_Store` in `.gitignore`. Run `npx tsc --noEmit` and the test suite to verify zero broken imports.

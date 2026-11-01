@@ -3,7 +3,7 @@
 import type { BanquetRevisionData } from "@/components/BanquetRevision";
 import { useEffect, useState, useTransition } from "react";
 import { BanquetSetupSheet, type SetupEvent } from "@/components/BanquetSetupSheet";
-import { aggregateSetup, CATEGORY_LABELS, RESOURCE_OPTIONS, resolveSetup, retainPacking, type BanquetSetup, type SetupMenuItem, type SetupResource, type SetupStation } from "@/lib/banquet-setup";
+import { aggregateSetup, CATEGORY_LABELS, RESOURCE_OPTIONS, resolveSetup, retainPacking, type BanquetSetup, type SetupMenuItem, type SetupResource, type SetupStation } from "@/lib/banquets/banquet-setup";
 import { saveBanquetSetup, setBanquetPullPacked } from "../../setup-actions";
 
 const inputClass = "w-full rounded border border-zinc-300 bg-white px-2 py-1.5 text-sm";

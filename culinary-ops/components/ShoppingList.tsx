@@ -3,8 +3,8 @@
 // the standalone shopping-list page and inlined at the front of the cook packet
 // so the prep team can pull or buy everything before building.
 
-import { num } from "@/lib/costing";
-import type { ShoppingList } from "@/lib/shopping";
+import { num } from "@/lib/recipes/costing";
+import type { ShoppingList } from "@/lib/purchasing/shopping";
 
 export function ShoppingListBody({ list }: { list: ShoppingList }) {
   return (

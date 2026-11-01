@@ -1,11 +1,11 @@
 // Synthetic print fixtures; never run against an application database.
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { prisma } from "../lib/prisma";
-import { businessDate } from "../lib/prep-dates";
-import { freezePacket } from "../lib/prep-packets";
-import { json } from "../lib/prep-workflow";
-import { emptySetup } from "../lib/banquet-setup";
+import { prisma } from "../lib/db/prisma";
+import { businessDate } from "../lib/prep/prep-dates";
+import { freezePacket } from "../lib/prep/prep-packets";
+import { json } from "../lib/prep/prep-workflow";
+import { emptySetup } from "../lib/banquets/banquet-setup";
 
 async function main() {
   const url = new URL(process.env.DATABASE_URL ?? "postgresql://invalid");

@@ -1,14 +1,14 @@
 import { VenueOptions } from "@/components/VenueOptions";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { requireUser, hasRole } from "@/lib/session";
-import { getVenues } from "@/lib/venue";
-import { money } from "@/lib/costing";
-import { buildForecast } from "@/lib/festival";
-import { buildBanquetPlan, banquetRecipeSelect, type BanquetLine } from "@/lib/banquet";
+import { prisma } from "@/lib/db/prisma";
+import { requireUser, hasRole } from "@/lib/auth/session";
+import { getVenues } from "@/lib/venues/venue";
+import { money } from "@/lib/recipes/costing";
+import { buildForecast } from "@/lib/menus/festival";
+import { buildBanquetPlan, banquetRecipeSelect, type BanquetLine } from "@/lib/banquets/banquet";
 import { Badge, Button, Card, CardHeader, Field, Input, PageHeader, Select, StatCard, Textarea } from "@/components/ui";
-import { STATUS_COLOR, EVENT_STATUSES as STATUSES, statusLabel } from "@/lib/event-status";
+import { STATUS_COLOR, EVENT_STATUSES as STATUSES, statusLabel } from "@/lib/banquets/event-status";
 import { updateFestival, deleteFestival, addTent, updateTent, removeTent } from "../actions";
 import { FestivalTabs } from "./FestivalTabs";
 

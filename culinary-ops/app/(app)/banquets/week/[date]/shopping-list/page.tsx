@@ -1,7 +1,7 @@
 import { redirect, notFound } from "next/navigation";
-import { requirePrepUser } from "@/lib/prep-session";
-import { prisma } from "@/lib/prisma";
-import { dateFromParam, startOfUtcWeek, addDays, isoDate } from "@/lib/banquet-week";
+import { requirePrepUser } from "@/lib/auth/prep-session";
+import { prisma } from "@/lib/db/prisma";
+import { dateFromParam, startOfUtcWeek, addDays, isoDate } from "@/lib/banquets/banquet-week";
 
 export default async function WeekShoppingList({ params }: { params: Promise<{ date: string }> }) {
   await requirePrepUser();

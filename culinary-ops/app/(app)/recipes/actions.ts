@@ -3,12 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
-import { requireRole, requireActiveUser, type AppUser } from "@/lib/session";
-import { money } from "@/lib/costing";
-import { canConvert, unitLabel } from "@/lib/units";
-import { generateProdCode } from "@/lib/prep";
-import { allergenLabels, parseAllergens, serializeAllergens } from "@/lib/allergens";
+import { prisma } from "@/lib/db/prisma";
+import { requireRole, requireActiveUser, type AppUser } from "@/lib/auth/session";
+import { money } from "@/lib/recipes/costing";
+import { canConvert, unitLabel } from "@/lib/recipes/units";
+import { generateProdCode } from "@/lib/prep/prep";
+import { allergenLabels, parseAllergens, serializeAllergens } from "@/lib/recipes/allergens";
 
 const recipeSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),

@@ -1,13 +1,13 @@
 "use server";
 
-import { standardLocationText } from "@/lib/venue-directory";
+import { standardLocationText } from "@/lib/venues/venue-directory";
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/lib/session";
-import { canConvert } from "@/lib/units";
+import { prisma } from "@/lib/db/prisma";
+import { requireRole } from "@/lib/auth/session";
+import { canConvert } from "@/lib/recipes/units";
 
 // --- Banquet header -------------------------------------------------------
 

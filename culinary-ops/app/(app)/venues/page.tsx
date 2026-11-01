@@ -1,5 +1,5 @@
-import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/lib/session";
+import { prisma } from "@/lib/db/prisma";
+import { requireRole } from "@/lib/auth/session";
 import { Badge, Button, Card, Field, Input, PageHeader, Textarea } from "@/components/ui";
 import { updateVenue } from "./actions";
 

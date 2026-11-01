@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { buildFestivalAccounting, type FestivalExpenseInputs } from "@/lib/festival-accounting";
-import { money } from "@/lib/costing";
+import { buildFestivalAccounting, type FestivalExpenseInputs } from "@/lib/menus/festival-accounting";
+import { money } from "@/lib/recipes/costing";
 import { Button, Card, CardHeader, Field, Input, StatCard } from "@/components/ui";
 import { INPUT_CELL, WorksheetLegend } from "../../worksheet";
 import { updateFestivalAccounting } from "../../actions";

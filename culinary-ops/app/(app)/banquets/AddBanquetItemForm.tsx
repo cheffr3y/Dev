@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { RecipePicker } from "@/components/RecipePicker";
 import { Button, Field, Input, Select } from "@/components/ui";
-import { allowedUnitsFor, defaultUnitFor, unitFamily, unitLabel } from "@/lib/units";
+import { allowedUnitsFor, defaultUnitFor, unitFamily, unitLabel } from "@/lib/recipes/units";
 import { addBanquetMenuItem } from "./actions";
 
 type Recipe = { id: string; name: string; prodCode: string; yieldQty: number; yieldUnit: string };

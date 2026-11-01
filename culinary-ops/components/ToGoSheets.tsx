@@ -1,7 +1,7 @@
-import { money, num, pct, preciseNum } from "@/lib/costing";
-import { TO_GO_CONFIDENCE } from "@/lib/to-go-options";
-import type { ToGoPlan } from "@/lib/to-go-rollup";
-import { ALLERGENS } from "@/lib/allergens";
+import { money, num, pct, preciseNum } from "@/lib/recipes/costing";
+import { TO_GO_CONFIDENCE } from "@/lib/menus/to-go-options";
+import type { ToGoPlan } from "@/lib/menus/to-go-rollup";
+import { ALLERGENS } from "@/lib/recipes/allergens";
 
 export function ToGoForecast({ plan }: { plan: ToGoPlan }) {
   return <div className="space-y-5">

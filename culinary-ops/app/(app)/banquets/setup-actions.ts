@@ -2,10 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
-import { requireActiveUser } from "@/lib/session";
-import { aggregateSetup, readSetup, resolveSetup, retainPacking, setupSchema } from "@/lib/banquet-setup";
-import { lockBaselineForUser } from "@/lib/banquet-baseline-data";
+import { prisma } from "@/lib/db/prisma";
+import { requireActiveUser } from "@/lib/auth/session";
+import { aggregateSetup, readSetup, resolveSetup, retainPacking, setupSchema } from "@/lib/banquets/banquet-setup";
+import { lockBaselineForUser } from "@/lib/banquets/banquet-baseline-data";
 
 const targetSchema = z.object({ id: z.string().min(1), revision: z.number().int().min(0) });
 const stale = "This setup changed in another session. Reload the page before making more changes.";

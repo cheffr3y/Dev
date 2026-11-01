@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
-import { requirePrepUser } from "@/lib/prep-session";
-import { ACCOUNTING_CATEGORIES } from "@/lib/categories";
+import { prisma } from "@/lib/db/prisma";
+import { requirePrepUser } from "@/lib/auth/prep-session";
+import { ACCOUNTING_CATEGORIES } from "@/lib/ingredients/categories";
 import { Button, Input, PageHeader, Card } from "@/components/ui";
 import { saveMappings } from "./actions";
 export default async function MappingsPage() {

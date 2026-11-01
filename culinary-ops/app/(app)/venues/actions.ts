@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
-import { requireActiveUser } from "@/lib/session";
+import { prisma } from "@/lib/db/prisma";
+import { requireActiveUser } from "@/lib/auth/session";
 
 // Names, grouping and codes belong to the shared company directory. This
 // editor changes location metadata only, never history or location identity.

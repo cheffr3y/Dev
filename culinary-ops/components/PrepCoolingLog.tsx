@@ -1,5 +1,5 @@
-import { num } from "@/lib/costing";
-import { unitLabel } from "@/lib/units";
+import { num } from "@/lib/recipes/costing";
+import { unitLabel } from "@/lib/recipes/units";
 
 type CoolingLine = {
   id: string;

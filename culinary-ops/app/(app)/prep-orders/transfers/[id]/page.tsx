@@ -1,9 +1,9 @@
-import { getVenues } from "@/lib/venue";
+import { getVenues } from "@/lib/venues/venue";
 import { randomUUID } from "node:crypto";
-import { prisma } from "@/lib/prisma";
-import { requirePrepUser } from "@/lib/prep-session";
-import { readCost } from "@/lib/prep-costing";
-import { chicagoToday } from "@/lib/prep-dates";
+import { prisma } from "@/lib/db/prisma";
+import { requirePrepUser } from "@/lib/auth/prep-session";
+import { readCost } from "@/lib/prep/prep-costing";
+import { chicagoToday } from "@/lib/prep/prep-dates";
 import { PageHeader, Card } from "@/components/ui";
 import { CompletionForm, ReturnForm, EntryForm } from "../../EntryForms";
 export default async function TransferPage({

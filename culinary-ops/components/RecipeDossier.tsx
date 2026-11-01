@@ -1,11 +1,11 @@
 import { useId, type ReactNode } from "react";
 import { InspectorLink } from "./InspectorLink";
-import { num } from "@/lib/costing";
-import { displayMeasure } from "@/lib/units";
-import { ALLERGENS } from "@/lib/allergens";
-import { splitStep } from "@/lib/method";
+import { num } from "@/lib/recipes/costing";
+import { displayMeasure } from "@/lib/recipes/units";
+import { ALLERGENS } from "@/lib/recipes/allergens";
+import { splitStep } from "@/lib/recipes/method";
 import { MethodCues } from "./MethodCues";
-import { groupMiseLines } from "@/lib/recipe-groups";
+import { groupMiseLines } from "@/lib/recipes/recipe-groups";
 import { PrintPageRules, ScaledProductionBanner } from "./PrintSpecHeader";
 
 // Optional metadata supports immutable packets captured before this design.

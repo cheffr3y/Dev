@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { requireUser, hasRole } from "@/lib/session";
-import { getActiveVenue } from "@/lib/venue";
+import { prisma } from "@/lib/db/prisma";
+import { requireUser, hasRole } from "@/lib/auth/session";
+import { getActiveVenue } from "@/lib/venues/venue";
 import { Card, CardHeader, EmptyState, LinkButton, PageHeader } from "@/components/ui";
 import {
   ROLE_SUGGESTIONS,
@@ -15,7 +15,7 @@ import {
   thisWeekStart,
   weekDays,
   weekNumberLabel,
-} from "@/lib/schedule";
+} from "@/lib/schedule/schedule";
 import { ScheduleGrid, type CookLite, type DayLite, type ShiftLite } from "../ScheduleGrid";
 import type { DayEventLite } from "../schedule-ui";
 import { WeekNoteEditor } from "../WeekNoteEditor";

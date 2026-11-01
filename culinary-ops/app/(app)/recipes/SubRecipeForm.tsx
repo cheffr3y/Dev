@@ -3,8 +3,8 @@
 import { useMemo, useState } from "react";
 import { ComboPicker, type ComboOption } from "@/components/ComboPicker";
 import { Button, Field, Input, Select } from "@/components/ui";
-import { UNIT_OPTIONS, unitLabel } from "@/lib/units";
-import { money, num } from "@/lib/costing";
+import { UNIT_OPTIONS, unitLabel } from "@/lib/recipes/units";
+import { money, num } from "@/lib/recipes/costing";
 import { addSubRecipe } from "./actions";
 
 type Option = { id: string; name: string; yieldQty: number; yieldUnit: string; cost: number };

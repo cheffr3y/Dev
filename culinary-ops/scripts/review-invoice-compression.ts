@@ -2,7 +2,7 @@
 import { readFile,writeFile } from "node:fs/promises";
 import {PDFDocument} from "pdf-lib";
 import sharp from "sharp";
-import {compactInvoice} from "../lib/invoice-storage";
+import {compactInvoice} from "../lib/invoices/invoice-storage";
 async function main(){
  const directory="/tmp/invoice-archive-review";
  const scan=await PDFDocument.create();

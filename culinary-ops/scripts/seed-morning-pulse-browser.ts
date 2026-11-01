@@ -1,11 +1,11 @@
 // Dedicated fixtures and data assertions for the disposable browser harness.
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { prisma } from "../lib/prisma";
-import { pulseDates } from "../lib/morning-pulse";
-import { loadMorningPulse } from "../lib/morning-pulse-data";
-import { addDays, isoDate } from "../lib/banquet-week";
-import { recordPickup, closeDay } from "../lib/prep-workflow";
+import { prisma } from "../lib/db/prisma";
+import { pulseDates } from "../lib/dashboard/morning-pulse";
+import { loadMorningPulse } from "../lib/dashboard/morning-pulse-data";
+import { addDays, isoDate } from "../lib/banquets/banquet-week";
+import { recordPickup, closeDay } from "../lib/prep/prep-workflow";
 
 async function main() {
   const url = new URL(process.env.DATABASE_URL ?? "postgresql://invalid");

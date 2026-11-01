@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { commandActions, type CommandAction } from "@/lib/command-actions";
+import { commandActions, type CommandAction } from "@/lib/navigation/command-actions";
 
 type Recipe = { id: string; name: string; category: string; station: string | null };
 type Item = { id: string; name: string; unit: string };

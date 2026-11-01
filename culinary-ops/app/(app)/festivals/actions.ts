@@ -3,11 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/lib/session";
+import { prisma } from "@/lib/db/prisma";
+import { requireRole } from "@/lib/auth/session";
 
 // Percents cross this boundary as whole numbers ("35" in the form) and are
-// stored as fractions 0–1 (0.35). See lib/festival.ts for the convention.
+// stored as fractions 0–1 (0.35). See lib/menus/festival.ts for the convention.
 const wholePct = z.coerce
   .number()
   .min(0)

@@ -1,17 +1,17 @@
-import { loadBanquetRevision } from "@/lib/banquet-baseline-data";
+import { loadBanquetRevision } from "@/lib/banquets/banquet-baseline-data";
 import { BanquetRevision } from "@/components/BanquetRevision";
 import { AtelierHeader } from "@/components/AtelierHeader";
 import { RecipePrintSettings } from "@/components/RecipeDossier";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/session";
-import { num, priceGapNames } from "@/lib/costing";
-import { unitLabel } from "@/lib/units";
-import { buildBanquetPlan, banquetRecipeSelect, type BanquetLine } from "@/lib/banquet";
+import { prisma } from "@/lib/db/prisma";
+import { requireUser } from "@/lib/auth/session";
+import { num, priceGapNames } from "@/lib/recipes/costing";
+import { unitLabel } from "@/lib/recipes/units";
+import { buildBanquetPlan, banquetRecipeSelect, type BanquetLine } from "@/lib/banquets/banquet";
 import { PrintButton } from "@/components/PrintButton";
 import { ProductionJobQr } from "@/components/ProductionJobQr";
-import { jobScanHref } from "@/lib/production-job-options";
+import { jobScanHref } from "@/lib/production/production-job-options";
 import { PriceIntegrityNotice } from "@/components/PriceIntegrityNotice";
 
 // Kitchen prep / pull sheet for a banquet — the companion to the BEO. Every
