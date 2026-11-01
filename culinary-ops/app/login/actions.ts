@@ -2,6 +2,7 @@
 
 import { AuthError, CredentialsSignin } from "next-auth";
 import { signIn } from "@/auth";
+import { safeReturnTo } from "@/lib/login-return";
 
 export async function authenticate(
   _prevState: string | undefined,
@@ -11,7 +12,7 @@ export async function authenticate(
     await signIn("credentials", {
       email: formData.get("email"),
       password: formData.get("password"),
-      redirectTo: "/",
+      redirectTo: safeReturnTo(formData.get("returnTo")),
     });
   } catch (error) {
     if (error instanceof CredentialsSignin && error.code === "service_unavailable") {

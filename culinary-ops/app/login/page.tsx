@@ -1,7 +1,9 @@
+import { safeReturnTo } from "@/lib/login-return";
 import { LoginForm } from "./LoginForm";
 import { Card } from "@/components/ui";
 
-export default function LoginPage() {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ returnTo?: string }> }) {
+  const returnTo = safeReturnTo((await searchParams).returnTo);
   return (
     <div className="flex min-h-screen items-center justify-center bg-cream px-4">
       <div className="w-full max-w-sm">
@@ -15,7 +17,7 @@ export default function LoginPage() {
           </p>
         </div>
         <Card className="p-6">
-          <LoginForm />
+          <LoginForm returnTo={returnTo} />
         </Card>
         <p className="mt-5 text-center font-mono text-[11px] leading-relaxed text-zinc-400">
           Sign in with the email and password assigned by your administrator.

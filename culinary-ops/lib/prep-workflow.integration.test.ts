@@ -18,6 +18,7 @@ import {
   reportCsv,
   reportSheets,
 } from "./prep-accounting-report";
+import { startProductionJob, finishProductionJob, reviewProductionJob } from "./production-jobs";
 import { readCost } from "./prep-costing";
 import { businessDate } from "./prep-dates";
 import { effectiveAllergens } from "./allergens";
@@ -1080,4 +1081,61 @@ test("preview rejects excessive deductions and zero-delivery supplies, and prese
   assert.ok(
     reportCsv(await getPrepReport(date, date), "test").includes(zero.notes),
   );
+});
+
+
+test("QR prep jobs preserve start/finish facts, deduplicate scans and require admin review before charges", async () => {
+  const date = "2027-02-15", lines = await requests(date);
+  await freezePacket(admin, key(), { date });
+  const beforeBatches = await prisma.productionBatch.count(), beforeTransfers = await prisma.stockTransfer.count();
+  const source = { kind: "PREP", lineId: lines[0].id, scale: 2 };
+  const [first, replay] = await Promise.all([startProductionJob(staff, source, "CJ"), startProductionJob(staff, source, "CJ")]);
+  assert.equal(first.id, replay.id);
+  assert.equal(first.expectedQty, 44);
+  const input = { date, recipeId, quantity: 22, unit: "qt", cookName: "CJ", dishwasherMinutes: 0, deliveries: lines.map(line => ({ requestLineId: line.id, venueId: line.destinationVenueId, quantity: line.requestedQty })) };
+  await assert.rejects(confirmProduction(admin, key(), input), /review.*project logs/);
+  await assert.rejects(closeDay(admin, key(), { date }), /review cook project logs/);
+  const other = await prisma.user.create({ data: { name: "Other cook", email: "qr-other@local.test", passwordHash: "unused", role: "STAFF" } });
+  const finish = { jobId: first.id, actualQty: 22, actualUnit: "qt", notes: "Labeled, dated, and placed on the pickup rack.", labeledAndDated: true };
+  await assert.rejects(finishProductionJob(other.id, finish), /Only the cook/);
+  await assert.rejects(finishProductionJob(staff, { ...finish, actualUnit: "lb" }), /compatible/);
+  await assert.rejects(finishProductionJob(staff, { ...finish, labeledAndDated: false }));
+  const completed = await finishProductionJob(staff, finish);
+  const repeated = await finishProductionJob(staff, finish);
+  assert.equal(completed.finishedAt!.getTime(), repeated.finishedAt!.getTime());
+  assert.ok(completed.finishedAt! >= completed.startedAt);
+  assert.equal(completed.startedByUserId, staff);
+  assert.equal(completed.finishedByUserId, staff);
+  await assert.rejects(finishProductionJob(staff, { ...finish, actualQty: 23 }), /already been submitted/);
+  assert.equal(await prisma.productionBatch.count(), beforeBatches);
+  assert.equal(await prisma.stockTransfer.count(), beforeTransfers);
+  await assert.rejects(reviewProductionJob(staff, first.id, ""), /Admin/);
+  await assert.rejects(reviewProductionJob(chefManager, first.id, ""), /Admin/);
+  await assert.rejects(reviewProductionJob(admin, first.id, "", { quantity: 23, unit: "qt" }), /Explain the yield correction/);
+  await reviewProductionJob(admin, first.id, "Yield and notes checked.", { quantity: 23, unit: "qt" });
+  const reviewed = await reviewProductionJob(admin, first.id, "Repeated click");
+  assert.equal(reviewed.reviewNote, "Yield and notes checked.");
+  assert.equal(reviewed.actualQty, 22);
+  assert.equal(reviewed.reviewedQty, 23);
+  await assert.rejects(prisma.productionJob.update({ where: { id: first.id }, data: { actualQty: 1 } }), /immutable/);
+  await assert.rejects(prisma.productionJob.delete({ where: { id: first.id } }), /preserved/);
+  await confirmProduction(admin, key(), input);
+  await closeDay(admin, key(), { date });
+  assert.equal((await prisma.productionJob.findUniqueOrThrow({ where: { id: first.id } })).actualQty, 22);
+});
+
+test("banquet QR logs record real project facts without creating prep ledger entries; completed targets are read-only", async () => {
+  const banquet = await prisma.banquet.create({ data: { name: "QR test banquet", date: businessDate("2027-02-16"), venueId: venueA, menuItems: { create: { recipeId, orderedQty: 12, unit: "qt" } } }, include: { menuItems: true } });
+  const source = { kind: "BANQUET", lineId: banquet.menuItems[0].id };
+  const batches = await prisma.productionBatch.count(), transfers = await prisma.stockTransfer.count();
+  const job = await startProductionJob(chefManager, source, "Lead cook");
+  assert.equal(job.expectedQty, 12);
+  await assert.rejects(reviewProductionJob(admin, job.id, ""), /Finish the project/);
+  await finishProductionJob(chefManager, { jobId: job.id, actualQty: 11.5, actualUnit: "qt", notes: "Lower yield than planned.", labeledAndDated: true });
+  await reviewProductionJob(admin, job.id, "Discussed yield variance.");
+  assert.equal(await prisma.productionBatch.count(), batches);
+  assert.equal(await prisma.stockTransfer.count(), transfers);
+  await assert.rejects(startProductionJob(staff, { kind: "PREP", lineId: "missing", scale: 1 }, "CJ"), /printed lot/);
+  const cancelled = await prisma.banquet.create({ data: { name: "Cancelled QR event", status: "CANCELLED", date: businessDate("2027-02-17"), venueId: venueA, menuItems: { create: { recipeId, orderedQty: 1, unit: "qt" } } }, include: { menuItems: true } });
+  await assert.rejects(startProductionJob(staff, { kind: "BANQUET", lineId: cancelled.menuItems[0].id }, "CJ"), /completed or cancelled/);
 });

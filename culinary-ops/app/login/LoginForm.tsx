@@ -14,11 +14,12 @@ function SubmitButton() {
   );
 }
 
-export function LoginForm() {
+export function LoginForm({ returnTo = "/" }: { returnTo?: string }) {
   const [errorMessage, formAction] = useActionState(authenticate, undefined);
 
   return (
     <form action={formAction} className="space-y-4">
+      <input type="hidden" name="returnTo" value={returnTo} />
       <Field label="Email">
         <Input
           name="email"

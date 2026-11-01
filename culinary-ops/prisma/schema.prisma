@@ -92,6 +92,9 @@ model User {
   stockTransfers    StockTransfer[]
   stockAdjustments  FinishedStockAdjustment[]
   dailyCloseouts    ProductionCloseout[]
+  jobsStarted       ProductionJob[] @relation("JobStartedBy")
+  jobsFinished      ProductionJob[] @relation("JobFinishedBy")
+  jobsReviewed      ProductionJob[] @relation("JobReviewedBy")
 
   triviaGames TriviaGame[]
   homestead   HomesteadSave?
@@ -228,6 +231,7 @@ model Recipe {
   prepLines         PrepOrderLine[]
   productionBatches ProductionBatch[]
   directTransfers   StockTransfer[]
+  productionJobs    ProductionJob[]
 
   // Sub-recipes: a recipe can be built from other recipes (components).
   components RecipeComponent[] @relation("ParentRecipe")
@@ -1065,6 +1069,46 @@ model PrepOperation {
 model PrepBusinessDay {
   date     DateTime @id
   revision Int      @default(0)
+}
+
+// A cook's project log is separate from the production/accounting ledger.
+// Timestamps and submitted facts are preserved; admin review creates no charge.
+model ProductionJob {
+  id                String @id @default(cuid())
+  targetKey         String @unique
+  kind              String
+  businessDate      DateTime
+  recipeId          String
+  recipe            Recipe @relation(fields: [recipeId], references: [id], onDelete: Restrict)
+  recipeName        String
+  contextLabel      String
+  sourceRef         Json
+  sourceSignature   String
+  requestLineIds    Json
+  lot               String?
+  expectedQty       Float?
+  expectedUnit      String
+  printScale        Float @default(1)
+  cookName          String
+  startedAt         DateTime @default(now())
+  startedByUserId   String
+  startedBy         User @relation("JobStartedBy", fields: [startedByUserId], references: [id], onDelete: Restrict)
+  finishedAt        DateTime?
+  finishedByUserId  String?
+  finishedBy        User? @relation("JobFinishedBy", fields: [finishedByUserId], references: [id], onDelete: Restrict)
+  actualQty         Float?
+  actualUnit        String?
+  notes             String?
+  labeledAndDated   Boolean @default(false)
+  reviewedAt        DateTime?
+  reviewedByUserId  String?
+  reviewedBy        User? @relation("JobReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: Restrict)
+  reviewNote        String?
+  reviewedQty       Float?
+  reviewedUnit      String?
+
+  @@index([businessDate, reviewedAt])
+  @@index([recipeId, startedAt])
 }
 
 model PrepPacketSnapshot {

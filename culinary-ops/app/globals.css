@@ -940,3 +940,11 @@ body {
   .print-document.print-compact .recipe-production-record { margin-top: 8px; padding: 8px; }
   .print-document.print-compact .recipe-production-record > div { row-gap: 6px; }
 }
+
+.production-job-qr { display: inline-flex; flex-direction: column; align-items: center; flex-shrink: 0; width: 104px; padding: 4px; color: #000; background: #fff; text-align: center; text-decoration: none; break-inside: avoid; }
+.production-job-qr svg { display: block; width: 96px; height: 96px; max-width: none; }
+.production-job-qr > span { font: 600 9px/1.2 Arial, sans-serif; color: #000; }
+@media print {
+  .production-job-qr { width: 104px !important; padding: 4px; background: #fff !important; color: #000 !important; }
+  .production-job-qr svg { width: 96px !important; height: 96px !important; }
+}

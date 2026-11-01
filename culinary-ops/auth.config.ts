@@ -1,4 +1,5 @@
 import type { NextAuthConfig } from "next-auth";
+import { safeReturnTo } from "./lib/login-return";
 
 // Edge-safe config (no DB/bcrypt). Shared by middleware and the full
 // Node-runtime auth in auth.ts.
@@ -17,8 +18,13 @@ export const authConfig = {
       }
       const isLoginPage = pathname.startsWith("/login");
       if (isLoginPage) {
-        if (isLoggedIn) return Response.redirect(new URL("/", nextUrl));
+        if (isLoggedIn) return Response.redirect(new URL(safeReturnTo(nextUrl.searchParams.get("returnTo")), nextUrl));
         return true;
+      }
+      if (!isLoggedIn && pathname === "/prep-orders/closeout/scan") {
+        const login = new URL("/login", nextUrl);
+        login.searchParams.set("returnTo", `${pathname}${nextUrl.search}`);
+        return Response.redirect(login);
       }
       return isLoggedIn;
     },

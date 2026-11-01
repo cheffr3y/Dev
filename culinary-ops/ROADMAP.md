@@ -110,27 +110,23 @@ Validation: TypeScript, targeted ESLint, production build, 173 unit checks, 24 d
 
 ---
 
-## Chunk 4: Advanced Kitchen Paperwork (Master Compiler, Labels & QR Closeout Bridges)
-**Goal:** Eliminate repetitive printing before busy weekends and bridge physical clipboard sheets back to your digital closeout screens with full accountability.
+## Chunk 4: QR Project Start / Finish & Admin Review
+**Goal:** Scan a prep or banquet project when work starts, finish after labeling/dating, and capture actual elapsed time, yield, and notes for review.
 
-**Target Files:**
-* `app/(app)/banquets/week/[date]/packet/page.tsx`
-* `app/(app)/prep-orders/[id]/packet/page.tsx`
-* `app/(app)/prep-orders/closeout/DailyWorksheet.tsx`
-* `components/PrepCoolingLog.tsx`
-* `components/BanquetSetupSheet.tsx`
-* `components/AllergenBadges.tsx`
-* `lib/prep-dates.ts`
+**Scope — October 31, 2026:** QR project logging is the only retained work from the original Chunk 4. The combined packet/compiler, station filters, and label generator remain removed. Chunk 5 is the next active roadmap item.
 
 ### Checklist
-- [ ] **"Master Clipboard Compiler" Modal:** Add a button on the Dashboard and Banquet Week view that lets you check boxes for the documents you need (`[x] Weekly Schedule`, `[x] Banquet Week Packet`, `[x] Shopping List`, `[x] Daily Prep Sheet`, `[x] Cooling Logs`) and renders them into a single unified print view separated by `page-break-after: always`—one `Cmd+P` prints the whole kitchen's paperwork.
-- [ ] **Station Filter on Packet Printouts:** Allow filtering `prep-orders/[id]/packet` and `banquets/[id]/prep-sheet` by station/category before printing so you can print separate clipboards for Garde Manger, Hot Line, and Prep Kitchen.
-- [ ] **QR Code "Paper-to-Digital" Accountability Bridge:** Render a dynamic SVG QR code in the top-right corner of printed `DailyWorksheet` and `PrepOrder` packets encoding a mobile scan URL (`/prep-orders/closeout/scan`).
-- [ ] **Mobile Closeout & Accountability Web View:** Build a fast mobile screen tied to the QR scan where cooks or leads can select **Who made it** (staff/initials), enter **Actual Yield Produced**, and log **Shift/Quality Notes** directly into Postgres.
-- [ ] **Prep & Allergen Label Sheet Generator:** Add a "Print Prep Labels" view to `prep-orders/[id]` and `recipes/[id]` formatted for standard multi-up label sheets (Item Name, Prep Date, Use-By Date from `lib/prep-dates.ts`, Batch Size, and bold Allergen Badges from `AllergenBadges.tsx`).
+- [x] **Project-specific printed QR codes:** Prep lot recipe cards, banquet cook cards and prep-sheet food lines, weekly banquet project selection, and daily worksheet recipe groups open the matching project on a phone. Printed copy multipliers remain attached to prep targets. Sign-in returns to the scanned project.
+- [x] **Start / finish work:** Cooks and managers start a persistent server timer, then submit actual yield with a compatible unit, shift/quality notes, and labeling/dating confirmation. Repeat scans and interrupted start/save responses reuse the existing project. Managers can finish another cook’s work; staff can finish their own.
+- [x] **Admin review and actual-time history:** Review start/finish timestamps, elapsed time, cook, planned versus actual yield, and notes. Yield corrections require an explanation and preserve the original submission. Reviewed prep yields can populate the existing worksheet after an explicit click; deliveries and labor remain for admin confirmation. Pending prep logs block production confirmation and day finalization. Banquet logs create no prep charges.
 
-### Copy-Paste Agent Prompt for Chunk 4
-> Inspect the banquet packet, prep order packet, cooling log, and allergen/prep-date utilities. Execute **Chunk 4** of `ROADMAP.md`: add station filtering to packet printouts, add SVG QR code closeout bridges and the mobile accountability web view (Who made it, yield, shift notes), create the Prep & Allergen Label Sheet print view, and build the Master Clipboard Compiler. Verify with `npx tsc --noEmit`.
+### Implementation status — October 31, 2026
+
+Implemented. Project logs are separate from the accounting ledger, with database protection for start facts, submitted results, and reviewed records. Elapsed time includes waiting/unattended cooking and never automatically replaces labor person-minutes. Each printed prep lot or banquet food line has one job; scans resume that job instead of starting duplicate timers. Daily/weekly QR selectors lead to the relevant printed lots or banquet event projects.
+
+Apply `20261031000000_production_job_logs` before releasing this version; normal `npm start` applies migrations before serving. Set `APP_BASE_URL` to the public application origin for paper used on phones (the configured auth origin/request origin is the fallback).
+
+Validation: production build, TypeScript, targeted ESLint, 178 unit checks, and 26 disposable-PostgreSQL transaction checks. Mobile/desktop browser checks cover QR decoding, sign-in return, an interrupted start response, reload recovery, labeling/yield validation, role restrictions, admin review and deliberate worksheet prefill, unchanged snapshots, and zero automatic ledger writes. Prep/banquet QR codes also decode from 300 dpi PDF renders; all seven sample PDF pages were visually reviewed.
 
 ---
 

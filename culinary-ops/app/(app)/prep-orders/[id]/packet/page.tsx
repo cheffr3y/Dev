@@ -9,6 +9,8 @@ import { PrepCoolingLog } from "@/components/PrepCoolingLog";
 import { PrintController, PrintQueryFields } from "@/components/PrintController";
 import { PrintSpecHeader, ScaledProductionBanner } from "@/components/PrintSpecHeader";
 import { printScale, type PrintQuery } from "@/lib/print-options";
+import { ProductionJobQr } from "@/components/ProductionJobQr";
+import { jobScanHref } from "@/lib/production-job-options";
 import { LocalTime } from "@/components/LocalTime";
 import { ShoppingListBody } from "@/components/ShoppingList";
 import { RecipeReferences } from "@/components/RecipeReferences";
@@ -258,6 +260,7 @@ export default async function CookPacketPage({
                 sharedRefs={sharedRefs}
                 references={references}
                 weightInGrams={weightInGrams}
+                printMultiplier={scale}
               />
             ))}
           </div>
@@ -307,10 +310,10 @@ function packetScale(lines: PacketLine[]) {
   return { combinedInYield, convertible, scale };
 }
 
-function PacketEntry({ lines, madeOn, forDate, byId, sharedRefs, references, weightInGrams }: {
+function PacketEntry({ lines, madeOn, forDate, byId, sharedRefs, references, weightInGrams, printMultiplier }: {
   lines: PacketLine[]; madeOn: string; forDate: Date;
   byId: Map<string, RecipeTreeNode>; sharedRefs: Map<string, string>;
-  references: RecipeReferencePlan; weightInGrams: boolean;
+  references: RecipeReferencePlan; weightInGrams: boolean; printMultiplier: number;
 }) {
   const recipe = lines[0].recipe;
   const captured = byId.get(recipe.id);
@@ -323,6 +326,7 @@ function PacketEntry({ lines, madeOn, forDate, byId, sharedRefs, references, wei
     ? { ...captured, version, holdLifeDays: captured.holdLifeDays ?? recipe.holdLifeDays }
     : { ...recipe, version, instructions: null, criticalNotes: null, allergens: null, items: [], components: [] };
   return <RecipeBuildCard node={node} byId={byId} totalBatches={scale}
+    projectCode={<ProductionJobQr href={jobScanHref({ kind: "PREP", lineId: lines[0].id, scale: printMultiplier })} />}
     compact={false} depth={0} stack={new Set()} sharedRefs={sharedRefs}
     weightInGrams={weightInGrams} references={references}
     context={<>

@@ -283,6 +283,8 @@ function parseProduction(input: unknown) {
 }
 async function prepareProduction(tx: Tx, d: ProductionInput) {
   const date = businessDate(d.date);
+  if (await tx.productionJob.count({ where: { kind: "PREP", businessDate: date, recipeId: d.recipeId, reviewedAt: null } }))
+    throw new Error("Finish and review the cook project logs for this recipe before recording production.");
   const ids = d.deliveries.flatMap((r) =>
     r.requestLineId ? [r.requestLineId] : [],
   );
@@ -580,6 +582,8 @@ export async function closeDay(authorId: string, key: string, input: unknown) {
       where: { businessDate: date },
     });
     if (existing?.finalizedAt) return { closeoutId: existing.id };
+    if (await tx.productionJob.count({ where: { kind: "PREP", businessDate: date, reviewedAt: null } }))
+      throw new Error("Finish and review cook project logs before closing the day.");
     const open = await tx.prepOrderLine.count({
       where: {
         prepOrder: { forDate: date },

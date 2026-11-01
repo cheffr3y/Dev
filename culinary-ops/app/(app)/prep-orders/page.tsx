@@ -96,6 +96,7 @@ export default async function DailyPrep({
           </Link>
         )}
       </div>
+      <div className="no-print mb-4 flex flex-wrap gap-4 text-sm"><Link href={`/prep-orders/closeout/scan?date=${day}`} className="text-blue-600 underline">Start / finish a production project</Link>{user.role === "ADMIN" && <Link href={`/prep-orders/jobs?date=${day}`} className="text-blue-600 underline">Review project logs</Link>}</div>
       <p className="no-print mb-4 text-sm">
         <Link href="/prep-orders/history" className="text-blue-700">
           Past orders

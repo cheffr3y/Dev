@@ -8,6 +8,8 @@ import { num, componentBatchFactor } from "@/lib/costing";
 import { unitLabel } from "@/lib/units";
 import { PrintController } from "@/components/PrintController";
 import { PrintSpecHeader } from "@/components/PrintSpecHeader";
+import { ProductionJobQr } from "@/components/ProductionJobQr";
+import { jobScanHref } from "@/lib/production-job-options";
 import { LocalTime } from "@/components/LocalTime";
 import { RecipeReferences } from "@/components/RecipeReferences";
 import { buildRecipeReferences, type RecipeReferencePlan } from "@/lib/recipe-references";
@@ -94,6 +96,7 @@ export default async function BanquetCookPacketPage({ params }: { params: Promis
               <DishEntry
                 key={d.menuItem.id}
                 node={d.node}
+                lineId={d.menuItem.id}
                 batches={d.batches}
                 converted={d.converted}
                 description={d.menuItem.description}
@@ -119,12 +122,13 @@ export default async function BanquetCookPacketPage({ params }: { params: Promis
 }
 
 // One BEO food line, scaled to its ordered count.
-function DishEntry({ node, batches, converted, description, orderedQty, unit, byId, references, eventLabel }: {
-  node: RecipeTreeNode; batches: number; converted: boolean; description: string | null;
+function DishEntry({ node, lineId, batches, converted, description, orderedQty, unit, byId, references, eventLabel }: {
+  node: RecipeTreeNode; lineId: string; batches: number; converted: boolean; description: string | null;
   orderedQty: number; unit: string; byId: Map<string, RecipeTreeNode>;
   references: RecipeReferencePlan; eventLabel: string;
 }) {
   return <RecipeBuildCard node={node} byId={byId} totalBatches={batches}
+    projectCode={<ProductionJobQr href={jobScanHref({ kind: "BANQUET", lineId })} />}
     compact={false} depth={0} stack={new Set()} references={references}
     context={<>
       <p className="font-medium text-[#2C3E35]">{eventLabel}</p>

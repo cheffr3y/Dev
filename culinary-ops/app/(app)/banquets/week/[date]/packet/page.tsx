@@ -8,6 +8,7 @@ import { unitLabel } from "@/lib/units";
 import { dateFromParam, startOfUtcWeek, addDays, isoDate, fmtWeekRange, fmtShortDate } from "@/lib/banquet-week";
 import { PrintController } from "@/components/PrintController";
 import { PrintSpecHeader } from "@/components/PrintSpecHeader";
+import { ProductionJobQr } from "@/components/ProductionJobQr";
 import { RecipeReferences } from "@/components/RecipeReferences";
 import { buildRecipeReferences, type RecipeReferencePlan } from "@/lib/recipe-references";
 import {
@@ -155,6 +156,7 @@ function WeeklyDishEntry({ dish, byId, references, weekLabel }: {
   const { node, totalBatches, converted, splits } = dish;
   return <RecipeBuildCard node={node} byId={byId} totalBatches={totalBatches}
     compact={false} depth={0} stack={new Set()} references={references}
+    projectCode={<ProductionJobQr href={`/prep-orders/closeout/scan?type=BANQUET&week=${isoDate(startOfUtcWeek(splits[0].date))}&recipe=${node.id}`} label="Scan to choose event project" />}
     context={<>
       <p className="font-medium text-[#2C3E35]">Weekly Production · {weekLabel}</p>
       <ul className="mt-1 grid grid-cols-2 gap-x-4 gap-y-1">

@@ -9,6 +9,8 @@ import { DailyWorksheet } from "./DailyWorksheet";
 import { businessDate, chicagoToday } from "@/lib/prep-dates";
 import { readCost } from "@/lib/prep-costing";
 import { Card, PageHeader, Input, Button, LinkButton } from "@/components/ui";
+import { ProductionJobQr } from "@/components/ProductionJobQr";
+import { durationLabel, elapsedMinutes } from "@/lib/production-job-options";
 import { EntryForm, CloseDayForm } from "../EntryForms";
 export default async function CloseoutPage({
   searchParams,
@@ -77,6 +79,7 @@ export default async function CloseoutPage({
     }),
     prisma.finishedStockAdjustment.findMany({ where: { date }, take: 1000 }),
   ]);
+  const jobLogs = await prisma.productionJob.findMany({ where: { businessDate: date, kind: "PREP" }, orderBy: [{ reviewedAt: { sort: "asc", nulls: "first" } }, { startedAt: "asc" }], take: 200 });
   const open = requests.filter((l) =>
     ["REQUESTED", "PRINTED", "IN_PROGRESS"].includes(l.status),
   );
@@ -148,6 +151,7 @@ export default async function CloseoutPage({
         Fill in what was made and sent. Add ingredient deductions where needed,
         then finish the day.
       </p>
+      {jobLogs.length > 0 && <Card className="mb-5 p-4"><h2 className="mb-2 font-semibold">Cook project logs</h2><p className="mb-3 text-sm text-zinc-500">Review submitted yields and notes before entering item results. Elapsed time includes cooking and waiting; labor still needs your review.</p>{jobLogs.map(job => <p key={job.id} className="border-t border-hairline py-2 text-sm"><Link className="text-blue-600 underline" href={`/prep-orders/closeout/scan?job=${job.id}`}>{job.recipeName} · {job.cookName} · {job.reviewedAt ? "Reviewed" : job.finishedAt ? "Awaiting review" : "In progress"}</Link>{job.finishedAt && <> · {job.actualQty} {job.actualUnit} · {durationLabel(elapsedMinutes(job.startedAt, job.finishedAt))}</>}</p>)}</Card>}
       {closed ? (
         <Card className="mb-5 p-5">
           <strong>Day finished</strong>
@@ -159,6 +163,11 @@ export default async function CloseoutPage({
           date={day}
           groups={groups}
           ingredients={Object.fromEntries(ingredientLists)}
+          projectCodes={Object.fromEntries(groups.map(group => [group.recipeId, <ProductionJobQr key={group.recipeId} href={`/prep-orders/closeout/scan?type=PREP&date=${day}&recipe=${group.recipeId}`} />]))}
+          reviewedResults={Object.fromEntries(groups.flatMap(group => {
+            const job = jobLogs.find(job => job.reviewedAt && job.finishedAt && job.recipeId === group.recipeId && Array.isArray(job.requestLineIds) && job.requestLineIds.length === group.rows.length && group.rows.every(row => (job.requestLineIds as string[]).includes(row.id)));
+            return job?.finishedAt && job.reviewedQty != null && job.reviewedUnit ? [[group.recipeId, { cookName: job.cookName, quantity: job.reviewedQty, unit: job.reviewedUnit, notes: job.notes ?? "", elapsed: durationLabel(elapsedMinutes(job.startedAt, job.finishedAt)) }]] : [];
+          }))}
         />
       )}
       <Card className="mb-5 p-4">

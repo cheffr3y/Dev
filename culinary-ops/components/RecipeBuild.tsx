@@ -151,15 +151,15 @@ export type RecipeBuildProps = {
 };
 
 type BuildCardProps = RecipeBuildProps & Pick<RecipeDossierProps,
-  "context" | "id" | "className" | "supporting">;
+  "context" | "id" | "className" | "supporting" | "projectCode">;
 
-export function RecipeBuildCard({ context, id, className = "", supporting = false, ...build }: BuildCardProps) {
+export function RecipeBuildCard({ context, projectCode, id, className = "", supporting = false, ...build }: BuildCardProps) {
   return (
     <>
       <RecipeDossier recipe={build.node} scale={build.totalBatches}
         allergenKeys={effectiveAllergens(build.node.id, build.byId)}
         weightInGrams={build.weightInGrams} supporting={supporting}
-        context={context} id={id}
+        context={context} projectCode={projectCode} id={id}
         className={`${supporting ? "" : "recipe-packet-card"} ${className}`}>
         <RecipeBuildBody {...build} renderSubBuilds={false} />
       </RecipeDossier>

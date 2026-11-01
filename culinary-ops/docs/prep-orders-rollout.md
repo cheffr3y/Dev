@@ -37,3 +37,7 @@ The schema is additive and historical tables remain present, but old application
 - Food, production labor and dishwasher cost are allocated over delivered, kept and production-waste quantities. Only delivery rows create venue charges. No inventory, FIFO, opening count or running balance is maintained.
 - Operations and amendments retain author IDs. Credits and waste link back to the transfer; reversal snapshots link to replacement IDs. Immutable export snapshots preserve the shared report output and membership.
 - Dates are validated Chicago business-day labels stored at UTC midnight. Reports use a maximum one-year period and reject more than 5,000 records rather than silently truncating totals. Daily screens, selection lists, packet graphs and history queries are bounded.
+
+## QR project logging release
+
+Apply `20261031000000_production_job_logs` before serving the QR-enabled version. It adds independent project logs and audit checks without rewriting historical orders or accounting. Configure `APP_BASE_URL` with the public HTTPS origin used by cooks’ phones, then verify a printed prep code and a banquet code return to the same project after sign-in. Verify cook start/finish, manager access, admin review, reviewed-yield correction, and the existing accounting preview before rollout. See [production project logs](production-project-logs.md).

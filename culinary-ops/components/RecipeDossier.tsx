@@ -57,6 +57,7 @@ export type RecipeDossierProps = {
   lines?: MiseLine[];
   weightInGrams?: boolean;
   context?: ReactNode;
+  projectCode?: ReactNode;
   children?: ReactNode;
   supporting?: boolean;
   titleLevel?: 1 | 2 | 3;
@@ -69,7 +70,7 @@ export type RecipeDossierProps = {
 
 export function RecipeDossier({
   recipe, scale, allergenKeys, lines = [], weightInGrams = false,
-  context,
+  context, projectCode,
   children, footerNote, batchLabel, supporting = false, titleLevel = 2, id, className = "",
 }: RecipeDossierProps) {
   const titleId = useId();
@@ -98,6 +99,7 @@ export function RecipeDossier({
             {recipe.name}
           </Title>
           </div>
+          {projectCode}
           <span className="shrink-0 rounded-full border border-[#D5CFC4] bg-[#F4F1EA] px-3 py-2 text-right font-mono text-[10px] tabular-nums text-[#2C3E35]">{batchLabel ?? `${num(scale)}× Batch`}<span className="block text-[9px] text-zinc-500">{yieldLabel}</span></span>
         </header>
 

@@ -24,7 +24,7 @@ Built with Next.js (App Router), TypeScript, Prisma, and PostgreSQL. Role-based 
 
 See the [kitchen and accounting guide](docs/prep-orders-guide.md) and [migration / rollout checklist](docs/prep-orders-rollout.md).
 
-See [ROADMAP.md](ROADMAP.md) for the commercial product direction and implementation checklist. Chunks 1–3 are implemented; advanced kitchen paperwork is next.
+See [ROADMAP.md](ROADMAP.md) for the commercial product direction and implementation checklist. Chunks 1–4 are implemented. Chunk 4 is limited to QR project start/finish logging and admin review; Chunk 5 (inline editing and inspector drawers) is next.
 
 Use **⌘K / Ctrl+K** to search recipes/ingredients or run actions: print this week’s banquet packet, download week-to-date prep accounting (Sunday through today), open daily closeout/prep, review duplicate ingredients, or create a recipe. Actions follow existing role permissions; closeout and accounting are admin-only.
 
@@ -144,6 +144,10 @@ print alone or at the front of individual and weekly cook packets. Apply
 
 Admins use **Closeout** for one daily worksheet populated from the orders: enter made/sent quantities, cook and notes; add venue-supplied ingredient deductions; preview charges; save each item; then finish the day and export accounting. Recipe labor standards apply automatically, and missing costs remain explicitly pending. Ingredient deductions reduce only the supplying venue’s food charge, with labor unchanged.
 
+Printed prep and banquet projects now have **Scan to start / finish** codes. Cooks/managers sign in on a phone, start the project timer, then finish with actual yield, shift/quality notes, and labeling/dating confirmation. The timer persists across reloads. Admins review the recorded start/finish times and yields in **Review project logs**; pending prep jobs must be reviewed before production is confirmed or the day is finished. Admin yield corrections preserve the cook’s original entry. An explicit **Use reviewed cook result** action can copy a matching prep result into the worksheet; destination quantities and labor still require confirmation. Elapsed time includes unattended cooking/waiting and is separate from accounting person-minutes. Banquet job logs create no prep transfer charges.
+
+See the [project logging guide](docs/production-project-logs.md) for the workflow, deployment migration, and public QR address setting.
+
 Accounting starts with venue totals and separates ready charges from pending costs. Excel and CSV include supporting ingredient, labor, supply and production notes. Saved results use linked corrections and returns; historical records and immutable exports remain unchanged. Acumatica remains authoritative, with no automatic posting or email. No finished-stock balance is maintained.
 
 See the [daily prep and closeout guide](docs/prep-orders-guide.md) for the workflow and bacon-credit example.
@@ -192,3 +196,5 @@ Against the same disposable harness, `node scripts/test-ingredient-allergens-bro
 `MORNING_PULSE_BROWSER_SMOKE=1 PREP_BROWSER_SMOKE=1 bash scripts/test-prep-postgres.sh` adds disposable dashboard fixtures and verifies venue/date/status filtering, ingredient integrity, nested menu margins, closeout boundaries, role-based actions, keyboard navigation, recipe creation, XLSX downloads/errors, one-time printing, and mobile layout. Use the same Playwright module/executable overrides described above. Review screenshots and the weekly packet PDF are saved to `/tmp/morning-pulse-review` (override with `PULSE_REVIEW_DIR`).
 
 `PRINT_CONTROLLER_BROWSER_SMOKE=1 PREP_BROWSER_SMOKE=1 bash scripts/test-prep-postgres.sh` adds disposable print fixtures and checks all seven routes, fractional/custom scaling, fixed costing rates, frozen-data preservation, density/options retention, handwritten-cell heights, repeated auto-print, mobile controls, and the existing recipe-costing regressions. Use the same Playwright overrides described above. PDFs/screenshots are saved to `/tmp/clipboard-print-review` (override with `PRINT_REVIEW_DIR`); costing regression artifacts retain their separate review folder.
+
+`PRODUCTION_JOBS_BROWSER_SMOKE=1 PREP_BROWSER_SMOKE=1 bash scripts/test-prep-postgres.sh` checks project QR decoding, mobile sign-in return, interrupted start recovery, timer persistence, completion validation, role-based review, worksheet prefill, and unchanged frozen/ledger data. It uses disposable fixtures and the same Playwright overrides described above. Screenshots and two QR print samples are saved to `/tmp/production-job-review` (override with `JOB_REVIEW_DIR`).

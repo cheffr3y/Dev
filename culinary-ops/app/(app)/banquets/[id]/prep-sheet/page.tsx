@@ -8,6 +8,8 @@ import { num, priceGapNames } from "@/lib/costing";
 import { unitLabel } from "@/lib/units";
 import { buildBanquetPlan, banquetRecipeSelect, type BanquetLine } from "@/lib/banquet";
 import { PrintButton } from "@/components/PrintButton";
+import { ProductionJobQr } from "@/components/ProductionJobQr";
+import { jobScanHref } from "@/lib/production-job-options";
 import { PriceIntegrityNotice } from "@/components/PriceIntegrityNotice";
 
 // Kitchen prep / pull sheet for a banquet — the companion to the BEO. Every
@@ -102,6 +104,7 @@ export default async function BanquetPrepSheetPage({ params }: { params: Promise
                     <td className="py-2 text-right align-top font-semibold tabular-nums text-zinc-900">
                       {num(mi.orderedQty)} <span className="font-normal text-zinc-600">{unitLabel(mi.unit)}</span>
                     </td>
+                    <td className="p-2"><ProductionJobQr href={jobScanHref({ kind: "BANQUET", lineId: mi.id })} /></td>
                   </tr>
                 ))}
               </tbody>

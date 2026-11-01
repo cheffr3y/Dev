@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Card, Field, Input, Textarea } from "@/components/ui";
 import { convertQty } from "@/lib/units";
@@ -12,6 +12,7 @@ import {
   submitPrepOperation,
 } from "../workflow-actions";
 
+type ReviewedResult = { cookName: string; quantity: number; unit: string; notes: string; elapsed: string };
 type Ingredient = { id: string; name: string; unit: string };
 type Preview = { requestLineId?: string; venueId: string; charge: Charge }[];
 const money = (cents: number | null) =>
@@ -26,11 +27,13 @@ const number = (value: number) => String(Number(value.toFixed(4)));
 export function DailyWorksheet({
   date,
   groups,
-  ingredients,
+  ingredients, projectCodes = {}, reviewedResults = {},
 }: {
   date: string;
   groups: PrepGroup[];
   ingredients: Record<string, Ingredient[]>;
+  projectCodes?: Record<string, ReactNode>;
+  reviewedResults?: Record<string, ReviewedResult>;
 }) {
   const [dirtyRows, setDirtyRows] = useState<Record<string, boolean>>({});
   const dirty = Object.values(dirtyRows).some(Boolean);
@@ -111,6 +114,8 @@ export function DailyWorksheet({
           group={group}
           items={ingredients[group.recipeId] ?? []}
           onDirty={markDirty}
+          projectCode={projectCodes[group.recipeId]}
+          reviewedResult={reviewedResults[group.recipeId]}
         />
       ))}
     </div>
@@ -121,16 +126,20 @@ function WorksheetRow({
   date,
   group,
   items,
-  onDirty,
+  onDirty, projectCode, reviewedResult,
 }: {
   date: string;
   group: PrepGroup;
   items: Ingredient[];
   onDirty: (id: string, dirty: boolean) => void;
+  projectCode?: ReactNode;
+  reviewedResult?: ReviewedResult;
 }) {
   const router = useRouter();
   const [key] = useState(() => crypto.randomUUID());
   const [made, setMade] = useState("");
+  const [cookName, setCookName] = useState("");
+  const [notes, setNotes] = useState("");
   const [sent, setSent] = useState<Record<string, string>>({});
   const [waste, setWaste] = useState("");
   const [supplies, setSupplies] = useState<Record<string, Supply[]>>({});
@@ -264,6 +273,7 @@ function WorksheetRow({
       >
         <fieldset disabled={busy || uncertain} className="min-w-0 space-y-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
+            {projectCode}
             <div>
               <h2 className="text-xl font-semibold">{group.name}</h2>
               <p className="mt-1 text-sm text-zinc-500">
@@ -292,6 +302,7 @@ function WorksheetRow({
               Use ordered quantities
             </Button>
           </div>
+          {reviewedResult && <div className="rounded-lg border border-hairline p-3 text-sm"><p>Reviewed cook result: {reviewedResult.quantity} {reviewedResult.unit} · {reviewedResult.cookName} · {reviewedResult.elapsed} elapsed</p><Button className="mt-2" type="button" variant="secondary" disabled={convertQty(reviewedResult.quantity, reviewedResult.unit, group.unit) == null} onClick={() => { setMade(number(convertQty(reviewedResult.quantity, reviewedResult.unit, group.unit)!)); setCookName(reviewedResult.cookName); setNotes(reviewedResult.notes); changed(); }}>Use reviewed cook result</Button><p className="mt-2 text-xs text-zinc-500">Copies yield, cook, and notes. Confirm destination quantities and labor before saving.</p></div>}
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label={`Made (${group.unit})`}>
               <Input
@@ -305,7 +316,7 @@ function WorksheetRow({
               />
             </Field>
             <Field label="Cook">
-              <Input aria-label="Cook" name="cookName" required />
+              <Input aria-label="Cook" name="cookName" required value={cookName} onChange={event => setCookName(event.target.value)} />
             </Field>
           </div>
           <div className="space-y-3">
@@ -389,6 +400,8 @@ function WorksheetRow({
             <Textarea
               aria-label="Production notes"
               name="notes"
+              value={notes}
+              onChange={event => setNotes(event.target.value)}
               maxLength={5000}
               placeholder="For example: Brewpub supplied the bacon."
             />
