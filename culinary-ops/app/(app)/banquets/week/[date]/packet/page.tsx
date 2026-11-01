@@ -1,4 +1,3 @@
-import { RecipePrintSettings } from "@/components/RecipeDossier";
 import { BanquetSetupPacket } from "@/components/BanquetSetupSheet";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -7,7 +6,8 @@ import { requireUser } from "@/lib/session";
 import { num, componentBatchFactor } from "@/lib/costing";
 import { unitLabel } from "@/lib/units";
 import { dateFromParam, startOfUtcWeek, addDays, isoDate, fmtWeekRange, fmtShortDate } from "@/lib/banquet-week";
-import { PrintButton } from "@/components/PrintButton";
+import { PrintController } from "@/components/PrintController";
+import { PrintSpecHeader } from "@/components/PrintSpecHeader";
 import { RecipeReferences } from "@/components/RecipeReferences";
 import { buildRecipeReferences, type RecipeReferencePlan } from "@/lib/recipe-references";
 import {
@@ -33,9 +33,8 @@ type WeeklyDish = {
   splits: Array<{ key: string; banquetName: string; date: Date; orderedQty: number; unit: string }>;
 };
 
-export default async function WeekCookPacketPage({ params, searchParams }: { params: Promise<{ date: string }>; searchParams: Promise<{ print?: string }> }) {
+export default async function WeekCookPacketPage({ params }: { params: Promise<{ date: string }> }) {
   const { date } = await params;
-  const autoPrint = (await searchParams).print === "1";
   await requireUser();
 
   const requested = dateFromParam(date);
@@ -93,8 +92,7 @@ export default async function WeekCookPacketPage({ params, searchParams }: { par
   const printedOn = new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 
   return (
-    <div className="recipe-print recipe-packet mx-auto max-w-[8.5in]">
-      <RecipePrintSettings />
+    <PrintController className="recipe-print recipe-packet mx-auto max-w-[8.5in]" label="Print cook packet">
       <div className="no-print mb-5 flex items-center justify-between gap-3">
         <Link href={`/banquets/week/${isoDate(start)}`} className="text-sm text-blue-600 hover:underline">
           ← Back to week prep
@@ -103,10 +101,10 @@ export default async function WeekCookPacketPage({ params, searchParams }: { par
           <Link href={`/banquets/week/${isoDate(start)}/shopping-list`} className="text-sm text-blue-600 hover:underline">
             Shopping list
           </Link>
-          <PrintButton label="Print cook packet" autoPrint={autoPrint} />
         </div>
       </div>
 
+      <PrintSpecHeader venue={[...new Set(banquets.map(banquet => banquet.venue.name))].join(" / ")} title="Weekly production packet" targetLabel={fmtWeekRange(start)} printedAt={new Date()} />
       {banquets.map(banquet => <BanquetSetupPacket key={banquet.id} banquet={banquet}
         menu={banquet.menuItems.map(m => ({ id: m.id, name: byId.get(m.recipeId)?.name ?? "Unknown recipe", orderedQty: m.orderedQty, unit: m.unit }))} />)}
       {dishes.length === 0 ? (
@@ -145,7 +143,7 @@ export default async function WeekCookPacketPage({ params, searchParams }: { par
           </p>
         </div>
       )}
-    </div>
+    </PrintController>
   );
 }
 

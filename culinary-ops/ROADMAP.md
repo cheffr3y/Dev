@@ -87,15 +87,23 @@ Validation: TypeScript, targeted ESLint, the production build, 167 unit checks, 
 * `app/(app)/to-go/[id]/packet/page.tsx`
 
 ### Checklist
-- [ ] **Build `<PrintController />` Floating Toolbar:** Replace the basic `PrintButton.tsx` on all `/packet` and `/print` routes with a sleek dark-mode floating control bar (hidden on print via `print:hidden`) containing:
+- [x] **Build `<PrintController />` Floating Toolbar:** Replace the basic `PrintButton.tsx` on all `/packet` and `/print` routes with a sleek dark-mode floating control bar (hidden on print via `print:hidden`) containing:
   * **Density Toggle (`Standard` vs. `1-Page Squeeze`):** Toggles a `.print-compact` class on the print wrapper that tightens font size and cell padding by ~15% so a 24-line sheet fits on 1 page instead of spilling 3 orphan lines onto page 2.
   * **Batch Scale Multiplier (for Recipe & Prep prints):** Quick buttons (`0.5x`, `1x`, `2x`, `3x`, plus custom numeric input) that dynamically multiply ingredient weights on the printout.
   * **Scaled Production Banner:** Whenever a recipe is printed at anything other than `1x`, automatically render a bold top banner: `SCALED PRODUCTION BATCH ({scale}x) — DO NOT FILE IN MASTER BINDER`.
-- [ ] **Standardized Commercial Print Header:** Create a reusable `<PrintSpecHeader />` component for all printouts displaying: Venue Badge, Document Title, Target Date, Print Timestamp, and Page rules.
-- [ ] **Sharpie-Friendly `@media print` Rules:**
+- [x] **Standardized Commercial Print Header:** Create a reusable `<PrintSpecHeader />` component for all printouts displaying: Venue Badge, Document Title, Target Date, Print Timestamp, and Page rules.
+- [x] **Sharpie-Friendly `@media print` Rules:**
   * Force `min-height: 28px` on all handwritten write-in cells (par, pull, waste, temp check, initials).
   * Add alternating light-gray zebra striping (`#f4f4f5` with `-webkit-print-color-adjust: exact; print-color-adjust: exact;`) so cooks don't lose their row across wide tables.
   * Add `break-inside: avoid` on all recipe cards, prep station groups, and banquet setup sections.
+
+### Implementation status — October 31, 2026
+
+Implemented across all seven `/packet` and `/print` routes. The shared floating toolbar provides Standard / 1-Page Squeeze density, printing, and recipe/prep multipliers (0.5×, 1×, 2×, 3×, legacy 4×, and custom positive values up to 100×). Scale and density are retained through content changes and packet option forms. Quantities and costing are recomputed together; unit prices remain fixed. Prep scaling updates this copy’s frozen ingredient demand, sub-recipe references, shopping list, destination targets, and planned accountability/cooling quantities without changing saved requests, lots, or snapshots. Each nonstandard recipe batch carries the binder warning.
+
+Print headers show venue, document title, target date/reference, Chicago timestamp, paper orientation, and page counters. Handwriting fields retain at least 28px in compact mode. Alternating gray rows, explicit checkboxes, repeating table headings, and section/card break rules keep paper usable. Longer recipes paginate naturally while individual rows and steps stay together. The menu cover no longer creates an empty page when the document header is present. Schedule prints remain landscape.
+
+Validation: TypeScript, targeted ESLint, production build, 173 unit checks, 24 disposable-PostgreSQL transaction checks, and desktop/mobile browser checks for every print route. Existing recipe-costing browser regressions passed. Twelve PDFs (27 pages) were rendered and visually reviewed; page dimensions/counters, hidden controls, empty pages, and retained ingredient rows were checked. The 24-line fixture changes from two pages (three overflow rows) to one in Squeeze; all 80 rows of the long recipe remain present across three pages. Frozen packet snapshots and request rows were unchanged after the checks.
 
 ### Copy-Paste Agent Prompt for Chunk 3
 > Read `components/PrintButton.tsx`, `app/globals.css`, and the `/packet` and `/print` route pages. Execute **Chunk 3** of `ROADMAP.md`: build the floating `<PrintController />` with 1-Page Squeeze density toggle and dynamic Batch Scale Multiplier (with the scaled production warning banner), add `<PrintSpecHeader />`, and enforce Sharpie-friendly `@media print` ergonomics (`min-height: 28px` write-in cells, zebra striping, `break-inside: avoid`). Verify with `npx tsc --noEmit`.

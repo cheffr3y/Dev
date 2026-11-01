@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { getActiveVenue } from "@/lib/venue";
-import { PrintButton } from "@/components/PrintButton";
+import { PrintController } from "@/components/PrintController";
+import { PrintSpecHeader } from "@/components/PrintSpecHeader";
 import { cn } from "@/components/ui";
 import {
   WEEKDAYS,
@@ -87,20 +88,17 @@ export default async function SchedulePrintPage({ params }: { params: Promise<{ 
   const cell = "border border-[--sched-border-strong] px-1.5 py-1 align-middle";
 
   return (
-    <div className="print-full">
-      {/* Route-scoped landscape page — only present while this print view is
-          mounted, so recipe/prep prints keep the global portrait @page. */}
-      <style>{"@media print { @page { size: letter landscape; margin: 0.4in; } }"}</style>
+    <PrintController className="print-full">
       <div className="no-print mb-4 flex items-center justify-between gap-3">
         <Link href={`/schedule/${isoDate(weekStart)}`} className="text-sm text-blue-600 hover:underline">
           ← Back to editor
         </Link>
         <div className="flex items-center gap-3">
           <span className="text-xs text-zinc-500">Prints as US Letter landscape.</span>
-          <PrintButton label="Print / save PDF" />
         </div>
       </div>
 
+      <PrintSpecHeader venue={venue.name} title="Kitchen Schedule" targetLabel={weekRange} printedAt={new Date()} landscape />
       <div className="schedule-print print-sheet mx-auto max-w-[100rem] rounded-[--sched-radius] border border-[--sched-border] bg-canvas p-6">
         <header className="mb-3 flex flex-wrap items-end justify-between gap-x-4 gap-y-1 border-b border-[--sched-border-strong] pb-2">
           <h1 className="font-display text-2xl leading-none tracking-tight text-ink">Kitchen Schedule</h1>
@@ -138,7 +136,7 @@ export default async function SchedulePrintPage({ params }: { params: Promise<{ 
                     <EmployeeCellContent cook={cook} />
                   </th>
                   {days.map((d) => (
-                    <td key={d.iso} className={cn(cell, "text-center", d.weekend && "sched-fill-weekend")}>
+                    <td key={d.iso} className={cn(cell, "text-center", d.weekend && "sched-fill-weekend", !cellFor(cook.id, d.iso) && "print-write-in")}>
                       <ShiftCellContent shift={cellFor(cook.id, d.iso)} defaultRole={cook.role} variant="print" />
                     </td>
                   ))}
@@ -192,6 +190,6 @@ export default async function SchedulePrintPage({ params }: { params: Promise<{ 
           <PrintFooter weekRange={weekRange} />
         </div>
       </div>
-    </div>
+    </PrintController>
   );
 }

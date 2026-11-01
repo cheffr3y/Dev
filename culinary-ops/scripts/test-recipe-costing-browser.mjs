@@ -48,9 +48,9 @@ try {
   await costs.getByText("Cost / lb", { exact: true }).waitFor();
   assert.match(await costs.innerText(), /\$0\.25/);
   assert.match(await costs.innerText(), /\$0\.05/);
-  await page.getByRole("link", { name: "4 times standard batch", exact: true }).click();
+  await page.getByRole("button", { name: "4 times standard batch", exact: true }).click();
   assert.equal(new URL(page.url()).searchParams.get("costs"), "1");
-  await page.getByText("20 lb", { exact: true }).waitFor();
+  await page.locator(".recipe-specs").getByText("20 lb", { exact: true }).waitFor();
   assert.match(await costs.innerText(), /\$1\.00/);
   assert.match(await costs.innerText(), /\$0\.05/);
   const ingredient = costs.getByRole("row").filter({ hasText: "Roma Tomato" });
@@ -83,7 +83,7 @@ try {
   await openRecipe("Allergen test soup");
   await page.getByRole("link", { name: "Print with Costing", exact: true }).click();
   await costs.getByText("Cost / qt", { exact: true }).waitFor();
-  await page.getByRole("link", { name: "2 times standard batch", exact: true }).click();
+  await page.getByRole("button", { name: "2 times standard batch", exact: true }).click();
   const component = costs.getByRole("row").filter({ hasText: "Allergen test sauce" });
   await component.getByText("2 qt", { exact: true }).waitFor();
   assert.match(await component.innerText(), /2 qt/);

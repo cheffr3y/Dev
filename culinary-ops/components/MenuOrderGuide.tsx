@@ -13,7 +13,7 @@ export function MenuOrderGuide({ plan }: { plan: MenuRolloutPlan }) {
           <td>{line.item.sku || "—"}<span className="block text-zinc-500">{line.item.gcode || "—"}</span></td>
           <td>{line.item.packSize || "—"}</td>
           <td className="font-mono">{line.item.unitCost > 0 ? `${money(line.item.unitCost, 2)} / ${line.item.unit}` : "Unpriced"}</td>
-          <td><span className="inline-block min-w-16 border-b border-[#9A7B4F]" aria-label={`Order quantity for ${line.name}`}>&nbsp;</span></td>
+          <td><span className="print-write-in inline-block min-w-16 border-b border-[#9A7B4F]" aria-label={`Order quantity for ${line.name}`}>&nbsp;</span></td>
         </tr>)}</tbody>
       </table></div>
     </section>)}

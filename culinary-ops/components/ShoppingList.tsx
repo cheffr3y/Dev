@@ -27,8 +27,8 @@ export function ShoppingListBody({ list }: { list: ShoppingList }) {
                 {cat.items.map((it) => (
                   <tr key={it.itemId}>
                     {/* Check-off box for the shopper */}
-                    <td className="w-6 py-2 align-top">
-                      <span className="inline-block h-3.5 w-3.5 border border-zinc-400" />
+                    <td className="print-write-in w-9 py-2 align-top">
+                      <span className="print-check-box whitespace-nowrap font-mono" aria-label="Not pulled">[  ]</span>
                     </td>
                     <td className="py-2 pr-4 align-top text-zinc-900">{it.name}</td>
                     <td className="py-2 text-right align-top font-semibold tabular-nums text-zinc-900">

@@ -1,4 +1,3 @@
-import { RecipePrintSettings } from "@/components/RecipeDossier";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { loadFrozenPacket } from "@/lib/prep-packets";
@@ -7,7 +6,9 @@ import { num } from "@/lib/costing";
 import { convertQty, unitLabel } from "@/lib/units";
 import { buildShoppingList, type ShoppingRecipeNode } from "@/lib/shopping";
 import { PrepCoolingLog } from "@/components/PrepCoolingLog";
-import { PrintButton } from "@/components/PrintButton";
+import { PrintController, PrintQueryFields } from "@/components/PrintController";
+import { PrintSpecHeader, ScaledProductionBanner } from "@/components/PrintSpecHeader";
+import { printScale, type PrintQuery } from "@/lib/print-options";
 import { LocalTime } from "@/components/LocalTime";
 import { ShoppingListBody } from "@/components/ShoppingList";
 import { RecipeReferences } from "@/components/RecipeReferences";
@@ -40,13 +41,14 @@ export default async function CookPacketPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{
+  searchParams: Promise<PrintQuery & {
     weights?: string | string[];
     shopping?: string | string[];
     cooling?: string | string[];
   }>;
 }) {
   const options = await searchParams;
+  const scale = printScale(options.scale);
   const weightInGrams = options.weights === "grams";
   const includeShopping = options.shopping === "yes";
   const includeCooling = options.cooling !== "no";
@@ -72,7 +74,7 @@ export default async function CookPacketPage({
   const byId = buildRecipeTree(allRecipes);
 
   // Only printed lines (those with a lot) belong on the packet.
-  const printed = order.lines.filter((l) => l.lot);
+  const printed = order.lines.filter((l) => l.lot).map(line => ({ ...line, requestedQty: line.requestedQty * scale }));
 
   // Shopping / pull list across the same printed batches, summed and grouped by
   // category, with sub-recipes exploded to raw items.
@@ -128,8 +130,7 @@ export default async function CookPacketPage({
   const madeOn = fmtDate(order.forDate);
 
   return (
-    <div className="recipe-print recipe-packet mx-auto max-w-[8.5in]">
-      <RecipePrintSettings />
+    <PrintController className="recipe-print recipe-packet mx-auto max-w-[8.5in]" allowScale scale={scale} label="Print cook packet">
       <div className="no-print mb-5 flex items-center justify-between gap-3">
         <Link
           href="/prep-orders"
@@ -144,7 +145,6 @@ export default async function CookPacketPage({
           >
             Request details
           </Link>
-          <PrintButton label="Print cook packet" />
         </div>
       </div>
 
@@ -153,6 +153,7 @@ export default async function CookPacketPage({
         method="get"
         className="no-print mb-5 rounded-xl border border-zinc-200 bg-white p-4 text-sm"
       >
+        <PrintQueryFields />
         <div className="flex flex-wrap items-center gap-4">
           <label className="flex items-center gap-2">
             Recipe weights
@@ -199,6 +200,8 @@ export default async function CookPacketPage({
         </p>
       </form>
 
+      <PrintSpecHeader venue={[...new Set(printed.map(line => line.destinationVenue.name))].join(" / ") || "Commissary"} title="Commissary prep packet" targetDate={order.forDate} printedAt={new Date()} />
+      <ScaledProductionBanner scale={scale} />
       {printed.length === 0 ? (
         <div className="rounded-xl border border-dashed border-zinc-300 bg-zinc-50 px-6 py-12 text-center">
           <p className="text-sm font-medium text-zinc-600">
@@ -270,7 +273,7 @@ export default async function CookPacketPage({
           </p>
         </div>
       )}
-    </div>
+    </PrintController>
   );
 }
 
@@ -346,10 +349,10 @@ function PrepProductionRecord({ lines }: { lines: PacketLine[] }) {
   return <div className="recipe-production-record mt-4 break-inside-avoid border border-hairline bg-canvas p-4 text-xs leading-relaxed">
     <h3 className="font-display text-lg italic text-[#2C3E35]">{recipe.name} · <span className="font-mono text-xs not-italic">Lot {lines[0].lot}</span></h3>
     <div className="mt-3 space-y-4">
-      <p>Actual production ______ {unitLabel(recipe.yieldUnit)} · Production waste ______ · Kept at commissary ______</p>
-      {lines.map((line) => <p key={line.id}>Request {line.id.slice(-6)} · {line.destinationVenue.name}: sent ______ {unitLabel(line.requestedUnit)} · Shortage / reason __________________</p>)}
-      <p>Cook sign-off __________________ · Production person-minutes ______ · Dishwasher minutes ______</p>
-      <p>Venue-supplied ingredient / venue / quantity / unit / note __________________________________</p>
+      <p className="print-write-in">Actual production ______ {unitLabel(recipe.yieldUnit)} · Production waste ______ · Kept at commissary ______</p>
+      {lines.map((line) => <p key={line.id} className="print-write-in">Request {line.id.slice(-6)} · {line.destinationVenue.name}: sent ______ {unitLabel(line.requestedUnit)} · Shortage / reason __________________</p>)}
+      <p className="print-write-in">Cook sign-off __________________ · Production person-minutes ______ · Dishwasher minutes ______</p>
+      <p className="print-write-in">Venue-supplied ingredient / venue / quantity / unit / note __________________________________</p>
     </div>
   </div>;
 }
@@ -401,9 +404,9 @@ function PrepPacketLog({
               <td className="border border-zinc-400 p-2 font-semibold">
                 {num(line.requestedQty)} {unitLabel(line.requestedUnit)}
               </td>
-              <td className="border border-zinc-400 p-2">&nbsp;</td>
-              <td className="border border-zinc-400 p-2">&nbsp;</td>
-              <td className="border border-zinc-400 p-2">&nbsp;</td>
+              <td className="print-write-in border border-zinc-400 p-2">&nbsp;</td>
+              <td className="print-write-in border border-zinc-400 p-2">&nbsp;</td>
+              <td className="print-write-in border border-zinc-400 p-2">&nbsp;</td>
             </tr>
           ))}
         </tbody>

@@ -36,7 +36,7 @@ export function BanquetSetupSheet({ plan: rawPlan, menu, event, revision, draft 
       <strong>Setup review needed</strong><ul className="mt-1 list-disc pl-4">{warnings.map(w => <li key={w}>{w}</li>)}</ul>
     </div>}
     {!plan.stations.length && <p className="my-4 text-sm">No setup stations have been planned.</p>}
-    {plan.stations.map(station => <section key={station.id} className="mt-5">
+    {plan.stations.map(station => <section key={station.id} className="print-station-group mt-5">
       <h3 className="setup-station-heading bg-[#eaeee6] px-3 py-2 font-semibold">{station.name}{station.serviceTime && <span className="ml-3 text-sm font-normal">{station.serviceTime}</span>}</h3>
       {station.notes && <p className="my-2 whitespace-pre-wrap text-sm">{station.notes}</p>}
       <table className="setup-table">
@@ -65,14 +65,14 @@ export function BanquetSetupSheet({ plan: rawPlan, menu, event, revision, draft 
           return rows.length ? [
             <tr key={category}><th colSpan={4} className="bg-[#f4f1ea] text-left">{CATEGORY_LABELS[category]}</th></tr>,
             ...rows.map(p => <tr key={p.key}>
-              <td><span className="setup-check">{plan.packed[p.key] === p.signature ? "✓" : ""}</span></td>
+              <td className="print-write-in"><span className="setup-check">{plan.packed[p.key] === p.signature ? "✓" : "[  ]"}</span></td>
               <td>{p.name}</td><td className="font-semibold">{p.qty}</td><td>{p.allocations.join("; ")}</td>
             </tr>),
           ] : [];
         })}</tbody>
       </table>
       {!pulls.length && <p className="my-3 text-sm">No equipment quantities entered.</p>}
-      <p className="mt-4 text-xs">Pulled by: ____________________ &nbsp; Verified by: ____________________ &nbsp; Time: __________</p>
+      <p className="print-write-in mt-4 text-xs">Pulled by: ____________________ &nbsp; Verified by: ____________________ &nbsp; Time: __________</p>
     </section>
   </article>;
 }

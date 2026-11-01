@@ -1,13 +1,13 @@
 import { AtelierHeader } from "@/components/AtelierHeader";
 import { BanquetSetupPacket } from "@/components/BanquetSetupSheet";
-import { RecipePrintSettings } from "@/components/RecipeDossier";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { num, componentBatchFactor } from "@/lib/costing";
 import { unitLabel } from "@/lib/units";
-import { PrintButton } from "@/components/PrintButton";
+import { PrintController } from "@/components/PrintController";
+import { PrintSpecHeader } from "@/components/PrintSpecHeader";
 import { LocalTime } from "@/components/LocalTime";
 import { RecipeReferences } from "@/components/RecipeReferences";
 import { buildRecipeReferences, type RecipeReferencePlan } from "@/lib/recipe-references";
@@ -63,8 +63,7 @@ export default async function BanquetCookPacketPage({ params }: { params: Promis
   );
 
   return (
-    <div className="recipe-print recipe-packet atelier-packet mx-auto max-w-[8.5in]">
-      <RecipePrintSettings />
+    <PrintController className="recipe-print recipe-packet atelier-packet mx-auto max-w-[8.5in]" label="Print cook packet">
       <div className="no-print mb-5 flex items-center justify-between gap-3">
         <Link href={`/banquets/${banquet.id}`} className="text-sm text-blue-600 hover:underline">
           ← Back to banquet
@@ -74,10 +73,10 @@ export default async function BanquetCookPacketPage({ params }: { params: Promis
           <Link href={`/banquets/${banquet.id}/prep-sheet`} className="text-sm text-blue-600 hover:underline">
             Prep sheet
           </Link>
-          <PrintButton label="Print cook packet" />
         </div>
       </div>
 
+      <PrintSpecHeader venue={banquet.venue.name} title={banquet.name} targetDate={banquet.date} printedAt={new Date()} />
       <BanquetSetupPacket banquet={banquet} menu={banquet.menuItems.map(m => ({
         id: m.id, name: m.recipe.name, orderedQty: m.orderedQty, unit: m.unit,
       }))} />
@@ -115,7 +114,7 @@ export default async function BanquetCookPacketPage({ params }: { params: Promis
           </p>
         </div>
       )}
-    </div>
+    </PrintController>
   );
 }
 

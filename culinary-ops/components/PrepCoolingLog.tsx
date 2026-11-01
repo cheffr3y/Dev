@@ -41,7 +41,7 @@ export function PrepCoolingLog({ lines, madeOn }: { lines: CoolingLine[]; madeOn
               <p className="font-mono font-semibold">Lot {lot} · {madeOn}</p>
             </div>
             <p className="mt-1">Planned prep: {batch.map((line) => `${num(line.requestedQty)} ${unitLabel(line.requestedUnit)} → ${line.destinationVenue.name}`).join(" · ")}</p>
-            <p className="mt-4">Cooling method / equipment: __________________________________________________</p>
+            <p className="print-write-in mt-4">Cooling method / equipment: __________________________________________________</p>
             <table className="mt-3 w-full table-fixed border-collapse text-left text-[11px]">
               <thead>
                 <tr className="bg-zinc-100">
@@ -54,16 +54,16 @@ export function PrepCoolingLog({ lines, madeOn }: { lines: CoolingLine[]; madeOn
               <tbody>
                 {[0, 1].map((row) => (
                   <tr key={row} className="align-top">
-                    <td className="border border-zinc-400 p-2 leading-7">Pan: __________<br />Qty: __________<br />Name: _________</td>
-                    <td className="border border-zinc-400 p-2 leading-7">Date: ___________<br />Time: ___________<br />°F / initials: _______</td>
+                    <td className="print-write-in border border-zinc-400 p-2 leading-7">Pan: __________<br />Qty: __________<br />Name: _________</td>
+                    <td className="print-write-in border border-zinc-400 p-2 leading-7">Date: ___________<br />Time: ___________<br />°F / initials: _______</td>
                     {[1, 2].map((stage) => (
-                      <td key={stage} className="border border-zinc-400 p-2 leading-7">Due date/time: _____<br />Actual date/time: ____<br />°F / initials: _______</td>
+                      <td key={stage} className="print-write-in border border-zinc-400 p-2 leading-7">Due date/time: _____<br />Actual date/time: ____<br />°F / initials: _______</td>
                     ))}
                   </tr>
                 ))}
               </tbody>
             </table>
-            <p className="mt-3">Notes / corrective action / N/A reason: ______________________________________________</p>
+            <p className="print-write-in mt-3">Notes / corrective action / N/A reason: ______________________________________________</p>
             <div className="mt-6 border-b border-zinc-400" />
           </article>
         ))}

@@ -812,3 +812,131 @@ body {
   .setup-station-heading, .setup-pull-section > h3 { break-after: avoid; }
   .packet-setup-section { break-after: page; }
 }
+
+/* Shared clipboard controller. Its controls stay dark while the document
+   preview and browser print use the paper palette. */
+.print-document { padding-bottom: 8rem; }
+.print-controller {
+  position: fixed;
+  z-index: 40;
+  left: 50%;
+  bottom: 1rem;
+  transform: translateX(-50%);
+  width: min(64rem, calc(100vw - 2rem));
+  max-width: calc(100vw - 2rem);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  padding: 0.75rem;
+  border: 1px solid #42526a;
+  border-radius: 0.75rem;
+  background: #101827;
+  color: #f1f5f9;
+  box-shadow: 0 12px 40px #0006;
+  font: 12px/1.35 var(--font-sans-fallback), sans-serif;
+  color-scheme: dark;
+}
+.print-controller fieldset { margin: 0; padding: 3px; border: 1px solid #42526a; border-radius: 6px; }
+.print-control-group { display: flex; gap: 2px; }
+.print-controller button { cursor: pointer; white-space: nowrap; }
+.print-control-group button, .print-scale-form button { padding: 6px 8px; border-radius: 4px; }
+.print-control-group button[aria-pressed="true"] { background: #33465f; color: #fff; }
+.print-control-group button:hover, .print-scale-form button:hover { background: #33465f; }
+.print-controller button:focus-visible, .print-controller input:focus-visible { outline: 2px solid #93c5fd; outline-offset: 2px; }
+.print-controller button:disabled, .print-controller fieldset:disabled { opacity: 0.55; cursor: wait; }
+.print-scale-form { display: flex; align-items: center; gap: 6px; }
+.print-scale-form input { width: 4.5rem; padding: 5px; border: 1px solid #64748b; border-radius: 4px; background: #1c293c; color: #fff; font-variant-numeric: tabular-nums; }
+.print-controller .print-controller-submit { border-radius: 6px; background: #2563eb; border-color: #3b82f6; color: #fff; padding: 8px 12px; font-size: 12px; }
+.print-controller-hint { flex-basis: 100%; margin: 0; text-align: center; color: #cbd5e1; font-size: 10px; }
+.print-spec-header { margin-bottom: 14px; padding: 12px 0; border-block: 2px solid #1a1a1a; color: #111; background: #fff; break-inside: avoid; break-after: avoid; }
+.print-spec-identity { display: flex; align-items: baseline; flex-wrap: wrap; gap: 10px; }
+.print-venue-badge { border: 1px solid #555; padding: 3px 7px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+.print-spec-title { margin: 0; font: 600 16px/1.25 var(--font-sans-fallback), sans-serif; }
+.print-spec-meta { display: flex; flex-wrap: wrap; gap: 6px 20px; margin-top: 8px; font: 10px/1.4 var(--font-sans-fallback), sans-serif; }
+.print-spec-meta div { display: flex; gap: 5px; }
+.print-spec-meta dt { color: #555; }
+.print-scaled-banner { margin: 0 0 8px; padding: 8px; border: 2px solid #111; background: #fff; color: #000; font: 700 11px/1.4 var(--font-sans-fallback), sans-serif; break-inside: avoid; break-after: avoid; }
+.print-document .setup-check { width: auto; min-width: 28px; min-height: 28px; height: auto; border: 0; white-space: nowrap; font-family: monospace; }
+.print-check-box { font-size: 12px; }
+@media (max-width: 640px) {
+  .print-controller { bottom: 0.5rem; gap: 6px; padding: 8px; }
+  .print-controller-hint { max-width: 330px; }
+  .print-document { padding-bottom: 13rem; }
+}
+@media print {
+  body:has(.print-document), body:has(.print-document) .min-h-screen { min-height: 0 !important; }
+  body:has(.print-document) .min-h-screen, body:has(.print-document) .flex:has(> main.print-full) { display: block; }
+  .print-document { padding-bottom: 0 !important; width: 100%; max-width: none; color: #000; background: #fff; }
+  /* The shared header uses part of the cover page. A full-page minimum on
+     the old cover would otherwise leave a page containing only its footer. */
+  .print-document .atelier-cover { min-height: 0; }
+  .print-document :where(h1, h2, h3, h4, p, li, dt, dd, th, td, span) { color: #000; }
+  .print-document .recipe-accent { background: #000; }
+  .print-document .recipe-hero > span,
+  .print-document .recipe-allergen,
+  .print-document .recipe-critical,
+  .print-document .recipe-storage,
+  .print-document .recipe-cue,
+  .print-document .recipe-scaling-warning,
+  .print-document .setup-station-heading,
+  .print-document thead th { background: #f4f4f5; border-color: #bbb; color: #000; }
+  .print-document .print-controller { display: none !important; }
+  .print-document .print-spec-header { margin-bottom: 10px; padding-block: 8px; }
+  .print-document .print-spec-title { font-size: 12pt; }
+  .print-document .print-spec-meta { font-size: 7pt; }
+  .print-document .print-scaled-banner { font-size: 8pt; }
+  .print-document table { width: 100%; border-collapse: collapse; }
+  .print-document thead { display: table-header-group; position: static; }
+  .print-document tr { break-inside: avoid; page-break-inside: avoid; }
+  .print-document tbody tr:nth-child(even) > *,
+  .print-document .recipe-stage li:nth-child(even) {
+    background-color: #f4f4f5;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .print-document .print-write-in { min-height: 28px !important; }
+  .print-document td.print-write-in, .print-document th.print-write-in,
+  .print-document td:has(> .print-write-in) { height: 28px; }
+  .print-document .recipe-dossier,
+  .print-document .print-station-group,
+  .print-document .recipe-stage,
+  .print-document .recipe-production-record {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  /* A card longer than a page can still paginate naturally; its individual
+     ingredients and method steps remain indivisible. */
+  .print-document .recipe-dossier { background: #fff; }
+  .print-document .recipe-hero, .print-document .print-spec-header,
+  .print-document h1, .print-document h2, .print-document h3 { break-after: avoid; }
+
+  /* Compact spacing never reduces handwritten cells or changes quantities. */
+  .print-document.print-compact .recipe-dossier { font-size: 7.5pt; line-height: 1.2; }
+  .print-document.print-compact .recipe-sheet-body { padding-top: 6px; }
+  .print-document.print-compact .recipe-hero { padding-block: 6px; }
+  .print-document.print-compact .recipe-title { font-size: 24pt; }
+  .print-document.print-compact .recipe-specs { padding-block: 5px; }
+  .print-document.print-compact .recipe-workspace { margin-top: 7px; }
+  .print-document.print-compact .recipe-section-title { font-size: 13pt; padding-bottom: 4px; }
+  .print-document.print-compact .recipe-ingredient { padding-block: 1px; font-size: 7pt; line-height: 1.15; gap: 6px; }
+  .print-document.print-compact .recipe-ingredient > span { font-size: 9px; }
+  .print-document.print-compact .recipe-prep-note { font-size: 8px; line-height: 1.15; }
+  .print-document.print-compact .recipe-stage { margin-top: 3px; }
+  .print-document.print-compact .recipe-method { margin-top: 8px; row-gap: 6px; }
+  .print-document.print-compact .recipe-step-number { font-size: 18pt; }
+  .print-document.print-compact .recipe-step-prose { font-size: 9.5px; line-height: 1.2; }
+  .print-document.print-compact .recipe-cue { font-size: 6.5pt; padding: 1px 4px; }
+  .print-document.print-compact .recipe-critical,
+  .print-document.print-compact .recipe-storage { margin-top: 8px; padding: 6px; }
+  .print-document.print-compact .recipe-footer { padding-top: 6px; }
+  .print-document.print-compact .print-spec-header { padding-block: 6px; margin-bottom: 7px; }
+  .print-document.print-compact .print-spec-title { font-size: 10pt; }
+  .print-document.print-compact .print-scaled-banner { padding: 6px; margin-bottom: 6px; }
+  .print-document.print-compact .recipe-context { margin-top: 6px; font-size: 9px; line-height: 1.15; }
+  .print-document.print-compact table { font-size: 85%; }
+  .print-document.print-compact th, .print-document.print-compact td { padding-top: 3px; padding-bottom: 3px; }
+  .print-document.print-compact .recipe-production-record { margin-top: 8px; padding: 8px; }
+  .print-document.print-compact .recipe-production-record > div { row-gap: 6px; }
+}

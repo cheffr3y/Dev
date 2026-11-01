@@ -5,6 +5,7 @@ import { ALLERGENS } from "@/lib/allergens";
 import { splitStep } from "@/lib/method";
 import { MethodCues } from "./MethodCues";
 import { groupMiseLines } from "@/lib/recipe-groups";
+import { PrintPageRules, ScaledProductionBanner } from "./PrintSpecHeader";
 
 // Optional metadata supports immutable packets captured before this design.
 export type DossierRecipe = {
@@ -27,17 +28,7 @@ export type DossierRecipe = {
 };
 
 export function RecipePrintSettings() {
-  return <style>{`@media print {
-    @page {
-      size: letter portrait;
-      margin: 0.4in 0.4in 0.55in;
-      @bottom-right {
-        content: "Page " counter(page) "/" counter(pages);
-        font: 8pt Arial, sans-serif;
-        color: #57554f;
-      }
-    }
-  }`}</style>;
+  return <PrintPageRules />;
 }
 
 export type MiseLine = {
@@ -92,6 +83,7 @@ export function RecipeDossier({
   const shelfLife = recipe.shelfLife || (recipe.holdLifeDays != null ? `${recipe.holdLifeDays} Days` : null);
   return (
     <article id={id} className={`print-sheet recipe-dossier flex flex-col border border-hairline bg-canvas shadow-sm ${supporting ? "recipe-dossier-supporting" : ""} ${className}`} aria-labelledby={titleId}>
+      <ScaledProductionBanner scale={scale} />
       <div className="recipe-accent h-1 shrink-0 bg-[#2C3E35]" />
       <div className="recipe-sheet-body flex flex-1 flex-col">
         <div className="recipe-masthead flex justify-between gap-3 border-b border-hairline py-2 font-mono text-[8px] uppercase tracking-wider text-zinc-500">

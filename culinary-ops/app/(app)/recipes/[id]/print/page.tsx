@@ -6,21 +6,22 @@ import { effectiveAllergens } from "@/lib/allergens";
 import { buildPriceGapMap } from "@/lib/costing";
 import { CostAuditStamp } from "@/components/CostAudit";
 import { recipeCostSheet } from "@/lib/recipe-cost-sheet";
-import { PrintButton } from "@/components/PrintButton";
-import { RecipeDossier, RecipeDossierWorkspace, RecipePrintSettings, type MiseLine } from "@/components/RecipeDossier";
+import { PrintController, PrintOptionLink } from "@/components/PrintController";
+import { PrintSpecHeader } from "@/components/PrintSpecHeader";
+import { printScale, printOptionHref, type PrintQuery } from "@/lib/print-options";
+import { RecipeDossier, RecipeDossierWorkspace, type MiseLine } from "@/components/RecipeDossier";
 import { RecipeCosting } from "@/components/RecipeCosting";
 
-const BATCH_OPTIONS = [1, 2, 4] as const;
 export default async function RecipePrintPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ scale?: string | string[]; costs?: string | string[] }>;
+  searchParams: Promise<PrintQuery & { costs?: string | string[] }>;
 }) {
-  const [{ id }, { scale: requestedScale, costs: requestedCosts }] = await Promise.all([params, searchParams]);
+  const [{ id }, query] = await Promise.all([params, searchParams]);
   await requireUser();
-  const showCosts = requestedCosts === "1";
+  const showCosts = query.costs === "1";
 
   const [recipe, allRecipes] = await Promise.all([
     prisma.recipe.findUnique({
@@ -41,7 +42,7 @@ export default async function RecipePrintPage({
   ]);
   if (!recipe) notFound();
 
-  const scale = requestedScale === "2" ? 2 : requestedScale === "4" ? 4 : 1;
+  const scale = printScale(query.scale);
   const byId = new Map(allRecipes.map((r) => [r.id, r]));
   const allergenKeys = effectiveAllergens(recipe.id, byId);
   const costs = showCosts ? recipeCostSheet(recipe, allRecipes, scale) : null;
@@ -59,8 +60,7 @@ export default async function RecipePrintPage({
   ];
 
   return (
-    <div className="recipe-print mx-auto max-w-[8.5in] text-ink">
-      <RecipePrintSettings />
+    <PrintController className="recipe-print mx-auto max-w-[8.5in] text-ink" allowScale scale={scale} label={showCosts ? "Print recipe with costing" : "Print recipe dossier"}>
 
       <div className="no-print mb-5 flex flex-wrap items-center justify-between gap-3">
         <Link href={`/recipes/${recipe.id}`} className="text-sm text-zinc-600 hover:text-ink hover:underline">
@@ -69,33 +69,21 @@ export default async function RecipePrintPage({
         <div className="flex flex-wrap items-center gap-3">
           <nav aria-label="Recipe print content" className="flex items-center gap-1 rounded-full border border-hairline bg-canvas p-1">
             {[{ label: "Kitchen copy", costs: false }, { label: "With costing", costs: true }].map((option) => (
-              <Link
+              <PrintOptionLink
                 key={option.label}
-                href={`/recipes/${recipe.id}/print?scale=${scale}${option.costs ? "&costs=1" : ""}`}
+                href={printOptionHref(`/recipes/${recipe.id}/print?scale=${scale}${option.costs ? "&costs=1" : ""}`, query.density)}
                 aria-current={option.costs === showCosts ? "page" : undefined}
                 className={`rounded-full px-3 py-1 text-xs transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold ${option.costs === showCosts ? "bg-[#2C3E35] text-white" : "text-zinc-600 hover:bg-cream hover:text-ink"}`}
               >
                 {option.label}
-              </Link>
+              </PrintOptionLink>
             ))}
           </nav>
-          <nav aria-label="Recipe batch scale" className="flex items-center gap-1 rounded-full border border-hairline bg-canvas p-1">
-            {BATCH_OPTIONS.map((batch) => (
-              <Link
-                key={batch}
-                href={`/recipes/${recipe.id}/print?scale=${batch}${showCosts ? "&costs=1" : ""}`}
-                aria-label={`${batch} times standard batch`}
-                aria-current={batch === scale ? "page" : undefined}
-                className={`rounded-full px-3 py-1 font-mono text-xs tabular-nums transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold ${batch === scale ? "bg-[#2C3E35] text-white" : "text-zinc-600 hover:bg-cream hover:text-ink"}`}
-              >
-                {batch}×
-              </Link>
-            ))}
-          </nav>
-          <PrintButton label={showCosts ? "Print recipe with costing" : "Print recipe dossier"} />
+
         </div>
       </div>
 
+      <PrintSpecHeader venue="Company-wide" title={recipe.name} targetLabel={scale === 1 ? "Standard recipe" : "Scaled production copy"} printedAt={new Date()} />
       <div className="recipe-sheet-scroll">
         <RecipeDossier recipe={recipe} scale={scale} allergenKeys={allergenKeys}
           lines={lines} titleLevel={1} footerNote={costs && <CostAuditStamp unpriced={gap?.unpriced.size ?? 0} stale={gap?.stale.size ?? 0} />}>
@@ -103,6 +91,6 @@ export default async function RecipePrintPage({
           {costs && <RecipeCosting costs={costs} />}
         </RecipeDossier>
       </div>
-    </div>
+    </PrintController>
   );
 }

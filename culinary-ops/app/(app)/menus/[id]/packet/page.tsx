@@ -9,13 +9,14 @@ import { unitLabel } from "@/lib/units";
 import { AtelierHeader } from "@/components/AtelierHeader";
 import { CostAuditStamp, CostIntegrityBanner } from "@/components/CostAudit";
 import { MenuOrderGuide } from "@/components/MenuOrderGuide";
-import { PrintButton } from "@/components/PrintButton";
-import { RecipePrintSettings } from "@/components/RecipeDossier";
+import { PrintController, PrintOptionLink } from "@/components/PrintController";
+import { PrintSpecHeader } from "@/components/PrintSpecHeader";
+import { printOptionHref, type PrintQuery } from "@/lib/print-options";
 import { MenuRecipeCard } from "@/components/MenuRecipeCard";
 import { LocalTime } from "@/components/LocalTime";
 
 export default async function MenuPacket({ params, searchParams }: {
-  params: Promise<{ id: string }>; searchParams: Promise<{ mode?: string | string[] }>;
+  params: Promise<{ id: string }>; searchParams: Promise<PrintQuery & { mode?: string | string[] }>;
 }) {
   await requireUser();
   const [{ id }, query] = await Promise.all([params, searchParams]);
@@ -32,9 +33,9 @@ export default async function MenuPacket({ params, searchParams }: {
       context={`${context} · ${rollout.name}`} />
   );
   const header = (kicker: string) => <AtelierHeader title={rollout.name} venue={rollout.venue?.name ?? "Company-wide"} guests={rollout.expectedCovers} kicker={kicker} runTime="Opening par / launch preparation" />;
-  return <div className="atelier-packet mx-auto max-w-[8.5in] text-ink">
-    <RecipePrintSettings />
-    <div className="no-print mb-5 space-y-3"><div className="flex justify-between gap-3"><Link href={`/menus/${id}`} className="text-sm text-gold underline">← Rollout workspace</Link><PrintButton label="Print launch packet" /></div><nav aria-label="Launch packet sections" className="flex flex-wrap gap-2">{PACKET_MODES.map(option => <Link key={option.mode} href={`/menus/${id}/packet?mode=${option.mode}`} aria-current={mode === option.mode ? "page" : undefined} className={`rounded-full border border-hairline px-3 py-2 text-xs ${mode === option.mode ? "bg-[#2C3E35] text-white" : "bg-canvas text-zinc-600"}`}>{option.label}</Link>)}</nav></div>
+  return <PrintController className="atelier-packet mx-auto max-w-[8.5in] text-ink" label="Print launch packet">
+    <div className="no-print mb-5 space-y-3"><div className="flex justify-between gap-3"><Link href={`/menus/${id}`} className="text-sm text-gold underline">← Rollout workspace</Link></div><nav aria-label="Launch packet sections" className="flex flex-wrap gap-2">{PACKET_MODES.map(option => <PrintOptionLink key={option.mode} href={printOptionHref(`/menus/${id}/packet?mode=${option.mode}`, query.density)} aria-current={mode === option.mode ? "page" : undefined} className={`rounded-full border border-hairline px-3 py-2 text-xs ${mode === option.mode ? "bg-[#2C3E35] text-white" : "bg-canvas text-zinc-600"}`}>{option.label}</PrintOptionLink>)}</nav></div>
+    <PrintSpecHeader venue={rollout.venue?.name ?? "Company-wide"} title={rollout.name} printedAt={printedAt} />
     {show("costing") && <CostIntegrityBanner unpriced={plan.unpricedNames} stale={plan.staleNames} />}
     <section className="atelier-cover atelier-paper print-sheet">
       {header("Menu Rollout & Launch Book")}
@@ -77,5 +78,5 @@ export default async function MenuPacket({ params, searchParams }: {
       {plan.sections.flatMap(section => section.rows.map(row => renderRecipe(byId.get(row.recipeId)!, "plated", `Part A · ${section.name} · Plated Menu Builds`, `dish-${row.id}`, row.parBatches)))}
       {plan.dependencies.map(dependency => renderRecipe(byId.get(dependency.recipe.id)!, "foundation", `Part B · Foundational Sub-Recipes & Mise en Place · Used in: ${dependency.usedIn.join(", ")}`, `sub-${dependency.recipe.id}`))}
     </div>}
-  </div>;
+  </PrintController>;
 }
