@@ -19,6 +19,7 @@ export PREP_DISPOSABLE_DB=1
 node node_modules/prisma/build/index.js migrate resolve --applied 20260923000000_existing_schema
 "$PG_BIN/psql" "postgresql://prep_test@127.0.0.1:$PREP_TEST_PORT/prep_workflow_test" -v ON_ERROR_STOP=1 -q -f scripts/fixtures/prep-legacy.sql
 node node_modules/prisma/build/index.js migrate deploy
+node --import tsx --test lib/database-pool.integration.test.ts
 node --import tsx --test lib/prep-workflow.integration.test.ts
 node --import tsx --test lib/event-planning.integration.test.ts
 node --import tsx --test lib/operating-calendar.integration.test.ts
