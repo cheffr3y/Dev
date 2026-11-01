@@ -20,7 +20,7 @@ type IconKey =
   | "venues"
   | "users";
 
-type NavItem = { href: string; label: string; icon: IconKey; adminOnly?: boolean };
+type NavItem = { href: string; label: string; icon: IconKey; adminOnly?: boolean; managerOnly?: boolean };
 type NavSection = { heading: string; items: NavItem[] };
 
 const SECTIONS: NavSection[] = [
@@ -47,6 +47,7 @@ const SECTIONS: NavSection[] = [
   {
     heading: "Purchasing & Accounting",
     items: [
+      { href: "/operating-calendar", label: "Monthly Tracker", icon: "reports", managerOnly: true },
       { href: "/items", label: "Items", icon: "catalog" },
       { href: "/vendors", label: "Vendors", icon: "vendors" },
       { href: "/order-guides", label: "Order Guides", icon: "orders" },
@@ -172,7 +173,7 @@ export function Sidebar({ role, collapsed = false, onNavigate }: { role: string;
   const pathname = usePathname();
   const sections = SECTIONS.map(section => ({
     ...section,
-    items: section.items.filter(item => !item.adminOnly || role === "ADMIN"),
+    items: section.items.filter(item => (!item.adminOnly || role === "ADMIN") && (!item.managerOnly || role === "ADMIN" || role === "MANAGER")),
   }));
   if (role === "ADMIN" || role === "MANAGER") {
     const items = role === "ADMIN" ? ADMIN_SECTION.items : ADMIN_SECTION.items.filter((i) => i.href === "/venues");

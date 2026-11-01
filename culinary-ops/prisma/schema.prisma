@@ -137,6 +137,9 @@ model Venue {
   dayNotes           DayNote[] // DEPRECATED — superseded by dayEvents; kept for backfill/rollback
   dayEvents          DayEvent[] // per-day schedule events (deliveries, off-sites, VIPs…)
   scheduleNotes      ScheduleNote[] // per-week posted announcements
+  operatingDays      OperatingDay[]
+  foodExpenses       OperatingFoodExpense[]
+  invoicePurchaseLines InvoicePurchaseLine[]
   stockTransfers     StockTransfer[]
   suppliedExclusions TransferExclusion[] @relation("SupplyingVenue")
 }
@@ -155,10 +158,12 @@ model Vendor {
   orderGuides OrderGuide[]
   quotes VendorQuote[]
   invoiceDocuments InvoiceDocument[]
+  purchaseLines InvoicePurchaseLine[]
 }
 
 // Master catalog item / ingredient / purchasable product.
 model Item {
+  purchaseLines InvoicePurchaseLine[]
   id             String    @id @default(cuid())
   name           String
   category       String    @default("Other")
@@ -1185,6 +1190,9 @@ model VendorQuote {
 
 // Readable compact document archive, independent of AI extraction and pricing.
 model InvoiceDocument {
+  foodExpense OperatingFoodExpense?
+  purchaseLines InvoicePurchaseLine[]
+  lineRevision Int @default(0)
   id            String @id @default(cuid())
   fileHash      String @unique
   filename      String
@@ -1209,4 +1217,75 @@ model BanquetBaseline {
   snapshot Json
   createdAt DateTime @default(now())
   createdBy String
+}
+
+// Daily management figures. These never post to prep transfers or inventory.
+model OperatingDay {
+  id String @id @default(cuid())
+  venueId String
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Restrict)
+  businessDate DateTime
+  grossSalesCents Int?
+  laborCents Int?
+  foodReviewed Boolean @default(false)
+  notes String @default("")
+  revision Int @default(0)
+  history Json @default("[]")
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([venueId, businessDate])
+}
+
+model OperatingFoodExpense {
+  id String @id
+  venueId String
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Restrict)
+  invoiceDate DateTime
+  amountCents Int
+  description String
+  invoiceDocumentId String? @unique
+  invoiceDocument InvoiceDocument? @relation(fields: [invoiceDocumentId], references: [id], onDelete: Restrict)
+  // Same supplier + invoice reference cannot be counted through two documents.
+  invoiceReferenceKey String? @unique
+  invoiceLineRevision Int?
+  voided Boolean @default(false)
+  revision Int @default(0)
+  history Json @default("[]")
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([venueId, invoiceDate])
+}
+
+// Reviewed invoice observations, separate from the current catalog price.
+model InvoicePurchaseLine {
+  id String @id
+  invoiceDocumentId String
+  invoiceDocument InvoiceDocument @relation(fields: [invoiceDocumentId], references: [id], onDelete: Restrict)
+  itemId String?
+  item Item? @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  itemName String?
+  vendorId String
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  venueId String
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Restrict)
+  invoiceDate DateTime
+  description String
+  quantity Float
+  purchaseUnit String
+  packQty Float
+  packUnit String
+  amountCents Int
+  normalizedUnit String?
+  normalizedUnitCost Float?
+  countsAsFood Boolean @default(true)
+  voided Boolean @default(false)
+  revision Int @default(0)
+  history Json @default("[]")
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([itemId, invoiceDate])
+  @@index([invoiceDocumentId])
 }

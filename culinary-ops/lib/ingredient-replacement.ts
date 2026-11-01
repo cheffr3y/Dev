@@ -3,7 +3,7 @@ import { Prisma, type PrismaClient } from "@prisma/client";
 import { packageBasisConflict, planIngredientReplacement } from "./ingredient-cleanup";
 import { parseAllergens, serializeAllergens } from "./allergens";
 
-export const ingredientUsageSelect = { recipeItems: true, inventoryItems: true, orderGuideLines: true, festivalOnHand: true } as const;
+export const ingredientUsageSelect = { recipeItems: true, inventoryItems: true, orderGuideLines: true, festivalOnHand: true, purchaseLines: true } as const;
 
 export async function ingredientReplacementPreview(tx: Prisma.TransactionClient, sourceId: string, targetId: string) {
   if (!sourceId || !targetId || sourceId === targetId) throw new Error("Choose two different ingredients.");
@@ -15,7 +15,7 @@ export async function ingredientReplacementPreview(tx: Prisma.TransactionClient,
   if (!source || !target) throw new Error("An ingredient no longer exists. Refresh the ingredient list.");
   const plan = planIngredientReplacement(source.unit, target.unit, lines.filter(line => line.itemId === sourceId), lines.filter(line => line.itemId === targetId));
   if (packageBasisConflict(source, target)) for (const line of plan) line.error = "Package measurements differ. Review the recipe quantities before replacing cases, bags or other package units.";
-  const otherUses = source._count.inventoryItems + source._count.orderGuideLines + source._count.festivalOnHand;
+  const otherUses = source._count.inventoryItems + source._count.orderGuideLines + source._count.festivalOnHand + source._count.purchaseLines;
   const fingerprint = createHash("sha256").update(JSON.stringify({ source, target, lines })).digest("hex");
   return { source, target, plan, otherUses, fingerprint };
 }
@@ -32,7 +32,7 @@ export async function replaceIngredientRecipes(db: PrismaClient, input: {
     if (preview.fingerprint !== input.fingerprint) throw new Error("Ingredient usage changed. Review the refreshed comparison before applying.");
     const conflict = preview.plan.find(line => line.error);
     if (conflict) throw new Error(`${conflict.source.recipe.name}: ${conflict.error}`);
-    if (input.removeSource && preview.otherUses) throw new Error("Inventory, order guides or festival counts still use this ingredient. Replace recipes only, or resolve those uses before consolidating.");
+    if (input.removeSource && preview.otherUses) throw new Error("Inventory, order guides, festival counts or invoice history still use this ingredient. Replace recipes only, or resolve those uses before consolidating.");
     for (const line of preview.plan) {
       if (line.target) {
         await tx.recipeItem.update({ where: { id: line.target.id }, data: { quantity: line.quantity, unit: line.unit, note: line.note } });

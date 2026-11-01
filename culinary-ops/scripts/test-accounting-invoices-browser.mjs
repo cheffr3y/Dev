@@ -14,7 +14,7 @@ try{
  await page.waitForTimeout(300);assert.equal((await db.accountingMapping.findUniqueOrThrow({where:{kind_sourceKey:{kind:"CATEGORY",sourceKey:"Dairy"}}})).code,"FOOD-DAIRY");
  const xlsx=await page.request.get(`${base}/prep-orders/report/export-xlsx?from=2026-12-01&to=2026-12-31`);assert.equal(xlsx.status(),200);for(const name of ["Executive Summary","Inter-Venue Transfers","Line-Item Detail"])assert.ok((await xlsx.body()).includes(Buffer.from(name)));
  const csv=await page.request.get(`${base}/prep-orders/report/export?from=2026-12-01&to=2026-12-31&table=Inter-Venue%20Transfers`);assert.ok((await csv.text()).startsWith('"Record ID","Date"'));
- const beforeBatches=await db.productionBatch.count(),beforePrices=JSON.stringify(await db.item.findMany({select:{id:true,unitCost:true},orderBy:{id:"asc"}}));
+ const beforeDocuments=await db.invoiceDocument.count(),beforeBatches=await db.productionBatch.count(),beforePrices=JSON.stringify(await db.item.findMany({select:{id:true,unitCost:true},orderBy:{id:"asc"}}));
  await page.goto(`${base}/vendors/invoices`);
  assert.equal(await page.getByText(/OPENAI_API_KEY/).count(),0);assert.equal(await page.getByRole("button",{name:"Preview selected price changes",exact:true}).count(),0);
  await page.getByLabel("Invoice PDF or photo",{exact:true}).setInputFiles(`${output}/invoice-scan.pdf`);await page.getByRole("button",{name:"Store invoice",exact:true}).click();await page.getByRole("status").filter({hasText:"Stored"}).waitFor();
@@ -23,7 +23,7 @@ try{
  await page.screenshot({path:`${output}/desktop-archive.png`,fullPage:true});
  const download=await page.request.get(`${base}/api/invoices/file?id=${pdf.id}&download=1`);assert.equal(download.status(),200);assert.match(download.headers()["content-disposition"],/^attachment/);assert.equal((await download.body()).length,pdf.storedBytes);
  // Identical upload returns the same stored document even with another filename.
- const duplicate=await page.request.post(`${base}/api/invoices`,{multipart:{file:{name:"duplicate.pdf",mimeType:"application/pdf",buffer:await readFile(`${output}/invoice-scan.pdf`)}}});assert.equal((await duplicate.json()).id,pdf.id);assert.equal(await db.invoiceDocument.count(),1);
+ const duplicate=await page.request.post(`${base}/api/invoices`,{multipart:{file:{name:"duplicate.pdf",mimeType:"application/pdf",buffer:await readFile(`${output}/invoice-scan.pdf`)}}});assert.equal((await duplicate.json()).id,pdf.id);assert.equal(await db.invoiceDocument.count(),beforeDocuments+1);
  const imageUpload=await page.request.post(`${base}/api/invoices`,{multipart:{file:{name:"invoice-photo.jpg",mimeType:"image/jpeg",buffer:await readFile(`${output}/invoice-photo.jpg`)}}});assert.equal(imageUpload.status(),200);const photo=await db.invoiceDocument.findUniqueOrThrow({where:{id:(await imageUpload.json()).id}});assert.equal(photo.mime,"image/jpeg");assert.ok(photo.storedBytes<photo.originalBytes);
  const fake=await page.request.post(`${base}/api/invoices`,{multipart:{file:{name:"bad.pdf",mimeType:"application/pdf",buffer:Buffer.from("not a real PDF")}}});assert.equal(fake.status(),400);
  const disabled=await page.request.post(`${base}/api/invoices`,{data:{operation:"preview",id:pdf.id}});assert.equal(disabled.status(),410);
