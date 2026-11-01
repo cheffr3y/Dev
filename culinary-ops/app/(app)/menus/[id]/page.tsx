@@ -1,3 +1,5 @@
+import { buildMenuMarginMatrix } from "@/lib/menu-margin";
+import { MenuCostBar } from "@/components/MenuCostBar";
 import { WorkspaceInspector } from "@/components/WorkspaceInspector";
 import { InspectorLink } from "@/components/InspectorLink";
 import { getVenues } from "@/lib/venue";
@@ -20,6 +22,8 @@ export default async function MenuWorkspace({ params }: { params: Promise<{ id: 
   if (!rollout) notFound();
   const canEdit = hasRole(user, "MANAGER");
   const plan = buildMenuRollout(rollout, recipes);
+  const matrix = buildMenuMarginMatrix(plan, recipes, rollout.targetFcp);
+  const marginById = new Map(matrix.rows.map(row => [row.id, row]));
   const used = new Set(rollout.items.map(item => item.recipeId));
   return <WorkspaceInspector><div>
     <Link href="/menus" className="mb-4 inline-block text-sm text-gold hover:underline">← Menu Rollouts</Link>
@@ -28,17 +32,21 @@ export default async function MenuWorkspace({ params }: { params: Promise<{ id: 
     <CostIntegrityBanner unpriced={plan.unpricedNames} stale={plan.staleNames} />
     <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
       <StatCard label="Total dishes" value={plan.rows.length} sub={`${plan.dependencies.length} required sub-recipes`} />
-      <StatCard label="Avg food cost" value={pct(plan.averageFcp)} sub={`Target ${pct(rollout.targetFcp)} · Par-weighted ${pct(plan.parWeightedFcp)}`} />
-      <StatCard label="Avg dish margin" value={money(plan.averageMargin)} />
+      <StatCard label="Avg food cost" value={pct(matrix.averageFcp)} sub={`Target ${pct(rollout.targetFcp)} · Validated dishes only`} />
+      <StatCard label="Avg dish margin" value={money(matrix.averageMargin)} />
       <StatCard label="Opening par food cost" value={money(plan.totalOpeningFoodCost)} sub="Current catalog estimate" />
     </div>
+    <Card className="mb-6 p-4"><h2 className="mb-2 font-semibold">Category margin matrix</h2>
+      <p className="mb-3 text-xs text-zinc-500">Unweighted averages of dishes with a positive menu price and complete, convertible recipe costs. {matrix.needsReview} dishes require review and are excluded. Stale prices remain estimates.</p>
+      <div className="overflow-x-auto"><table className="atelier-table w-full text-left text-sm"><thead><tr><th>Menu category</th><th>Average food cost</th><th>Average contribution margin</th><th>Costed / total</th><th>Above target</th></tr></thead><tbody>{matrix.categories.map(category => <tr key={category.name}><th>{category.name}</th><td className="tabular-nums">{pct(category.averageFcp)}</td><td className="tabular-nums">{money(category.averageMargin)}</td><td>{category.reviewedCount} / {category.count}</td><td>{category.overTarget}</td></tr>)}</tbody></table></div>
+    </Card>
     {plan.missingMenuPrices > 0 && <p className="mb-4 text-sm text-amber-800">{plan.missingMenuPrices} dishes have no positive menu price. Food cost averages and the par-weighted ratio use priced dishes only.</p>}
     {plan.sections.length === 0 && <Card className="mb-6 p-8 text-center text-zinc-500">Add your first recipe to begin the rollout.</Card>}
     {plan.sections.map(section => <Card key={section.name} className="mb-6"><CardHeader>{section.name}</CardHeader><div className="overflow-x-auto"><table className="atelier-table w-full text-left text-sm"><thead><tr><th>Section / Dish</th><th>Station</th><th>Yield</th><th>Portion cost</th><th>Menu price ($)</th><th>Margin</th><th>Food cost</th><th>Opening par (batches)</th><th>Audit</th></tr></thead><tbody>{section.rows.map(row => <tr key={row.id}>
       <td className="min-w-72"><InspectorLink kind="recipe" id={row.recipeId} className="font-medium text-[#2C3E35] hover:underline">{row.title}</InspectorLink><p className="text-xs text-zinc-500">{row.menuDescription}</p>{canEdit && <details className="mt-2"><summary className="cursor-pointer text-xs text-gold">Edit dish / Save row</summary><div className="mt-3 min-w-80"><MenuItemForm rolloutId={id} line={row} inline /><form action={removeRolloutItem} className="mt-3"><input type="hidden" name="id" value={row.id} /><input type="hidden" name="rolloutId" value={id} /><button className="text-xs text-red-700">Remove from rollout</button></form></div></details>}</td>
       <td>{row.recipe.station || "—"}</td><td className="whitespace-nowrap font-mono text-xs"><span className="block text-zinc-500">Standard: {num(row.recipe.yieldQty)} {row.recipe.yieldUnit}</span><span className="menu-opening-yield mt-1 block text-[#2C3E35]">Opening: {preciseNum(row.recipe.yieldQty * row.parBatches)} {row.recipe.yieldUnit}</span></td><td className="font-mono">{money(row.portionCost, 5)}</td>
       <td>{canEdit ? <Input aria-label={`Menu price for ${row.title}`} form={`menu-line-${row.id}`} className="w-24" name="menuPrice" type="number" min="0" step="0.01" defaultValue={row.menuPrice ?? ""} placeholder={row.recipe.menuPrice != null ? String(row.recipe.menuPrice) : "—"} /> : money(row.effectiveMenuPrice)}</td>
-      <td className="font-mono">{money(row.grossMargin)}</td><td><span className={`whitespace-nowrap rounded-full px-2 py-1 font-mono text-xs ${row.fcp == null ? "bg-stone" : row.fcp <= rollout.targetFcp ? "bg-pale-sage text-sage" : "bg-amber-100 text-amber-900"}`}>{pct(row.fcp)}</span></td>
+      <td className="tabular-nums">{money(marginById.get(row.id)?.margin ?? null)}</td><td><MenuCostBar value={marginById.get(row.id)?.fcp ?? null} target={rollout.targetFcp} stale={marginById.get(row.id)?.stale} /></td>
       <td>{canEdit ? <Input aria-label={`Opening par for ${row.title}`} form={`menu-line-${row.id}`} className="w-24" name="parBatches" type="number" min="0" step="any" required defaultValue={row.parBatches} /> : num(row.parBatches)}</td>
       <td className="whitespace-nowrap text-xs text-amber-800">{row.priceGaps.unpriced.size > 0 && `⚠ ${row.priceGaps.unpriced.size} `}{row.priceGaps.stale.size > 0 && `⌛ ${row.priceGaps.stale.size}`}{!row.priceGaps.unpriced.size && !row.priceGaps.stale.size && "✓"}{canEdit && <button form={`menu-line-${row.id}`} className="mt-2 block text-gold underline">Save row</button>}</td>
     </tr>)}</tbody></table></div></Card>)}

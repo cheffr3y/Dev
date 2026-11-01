@@ -1,25 +1,26 @@
+import { BanquetRevision, type BanquetRevisionData } from "./BanquetRevision";
 import { aggregateSetup, CATEGORY_LABELS, readSetup, resolveSetup, setupWarnings, type BanquetSetup, type SetupMenuItem, type SetupResource } from "../lib/banquet-setup";
 
 export type SetupEvent = {
   name: string; venue: string; date: string; guestCount: number; timeLabel: string | null;
   location: string | null; areas: string | null; setupNotes: string | null; specialInstructions: string | null;
 };
-export function BanquetSetupPacket({ banquet, menu }: {
+export function BanquetSetupPacket({ banquet, menu, revisionData }: {
   banquet: Omit<SetupEvent, "venue" | "date"> & { venue: { name: string }; date: Date; setupPlan: unknown; setupRevision: number };
-  menu: SetupMenuItem[];
+  menu: SetupMenuItem[]; revisionData?: BanquetRevisionData | null;
 }) {
   const plan = readSetup(banquet.setupPlan);
-  if (!plan.stations.length) return null;
+  if (!plan.stations.length) return <BanquetRevision data={revisionData} />;
   return <div className="packet-setup-section">
-    <BanquetSetupSheet plan={plan} menu={menu} revision={banquet.setupRevision}
+    <BanquetSetupSheet revisionData={revisionData} plan={plan} menu={menu} revision={banquet.setupRevision}
       event={{ ...banquet, venue: banquet.venue.name, date: banquet.date.toLocaleDateString("en-US", { timeZone: "UTC", year: "numeric", month: "short", day: "numeric" }) }} />
   </div>;
 }
 function ResourceText({ resources }: { resources: SetupResource[] }) {
   return <>{resources.map(r => `${r.qty} × ${r.name}`).join(" · ") || "—"}</>;
 }
-export function BanquetSetupSheet({ plan: rawPlan, menu, event, revision, draft = false }: {
-  plan: BanquetSetup; menu: SetupMenuItem[]; event: SetupEvent; revision: number; draft?: boolean;
+export function BanquetSetupSheet({ plan: rawPlan, menu, event, revision, draft = false, revisionData }: {
+  plan: BanquetSetup; menu: SetupMenuItem[]; event: SetupEvent; revision: number; draft?: boolean; revisionData?: BanquetRevisionData | null;
 }) {
   const plan = resolveSetup(rawPlan, menu);
   const pulls = aggregateSetup(plan);
@@ -32,6 +33,7 @@ export function BanquetSetupSheet({ plan: rawPlan, menu, event, revision, draft 
       <p className="text-sm">{[event.location, event.areas, event.timeLabel].filter(Boolean).join(" · ") || "Service time / room to be confirmed"}</p>
       <p className="mt-2 text-xs">Setup & vessel pull sheet · Equipment quantities are entered separately from food ordered.</p>
     </header>
+    <BanquetRevision data={revisionData} />
     {warnings.length > 0 && <div className="setup-review mt-4 border border-amber-400 p-3 text-xs">
       <strong>Setup review needed</strong><ul className="mt-1 list-disc pl-4">{warnings.map(w => <li key={w}>{w}</li>)}</ul>
     </div>}

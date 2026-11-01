@@ -1,5 +1,6 @@
 "use client";
 
+import type { BanquetRevisionData } from "@/components/BanquetRevision";
 import { useEffect, useState, useTransition } from "react";
 import { BanquetSetupSheet, type SetupEvent } from "@/components/BanquetSetupSheet";
 import { aggregateSetup, CATEGORY_LABELS, RESOURCE_OPTIONS, resolveSetup, retainPacking, type BanquetSetup, type SetupMenuItem, type SetupResource, type SetupStation } from "@/lib/banquet-setup";
@@ -32,8 +33,8 @@ function ResourceEditor({ resources, change }: { resources: SetupResource[]; cha
   </div>;
 }
 
-export function SetupEditor({ id, initialPlan, initialRevision, menu, event, canEdit }: {
-  id: string; initialPlan: BanquetSetup; initialRevision: number; menu: SetupMenuItem[]; event: SetupEvent; canEdit: boolean;
+export function SetupEditor({ id, initialPlan, initialRevision, menu, event, canEdit, revisionData }: {
+  id: string; initialPlan: BanquetSetup; initialRevision: number; menu: SetupMenuItem[]; event: SetupEvent; canEdit: boolean; revisionData?: BanquetRevisionData | null;
 }) {
   const [plan, setPlan] = useState(initialPlan);
   const [saved, setSaved] = useState(initialPlan);
@@ -164,7 +165,7 @@ export function SetupEditor({ id, initialPlan, initialRevision, menu, event, can
       </section>)}
     </div>}
     <div className={mode === "preview" ? "" : "setup-print-only"}>
-      <BanquetSetupSheet plan={displayed} menu={menu} event={event} revision={revision} draft={dirty} />
+      <BanquetSetupSheet revisionData={revisionData} plan={displayed} menu={menu} event={event} revision={revision} draft={dirty} />
     </div>
   </>;
 }

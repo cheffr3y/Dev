@@ -475,6 +475,7 @@ model Banquet {
   updatedAt DateTime @updatedAt
 
   menuItems BanquetMenuItem[]
+  baseline BanquetBaseline?
 
   @@index([date])
 }
@@ -1199,4 +1200,13 @@ model InvoiceDocument {
   vendor        Vendor? @relation(fields: [vendorId], references: [id], onDelete: SetNull)
   invoiceNumber String?
   notes         String?
+}
+
+// Locked BEO reference. Later edits are compared with this immutable snapshot.
+model BanquetBaseline {
+  banquetId String @id
+  banquet Banquet @relation(fields: [banquetId], references: [id], onDelete: Cascade)
+  snapshot Json
+  createdAt DateTime @default(now())
+  createdBy String
 }

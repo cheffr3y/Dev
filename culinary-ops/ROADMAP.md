@@ -184,7 +184,7 @@ See [accounting-invoices.md](docs/accounting-invoices.md).
 ---
 
 ## Chunk 7: Menu Engineering, Banquets & Event Diffing
-**Goal:** Give you commercial menu-engineering analytics and protect the kitchen from last-minute banquet BEO changes.
+**Goal:** Give you commercial menu-engineering analytics, protect the kitchen from last-minute banquet BEO changes, and plan production while keeping each event's quantities, deadlines, and destinations clear to cooks.
 
 **Target Files:**
 * `app/(app)/menus/[id]/page.tsx`
@@ -195,12 +195,27 @@ See [accounting-invoices.md](docs/accounting-invoices.md).
 * `lib/production.ts`
 
 ### Checklist
-- [ ] **Menu Rollout Margin Matrix (`menus/[id]/page.tsx`):** Add a commercial summary bar at the top of every menu showing Category Average Food Cost %, Average Contribution Margin (`$`), and visual progress bars on each dish comparing actual cost % to your target threshold.
-- [ ] **Banquet BEO Snapshot & Change Diffing (`banquets/[id]/setup`):** Add a "Lock Baseline / Snapshot" action to Banquet Setups. When event details change 48 hours out (e.g., Guest Count changes from 80 to 115, or a timeline/allergen note changes), highlight the modified fields in high-contrast amber on screen and print a bold **`REVISED: [Date] — Pax +35`** badge on `BanquetSetupSheet.tsx`.
-- [ ] **Cross-Event Master Production Aggregator (`/production`):** Upgrade `/production` so you can select a date range and aggregate shared sub-recipes (stocks, demi, sauces, portioned proteins) across *all* Banquets, Festivals, To-Go rollups, and Daily Prep Orders—letting the prep team batch-produce once for the whole week.
+- [x] **Menu Rollout Margin Matrix (`menus/[id]/page.tsx`):** Add a commercial summary bar at the top of every menu showing Category Average Food Cost %, Average Contribution Margin (`$`), and visual progress bars on each dish comparing actual cost % to your target threshold.
+- [x] **Banquet BEO Snapshot & Change Diffing (`banquets/[id]/setup`):** Add a "Lock Baseline / Snapshot" action to Banquet Setups. When event details change 48 hours out (e.g., Guest Count changes from 80 to 115, or a timeline/allergen note changes), highlight the modified fields in high-contrast amber on screen and print a bold **`REVISED: [Date] — Pax +35`** badge on `BanquetSetupSheet.tsx`.
+- [x] **Event-based production planning (`/production`):** Select a date range across Banquets, Festivals, To-Go rollups, and Daily Prep Orders, keeping each source job/event separate by default. Cook-facing work and printouts retain event name/reference, venue/destination, service date/time, prep deadline, recipe/variant, quantity/unit, and event-specific instructions. A date-range overview must not replace individual event packets with an undifferentiated weekly total.
+- [x] **Combined shopping list for purchasing:** Let the purchaser select source events/jobs and combine their raw ingredient needs into one vendor/category shopping list. Show total quantities with explicit units and each event's contribution; flag missing recipe links, incomplete package mappings, and incompatible units instead of assuming quantities. Keep this purchasing overview separate from cook-facing work. Do not combine production batches or replace event-specific prep sheets, cook packets, project timers, or accounting records.
+
+### Production scope decision — November 1, 2026
+
+The user clarified that only the shopping list should be combined, for their purchasing. Cooks continue to receive separate event prep sheets and cook packets with event identities, quantities, timing, destinations, and special instructions. The weekly packet must also default to separate event sections. There is no shared production-batch or allocation workflow in this chunk. Combined purchasing shows the source event breakdown and remains an estimate until the purchaser reviews it.
+
+### Implementation status — November 1, 2026
+
+Implemented. Production opens date-scoped event work summaries with separate quantities, instructions, destinations and packet links. Managers/admins can explicitly select Banquets, Festivals, To-Go plans and unfinished Daily Prep requests for one vendor/category purchasing list with source contributions, raw usable-yield adjustments, compatible pack suggestions and review warnings. Printed prep demand uses frozen order/daily recipes; unknown mappings and invalid recipe paths are excluded rather than silently approximated. To-Go order cutoffs and undated plans are labeled explicitly. Purchasing creates no production batches or accounting writes.
+
+Weekly banquet prep and cook packets remain event-specific, including supporting recipes, QR projects and event-local reference links. Existing day-prep bookmarks open the daily event view. Locked BEO baselines preserve the original saved reference, reject stale previews and concurrent duplicate locks, and show before/after changes on screen and print. Packing checks do not create BEO changes. Menu category averages exclude incomplete or invalid costing; dish bars show the target and stale-price estimates.
+
+Apply `20261101020000_event_production_planning` before release; normal `npm start` applies migrations. Existing frozen packets and accounting facts are unchanged. See [event-production-planning.md](docs/event-production-planning.md) for operation, scope and verification.
+
+Validation: production build (webpack), TypeScript, targeted ESLint, 200 unit checks and 34 disposable-PostgreSQL checks passed. Desktop/mobile browser coverage verifies source selection/totals/warnings, event separation, live menu margin refresh, BEO locks/revisions, date validation, role restrictions and unchanged frozen/ledger data. Existing banquet-setup, print-controller and recipe-costing browser regressions passed. The purchasing PDF and all four sample weekly-event pages were rendered and visually reviewed; event names remain attached to supporting recipes.
 
 ### Copy-Paste Agent Prompt for Chunk 7
-> Read `app/(app)/menus/[id]/page.tsx`, `app/(app)/banquets/[id]/setup/SetupEditor.tsx`, `components/BanquetSetupSheet.tsx`, `lib/banquet-setup.ts`, and `app/(app)/production/page.tsx`. Execute **Chunk 7** of `ROADMAP.md`: add the Menu Rollout Margin Matrix header and visual cost bars, implement Banquet BEO baseline snapshots with visual diff badges on screen and printouts, and build the Cross-Event Master Production Aggregator in `/production`. Verify with `npx tsc --noEmit`.
+> Read `app/(app)/menus/[id]/page.tsx`, `app/(app)/banquets/[id]/setup/SetupEditor.tsx`, `components/BanquetSetupSheet.tsx`, `lib/banquet-setup.ts`, and `app/(app)/production/page.tsx`. Execute **Chunk 7** of `ROADMAP.md`: add category menu margin summaries and dish cost bars, implement locked Banquet BEO baselines with change details on screen and print, and build event-based production planning in `/production`. Preserve separate cook work/packets for every event, including the weekly banquet packet. Add a purchaser-facing combined shopping list for explicitly selected source events/jobs; preserve source contributions, units, conversion warnings and missing mapping warnings. Do not combine production batches. Verify date/selection/source demand, nested recipe math, incompatible units, permissions, event instruction visibility, baseline diffs, print usability, and unchanged historical snapshots/accounting. Run TypeScript and relevant tests/build/browser/print checks.
 
 ---
 
@@ -228,6 +243,38 @@ See [accounting-invoices.md](docs/accounting-invoices.md).
 
 ### Copy-Paste Agent Prompt for Chunk 8
 > Execute **Chunk 8** of `ROADMAP.md`: move `homestead` and `trivia` into an `app/(games)` route group, archive completed one-off backfill/repair scripts into `scripts/archive/`, organize `lib/` into domain folders (updating imports cleanly across the repo), and clean up `.DS_Store` in `.gitignore`. Run `npx tsc --noEmit` and the test suite to verify zero broken imports.
+
+---
+
+## Chunk 9: Smoking Program — Batch Logs & Thermometer Photos
+**Goal:** Build a repeatable smoking-program history from the thermometer screenshots/photos the kitchen already receives, without requiring a device export or live integration.
+
+**Status — November 1, 2026:** Planned; not implemented. Added from the supplied thermometer screenshot and the kitchen's current product list. Existing Chunks 7–8 retain their order.
+
+### Checklist
+- [ ] **Smoking runs with multiple product lots:** Add an Operations workspace for a dated smoker run, venue, smoker/equipment, responsible cook, and notes. A run can contain multiple products with separate load/pull times, quantities, recipe links, and probe assignments. Support brisket, pork shoulder, ribs, whole chicken, cheddar cheese, jalapeño cheddar sausage, and custom products as needed. Keep hot-smoking and cold-smoking procedures/targets separate and configurable by product.
+- [ ] **Photo-first cook records:** Upload thermometer screenshots, phone photos, and supporting handwritten sheets to a run or individual lot; allow multiple images per cook. Reuse the compact, authenticated document-storage pattern from Chunk 6 with smoking-specific records. Preserve legible chart labels, viewing/download access, upload attribution, and duplicate detection; do not require a CSV export, device account, or API key. Offer local OCR plus quick manual summary entry beside the image so the first release works without paid AI services.
+- [ ] **Local OCR and field parsing:** Run an open-source OCR engine such as Tesseract.js in the user's browser, with self-hosted engine/language assets and no third-party image processing. Normalize light/dark screenshots, locate labels and nearby values, and parse known formats for date, target/peak temperature, units, and duration into a draft. Support the supplied thermometer layout first, using label positions rather than fixed screen coordinates alone. Show the source beside editable results and require confirmation; leave unclear values blank and retain manual entry if recognition fails. Benchmark recognition accuracy and phone performance on real screenshots before release. Handwritten logs remain attachments/manual entry until separately validated.
+- [ ] **Structured cook summaries and checkpoints:** Record the source label/date, cooking duration, displayed target and peak temperatures with units, and food-versus-ambient probe identity when known. Keep the device's preset/title separate from the actual product and lot. Allow timestamped manual readings and notes for load, wrap, pull, rest, hold, and cooling where applicable. Distinguish device-reported duration, manually recorded start/finish times, and hands-on labor; leave unknown values blank.
+- [ ] **Actual yield and process notes:** Capture raw weight/count, optional trimmed weight, finished usable weight/count and units, trim/waste, seasoning/brine, wood/fuel, smoker settings, and quality notes. Calculate yield/shrink only from compatible measurements and compare planned versus actual output. Link recipes and existing prep/banquet projects where relevant, reusing project identity and review rather than creating duplicate timers. Cook history must not automatically alter recipe yield standards, inventory, or accounting; applying a reviewed prep result follows the existing explicit review/prefill workflow.
+- [ ] **Searchable history and repeat cooks:** Filter by product, date, venue, smoker, and cook; compare duration, finished yield, and quality across batches. Start a new run from a prior setup, copying only the procedure/planned settings and never prior readings, actual yields, photos, or review sign-off.
+- [ ] **Clipboard smoke sheet:** Print a run/lot sheet with product, raw quantity, probe assignments, planned settings, load/wrap/pull/rest checkpoints, temperature/time write-in rows, yield, notes, and initials. Link its QR code to the corresponding run/lot. Follow the shared print controller/header conventions and retain at least 28px handwritten cells. Allow paper results and photos to be entered afterward.
+- [ ] **Review and traceability:** Preserve source photos and original entered readings; record who corrected a value, when, and why. Clearly distinguish unreviewed transcription, confirmed readings, missing checkpoints, and manager/admin review. A device title such as “Well Done,” a setpoint, or a cook timer must not automatically mark a lot complete, approved, or compliant with its configured procedure.
+
+### Optional later phase — expanded photo interpretation
+
+- [ ] Extend local OCR parsing to additional thermometer layouts after validating representative images. Preserve confirmed results and avoid reprocessing on every view. Product/lot and probe assignments still require confirmation when the image does not establish them.
+- [ ] Consider paid AI only as an explicit opt-in fallback for layouts local OCR cannot handle, gated on the spending controls described in the deferred AI section below. Local OCR, photo storage, and manual entry remain independently usable without paid AI calls.
+- [ ] Retain the chart image for visual comparison. A separate local image-processing experiment could calibrate the axes and trace colored curves, but any reconstructed points must be labeled approximate, preserve gaps/overlap ambiguity, and never be presented as original device samples or proof of threshold timing. Exact time-series ingestion and live alerts require a suitable device export/integration and remain separate future scope.
+
+Implementation references: [Tesseract.js browser/Node OCR](https://github.com/naptha/tesseract.js) and [Tesseract image-quality guidance](https://tesseract-ocr.github.io/tessdoc/ImproveQuality.html). Local OCR reads text; application rules map that text to cook fields. No paid vision service is required for this approach.
+
+### Acceptance example from the supplied screenshot
+
+A user can attach the October 31, 2026 screenshot to a smoking lot and use local OCR to draft its visible source title **“Breast: Well Done”**, date, target **165°F**, cooking time **6 hr 22 min**, and reported peak **144.8°F**, then confirm/correct those fields before saving. Test the actual OCR output against these expected values rather than assuming recognition succeeds. Actual product, probe-to-lot assignments, start/finish timestamps, and finished yield require user entry or confirmation. The displayed target and reported peak remain separate facts; the title is not evidence of completion. The original chart stays viewable, with no fabricated sample readings. A mixed run can also contain brisket or cheese with independent lot records and procedures.
+
+### Copy-Paste Agent Prompt for Chunk 9
+> Read `AGENTS.md`, Chunk 9 of `ROADMAP.md`, `prisma/schema.prisma`, `docs/production-project-logs.md`, and `docs/accounting-invoices.md`. Implement the first-release smoking program: multi-product runs/lots, authenticated photo storage, browser-local OCR with reviewed field parsing and manual fallback, cook summaries/checkpoints, actual yields, searchable history, repeat-run setup, printable QR smoke sheets, and audited review. Support the listed products plus custom additions. Reuse existing production-project and document-storage patterns without changing historical packets or automatically posting inventory/accounting. Keep paid AI extraction, graph reconstruction, and device integrations deferred. Verify role/venue access, readable image round trips, local-only OCR processing, recognition accuracy and failure recovery, duplicate/retry behavior, mixed-product/probe assignments, yield units, correction history, repeat-run resets, print/QR usability, and the screenshot acceptance example; run TypeScript and the relevant build, unit, transaction, and browser checks.
 
 ---
 

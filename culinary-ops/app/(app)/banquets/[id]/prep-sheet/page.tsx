@@ -1,3 +1,5 @@
+import { loadBanquetRevision } from "@/lib/banquet-baseline-data";
+import { BanquetRevision } from "@/components/BanquetRevision";
 import { AtelierHeader } from "@/components/AtelierHeader";
 import { RecipePrintSettings } from "@/components/RecipeDossier";
 import Link from "next/link";
@@ -77,6 +79,7 @@ export default async function BanquetPrepSheetPage({ params }: { params: Promise
       ) : (
         <div className="print-sheet atelier-paper">
           <AtelierHeader title={banquet.name} venue={banquet.venue.name} date={banquet.date} guests={banquet.guestCount} runTime={banquet.timeLabel} kicker="Banquet Prep & Pull Sheet" />
+          <BanquetRevision data={await loadBanquetRevision(id)} />
           <p className="text-xs text-zinc-500">{list.itemCount} ingredients across {lines.length} dishes · sub-recipes broken down to raw items.</p>
 
           {list.unscaledRecipes.length > 0 && (
