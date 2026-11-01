@@ -10,7 +10,7 @@ Built with Next.js (App Router), TypeScript, Prisma, and PostgreSQL. Role-based 
 
 | Module | What it does |
 | --- | --- |
-| **Dashboard** | At-a-glance counts, low-stock alerts for your active venue, and upcoming events. |
+| **Dashboard** | Morning Pulse: in-use ingredient integrity, seven-day event/banquet load, admin closeout queue, and active-menu margin exceptions for your venue. |
 | **Recipes & Builds** | Standardized recipes with ingredients, method, yield, menu price → automatic **batch cost, cost per yield unit, and food-cost %** (color-coded against targets). |
 | **Ingredients** | Shared ingredient list with allergen tags, unit cost, pack size, category, and vendor. Recipes inherit allergens and costing from here. |
 | **Inventory** | Per-venue on-hand counts vs. par levels, low-stock highlighting, and inventory value. |
@@ -24,7 +24,9 @@ Built with Next.js (App Router), TypeScript, Prisma, and PostgreSQL. Role-based 
 
 See the [kitchen and accounting guide](docs/prep-orders-guide.md) and [migration / rollout checklist](docs/prep-orders-rollout.md).
 
-See [ROADMAP.md](ROADMAP.md) for the commercial product direction and implementation checklist, starting with the UI foundation and navigation in Chunk 1.
+See [ROADMAP.md](ROADMAP.md) for the commercial product direction and implementation checklist. Chunks 1–2 are implemented; the print controller is next.
+
+Use **⌘K / Ctrl+K** to search recipes/ingredients or run actions: print this week’s banquet packet, download week-to-date prep accounting (Sunday through today), open daily closeout/prep, review duplicate ingredients, or create a recipe. Actions follow existing role permissions; closeout and accounting are admin-only.
 
 ### Roles
 - **Staff** — view everything, take inventory counts.
@@ -182,3 +184,5 @@ Against the same disposable harness, `node scripts/test-ingredient-allergens-bro
 `node scripts/test-ingredient-cleanup-browser.mjs` uses the same harness to verify full ingredient edits, recipe-line edits, reviewed duplicate consolidation, compatible quantity conversion, retained notes and manager-only access.
 
 `node scripts/test-recipe-costing-browser.mjs` uses the disposable harness to check costing prints, kitchen-copy toggles, nested sub-recipe costs, 2×/4× batches, and yield-unit labels with gram precision. It changes only disposable fixture yields and writes review screenshots/PDFs to `/tmp/recipe-costing-review` (override with `RECIPE_REVIEW_DIR`).
+
+`MORNING_PULSE_BROWSER_SMOKE=1 PREP_BROWSER_SMOKE=1 bash scripts/test-prep-postgres.sh` adds disposable dashboard fixtures and verifies venue/date/status filtering, ingredient integrity, nested menu margins, closeout boundaries, role-based actions, keyboard navigation, recipe creation, XLSX downloads/errors, one-time printing, and mobile layout. Use the same Playwright module/executable overrides described above. Review screenshots and the weekly packet PDF are saved to `/tmp/morning-pulse-review` (override with `PULSE_REVIEW_DIR`).

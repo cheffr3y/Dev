@@ -45,6 +45,7 @@ export async function createPrepOrder(f: FormData) {
       },
     });
   });
+  revalidatePath("/");
   revalidatePath("/prep-orders", "layout");
   redirect(`/prep-orders/${order.id}`);
 }
@@ -70,6 +71,7 @@ export async function updatePrepOrder(f: FormData) {
       data: { destinationVenueId: venueId },
     });
   });
+  revalidatePath("/");
   revalidatePath("/prep-orders", "layout");
 }
 export async function deletePrepOrder(f: FormData) {
@@ -79,6 +81,7 @@ export async function deletePrepOrder(f: FormData) {
     await editable(tx, id, user);
     await tx.prepOrder.delete({ where: { id } });
   });
+  revalidatePath("/");
   revalidatePath("/prep-orders", "layout");
   redirect("/prep-orders/requests");
 }
@@ -110,6 +113,7 @@ export async function addPrepLine(f: FormData) {
       },
     });
   });
+  revalidatePath("/");
   revalidatePath("/prep-orders", "layout");
 }
 export async function updatePrepLine(f: FormData) {
@@ -134,6 +138,7 @@ export async function updatePrepLine(f: FormData) {
       data: { requestedQty: quantity, requestedUnit: unit },
     });
   });
+  revalidatePath("/");
   revalidatePath("/prep-orders", "layout");
 }
 export async function removePrepLine(f: FormData) {
@@ -144,6 +149,7 @@ export async function removePrepLine(f: FormData) {
     await editable(tx, line.prepOrderId, user);
     await tx.prepOrderLine.delete({ where: { id } });
   });
+  revalidatePath("/");
   revalidatePath("/prep-orders", "layout");
 }
 export async function generatePacket(f: FormData) {
@@ -153,6 +159,7 @@ export async function generatePacket(f: FormData) {
     String(f.get("operationKey") || randomUUID()),
     { orderId: String(f.get("id")) },
   );
+  revalidatePath("/");
   revalidatePath("/prep-orders", "layout");
   redirect(`/prep-orders/${result.scope}/packet`);
 }
@@ -161,6 +168,7 @@ export async function generateDailyPacket(f: FormData) {
   const result = await freezePacket(user.id, String(f.get("operationKey")), {
     date: String(f.get("date")),
   });
+  revalidatePath("/");
   revalidatePath("/prep-orders", "layout");
   redirect(`/prep-orders/${result.scope}/packet`);
 }

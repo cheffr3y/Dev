@@ -39,6 +39,7 @@ export async function submitPrepOperation(
       default:
         throw new Error("Unknown prep action.");
     }
+    revalidatePath("/");
     revalidatePath("/prep-orders", "layout");
     return { ok: true };
   } catch (error) {

@@ -6,7 +6,8 @@ import { createRecipe } from "./actions";
 import { RecipesTable } from "./RecipesTable";
 import { RECIPE_CATEGORIES } from "@/lib/categories";
 
-export default async function RecipesPage() {
+export default async function RecipesPage({ searchParams }: { searchParams: Promise<{ new?: string }> }) {
+  const params = await searchParams;
   const user = await requireUser();
   const canEdit = hasRole(user, "MANAGER");
 
@@ -60,7 +61,7 @@ export default async function RecipesPage() {
       />
 
       {canEdit && (
-        <details className="mb-5">
+        <details id="new-recipe" className="mb-5 scroll-mt-20" open={params.new === "1"}>
           <summary className="cursor-pointer text-sm font-medium text-blue-600">+ New recipe</summary>
           <Card className="mt-2 p-4">
             <form action={createRecipe} className="space-y-3">

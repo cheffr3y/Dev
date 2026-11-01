@@ -1,4 +1,4 @@
-import { requireUser } from "@/lib/session";
+import { requirePrepUser } from "@/lib/prep-session";
 import { prisma } from "@/lib/prisma";
 import { DesktopSidebar } from "@/components/DesktopSidebar";
 import { MobileNav } from "@/components/MobileNav";
@@ -12,7 +12,7 @@ const ROLE_LABEL: Record<string, string> = {
 };
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const user = await requireUser();
+  const user = await requirePrepUser();
   const [recipes, items] = await Promise.all([
     prisma.recipe.findMany({
       select: { id: true, name: true, category: true, station: true },
@@ -35,7 +35,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <div className="flex items-center gap-2 md:gap-4">
             <MobileNav role={user.role} />
             <span className="font-display text-lg leading-none text-ink md:hidden">Mise</span>
-            <CommandSearch recipes={recipes} items={items} />
+            <CommandSearch recipes={recipes} items={items} role={user.role} />
           </div>
           <div className="flex items-center gap-3 md:gap-4">
             <div className="hidden text-right sm:block">

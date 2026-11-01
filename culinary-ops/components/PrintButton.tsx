@@ -1,6 +1,23 @@
 "use client";
 
-export function PrintButton({ label = "Print" }: { label?: string }) {
+import { useEffect, useRef } from "react";
+
+export function PrintButton({ label = "Print", autoPrint = false }: { label?: string; autoPrint?: boolean }) {
+  const printed = useRef(false);
+  useEffect(() => {
+    if (!autoPrint) return;
+    let cancelled = false;
+    // Wait for the complete packet and local fonts before opening the dialog.
+    void document.fonts.ready.then(() => requestAnimationFrame(() => {
+      if (cancelled || printed.current) return;
+      printed.current = true;
+      const url = new URL(window.location.href);
+      url.searchParams.delete("print");
+      window.history.replaceState(null, "", url);
+      window.print();
+    }));
+    return () => { cancelled = true; };
+  }, [autoPrint]);
   return (
     <button
       onClick={() => window.print()}

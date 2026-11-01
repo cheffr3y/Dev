@@ -23,12 +23,20 @@ node --import tsx --test lib/prep-workflow.integration.test.ts
 node scripts/test-annex-repairs.mjs
 if [ "${PREP_BROWSER_SMOKE:-0}" = "1" ]; then
   node --import tsx scripts/seed-prep-browser.ts
+  if [ "${MORNING_PULSE_BROWSER_SMOKE:-0}" = "1" ]; then
+    node --import tsx scripts/seed-morning-pulse-browser.ts
+  fi
   export AUTH_SECRET='disposable-prep-browser-smoke-secret-2026'
   export AUTH_URL='http://localhost:3107'
   export AUTH_TRUST_HOST=true
   node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3107 &
   PREP_SERVER_PID=$!
   trap 'kill "$PREP_SERVER_PID" 2>/dev/null || true; cleanup' EXIT
+  if [ "${MORNING_PULSE_BROWSER_SMOKE:-0}" = "1" ]; then
+    node -e 'const url="http://localhost:3107/login"; (async()=>{for(let attempt=0;attempt<50;attempt++){try{if((await fetch(url)).ok) return;}catch{}await new Promise(resolve=>setTimeout(resolve,200));}process.exit(1);})()'
+    node scripts/test-morning-pulse-browser.mjs
+    exit 0
+  fi
   if [ "${MENU_ROLLOUT_BROWSER_SMOKE:-0}" = "1" ]; then
     node -e 'const url="http://localhost:3107/login"; (async()=>{for(let attempt=0;attempt<50;attempt++){try{if((await fetch(url)).ok) return;}catch{}await new Promise(resolve=>setTimeout(resolve,200));}process.exit(1);})()'
     node scripts/test-menu-rollout-browser.mjs

@@ -27,6 +27,7 @@ function message(error: unknown) {
   return error instanceof Error ? error.message : "Could not save the menu rollout.";
 }
 function refresh(id: string) {
+  revalidatePath("/");
   revalidatePath("/menus");
   revalidatePath(`/menus/${id}`);
   revalidatePath(`/menus/${id}/packet`);

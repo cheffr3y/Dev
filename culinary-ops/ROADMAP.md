@@ -50,14 +50,22 @@ Validation: TypeScript, targeted ESLint, the production build, 158 unit checks, 
 * `components/PriceIntegrityNotice.tsx`
 
 ### Checklist
-- [ ] **Executive "Morning Pulse" Dashboard (`app/(app)/page.tsx`):**
+- [x] **Executive "Morning Pulse" Dashboard (`app/(app)/page.tsx`):**
   * **Card 1 — Costing & Price Integrity:** Count of active ingredients with `$0.00` cost, missing units, or unlinked vendors (clicking opens `/items/cleanup`).
   * **Card 2 — This Week's Event & Banquet Load:** Summary of active banquets, guest counts (pax), and upcoming festival/event milestones for the next 7 days.
   * **Card 3 — Prep & Closeout Queue:** Open daily prep worksheets (`prep-orders/closeout`) and pending inter-venue transfers awaiting sign-off.
   * **Card 4 — Menu Margin Watchlist:** Quick list of active menu items whose food cost % has crept above target threshold.
-- [ ] **Upgrade `CommandSearch.tsx` (`Cmd+K`) to an Action Palette:**
+- [x] **Upgrade `CommandSearch.tsx` (`Cmd+K`) to an Action Palette:**
   * Add instant action commands (not just page links): *"Print This Week's Banquet Packet"*, *"Export Prep Accounting XLSX"*, *"Open Daily Closeout"*, *"Merge Duplicate Items"*, and *"New Recipe"*.
   * Add keyboard shortcut hints (`↑` `↓` to navigate, `Enter` to execute, `Esc` to close).
+
+### Implementation status — October 31, 2026
+
+Implemented. Morning Pulse shows company-wide in-use ingredient integrity, the selected venue’s next seven days of active events/banquets plus shared festivals, the admin-only company-wide closeout queue, and above-target dishes on active venue/shared menus. In-use ingredients have recipe, inventory, order-guide, or festival-count references; unused catalog entries do not inflate alerts. Integrity links open the matching cleanup list (or the read-only ingredient filter for staff). Nested missing costs, invalid yields, unit mismatches, empty builds, and cycles require margin review; stale prices remain labeled. Historical ledger records do not become new unfinished closeout days.
+
+The action palette prints the current Monday–Sunday banquet packet, downloads Sunday-to-today accounting XLSX, opens today’s closeout/prep, reviews duplicate consolidation, and opens the recipe creation form. Dates follow Chicago business time and refresh each time the palette opens. Actions and queue reads respect current database roles; accounting and closeout remain admin-only. Printing is requested once and does not repeat on reload. Keyboard navigation, focus containment/restoration, scrolling, empty results, and export failures are handled.
+
+Validation: TypeScript, targeted ESLint, the production build, 167 unit checks, 24 disposable-PostgreSQL transaction checks, dedicated dashboard database assertions, and desktop/mobile browser checks. Browser coverage includes data scope, ingredient review links, role restrictions, keyboard recovery, repeated recipe-form opening, XLSX download/error feedback, print invocation/reload behavior, and print styling. Desktop/mobile screenshots were visually reviewed; a packet PDF and accounting workbook were captured from disposable fixtures.
 
 ### Copy-Paste Agent Prompt for Chunk 2
 > Read `app/(app)/page.tsx`, `components/CommandSearch.tsx`, and `components/PriceIntegrityNotice.tsx`. Execute **Chunk 2** of `ROADMAP.md`: transform `app/(app)/page.tsx` into an Executive "Morning Pulse" Dashboard with the 4 high-signal operational/accounting cards, and upgrade `components/CommandSearch.tsx` into a full `Cmd+K` action palette with quick-action shortcuts and keyboard hints. Verify with `npx tsc --noEmit`.

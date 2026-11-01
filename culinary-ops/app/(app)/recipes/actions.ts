@@ -193,6 +193,7 @@ export async function createRecipe(formData: FormData) {
   const prodCode = generateProdCode(data.name, new Set(existing.map((r) => r.prodCode)));
   const recipe = await prisma.recipe.create({ data: { ...data, prodCode } });
   await logChange(recipe.id, user, "Recipe created", `Production code: ${prodCode}`);
+  revalidatePath("/");
   revalidatePath("/recipes");
   redirect(`/recipes/${recipe.id}`);
 }
@@ -210,6 +211,7 @@ export async function updateRecipe(formData: FormData) {
       await logChange(id, user, "Edited details", changes.join("\n"));
     }
   }
+  revalidatePath("/");
   revalidatePath(`/recipes/${id}`);
 }
 
@@ -254,6 +256,7 @@ export async function deleteRecipe(formData: FormData) {
   }
 
   await prisma.recipe.delete({ where: { id } });
+  revalidatePath("/");
   revalidatePath("/recipes");
   redirect("/recipes");
 }
@@ -294,6 +297,7 @@ export async function addRecipeItem(formData: FormData) {
     existing ? "Updated ingredient" : "Added ingredient",
     label,
   );
+  revalidatePath("/");
   revalidatePath(`/recipes/${d.recipeId}`);
 }
 
@@ -304,6 +308,7 @@ export async function removeRecipeItem(formData: FormData) {
   const existing = await prisma.recipeItem.findUnique({ where: { id }, include: { item: true } });
   await prisma.recipeItem.delete({ where: { id } });
   await logChange(recipeId, user, "Removed ingredient", existing?.item.name);
+  revalidatePath("/");
   revalidatePath(`/recipes/${recipeId}`);
 }
 
@@ -366,6 +371,7 @@ export async function addSubRecipe(formData: FormData) {
     update: { quantity: d.quantity, unit: d.unit },
   });
   await logChange(d.parentId, user, "Added sub-recipe", `${child?.name ?? "recipe"} (${d.quantity} ${d.unit})`);
+  revalidatePath("/");
   revalidatePath(`/recipes/${d.parentId}`);
 }
 
@@ -376,6 +382,7 @@ export async function removeSubRecipe(formData: FormData) {
   const existing = await prisma.recipeComponent.findUnique({ where: { id }, include: { child: true } });
   await prisma.recipeComponent.delete({ where: { id } });
   await logChange(parentId, user, "Removed sub-recipe", existing?.child.name);
+  revalidatePath("/");
   revalidatePath(`/recipes/${parentId}`);
 }
 

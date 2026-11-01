@@ -33,8 +33,9 @@ type WeeklyDish = {
   splits: Array<{ key: string; banquetName: string; date: Date; orderedQty: number; unit: string }>;
 };
 
-export default async function WeekCookPacketPage({ params }: { params: Promise<{ date: string }> }) {
+export default async function WeekCookPacketPage({ params, searchParams }: { params: Promise<{ date: string }>; searchParams: Promise<{ print?: string }> }) {
   const { date } = await params;
+  const autoPrint = (await searchParams).print === "1";
   await requireUser();
 
   const requested = dateFromParam(date);
@@ -53,7 +54,11 @@ export default async function WeekCookPacketPage({ params }: { params: Promise<{
     prisma.recipe.findMany({ select: recipeTreeSelect }),
   ]);
 
-  if (banquets.length === 0) notFound();
+  if (banquets.length === 0) return <div className="space-y-4">
+    <h1 className="text-2xl font-semibold text-ink">No banquets this week</h1>
+    <p className="text-sm text-zinc-500">There is no cook packet to print for {fmtWeekRange(start)}.</p>
+    <Link href="/banquets" className="text-sm text-blue-600 hover:underline">View banquets →</Link>
+  </div>;
 
   const byId = buildRecipeTree(recipeRows);
 
@@ -98,7 +103,7 @@ export default async function WeekCookPacketPage({ params }: { params: Promise<{
           <Link href={`/banquets/week/${isoDate(start)}/shopping-list`} className="text-sm text-blue-600 hover:underline">
             Shopping list
           </Link>
-          <PrintButton label="Print cook packet" />
+          <PrintButton label="Print cook packet" autoPrint={autoPrint} />
         </div>
       </div>
 

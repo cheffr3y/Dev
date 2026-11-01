@@ -69,6 +69,7 @@ function parseBanquet(formData: FormData) {
 export async function createBanquet(formData: FormData) {
   await requireRole("MANAGER");
   const banquet = await prisma.banquet.create({ data: parseBanquet(formData) });
+  revalidatePath("/");
   revalidatePath("/banquets");
   redirect(`/banquets/${banquet.id}`);
 }
@@ -77,6 +78,7 @@ export async function updateBanquet(formData: FormData) {
   await requireRole("MANAGER");
   const id = String(formData.get("id"));
   await prisma.banquet.update({ where: { id }, data: { ...parseBanquet(formData), setupRevision: { increment: 1 } } });
+  revalidatePath("/");
   revalidatePath(`/banquets/${id}`, "layout");
 }
 
@@ -84,6 +86,7 @@ export async function deleteBanquet(formData: FormData) {
   await requireRole("MANAGER");
   const id = String(formData.get("id"));
   await prisma.banquet.delete({ where: { id } });
+  revalidatePath("/");
   revalidatePath("/banquets");
   redirect("/banquets");
 }
@@ -129,6 +132,7 @@ export async function addBanquetMenuItem(formData: FormData) {
       description: d.description || null,
     },
   }), prisma.banquet.update({ where: { id: d.banquetId }, data: { setupRevision: { increment: 1 } } })]);
+  revalidatePath("/");
   revalidatePath(`/banquets/${d.banquetId}`, "layout");
 }
 
@@ -151,6 +155,7 @@ export async function updateBanquetMenuItem(formData: FormData) {
     where: { id: d.id, banquetId: d.banquetId },
     data: { orderedQty: d.orderedQty, description: d.description || null },
   }), prisma.banquet.update({ where: { id: d.banquetId }, data: { setupRevision: { increment: 1 } } })]);
+  revalidatePath("/");
   revalidatePath(`/banquets/${d.banquetId}`, "layout");
 }
 
@@ -162,5 +167,6 @@ export async function removeBanquetMenuItem(formData: FormData) {
     prisma.banquetMenuItem.delete({ where: { id, banquetId } }),
     prisma.banquet.update({ where: { id: banquetId }, data: { setupRevision: { increment: 1 } } }),
   ]);
+  revalidatePath("/");
   revalidatePath(`/banquets/${banquetId}`, "layout");
 }

@@ -42,6 +42,7 @@ function parseEvent(formData: FormData) {
 export async function createEvent(formData: FormData) {
   await requireRole("MANAGER");
   const event = await prisma.event.create({ data: parseEvent(formData) });
+  revalidatePath("/");
   revalidatePath("/events");
   redirect(`/events/${event.id}`);
 }
@@ -50,6 +51,7 @@ export async function updateEvent(formData: FormData) {
   await requireRole("MANAGER");
   const id = String(formData.get("id"));
   await prisma.event.update({ where: { id }, data: parseEvent(formData) });
+  revalidatePath("/");
   revalidatePath(`/events/${id}`);
 }
 
@@ -57,6 +59,7 @@ export async function deleteEvent(formData: FormData) {
   await requireRole("MANAGER");
   const id = String(formData.get("id"));
   await prisma.event.delete({ where: { id } });
+  revalidatePath("/");
   revalidatePath("/events");
   redirect("/events");
 }
@@ -79,6 +82,7 @@ export async function addEventMenuItem(formData: FormData) {
     create: d,
     update: { plannedServings: d.plannedServings },
   });
+  revalidatePath("/");
   revalidatePath(`/events/${d.eventId}`);
 }
 
@@ -88,6 +92,7 @@ export async function updateEventMenuItem(formData: FormData) {
   const eventId = String(formData.get("eventId"));
   const plannedServings = z.coerce.number().min(0).parse(formData.get("plannedServings"));
   await prisma.eventMenuItem.update({ where: { id }, data: { plannedServings } });
+  revalidatePath("/");
   revalidatePath(`/events/${eventId}`);
 }
 
@@ -96,5 +101,6 @@ export async function removeEventMenuItem(formData: FormData) {
   const id = String(formData.get("id"));
   const eventId = String(formData.get("eventId"));
   await prisma.eventMenuItem.delete({ where: { id } });
+  revalidatePath("/");
   revalidatePath(`/events/${eventId}`);
 }

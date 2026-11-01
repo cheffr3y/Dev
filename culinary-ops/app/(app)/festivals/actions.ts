@@ -59,6 +59,7 @@ function parseFestival(formData: FormData) {
 export async function createFestival(formData: FormData) {
   await requireRole("MANAGER");
   const festival = await prisma.festival.create({ data: parseFestival(formData) });
+  revalidatePath("/");
   revalidatePath("/festivals");
   redirect(`/festivals/${festival.id}`);
 }
@@ -67,6 +68,7 @@ export async function updateFestival(formData: FormData) {
   await requireRole("MANAGER");
   const id = String(formData.get("id"));
   await prisma.festival.update({ where: { id }, data: parseFestival(formData) });
+  revalidatePath("/");
   revalidatePath(`/festivals/${id}`);
 }
 
@@ -74,6 +76,7 @@ export async function deleteFestival(formData: FormData) {
   await requireRole("MANAGER");
   const id = String(formData.get("id"));
   await prisma.festival.delete({ where: { id } });
+  revalidatePath("/");
   revalidatePath("/festivals");
   redirect("/festivals");
 }
@@ -93,6 +96,7 @@ export async function addTent(formData: FormData) {
   await prisma.festivalTent.create({
     data: { festivalId: d.festivalId, name: d.name, sortOrder: (last?.sortOrder ?? -1) + 1 },
   });
+  revalidatePath("/");
   revalidatePath(`/festivals/${d.festivalId}`);
 }
 
@@ -102,6 +106,7 @@ export async function updateTent(formData: FormData) {
     .object({ id: z.string().min(1), festivalId: z.string().min(1), name: z.string().trim().min(1) })
     .parse({ id: formData.get("id"), festivalId: formData.get("festivalId"), name: formData.get("name") });
   await prisma.festivalTent.update({ where: { id: d.id }, data: { name: d.name } });
+  revalidatePath("/");
   revalidatePath(`/festivals/${d.festivalId}`);
 }
 
@@ -112,6 +117,7 @@ export async function removeTent(formData: FormData) {
   const id = String(formData.get("id"));
   const festivalId = String(formData.get("festivalId"));
   await prisma.festivalTent.delete({ where: { id } });
+  revalidatePath("/");
   revalidatePath(`/festivals/${festivalId}`);
 }
 
@@ -152,6 +158,7 @@ export async function addFestivalMenuItem(formData: FormData) {
       sortOrder: (last?.sortOrder ?? -1) + 1,
     },
   });
+  revalidatePath("/");
   revalidatePath(`/festivals/${d.festivalId}/menu`);
 }
 
@@ -189,6 +196,7 @@ export async function updateFestivalMenuItem(formData: FormData) {
   if (note != null) data.note = String(note).trim() || null;
 
   await prisma.festivalMenuItem.update({ where: { id }, data });
+  revalidatePath("/");
   revalidatePath(`/festivals/${festivalId}/menu`);
 }
 
@@ -197,6 +205,7 @@ export async function removeFestivalMenuItem(formData: FormData) {
   const id = String(formData.get("id"));
   const festivalId = String(formData.get("festivalId"));
   await prisma.festivalMenuItem.delete({ where: { id } });
+  revalidatePath("/");
   revalidatePath(`/festivals/${festivalId}/menu`);
 }
 
@@ -206,6 +215,7 @@ export async function linkRecipeToMenuItem(formData: FormData) {
     .object({ id: z.string().min(1), festivalId: z.string().min(1), recipeId: z.string().trim().optional() })
     .parse({ id: formData.get("id"), festivalId: formData.get("festivalId"), recipeId: formData.get("recipeId") || undefined });
   await prisma.festivalMenuItem.update({ where: { id: d.id }, data: { recipeId: d.recipeId || null } });
+  revalidatePath("/");
   revalidatePath(`/festivals/${d.festivalId}/menu`);
 }
 
@@ -255,6 +265,7 @@ export async function updateFestivalAccounting(formData: FormData) {
       targetMarginPct: d.targetMarginPct,
     },
   });
+  revalidatePath("/");
   revalidatePath(`/festivals/${d.festivalId}/accounting`);
 }
 
@@ -280,6 +291,7 @@ export async function upsertFestivalOnHand(formData: FormData) {
     create: d,
     update: { quantity: d.quantity, unit: d.unit },
   });
+  revalidatePath("/");
   revalidatePath(`/festivals/${d.festivalId}/order-guide`);
 }
 
@@ -313,6 +325,8 @@ export async function updateItemPurchasing(formData: FormData) {
       yieldFactor: d.yieldFactor,
     },
   });
+  revalidatePath("/");
   revalidatePath(`/festivals/${d.festivalId}/order-guide`);
+  revalidatePath("/");
   revalidatePath("/items");
 }

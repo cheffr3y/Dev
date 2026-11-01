@@ -9,6 +9,7 @@ import { IngredientFields } from "@/components/IngredientFields";
 import { INGREDIENT_CATEGORIES } from "@/lib/ingredient-fields";
 import { duplicateIngredientGroups, ingredientNameKey } from "@/lib/ingredient-cleanup";
 import { ingredientUsageSelect } from "@/lib/ingredient-replacement";
+import { ingredientIntegrity } from "@/lib/morning-pulse";
 
 export default async function ItemsPage({
   searchParams,
@@ -37,6 +38,10 @@ export default async function ItemsPage({
   const categories = [...new Set([...INGREDIENT_CATEGORIES, ...items.map(item => item.category)])];
 
   const visible = withFreshness.filter(({ item, freshness }) => {
+    if (flag === "integrity") {
+      const issues = ingredientIntegrity(item);
+      if (!Object.values(item._count).some(count => count > 0) || !Object.values(issues).some(Boolean)) return false;
+    }
     if (category && item.category !== category) return false;
     if (flag === "duplicates" && !duplicateIds.has(item.id)) return false;
     if (flag === "unused" && Object.values(item._count).some(count => count > 0)) return false;
@@ -66,6 +71,8 @@ export default async function ItemsPage({
         subtitle="Shared ingredients, allergen tags, costs, and vendors."
         action={canEdit ? <LinkButton href="/items/cleanup">Review duplicates ({groups.length})</LinkButton> : undefined}
       />
+
+      {flag === "integrity" && <p className="mb-4 text-sm text-amber-700">Showing in-use ingredients with missing costs, units, or vendors. <Link href="/items" className="underline">View all ingredients</Link></p>}
 
       {/* Price coverage — theo food cost is only as honest as these prices. */}
       {(missingCount > 0 || staleCount > 0) && (
