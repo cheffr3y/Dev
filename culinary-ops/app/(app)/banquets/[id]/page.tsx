@@ -1,3 +1,5 @@
+import { WorkspaceInspector } from "@/components/WorkspaceInspector";
+import { InspectorLink } from "@/components/InspectorLink";
 import { LocationInput } from "@/components/LocationInput";
 import { VenueOptions } from "@/components/VenueOptions";
 import Link from "next/link";
@@ -49,7 +51,7 @@ export default async function BanquetDetailPage({ params }: { params: Promise<{ 
   const hasAccount = banquet.salesManager || banquet.contactName || banquet.contactEmail || banquet.contactPhone;
 
   return (
-    <div>
+    <WorkspaceInspector><div>
       <div className="no-print mb-4 flex items-center justify-between">
         <Link href="/banquets" className="text-sm text-blue-600 hover:underline">
           ← Banquets
@@ -145,9 +147,9 @@ export default async function BanquetDetailPage({ params }: { params: Promise<{ 
                 return (
                   <tr key={mi.id}>
                     <td className="px-4 py-2 align-top">
-                      <Link href={`/recipes/${mi.recipeId}`} className="font-medium text-zinc-800 hover:underline">
+                      <InspectorLink kind="recipe" id={mi.recipeId} className="font-medium text-zinc-800 hover:underline">
                         {mi.recipe.name}
-                      </Link>
+                      </InspectorLink>
                       {mi.description && <p className="mt-0.5 text-xs text-zinc-500">{mi.description}</p>}
                       {lc && !lc.converted && (
                         <p className="mt-0.5 text-xs font-medium text-amber-600">
@@ -242,7 +244,7 @@ export default async function BanquetDetailPage({ params }: { params: Promise<{ 
                       <tbody className="divide-y divide-zinc-100">
                         {cat.items.map((it) => (
                           <tr key={it.itemId}>
-                            <td className="py-1.5 pr-4 text-zinc-800">{it.name}</td>
+                            <td className="py-1.5 pr-4 text-zinc-800"><InspectorLink kind="item" id={it.itemId}>{it.name}</InspectorLink></td>
                             <td className="py-1.5 text-right tabular-nums text-zinc-600">
                               {it.amounts.map((a, j) => (
                                 <div key={j}>
@@ -362,6 +364,6 @@ export default async function BanquetDetailPage({ params }: { params: Promise<{ 
           </div>
         </Card>
       )}
-    </div>
+    </div></WorkspaceInspector>
   );
 }

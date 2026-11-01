@@ -1139,3 +1139,49 @@ test("banquet QR logs record real project facts without creating prep ledger ent
   const cancelled = await prisma.banquet.create({ data: { name: "Cancelled QR event", status: "CANCELLED", date: businessDate("2027-02-17"), venueId: venueA, menuItems: { create: { recipeId, orderedQty: 1, unit: "qt" } } }, include: { menuItems: true } });
   await assert.rejects(startProductionJob(staff, { kind: "BANQUET", lineId: cancelled.menuItems[0].id }, "CJ"), /completed or cancelled/);
 });
+
+test("inline catalog edits preserve unrelated fields, freshness and concurrent changes", async () => {
+  const { saveWorkspaceCell } = await import("./workspace-editing");
+  const ingredient = await prisma.item.create({ data: { name: "Inline cost fixture", unit: "lb", unitCost: 4, packQty: 40, packUnit: "lb", yieldFactor: 0.5, allergens: "milk", priceUpdatedAt: new Date("2026-01-01") } });
+  const edit = (field: string, expected: string | number | null, value: string) => ({ entity: "item", id: ingredient.id, field, expected, value });
+  assert.deepEqual(await saveWorkspaceCell(prisma, chefManager, edit("packSize", null, "40 lb case")), { ok: true, value: "40 lb case" });
+  const packed = await prisma.item.findUniqueOrThrow({ where: { id: ingredient.id } });
+  assert.equal(packed.priceUpdatedAt!.toISOString(), "2026-01-01T00:00:00.000Z"); assert.equal(packed.packQty, 40); assert.equal(packed.yieldFactor, 0.5); assert.equal(packed.allergens, "milk");
+  const competing = await Promise.all([saveWorkspaceCell(prisma, admin, edit("unitCost", 4, "5")), saveWorkspaceCell(prisma, chefManager, edit("unitCost", 4, "6"))]);
+  assert.equal(competing.filter(result => result.ok).length, 1);
+  const current = await prisma.item.findUniqueOrThrow({ where: { id: ingredient.id } });
+  assert.ok([5, 6].includes(current.unitCost)); assert.ok(current.priceUpdatedAt! > packed.priceUpdatedAt!);
+  assert.deepEqual(await saveWorkspaceCell(prisma, admin, edit("unitCost", 4, String(current.unitCost))), { ok: true, value: current.unitCost });
+  const conflict = await saveWorkspaceCell(prisma, admin, edit("unitCost", 4, "7"));
+  assert.equal(conflict.ok, false); assert.equal("current" in conflict && conflict.current, current.unitCost);
+  assert.equal((await saveWorkspaceCell(prisma, admin, edit("vendorId", null, "missing-vendor"))).ok, false);
+  assert.equal((await saveWorkspaceCell(prisma, admin, edit("unitCost", current.unitCost, ""))).ok, false);
+  assert.equal((await saveWorkspaceCell(prisma, admin, edit("packQty", 40, "5"))).ok, false);
+});
+
+test("inline edits check current database roles and keep guide units separate from catalog units", async () => {
+  const { saveWorkspaceCell } = await import("./workspace-editing");
+  const ingredient = await prisma.item.create({ data: { name: "Inline guide fixture", unit: "lb", unitCost: 4 } });
+  const guide = await prisma.orderGuide.create({ data: { name: "Inline guide", venueId: venueA, lines: { create: { itemId: ingredient.id, par: 16, unit: "oz" } } }, include: { lines: true } });
+  const edit = { entity: "guideLine", id: guide.lines[0].id, field: "par", expected: 16, value: "32" };
+  assert.equal((await saveWorkspaceCell(prisma, staff, edit)).ok, false);
+  assert.deepEqual(await saveWorkspaceCell(prisma, chefManager, edit), { ok: true, value: 32 });
+  assert.equal((await prisma.item.findUniqueOrThrow({ where: { id: ingredient.id } })).unit, "lb");
+  assert.equal((await prisma.orderGuideLine.findUniqueOrThrow({ where: { id: edit.id } })).unit, "oz");
+  const demoted = await prisma.user.create({ data: { name: "Demoted editor", email: `demoted-${key()}@local.test`, passwordHash: "unused", role: "STAFF" } });
+  assert.equal((await saveWorkspaceCell(prisma, demoted.id, { entity: "item", id: ingredient.id, field: "unitCost", expected: 4, value: "9" })).ok, false);
+});
+
+test("inspector yield edits record one audit change, preserve batches and deduplicate retries", async () => {
+  const { saveWorkspaceCell } = await import("./workspace-editing");
+  const recipe = await prisma.recipe.create({ data: { name: "Inspector yield fixture", prodCode: `I${key()}`, yieldQty: 4, yieldUnit: "qt" } });
+  const batches = await prisma.productionBatch.count(), snapshots = await prisma.prepPacketSnapshot.count();
+  const edit = { entity: "recipe", id: recipe.id, field: "yieldQty", expected: 4, value: "8" };
+  assert.deepEqual(await saveWorkspaceCell(prisma, chefManager, edit), { ok: true, value: 8 });
+  assert.deepEqual(await saveWorkspaceCell(prisma, chefManager, edit), { ok: true, value: 8 });
+  assert.equal((await prisma.recipe.findUniqueOrThrow({ where: { id: recipe.id } })).version, 2);
+  const history = await prisma.recipeChange.findMany({ where: { recipeId: recipe.id } });
+  assert.equal(history.length, 1); assert.equal(history[0].userId, chefManager); assert.match(history[0].detail!, /4 → 8/);
+  assert.equal((await saveWorkspaceCell(prisma, admin, { ...edit, expected: 8, value: "0" })).ok, false);
+  assert.equal(await prisma.productionBatch.count(), batches); assert.equal(await prisma.prepPacketSnapshot.count(), snapshots);
+});

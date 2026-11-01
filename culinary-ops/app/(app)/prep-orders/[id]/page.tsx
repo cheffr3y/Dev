@@ -1,3 +1,4 @@
+import { WorkspaceInspector } from "@/components/WorkspaceInspector";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -88,7 +89,7 @@ export default async function PrepOrderDetailPage({
   const dateValue = order.forDate.toISOString().slice(0, 10);
 
   return (
-    <div>
+    <WorkspaceInspector><div>
       <div className="mb-4 flex items-center justify-between">
         <Link
           href="/prep-orders"
@@ -284,7 +285,7 @@ export default async function PrepOrderDetailPage({
           </div>
         </div>
       </div>
-    </div>
+    </div></WorkspaceInspector>
   );
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { InspectorLink } from "@/components/InspectorLink";
 import { useState } from "react";
 import { num } from "@/lib/costing";
 import { allowedUnitsFor, defaultUnitFor, unitLabel } from "@/lib/units";
@@ -95,9 +95,9 @@ export function PrepLineCard({
     <div className="flex items-start justify-between gap-3 rounded-lg border border-hairline bg-canvas p-4">
       <div className="min-w-0">
         <p className="text-zinc-900">
-          <Link href={`/recipes/${line.recipeId}`} className="font-medium hover:underline">
+          <InspectorLink kind="recipe" id={line.recipeId} className="font-medium hover:underline">
             {line.recipeName}
-          </Link>{" "}
+          </InspectorLink>{" "}
           <span className="font-mono text-[12px] text-zinc-400">({line.prodCode})</span>
           {line.split && (
             <span className="ml-2 align-middle">

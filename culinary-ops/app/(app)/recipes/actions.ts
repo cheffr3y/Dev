@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireRole, type AppUser } from "@/lib/session";
+import { requireRole, requireActiveUser, type AppUser } from "@/lib/session";
 import { money } from "@/lib/costing";
 import { canConvert, unitLabel } from "@/lib/units";
 import { generateProdCode } from "@/lib/prep";
@@ -274,7 +274,7 @@ const lineSchema = z.object({
 });
 
 export async function addRecipeItem(formData: FormData) {
-  const user = await requireRole("MANAGER");
+  const user = await requireActiveUser("MANAGER");
   const d = lineSchema.parse({
     recipeId: formData.get("recipeId"),
     itemId: formData.get("itemId"),
@@ -288,6 +288,8 @@ export async function addRecipeItem(formData: FormData) {
     where: { recipeId_itemId: { recipeId: d.recipeId, itemId: d.itemId } },
   });
   const item = await prisma.item.findUnique({ where: { id: d.itemId } });
+  if (!item) throw new Error("This ingredient no longer exists. Refresh the recipe.");
+  if (!canConvert(d.unit, item.unit)) throw new Error(`Use a unit convertible to ${item.unit}. No weight-to-volume conversion is assumed.`);
   if (existing) throw new Error("This ingredient is already in the recipe. Use Edit ingredient to change its quantity or prep note.");
   await prisma.recipeItem.create({ data: { ...d, note: d.note || null, groupName: d.groupName || null, sortOrder: d.sortOrder } });
   const label = `${item?.name ?? "ingredient"} (${d.quantity} ${unitLabel(d.unit)})${d.note ? ` — ${d.note}` : ""}`;
@@ -333,7 +335,7 @@ export async function updateRecipeIngredient(_previous: { error: string; saved: 
 }
 
 export async function addRecipeIngredientWithState(_previous: { error: string }, formData: FormData) {
-  await requireRole("MANAGER");
+  await requireActiveUser("MANAGER");
   try { await addRecipeItem(formData); return { error: "" }; }
   catch (error) { return { error: error instanceof Error ? error.message : "Could not add the ingredient." }; }
 }

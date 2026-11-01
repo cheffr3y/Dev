@@ -9,6 +9,8 @@ import { IngredientFields } from "@/components/IngredientFields";
 import { INGREDIENT_CATEGORIES } from "@/lib/ingredient-fields";
 import { duplicateIngredientGroups, ingredientNameKey } from "@/lib/ingredient-cleanup";
 import { ingredientUsageSelect } from "@/lib/ingredient-replacement";
+import { EditGrid } from "@/components/EditGrid";
+import { CatalogCell } from "@/components/CatalogCells";
 import { ingredientIntegrity } from "@/lib/morning-pulse";
 
 export default async function ItemsPage({
@@ -136,7 +138,8 @@ export default async function ItemsPage({
         </details>
       )}
 
-      <Card className="overflow-x-auto">
+      {canEdit && <p className="mb-3 text-xs text-zinc-500">Click a cell to edit · Tab / Shift+Tab across cells · Enter down a column · Escape cancels. Prices are per cost unit; pack size is descriptive.</p>}
+      <Card className="catalog-grid overflow-x-auto"><EditGrid>
         <table className="w-full text-sm">
           <thead className="bg-zinc-50 text-left font-mono text-[11px] uppercase tracking-[0.02em] text-zinc-600">
             <tr>
@@ -146,7 +149,8 @@ export default async function ItemsPage({
               <th className="px-4 py-2.5 font-medium">Vendor</th>
               <th className="px-4 py-2.5 font-medium">Item #</th>
               <th className="px-4 py-2.5 font-medium">GCODE</th>
-              <th className="px-4 py-2.5 font-medium">Unit</th>
+              <th className="px-4 py-2.5 font-medium">Pack size</th>
+              <th className="px-4 py-2.5 font-medium">Cost unit</th>
               <th className="px-4 py-2.5 text-right font-medium">Unit Cost</th>
               <th className="px-4 py-2.5 font-medium">Price age</th>
               <th className="px-4 py-2.5 font-medium">Recipes</th>
@@ -156,7 +160,7 @@ export default async function ItemsPage({
           <tbody className="divide-y divide-zinc-100">
             {visible.length === 0 && (
               <tr>
-                <td colSpan={canEdit ? 11 : 10} className="px-4 py-8 text-center text-zinc-400">
+                <td colSpan={canEdit ? 12 : 11} className="px-4 py-8 text-center text-zinc-400">
                   {items.length === 0 ? "No ingredients yet." : "No ingredients match your filters."}
                 </td>
               </tr>
@@ -173,12 +177,13 @@ export default async function ItemsPage({
                   <Badge>{item.category}</Badge>
                 </td>
                 <td className="px-4 py-2.5"><AllergenBadges allergens={item.allergens} /></td>
-                <td className="px-4 py-2.5 text-zinc-600">{item.vendor?.name ?? "—"}</td>
-                <td className="px-4 py-2.5 font-mono text-xs text-zinc-600">{item.sku ?? "—"}</td>
-                <td className="px-4 py-2.5 font-mono text-xs text-zinc-700">{item.gcode ?? "—"}</td>
-                <td className="px-4 py-2.5 text-zinc-600">{item.unit}</td>
+                <td className="px-4 py-2.5 text-zinc-600">{canEdit ? <CatalogCell item={item} field="vendorId" vendors={vendors} /> : item.vendor?.name ?? "—"}</td>
+                <td className="px-4 py-2.5 font-mono text-xs text-zinc-600">{canEdit ? <CatalogCell item={item} field="sku" vendors={vendors} /> : item.sku ?? "—"}</td>
+                <td className="px-4 py-2.5 font-mono text-xs text-zinc-700">{canEdit ? <CatalogCell item={item} field="gcode" vendors={vendors} /> : item.gcode ?? "—"}</td>
+                <td className="px-4 py-2.5 text-zinc-600">{canEdit ? <CatalogCell item={item} field="packSize" vendors={vendors} /> : item.packSize ?? "—"}</td>
+                <td className="px-4 py-2.5 text-zinc-600">{canEdit ? <CatalogCell item={item} field="unit" vendors={vendors} /> : item.unit}</td>
                 <td className={`px-4 py-2.5 text-right ${freshness.unpriced ? "text-red-600" : "text-zinc-800"}`}>
-                  {freshness.unpriced ? "—" : money(item.unitCost, 5)}
+                  {canEdit ? <CatalogCell item={item} field="unitCost" vendors={vendors} /> : freshness.unpriced ? "—" : money(item.unitCost, 5)}
                 </td>
                 <td className="px-4 py-2.5 text-xs">
                   {freshness.unpriced ? (
@@ -201,7 +206,7 @@ export default async function ItemsPage({
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></EditGrid>
       </Card>
     </div>
   );

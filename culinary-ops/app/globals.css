@@ -948,3 +948,30 @@ body {
   .production-job-qr { width: 104px !important; padding: 4px; background: #fff !important; color: #000 !important; }
   .production-job-qr svg { width: 96px !important; height: 96px !important; }
 }
+
+.workspace-inspector::backdrop { background: rgb(2 6 23 / 65%); }
+.inspector-dossier .recipe-title { font-size: 28px; }
+.inspector-dossier .recipe-hero { flex-wrap: wrap; }
+.inspector-dossier .recipe-workspace { grid-template-columns: 1fr; gap: 24px; }
+.inspector-dossier .recipe-specs { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media print {
+  .workspace-inspector { display: none !important; }
+  .inline-cell { border: none !important; }
+}
+@media screen {
+  .catalog-grid { scroll-padding-inline-start: 210px; }
+  .catalog-grid table > thead > tr > th:first-child,
+  .catalog-grid table > tbody > tr > td:first-child {
+    position: sticky; left: 0; z-index: 2; min-width: 180px;
+    background: var(--color-canvas); border-right: 1px solid var(--color-hairline);
+  }
+  .catalog-grid table > thead > tr > th:first-child { z-index: 12; }
+}
+/* Inspector cards adapt to the drawer; standalone paper previews retain paper size. */
+.inspector-dossier .recipe-dossier { min-width: 0; min-height: 0; width: 100%; }
+.inspector-dossier .recipe-sheet-body { padding: 16px; }
+.inspector-dossier .recipe-masthead { flex-wrap: wrap; }
+@media (max-width: 480px) {
+  .workspace-inspector > div:first-child { flex-wrap: wrap; }
+  .inspector-dossier .recipe-storage ul { grid-template-columns: 1fr; }
+}

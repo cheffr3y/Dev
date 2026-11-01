@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 
 // One selectable row. `label` is the primary text; `meta` is muted secondary
 // text shown to the right (e.g. "yields 12 each", "$2.50 / lb"); `keywords`
@@ -28,6 +28,8 @@ export function ComboPicker({
   disabled = false,
   defaultId = "",
   onSelect,
+  selectOnTab = false,
+  ariaLabel,
 }: {
   options: ComboOption[];
   name: string;
@@ -35,7 +37,10 @@ export function ComboPicker({
   disabled?: boolean;
   defaultId?: string;
   onSelect?: (option: ComboOption | null) => void;
+  selectOnTab?: boolean;
+  ariaLabel?: string;
 }) {
+  const listId = useId();
   const initial = options.find((o) => o.id === defaultId) ?? null;
   const [query, setQuery] = useState(initial?.label ?? "");
   const [selectedId, setSelectedId] = useState(initial?.id ?? "");
@@ -61,6 +66,7 @@ export function ComboPicker({
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Tab" && !e.shiftKey && selectOnTab && open && !selectedId && results[active]) { select(results[active]); return; }
     if (!open && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
       setOpen(true);
       return;
@@ -93,6 +99,7 @@ export function ComboPicker({
           <path d="m20 20-3.5-3.5" strokeLinecap="round" />
         </svg>
         <input
+          role="combobox" aria-label={ariaLabel ?? placeholder} aria-expanded={open} aria-controls={listId} aria-autocomplete="list" aria-activedescendant={open && results[active] ? `${listId}-${active}` : undefined}
           value={query}
           disabled={disabled}
           onChange={(e) => {
@@ -117,16 +124,16 @@ export function ComboPicker({
       </div>
 
       {open && results.length > 0 && (
-        <ul
+        <ul id={listId} role="listbox"
           className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-md border border-hairline bg-canvas py-1 shadow-lg"
           onMouseDown={() => {
             if (blurTimer.current) clearTimeout(blurTimer.current);
           }}
         >
           {results.map((o, i) => (
-            <li key={o.id}>
+            <li key={o.id} id={`${listId}-${i}`} role="option" aria-selected={i === active}>
               <button
-                type="button"
+                type="button" tabIndex={-1}
                 onMouseEnter={() => setActive(i)}
                 onMouseDown={(e) => {
                   e.preventDefault();

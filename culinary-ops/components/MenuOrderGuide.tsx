@@ -1,3 +1,4 @@
+import { InspectorLink } from "./InspectorLink";
 import { money } from "@/lib/costing";
 import type { MenuRolloutPlan } from "@/lib/menu-rollout";
 
@@ -9,7 +10,7 @@ export function MenuOrderGuide({ plan }: { plan: MenuRolloutPlan }) {
       <div className="overflow-x-auto"><table className="atelier-table w-full text-left text-xs">
         <thead><tr><th aria-label="Check">[ ]</th><th>Item Name</th><th>Category</th><th>SKU / GCode</th><th>Pack Size</th><th>Unit Cost</th><th>Order Qty</th></tr></thead>
         <tbody>{vendor.lines.map(line => <tr key={line.itemId}>
-          <td className="font-mono">[ ]</td><td>{line.name}</td><td>{line.category}</td>
+          <td className="font-mono">[ ]</td><td><InspectorLink kind="item" id={line.itemId}>{line.name}</InspectorLink></td><td>{line.category}</td>
           <td>{line.item.sku || "—"}<span className="block text-zinc-500">{line.item.gcode || "—"}</span></td>
           <td>{line.item.packSize || "—"}</td>
           <td className="font-mono">{line.item.unitCost > 0 ? `${money(line.item.unitCost, 2)} / ${line.item.unit}` : "Unpriced"}</td>

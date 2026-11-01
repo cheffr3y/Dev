@@ -16,6 +16,7 @@ export const authConfig = {
       if (pathname.startsWith("/play") || pathname.startsWith("/api/trivia")) {
         return true;
       }
+      if (pathname === "/api/workspace" && !isLoggedIn) return Response.json({ ok: false, error: "Sign in again to continue." }, { status: 401 });
       const isLoginPage = pathname.startsWith("/login");
       if (isLoginPage) {
         if (isLoggedIn) return Response.redirect(new URL(safeReturnTo(nextUrl.searchParams.get("returnTo")), nextUrl));

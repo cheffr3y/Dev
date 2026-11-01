@@ -113,7 +113,7 @@ Validation: TypeScript, targeted ESLint, production build, 173 unit checks, 24 d
 ## Chunk 4: QR Project Start / Finish & Admin Review
 **Goal:** Scan a prep or banquet project when work starts, finish after labeling/dating, and capture actual elapsed time, yield, and notes for review.
 
-**Scope — October 31, 2026:** QR project logging is the only retained work from the original Chunk 4. The combined packet/compiler, station filters, and label generator remain removed. Chunk 5 is the next active roadmap item.
+**Scope — October 31, 2026:** QR project logging is the only retained work from the original Chunk 4. The combined packet/compiler, station filters, and label generator remain removed. Chunk 5 follows this work; Chunk 6 is now the next active roadmap item.
 
 ### Checklist
 - [x] **Project-specific printed QR codes:** Prep lot recipe cards, banquet cook cards and prep-sheet food lines, weekly banquet project selection, and daily worksheet recipe groups open the matching project on a phone. Printed copy multipliers remain attached to prep targets. Sign-in returns to the scanned project.
@@ -143,9 +143,19 @@ Validation: production build, TypeScript, targeted ESLint, 178 unit checks, and 
 * `components/RecipeDossier.tsx`
 
 ### Checklist
-- [ ] **Keyboard-Driven Inline Grid for `Items` & `Order Guides`:** Allow clicking directly into Price, Unit, Pack Size, Vendor, and ProdCode cells in `items/page.tsx` and `order-guides/[id]/page.tsx`. Support `Tab`, `Shift+Tab`, and `Enter` to move down rows with optimistic auto-save and a subtle green "Saved" flash.
-- [ ] **Fast Keyboard Entry in `RecipeIngredientEditor.tsx`:** Let you add 10 ingredients in a row using only the keyboard (type ingredient $\rightarrow$ `Tab` $\rightarrow$ quantity $\rightarrow$ `Tab` $\rightarrow$ unit $\rightarrow$ `Enter` to commit and auto-focus the next new ingredient row).
-- [ ] **Slide-Over "Inspector Drawer" (`RecipeDossier` & `Item` quick-edit):** When working inside `menus/[id]/page.tsx`, `banquets/[id]/page.tsx`, or `prep-orders/[id]/page.tsx`, clicking an ingredient or sub-recipe opens a right-hand slide-over drawer instead of navigating away. You can fix a missing price or tweak a recipe yield inside the drawer and watch the parent menu/banquet cost recalculate live.
+- [x] **Keyboard-Driven Inline Grid for `Items` & `Order Guides`:** Allow clicking directly into Price, Unit, Pack Size, Vendor, and ProdCode cells in `items/page.tsx` and `order-guides/[id]/page.tsx`. Support `Tab`, `Shift+Tab`, and `Enter` to move down rows with optimistic auto-save and a subtle green "Saved" flash.
+- [x] **Fast Keyboard Entry in `RecipeIngredientEditor.tsx`:** Let you add 10 ingredients in a row using only the keyboard (type ingredient $\rightarrow$ `Tab` $\rightarrow$ quantity $\rightarrow$ `Tab` $\rightarrow$ unit $\rightarrow$ `Enter` to commit and auto-focus the next new ingredient row).
+- [x] **Slide-Over "Inspector Drawer" (`RecipeDossier` & `Item` quick-edit):** When working inside `menus/[id]/page.tsx`, `banquets/[id]/page.tsx`, or `prep-orders/[id]/page.tsx`, clicking an ingredient or sub-recipe opens a right-hand slide-over drawer instead of navigating away. You can fix a missing price or tweak a recipe yield inside the drawer and watch the parent menu/banquet cost recalculate live.
+
+### Implementation status — November 1, 2026
+
+Implemented. Ingredients and Order Guides support field-by-field autosave, Tab / Shift+Tab navigation, Enter down a column, Escape cancellation, visible save feedback, retained failed drafts, and explicit conflict resolution. Ingredient names stay visible while scrolling. Order Guide estimates normalize compatible stock and cost units and flag partial totals when units or prices need attention.
+
+Recipe ingredient entry supports ten consecutive additions using only the keyboard, resets after a successful save, and restores search focus. Menu, banquet, and prep workspaces open recipe/ingredient inspectors with nested navigation, yield and catalog editing, live parent costing refresh, focus/scroll restoration, and mobile layouts. Current database roles protect writes; recipe yield changes are audited. Existing packet snapshots and accounting records remain intact. No database migration is required.
+
+Validation: production build and TypeScript, targeted ESLint, 180 unit checks, and 29 disposable-PostgreSQL transaction checks passed. Browser coverage includes keyboard cell navigation, invalid/conflicting edits, lost-response recovery, ten consecutive keyboard ingredient additions, nested inspector edits and live parent refresh, focus/scroll restoration, mobile read-only access, print visibility, and preserved snapshots/accounting records. Desktop and mobile screenshots were visually reviewed.
+
+See [workspace-editing.md](docs/workspace-editing.md) for operation and verification details.
 
 ### Copy-Paste Agent Prompt for Chunk 5
 > Read `components/RecipeIngredientEditor.tsx`, `app/(app)/items/page.tsx`, `app/(app)/order-guides/[id]/page.tsx`, and `app/(app)/menus/[id]/page.tsx`. Execute **Chunk 5** of `ROADMAP.md`: implement spreadsheet-style inline keyboard editing (`Tab`/`Enter` with optimistic saves) for Items, Order Guides, and Recipe Ingredient entry, and add a right-hand Slide-Over Inspector Drawer for viewing/editing recipes and items in-place without losing scroll position. Verify with `npx tsc --noEmit`.

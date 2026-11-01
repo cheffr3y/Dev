@@ -24,7 +24,7 @@ Built with Next.js (App Router), TypeScript, Prisma, and PostgreSQL. Role-based 
 
 See the [kitchen and accounting guide](docs/prep-orders-guide.md) and [migration / rollout checklist](docs/prep-orders-rollout.md).
 
-See [ROADMAP.md](ROADMAP.md) for the commercial product direction and implementation checklist. Chunks 1–4 are implemented. Chunk 4 is limited to QR project start/finish logging and admin review; Chunk 5 (inline editing and inspector drawers) is next.
+See [ROADMAP.md](ROADMAP.md) for the commercial product direction and implementation checklist. Chunks 1–5 are implemented. Chunk 4 is limited to QR project start/finish logging and admin review. Chunk 5 adds keyboard catalog editing, rapid ingredient entry, and recipe/ingredient side panels; see the [editing guide](docs/workspace-editing.md). Chunk 6 (accounting and invoice ingestion) is next.
 
 Use **⌘K / Ctrl+K** to search recipes/ingredients or run actions: print this week’s banquet packet, download week-to-date prep accounting (Sunday through today), open daily closeout/prep, review duplicate ingredients, or create a recipe. Actions follow existing role permissions; closeout and accounting are admin-only.
 

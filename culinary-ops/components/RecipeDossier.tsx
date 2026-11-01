@@ -1,4 +1,5 @@
 import { useId, type ReactNode } from "react";
+import { InspectorLink } from "./InspectorLink";
 import { num } from "@/lib/costing";
 import { displayMeasure } from "@/lib/units";
 import { ALLERGENS } from "@/lib/allergens";
@@ -34,6 +35,7 @@ export function RecipePrintSettings() {
 export type MiseLine = {
   id: string;
   name: string;
+  reference?: { kind: "recipe" | "item"; id: string };
   quantity: number;
   unit: string;
   note: ReactNode;
@@ -166,7 +168,7 @@ export function RecipeDossierWorkspace({ recipe, lines, scale, weightInGrams = f
                 return (
                   <li key={line.id} className="recipe-ingredient flex items-baseline justify-between gap-3 border-b border-dotted border-[#E2DDD5] py-1.5">
                     <div className="min-w-0">
-                      <span className="font-medium">{line.name}</span>
+                      <span className="font-medium">{line.reference ? <InspectorLink {...line.reference}>{line.name}</InspectorLink> : line.name}</span>
                       {line.note && <p className="recipe-prep-note mt-0.5 whitespace-pre-wrap font-display text-[11px] italic leading-snug text-zinc-500">{line.note}</p>}
                     </div>
                     <span className="shrink-0 whitespace-nowrap font-mono text-[11px] tabular-nums text-[#2C3E35]">

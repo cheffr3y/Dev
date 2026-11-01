@@ -264,7 +264,6 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
                 <AddIngredientForm
                   groupNames={groupNames}
                   nextSortOrder={Math.max(-1, ...recipe.items.map(line => line.sortOrder)) + 1}
-                  key={recipe.items.length}
                   recipeId={recipe.id}
                   items={items.filter(item => !recipe.items.some(line => line.itemId === item.id))}
                 />

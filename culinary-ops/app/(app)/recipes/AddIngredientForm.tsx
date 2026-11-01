@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ComboPicker, type ComboOption } from "@/components/ComboPicker";
 import { Button, Field, Input, Select } from "@/components/ui";
 import { allowedUnitsFor, defaultUnitFor, unitLabel } from "@/lib/units";
@@ -20,7 +20,12 @@ type Item = IngredientOption;
 // can't be costed and would just flag.
 export function AddIngredientForm({ recipeId, items, groupNames = [], nextSortOrder = 0 }: { recipeId: string; items: Item[]; groupNames?: string[]; nextSortOrder?: number }) {
   const [picked, setPicked] = useState<Item | null>(null);
-  const [state, action, pending] = useActionState(addRecipeIngredientWithState, { error: "" });
+  const [state, setState] = useState({ error: "" }), [pending, setPending] = useState(false), [pickerKey, setPickerKey] = useState(0);
+  const form = useRef<HTMLFormElement>(null), submitting = useRef(false);
+
+  useEffect(() => {
+    if (pickerKey > 0 && !pending) form.current?.querySelector<HTMLInputElement>('[role="combobox"]')?.focus();
+  }, [pickerKey, pending]);
 
   const options: ComboOption[] = items.map((it) => ({
     id: it.id,
@@ -32,11 +37,28 @@ export function AddIngredientForm({ recipeId, items, groupNames = [], nextSortOr
   const units = picked ? allowedUnitsFor(picked.unit) : [];
 
   return (
-    <form action={action} className="flex flex-wrap items-end gap-2">
+    <form ref={form} className="flex flex-wrap items-end gap-2" aria-label="Add recipe ingredients" onSubmit={async event => {
+      event.preventDefault(); if (submitting.current || !picked) return;
+      const data = new FormData(event.currentTarget); submitting.current = true; setPending(true); setState({ error: "" });
+      try {
+        const result = await addRecipeIngredientWithState({ error: "" }, data); setState(result);
+        if (!result.error) {
+          setPicked(null); setPickerKey(value => value + 1);
+          const quantity = form.current?.elements.namedItem("quantity") as HTMLInputElement | null;
+          const note = form.current?.elements.namedItem("note") as HTMLInputElement | null;
+          const sort = form.current?.elements.namedItem("sortOrder") as HTMLInputElement | null;
+          if (quantity) quantity.value = "1"; if (note) note.value = ""; if (sort) sort.value = String(Number(data.get("sortOrder")) + 1);
+        }
+      } catch { setState({ error: "Connection interrupted. Check the ingredient list before retrying; your entry is kept." }); }
+      finally { submitting.current = false; setPending(false); }
+    }}>
       <input type="hidden" name="recipeId" value={recipeId} />
       <div className="min-w-[180px] flex-1">
         <Field label="Add ingredient">
           <ComboPicker
+            key={pickerKey}
+            disabled={pending}
+            selectOnTab ariaLabel="Add ingredient"
             options={options}
             name="itemId"
             placeholder="Search ingredients…"
@@ -46,7 +68,7 @@ export function AddIngredientForm({ recipeId, items, groupNames = [], nextSortOr
       </div>
       <div className="w-24">
         <Field label="Qty">
-          <Input name="quantity" type="number" step="0.01" min="0" defaultValue={1} disabled={!picked} />
+          <Input name="quantity" onFocus={event => event.currentTarget.select()} type="number" step="any" min="0" required defaultValue={1} disabled={!picked || pending} />
         </Field>
       </div>
       <div className="w-28">
@@ -55,7 +77,8 @@ export function AddIngredientForm({ recipeId, items, groupNames = [], nextSortOr
           <Select
             key={picked?.id ?? "none"}
             name="unit"
-            disabled={!picked}
+            onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }}
+            disabled={!picked || pending}
             defaultValue={picked ? defaultUnitFor(picked.unit) : ""}
           >
             {picked ? (
@@ -72,7 +95,7 @@ export function AddIngredientForm({ recipeId, items, groupNames = [], nextSortOr
       </div>
       <div className="min-w-[150px] flex-1">
         <Field label="Prep / note">
-          <Input name="note" placeholder="diced, room temp… (optional)" disabled={!picked} />
+          <Input name="note" placeholder="diced, room temp… (optional)" disabled={!picked || pending} />
         </Field>
       </div>
       <div className="w-44"><Field label="Group (optional)"><Input aria-label="Group (optional)" name="groupName" list={`ingredient-groups-${recipeId}`} placeholder="Herb base, emulsion…" /><datalist id={`ingredient-groups-${recipeId}`}>{groupNames.map(name => <option key={name} value={name} />)}</datalist></Field></div>
@@ -81,6 +104,7 @@ export function AddIngredientForm({ recipeId, items, groupNames = [], nextSortOr
         {pending ? "Adding…" : "Add"}
       </Button>
       {picked && <div className="w-full space-y-1 rounded-lg border border-hairline bg-cream p-3 text-xs text-zinc-500"><p>{picked.category} · {picked.vendor?.name ?? "No vendor"} · Item # {picked.sku ?? "—"} · GCODE {picked.gcode ?? "—"}</p><AllergenBadges allergens={picked.allergens} /><Link href={`/items/${picked.id}`} target="_blank" rel="noreferrer" className="inline-block text-blue-600 underline">Review ingredient details ↗</Link></div>}
+      <p className="w-full text-xs text-zinc-500">Type an ingredient → Tab to select → quantity → Tab → unit → Enter to add the next row. Optional notes and groups remain available.</p>
       {state.error && <p role="alert" className="w-full text-sm text-red-600">{state.error}</p>}
     </form>
   );
