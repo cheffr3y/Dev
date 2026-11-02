@@ -96,6 +96,23 @@ try {
     await beans.getByLabel("Made (qt)", { exact: true }).inputValue(),
     "",
   );
+  const madeBeans = beans.getByLabel("Made (qt)", { exact: true });
+  const madeSauce = sauce.getByLabel("Made (qt)", { exact: true });
+  await madeBeans.focus(); await madeBeans.press("Escape");
+  assert.doesNotMatch(await admin.locator("[data-worksheet-grid]").innerText(), /Unsaved changes/);
+  await madeBeans.fill("999"); await madeBeans.press("Escape");
+  assert.equal(await madeBeans.inputValue(), "");
+  await madeBeans.press("Enter");
+  assert.equal(await madeSauce.evaluate(el => el === document.activeElement), true);
+  await madeSauce.press("Shift+Enter");
+  assert.equal(await madeBeans.evaluate(el => el === document.activeElement), true);
+  await madeBeans.press("ArrowRight");
+  assert.equal(await beans.getByLabel("Cook", { exact: true }).evaluate(el => el === document.activeElement), true);
+  await admin.keyboard.press("ArrowDown");
+  assert.equal(await sauce.getByLabel("Cook", { exact: true }).evaluate(el => el === document.activeElement), true);
+  await admin.keyboard.press("Enter");
+  assert.equal(await sauce.getByLabel("Cook", { exact: true }).evaluate(el => el === document.activeElement), true, "Bottom-row Enter must not submit accounting");
+  assert.equal(await admin.getByRole("button", { name: "Save item results", exact: true }).count(), 0);
   await sauce.getByLabel("Made (qt)", { exact: true }).fill("9");
   await sauce.getByLabel("Cook", { exact: true }).fill("Keep my edit");
   await sauce.getByLabel("Production notes").fill("Do not lose this note");

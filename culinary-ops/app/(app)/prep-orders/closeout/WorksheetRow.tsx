@@ -46,6 +46,20 @@ export function WorksheetRow({
   const [saved, setSaved] = useState(false);
   const pending = useRef<unknown>(null);
   const [previewRequests, setPreviewRequests] = useState("");
+  function keyboardField(column: string, restore?: (value: string) => void) {
+    return {
+      "data-grid-cell": true, "data-grid-row": group.recipeId, "data-grid-column": column,
+      onFocus: (event: React.FocusEvent<HTMLInputElement>) => { event.currentTarget.dataset.entryValue = event.currentTarget.value; event.currentTarget.select(); },
+      onKeyDown: (event: React.KeyboardEvent<HTMLInputElement>) => {
+        if (event.key !== "Escape" || event.nativeEvent.isComposing) return;
+        event.preventDefault(); event.stopPropagation();
+        const value = event.currentTarget.dataset.entryValue ?? "";
+        if (event.currentTarget.value === value) return;
+        if (restore) restore(value); else event.currentTarget.value = value;
+        changed();
+      },
+    };
+  }
   const requestsSignature = group.rows
     .map((r) => `${r.id}:${r.quantity}:${r.unit}:${r.lot}`)
     .join("|");
@@ -202,6 +216,7 @@ export function WorksheetRow({
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label={`Made (${group.unit})`}>
               <Input
+                {...keyboardField("made", setMade)}
                 aria-label={`Made (${group.unit})`}
                 required
                 type="number"
@@ -212,7 +227,7 @@ export function WorksheetRow({
               />
             </Field>
             <Field label="Cook">
-              <Input aria-label="Cook" name="cookName" required value={cookName} onChange={event => setCookName(event.target.value)} />
+              <Input {...keyboardField("cook", setCookName)} aria-label="Cook" name="cookName" required value={cookName} onChange={event => setCookName(event.target.value)} />
             </Field>
           </div>
           <div className="space-y-3">
@@ -240,6 +255,7 @@ export function WorksheetRow({
                     </div>
                     <Field label={`Sent (${group.unit})`}>
                       <Input
+                        {...keyboardField(`sent:${row.venueId}`, value => setSent(previous => ({ ...previous, [row.id]: value })))}
                         aria-label={`Sent to ${row.venueName} (${group.unit})`}
                         required
                         type="number"
@@ -256,6 +272,7 @@ export function WorksheetRow({
                     <div className="mt-3">
                       <Field label="Why was less sent?">
                         <Input
+                          {...keyboardField(`shortage:${row.venueId}`)}
                           aria-label={`Shortage reason for ${row.venueName}`}
                           name={`shortage_${row.id}`}
                           required
@@ -319,6 +336,7 @@ export function WorksheetRow({
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <Field label={`Waste (${group.unit})`}>
                 <Input
+                  {...keyboardField("waste", setWaste)}
                   aria-label="Waste quantity"
                   type="number"
                   min="0"
@@ -331,6 +349,7 @@ export function WorksheetRow({
               {Number(waste) > 0 && (
                 <Field label="Waste reason">
                   <Input
+                    {...keyboardField("wasteReason")}
                     aria-label="Waste reason"
                     name="wasteReason"
                     required
@@ -357,6 +376,7 @@ export function WorksheetRow({
                 }
               >
                 <Input
+                  {...keyboardField("productionOverride")}
                   aria-label="Production person-minutes"
                   name="productionOverride"
                   type="number"
@@ -372,6 +392,7 @@ export function WorksheetRow({
                 hint="Blank needs cost review; enter 0 for none."
               >
                 <Input
+                  {...keyboardField("dishwasherMinutes")}
                   aria-label="Dishwasher minutes"
                   name="dishwasherMinutes"
                   type="number"
@@ -388,6 +409,7 @@ export function WorksheetRow({
                   hint="Default: $62/3 per hour (about $20.67)"
                 >
                   <Input
+                    {...keyboardField("productionRate")}
                     aria-label="Production hourly rate"
                     name="productionRate"
                     type="number"
@@ -400,6 +422,7 @@ export function WorksheetRow({
                   hint="Default: $18 per hour"
                 >
                   <Input
+                    {...keyboardField("dishwasherRate")}
                     aria-label="Dishwasher hourly rate"
                     name="dishwasherRate"
                     type="number"
@@ -427,6 +450,7 @@ export function WorksheetRow({
                 }
               >
                 <Input
+                  {...keyboardField("lot")}
                   aria-label="Actual lot"
                   name="lot"
                   required={multipleLots && Number(made) > 0}

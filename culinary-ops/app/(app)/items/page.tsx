@@ -145,7 +145,7 @@ export default async function ItemsPage({
         </details>
       )}
 
-      {canEdit && <p className="mb-3 text-xs text-zinc-500">Click a cell to edit · Tab / Shift+Tab across cells · Enter down a column · Escape cancels. Prices are per cost unit; pack size is descriptive.</p>}
+      {canEdit && <p className="mb-3 text-xs text-zinc-500">Click a cell to edit · Arrows move between cells (left/right at text edges; Alt+arrows in vendor lists) · Tab / Shift+Tab across cells · Enter / Shift+Enter down/up a column · Escape cancels. Prices are per cost unit; pack size is descriptive.</p>}
       <Card className="catalog-grid overflow-x-auto"><EditGrid>
         <table className="w-full text-sm">
           <thead className="bg-zinc-50 text-left font-mono text-[11px] uppercase tracking-[0.02em] text-zinc-600">
