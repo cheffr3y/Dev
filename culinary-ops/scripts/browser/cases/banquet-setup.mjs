@@ -47,6 +47,8 @@ try {
   await save(manager);
   await manager.reload();
   assert.equal(await rows.first().getByLabel("Pull quantity").inputValue(), "2");
+  await manager.getByRole("button", { name: "Lock BEO baseline", exact: true }).click();
+  await manager.getByText(/No changes from baseline/).first().waitFor();
   await manager.screenshot({ path: `${output}/editor.png`, fullPage: true });
   await manager.getByRole("button", { name: "Pack & pull", exact: true }).click();
   const block = manager.locator("label").filter({ hasText: "Boos Block" });
@@ -108,13 +110,47 @@ try {
     await item.getByLabel("Pull item name").fill("Square Tray (Small)");
   }
   await save(manager);
+  await manager.getByLabel("Service / ready time").fill("Serve 6 pm");
+  await shared.getByRole("button", { name: "Remove Heatlamp", exact: true }).click();
+  await save(manager);
   await manager.getByRole("button", { name: "Print preview", exact: true }).click();
+  const revisions = manager.locator(".banquet-setup-sheet .beo-revision");
+  assert.ok(await revisions.locator(".beo-change-added").count());
+  assert.ok(await revisions.locator(".beo-change-modified").count());
+  assert.ok(await revisions.locator(".beo-change-alert").count());
   await manager.emulateMedia({ media: "print" });
   await manager.pdf({ path: `${output}/large-setup.pdf`, format: "Letter", printBackground: true });
+  await manager.emulateMedia({ media: "screen" });
+  for (const route of ["/banquets/banquet-setup-smoke/packet", "/banquets/banquet-setup-smoke/prep-sheet", "/banquets/week/2026-11-30/packet"]) {
+    await manager.goto(`${base}${route}`);
+    const option = manager.getByRole("checkbox", { name: "Show Changes Since Baseline (print)", exact: true });
+    assert.equal(await option.isChecked(), true);
+    await option.uncheck();
+    assert.equal(await manager.locator(".beo-revision").first().isVisible(), true);
+    await manager.getByRole("button", { name: "1-Page Squeeze", exact: true }).click();
+    await manager.reload();
+    assert.equal(await option.isChecked(), false);
+    await manager.emulateMedia({ media: "print" });
+    assert.equal(await manager.locator(".beo-revision").first().isVisible(), false);
+    await manager.emulateMedia({ media: "screen" });
+    await option.check();
+    await manager.emulateMedia({ media: "print" });
+    assert.equal(await manager.locator(".beo-revision").first().isVisible(), true);
+    const colors = await manager.locator(".beo-change-alert").first().evaluate(row => ({ color: getComputedStyle(row).color, background: getComputedStyle(row).backgroundColor }));
+    assert.equal(colors.color, "rgb(0, 0, 0)");
+    assert.ok(["rgb(255, 255, 255)", "rgb(244, 244, 245)"].includes(colors.background));
+    assert.equal(await option.isVisible(), false);
+    await manager.emulateMedia({ media: "screen" });
+    await manager.setViewportSize({ width: 390, height: 844 });
+    assert.equal(await manager.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    await manager.screenshot({ path: `${output}/${route.includes("week") ? "weekly" : route.endsWith("prep-sheet") ? "prep" : "cook"}-diff-mobile.png`, fullPage: true });
+    await manager.setViewportSize({ width: 1440, height: 1100 });
+  }
   console.log("Banquet setup: persistence, aggregation, staff packing, stale-write rejection, quantity invalidation, mobile and both packet integrations passed.");
 } catch (error) {
   for (const context of contexts) for (const page of context.pages()) {
     console.error("Stopped at", page.url());
+    console.error("Overflow elements", await page.evaluate(() => [...document.querySelectorAll("body *")].filter(el => el.getBoundingClientRect().right > innerWidth + 1).slice(0, 12).map(el => ({ tag: el.tagName, class: el.className, width: el.getBoundingClientRect().width }))));
     await page.screenshot({ path: `${output}/failure-${contexts.indexOf(context)}.png`, fullPage: true }).catch(() => {});
   }
   throw error;

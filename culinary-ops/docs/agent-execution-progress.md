@@ -87,7 +87,7 @@ Validation: 219 unit tests pass, including serial execution, failure isolation, 
 - Indicators explicitly describe paid-price changes. Catalog prices, current recipe costs and existing menu margin calculations are unchanged; no historical menu margin is inferred from ingredient observations. Mini trends are hidden in print to preserve costing-sheet layout.
 - Included the user's decision to skip section 2.1. Configuration, sample limits and comparison rules are documented in [accounting invoices](accounting-invoices.md#paid-price-trends-and-variance-alerts).
 
-Validation: baseline 219 unit tests; all 223 tests now pass, including variance/threshold edge cases, supplier/unit isolation, credits/voids and sparkline rendering. Production build, TypeScript and full lint pass. Price-trends, workspace, print-controller and recipe-costing browser suites pass, including mobile overflow, paper visibility, normalized $8/lb to $0.75/oz (+50%) observations, historical invoice comparisons, catalog-editing focus, and unchanged scaling/current catalog cost. The costing browser helper now navigates explicitly to the full recipe editor, accommodating section 1.3's inspector-on-click behavior. Changes remain on `codex/roadmap-2-2-price-trends` pending merge; section 2.3 has not started.
+Validation: baseline 219 unit tests; all 223 tests now pass, including variance/threshold edge cases, supplier/unit isolation, credits/voids and sparkline rendering. Production build, TypeScript and full lint pass. Price-trends, workspace, print-controller and recipe-costing browser suites pass, including mobile overflow, paper visibility, normalized $8/lb to $0.75/oz (+50%) observations, historical invoice comparisons, catalog-editing focus, and unchanged scaling/current catalog cost. The costing browser helper now navigates explicitly to the full recipe editor, accommodating section 1.3's inspector-on-click behavior. Section 2.2 subsequently merged as `555c057`.
 
 ## Section status
 
@@ -98,8 +98,8 @@ Validation: baseline 219 unit tests; all 223 tests now pass, including variance/
 | 1.3 | URL-driven filters and inspectors | Complete; merged as `f5349a2` |
 | 1.4 | OCR and invoice parsing progress | Merged as `cb51b72`; AI extraction remains deferred |
 | 2.1 | Line Mode | Skipped at the user's request; retain the existing interface |
-| 2.2 | Price sparklines and variance alerts | Complete and verified; pending merge |
-| 2.3 | Banquet baseline visual diffs | Pending |
+| 2.2 | Price sparklines and variance alerts | Complete; merged as `555c057` |
+| 2.3 | Banquet baseline visual diffs | Complete and verified on `codex/roadmap-2-3-banquet-diffs`; pending merge |
 | 2.4 | Spreadsheet keyboard navigation | Pending |
 | 3.1 | Recipe dependency tree | Pending |
 | 3.2 | Preservation and yield tracking | Pending |
@@ -107,4 +107,12 @@ Validation: baseline 219 unit tests; all 223 tests now pass, including variance/
 
 Before each section, check what the application already supports and verify the proposed file paths. Mark work complete only with corresponding implementation and validation evidence.
 
-Section 2.1 (Atelier / Line Mode toggle) is omitted at the user's request. After merging section 2.2, continue with section 2.3: banquet baseline visual diffs.
+Section 2.1 (Atelier / Line Mode toggle) is omitted at the user's request. After merging section 2.3, continue with section 2.4: spreadsheet keyboard navigation.
+
+## Section 2.3 — banquet baseline visual diffs — November 2, 2026
+
+- Added green addition/guest-increase, amber edit, and red removal/new-allergen row treatments with explicit text badges and existing before/after values. Ordinary cleared notes remain edits. Allergen aliases, ordering and unknown legacy tokens are handled without changing the saved snapshot schema.
+- Individual cook packets, prep sheets and weekly cook packets have a URL-retained print checkbox, enabled by default. Hiding revisions affects paper only; on-screen comparisons stay visible. Print remains monochrome with repeating headers, unsplit rows and alternating gray backgrounds.
+- Weekly event packets now use the existing recipe-content scroll containment, fixing a phone-width overflow discovered by the new checks. Existing locked references, role checks, request records and accounting behavior are preserved. No migration is needed.
+
+Validation: baseline 223 unit tests; all 227 now pass. Production webpack build, TypeScript and full lint pass. The disposable PostgreSQL harness passes 47 integration checks and the archive repair regression. Event-planning, expanded banquet-setup, print-controller and recipe-costing browser suites pass, including saved settings across reload/density changes, monochrome print visibility, all three change tones, desktop/mobile layout, original baseline comparisons and unchanged frozen/request data. Desktop screenshots and a rendered large-setup PDF were visually reviewed. Local Chromium was selected explicitly because the runtime Playwright default expected an uninstalled version. The initial sandboxed Turbopack build stalled; production validation used the successful webpack build.

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { readSetup } from "./banquet-setup";
+import { parseAllergens } from "../recipes/allergens";
 
 export const baselineSchema = z.object({ version: z.literal(1), guestCount: z.number(), fields: z.record(z.string(), z.string()) });
 export type BaselineSnapshot = z.infer<typeof baselineSchema>;
@@ -50,6 +51,38 @@ export function baselineChanges(original: unknown, current: BaselineSnapshot) {
   return [...new Set([...Object.keys(baseline.fields), ...Object.keys(current.fields)])].sort()
     .filter(key => (baseline.fields[key] ?? "") !== (current.fields[key] ?? ""))
     .map(field => ({ field, before: baseline.fields[field] ?? "", after: current.fields[field] ?? "" }));
+}
+
+export type BaselineChange = { field: string; before: string; after: string };
+export type BaselineChangeStyle = { tone: "added" | "modified" | "alert"; label: string };
+
+// Keep comparison presentation separate from the saved version-1 snapshot format.
+export function baselineChangeStyle(change: BaselineChange, original: BaselineSnapshot, current: BaselineSnapshot): BaselineChangeStyle {
+  const { field, before, after } = change;
+  const entity = field.match(/^(Station [^/]+(?: \/ Food [^/]+)?|Food [^/]+) \/ /)?.[1];
+  const exists = (snapshot: BaselineSnapshot) => entity && Object.keys(snapshot.fields).some(key => key.startsWith(`${entity} / `));
+  if (entity && !exists(current)) return { tone: "alert", label: "− Removed item" };
+  if (field.endsWith(" / Allergens")) {
+    // Retain unknown legacy tokens for comparison rather than silently dropping them.
+    const tokens = (value: string) => new Set(value.split(",").map(token =>
+      parseAllergens(token)[0] ?? token.trim().toLowerCase()).filter(Boolean));
+    const previous = tokens(before);
+    if ([...tokens(after)].some(token => !previous.has(token))) return { tone: "alert", label: "! New allergen" };
+    return { tone: "modified", label: "~ Allergens changed" };
+  }
+  // An added/removed entity includes its instructions and quantities, even when
+  // those fields are blank in one snapshot. Ordinary cleared notes are edits.
+  if (entity && !exists(original)) return { tone: "added", label: "+ Added item" };
+  if (field === "Guests") {
+    const delta = current.guestCount - original.guestCount;
+    return { tone: delta > 0 ? "added" : "modified", label: `${delta > 0 ? "+" : "−"}${Math.abs(delta)} Guests` };
+  }
+  // Resources are single fields, rather than entities with sub-fields.
+  if (/ \/ (vessel|equipment|utensil) [^/]+$/.test(field)) {
+    if (!after) return { tone: "alert", label: "− Removed item" };
+    if (!before) return { tone: "added", label: "+ Added item" };
+  }
+  return { tone: "modified", label: "~ Modified" };
 }
 
 export function baselineFieldLabel(field: string, original: BaselineSnapshot, current: BaselineSnapshot) {

@@ -443,5 +443,8 @@
     .event-work-sheet .print-write-in, .purchasing-table .print-write-in { min-height: 28px; height: 28px; }
     .purchasing-table tbody tr:nth-child(even), .beo-revision tbody tr:nth-child(even) { background: #f4f4f5 !important; print-color-adjust: exact; }
     .beo-revision { color: #000 !important; border: 2px solid #000 !important; background: #fff !important; }
+    .beo-revision tbody tr { color: #000 !important; background: #fff !important; }
+    .beo-revision thead { display: table-header-group; }
+    [data-print-revisions="hide"] :is(.beo-revision, .beo-revision-unchanged) { display: none !important; }
   }
 }
