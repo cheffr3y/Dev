@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vendor workers copied by scripts/prepare-ocr.mjs; lint their source upstream.
+    "public/ocr/**",
   ]),
 ]);
 

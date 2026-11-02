@@ -1,0 +1,9 @@
+@layer utilities {
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+    font-family: var(--font-mono, var(--font-monospace)), monospace;
+  }
+  .font-display {
+    font-feature-settings: "liga" 1, "dlig" 1;
+  }
+}

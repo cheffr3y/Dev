@@ -13,7 +13,7 @@ The initial inspection found 1,020 lines in `app/globals.css`, 278 in `app/(app)
 ## Section 1.1 — stylesheet and primitive inventory
 
 - [x] Restore access to a compatible Node runtime and run the unit-test runner directly.
-- [ ] Map global styles into tokens, base, components, print, and utilities; inspect Tailwind layer ordering before changing precedence.
+- [x] Map global styles into tokens, base, components, print, and utilities; inspect Tailwind layer ordering before changing precedence.
 - [x] Identify repeated surfaces and controls that can use the existing typed primitives.
 - [x] Select one small extraction that preserves cascade order, selectors, and print behavior.
 - [x] Implement and verify that extraction with typechecking, application lint, and the workspace and print-controller browser suites using disposable fixtures described in [repository structure](repository-structure.md).
@@ -26,17 +26,29 @@ The initial inspection found 1,020 lines in `app/globals.css`, 278 in `app/(app)
 - Restrict `Badge` colors to the five implemented variants and forward native span attributes and custom classes.
 - Extract `TableScroll` with a required accessible label and keyboard focus, and use it in the recipe costing table.
 
-The existing form controls already share `fieldBase`. Their styles need no duplicate abstraction in this slice. Cascade layers and smoking-specific scoping remain next within 1.1; section 1.2 has not started. Unlayered rules currently override Tailwind utilities, so changing layer precedence requires explicit verification of screen and print styles.
+The existing form controls already share `fieldBase`. Their styles need no duplicate abstraction in this slice. The first slice preserved the original cascade before the layer migration below.
 
 Validation: all 213 unit tests pass before and after the change; production build and TypeScript checks pass. Application lint passes with generated `public/ocr/**` excluded. Unfiltered lint reports 55 errors and 3,755 warnings in generated OCR assets. Workspace, print-controller, and recipe-costing browser suites pass using isolated fixtures; the supporting database integration and archive repair checks also pass.
 
 Run workspace and print-controller suites in separate disposable database harnesses: workspace edits the shared recipe yield from 4 to 8, which invalidates print-controller's original-yield expectations if they run consecutively against one fixture database.
 
+### Section 1.1 completed
+
+- Replaced the global stylesheet body with imports for named tokens, base, utilities, components, and print layers. Tailwind is nested in a lower framework layer to preserve existing component overrides. Top-level `@theme` compiler directives remain supported.
+- Scoped every smoking class selector to its workspace with zero additional specificity, in the component layer.
+- Added a production-CSS browser regression suite covering desktop/mobile palettes, table density, controls, smoking route isolation, and print resets.
+- Excluded generated OCR dependency copies from lint, so full application lint now passes.
+- Documented the cascade and validation commands in [stylesheet architecture](stylesheet-architecture.md).
+
+Final validation: production build, TypeScript, full lint, all 213 unit tests, supporting database integration checks, and style-cascade/workspace/print-controller/recipe-costing browser suites pass. A before/after computed-style comparison of representative workspace, recipe, schedule, banquet, and smoking fixtures at desktop/mobile widths in screen/print media found no differences in rendered elements. Hidden inspector font values follow print-layer precedence; the drawer remains hidden in print.
+
+Section 1.2 is next and has not started. Section 1.1 remains on its working branch pending merge.
+
 ## Section status
 
 | Section | Work | Status |
 | --- | --- | --- |
-| 1.1 | Stylesheets and shared primitives | First extraction verified; layer migration and smoking scoping pending |
+| 1.1 | Stylesheets and shared primitives | Complete and verified; pending merge |
 | 1.2 | Heavy client components | Pending |
 | 1.3 | URL-driven filters and inspectors | Pending |
 | 1.4 | OCR and invoice parsing progress | Pending |
