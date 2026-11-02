@@ -29,7 +29,7 @@ export default async function ProductionPage({ searchParams }: { searchParams: P
   const staleSelection = requested.size !== selected.length;
   return <PrintController className="production-planning">
     <div className="no-print"><PageHeader title="Production planning" subtitle="Separate event work for cooks · Combined shopping for purchasing" />
-      <div className="mb-4 flex flex-wrap gap-4 text-sm"><Link className="text-gold underline" href="/prep-orders">Daily prep</Link>{user.role === "ADMIN" && <Link className="text-gold underline" href="/prep-orders/closeout">Accounting closeout</Link>}</div>
+      <div className="mb-4 flex flex-wrap gap-4 text-sm"><Link className="text-gold underline" href="/prep-orders">Daily prep</Link><Link className="text-gold underline" href="/production/preservation">Preservation batches</Link>{user.role === "ADMIN" && <Link className="text-gold underline" href="/prep-orders/closeout">Accounting closeout</Link>}</div>
       <form className="mb-6 space-y-4 rounded border border-hairline p-4">
         <div className="flex flex-wrap items-end gap-3">
           <label className="text-sm">From<input className="block rounded border p-2" aria-label="Planning from" name="from" type="date" defaultValue={from} required /></label>

@@ -74,6 +74,8 @@ enum StockAdjustmentType {
 }
 
 model User {
+  preservationBatches PreservationBatch[]
+  preservationAudits PreservationAudit[]
   smokeRuns SmokeRun[]
   smokeLots SmokeLot[]
   smokeReadings SmokeReading[]
@@ -116,6 +118,7 @@ model HomesteadSave {
 }
 
 model Venue {
+  preservationBatches PreservationBatch[]
   smokeRuns SmokeRun[]
   id        String   @id @default(cuid())
   name      String
@@ -1125,6 +1128,37 @@ model ProductionJob {
 
   @@index([businessDate, reviewedAt])
   @@index([recipeId, startedAt])
+}
+
+// Separate from production/accounting ledger batches. JSON facts freeze source
+// names/tags and measurements; price posting is an explicit audited operation.
+model PreservationBatch {
+  id          String @id
+  venueId     String
+  venue       Venue @relation(fields: [venueId], references: [id], onDelete: Restrict)
+  createdById String
+  createdBy   User @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  status      String @default("RUNNING")
+  revision    Int @default(1)
+  facts       Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  audits      PreservationAudit[]
+  @@index([venueId, createdAt])
+  @@index([status, createdAt])
+}
+
+model PreservationAudit {
+  id        String @id @default(cuid())
+  batchId   String
+  batch     PreservationBatch @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  actorId   String
+  actor     User @relation(fields: [actorId], references: [id], onDelete: Restrict)
+  actorName String
+  action    String
+  detail    Json
+  createdAt DateTime @default(now())
+  @@index([batchId, createdAt])
 }
 
 model PrepPacketSnapshot {

@@ -22,6 +22,7 @@ node node_modules/prisma/build/index.js migrate deploy
 node --import tsx --test lib/db/database-pool.integration.test.ts
 node --import tsx --test lib/prep/prep-workflow.integration.test.ts
 node --import tsx --test lib/production/event-planning.integration.test.ts
+node --import tsx --test lib/production/preservation.integration.test.ts
 node --import tsx --test lib/accounting/operating-calendar.integration.test.ts
 node --import tsx --test lib/smoking/smoking.integration.test.ts
 node scripts/archive/test-annex-repairs.mjs
