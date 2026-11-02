@@ -417,6 +417,25 @@ try {
     (await ap.request.post(`${base}/api/smoking`, { data: {} })).status(),
     401,
   );
+  // Printed lot links survive an expired session and return to that specific lot.
+  await ap.goto(`${runUrl}?lot=${lotId}#lot-${lotId}`);
+  await ap.waitForURL(
+    (u) =>
+      u.pathname === "/login" &&
+      u.searchParams.get("returnTo") === `/smoking/${runId}?lot=${lotId}`,
+  );
+  await ap.getByLabel("Email", { exact: true }).fill("admin@local.test");
+  await ap.getByLabel("Password", { exact: true }).fill("local-smoke-only");
+  await ap.getByRole("button", { name: "Sign in", exact: true }).click();
+  await ap.waitForURL(
+    (u) =>
+      u.pathname === `/smoking/${runId}` && u.searchParams.get("lot") === lotId,
+  );
+  await ap.getByRole("heading", { name: "Brisket A", exact: true }).waitFor();
+  await ap.waitForFunction((id) => {
+    const element = document.getElementById(`lot-${id}`);
+    return element && element.getBoundingClientRect().top < 150;
+  }, lotId);
   const staff = await login("staff");
   assert.equal(
     (

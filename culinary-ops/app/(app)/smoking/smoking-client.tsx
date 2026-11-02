@@ -1126,6 +1126,13 @@ export function SmokeRunWorkspace({
   choices: SmokeChoices;
 }) {
   const manager = user.role !== "STAFF";
+  useEffect(() => {
+    const lotId = new URLSearchParams(window.location.search).get("lot");
+    if (lotId)
+      document
+        .getElementById(`lot-${lotId}`)
+        ?.scrollIntoView({ block: "start" });
+  }, [run.id]);
   return (
     <main className="smoking">
       <Link href="/smoking">← All smoker runs</Link>
