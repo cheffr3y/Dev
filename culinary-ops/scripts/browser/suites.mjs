@@ -1,4 +1,5 @@
 export const suites = {
+  "recipe-dependencies": "prep_workflow_test",
   "price-trends": "prep_workflow_test",
   "url-state": "prep_workflow_test",
   "schedule-editor": "prep_workflow_test",

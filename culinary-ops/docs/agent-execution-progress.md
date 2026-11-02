@@ -100,14 +100,14 @@ Validation: baseline 219 unit tests; all 223 tests now pass, including variance/
 | 2.1 | Line Mode | Skipped at the user's request; retain the existing interface |
 | 2.2 | Price sparklines and variance alerts | Complete; merged as `555c057` |
 | 2.3 | Banquet baseline visual diffs | Complete; merged as `dd8983c` |
-| 2.4 | Spreadsheet keyboard navigation | Complete and verified on `codex/roadmap-2-4-grid-navigation`; pending merge |
-| 3.1 | Recipe dependency tree | Pending |
+| 2.4 | Spreadsheet keyboard navigation | Complete; merged as `20bb622` |
+| 3.1 | Recipe dependency tree | Complete and verified on `codex/roadmap-3-1-recipe-dependencies`; pending merge |
 | 3.2 | Preservation and yield tracking | Pending |
 | 3.3 | Sales-mix menu engineering | Pending |
 
 Before each section, check what the application already supports and verify the proposed file paths. Mark work complete only with corresponding implementation and validation evidence.
 
-Section 2.1 (Atelier / Line Mode toggle) is omitted at the user's request. After merging section 2.4, continue with section 3.1: recipe dependency tree.
+Section 2.1 (Atelier / Line Mode toggle) is omitted at the user's request. After merging section 3.1, continue with section 3.2: preservation and yield tracking.
 
 ## Section 2.3 — banquet baseline visual diffs — November 2, 2026
 
@@ -124,3 +124,12 @@ Validation: baseline 223 unit tests; all 227 now pass. Production webpack build,
 - Daily prep covers production, destination, shortage, waste, labor and lot inputs. Escape restores the focused field's entry value; an unchanged field does not dirty the worksheet. Enter in these fields navigates without submitting. Multiline notes retain normal editing. Production/accounting still requires the existing charge preview and explicit confirmation; no optimistic accounting records are posted.
 
 Validation: baseline 227 unit tests; all 230 pass, including sparse-row and boundary navigation. Production webpack build, standalone TypeScript and full lint pass. All 47 disposable PostgreSQL checks and archive repair regressions pass. Expanded workspace/prep and existing URL-state browser suites pass: arrows and Shift+Enter, hidden/disabled cells, native text/vendor editing, simultaneous delayed saves and immediate combined estimates, optimistic rollback, conflict navigation without retry, lost-response recovery, unchanged snapshots, prep Escape/navigation and explicit accounting confirmation, inspector focus/history, roles and print visibility. Desktop grid screenshots were reviewed. No migration is required. Section 2.3 was merged into main before this work as requested.
+
+## Section 3.1 — recipe dependency and rollup explorer — November 2, 2026
+
+- Added a read-only expandable input tree to full recipe details, with target quantity/unit previews, reset/expand controls, per-node required quantities/batch multipliers, immediate-parent cost shares, effective/inherited allergens, and aggregated raw/sub-recipe demand across repeated paths. Compatible units normalize before aggregation; tiny quantities retain significant digits. Costs across nested tiers are explicitly non-additive.
+- Added reverse parent traversal and linked direct/indirect menu/banquet consumers with saved statuses, dates and quantities. Parent nodes show child batch use, cost share, estimated parent cost and inherited tags. Saved downstream quantities remain independent of the preview.
+- Domain calculations are separate from print-specific reference plans. Missing prices/links, invalid yields, empty builds, incompatible units and cycles produce unknown/partial values rather than the legacy same-unit fallback. Stale costs stay labeled as estimates. Input/consumer work limits are visible, allergens use iterative cycle-safe traversal, and only the focused recipe's input graph is sent to the client.
+- Documented operation and limits in [recipe dependencies](recipe-dependencies.md). Existing role rules, costing panels, packets, production and accounting writes remain unchanged. No migration is required.
+
+Validation: baseline 230 unit tests; all 236 pass, covering recursive shared demand/costs, conversions, tiny fractions, inherited provenance, gaps, cycles, limits, consumers and immutable inputs. Production webpack build, standalone TypeScript and full lint pass. All 47 disposable PostgreSQL checks and archive repair regressions pass. New recipe-dependencies plus workspace, print-controller and recipe-costing browser suites pass: 250-portion previews and repeated-path totals, unit conversion/reset, tiny demand, cost shares/tags, direct/indirect links, missing/stale prices and unit mismatches, cycles, desktop/mobile, staff read-only preview and unchanged stored recipe/order/snapshot/production/accounting facts. Desktop/mobile and consumer screenshots were visually reviewed. Print checks were rerun successfully in a fresh harness after the workspace suite changed a shared recipe-yield fixture. Conflicting generated `.next/types` copies were removed before successful build/type validation; unrelated source copies were left intact. Section 2.4 was merged into main before this work as requested.
