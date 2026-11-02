@@ -29,7 +29,7 @@ export default async function WeekCookPacketPage({ params }: { params: Promise<{
   ]);
   const byId = buildRecipeTree(rows);
   const revisions = new Map(await Promise.all(banquets.map(async b => [b.id, await loadBanquetRevision(b.id)] as const)));
-  return <PrintController className="recipe-print recipe-packet mx-auto max-w-[8.5in]" label="Print event cook packets">
+  return <PrintController allowRevisions className="recipe-print recipe-packet mx-auto max-w-[8.5in]" label="Print event cook packets">
     <div className="no-print mb-5 flex flex-wrap justify-between gap-3"><Link className="text-gold underline" href={`/banquets/week/${isoDate(start)}`}>← Week overview</Link><Link className="text-gold underline" href={`/banquets/week/${isoDate(start)}/shopping-list`}>Combined shopping list</Link></div>
     <PrintSpecHeader venue={[...new Set(banquets.map(b => b.venue.name))].join(" / ") || "Banquets"} title="Weekly event cook packets" targetLabel={fmtWeekRange(start)} printedAt={new Date()} />
     <p className="my-3 text-sm">Separate quantities, instructions, and recipe references for every event. Shopping totals are combined only on the purchasing list.</p>
@@ -42,7 +42,7 @@ export default async function WeekCookPacketPage({ params }: { params: Promise<{
       });
       const references = buildRecipeReferences(dishes.map(d => ({ node: d.node, totalBatches: d.batches })), byId);
       const prefix = `event-${b.id}-`;
-      return <section key={b.id} className="event-cook-packet" data-event-id={b.id} aria-label={`Cook packet for ${b.name}`}>
+      return <section key={b.id} className="event-cook-packet recipe-packet-content" data-event-id={b.id} aria-label={`Cook packet for ${b.name}`}>
         <header className="atelier-paper my-5 border-t-4 border-ink p-4"><h1 className="text-3xl font-semibold">{b.name}</h1><p className="mt-2">{label} · {b.guestCount} guests</p><p>{[b.location, b.areas].filter(Boolean).join(" · ")}</p>
           <p className="print-write-in mt-2">Prep ready by: ____________________ · Cook / initials: ____________________</p>
           {b.specialInstructions && <p className="mt-3 whitespace-pre-wrap font-semibold">{b.specialInstructions}</p>}{b.notes && <p className="mt-2 whitespace-pre-wrap">{b.notes}</p>}

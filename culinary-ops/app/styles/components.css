@@ -392,6 +392,10 @@
   }
   .beo-revision table { table-layout: fixed; }
   .beo-revision th, .beo-revision td { overflow-wrap: anywhere; }
+  .beo-revision .beo-change-added { background: #ecfdf5; color: #064e3b; }
+  .beo-revision .beo-change-modified { background: #fffbeb; color: #78350f; }
+  .beo-revision .beo-change-alert { background: #fff1f2; color: #881337; }
+  .beo-change-badge { display: inline-block; margin-bottom: 4px; padding: 2px 5px; border: 1px solid currentColor; border-radius: 3px; font-size: 10px; font-weight: 700; }
   .operating-workspace { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
   .operating-weekdays, .operating-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
   .operating-weekdays { color: var(--color-zinc-500); text-align: center; font-size: 12px; padding-bottom: 8px; }

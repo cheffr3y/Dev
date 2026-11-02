@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { renderToStaticMarkup } from "react-dom/server";
-import { captureBaseline, baselineChanges, type BaselineEvent } from "./banquet-baseline";
+import { captureBaseline, baselineChanges, baselineChangeStyle, type BaselineEvent } from "./banquet-baseline";
 import { BanquetRevision } from "../../components/BanquetRevision";
 import { emptySetup } from "./banquet-setup";
 
@@ -26,4 +26,44 @@ test("setup quantities and timelines generate a revision", () => {
   const baseline = captureBaseline({ ...event, setupPlan: setup });
   const changed = captureBaseline({ ...event, setupPlan: { ...setup, stations: [{ ...setup.stations[0], serviceTime: "6pm", resources: [{ ...setup.stations[0].resources[0], qty: 3 }] }] } });
   assert.equal(baselineChanges(baseline, changed).length, 2);
+});
+
+test("visual diffs distinguish guest increases, reductions, timing and cleared notes", () => {
+  const original = captureBaseline(event);
+  for (const count of [95, 65]) {
+    const current = captureBaseline({ ...event, guestCount: count, timeLabel: "6pm", specialInstructions: null });
+    const styles = new Map(baselineChanges(original, current).map(change => [change.field, baselineChangeStyle(change, original, current)]));
+    assert.deepEqual(styles.get("Guests"), { tone: count > 80 ? "added" : "modified", label: count > 80 ? "+15 Guests" : "−15 Guests" });
+    assert.equal(styles.get("Service time")?.tone, "modified");
+    assert.equal(styles.get("Special instructions")?.tone, "modified");
+  }
+});
+
+test("added and removed food and nested setup rows retain their identity and alert on new allergens", () => {
+  const original = captureBaseline(event);
+  const current = captureBaseline({ ...event, menuItems: [{ ...event.menuItems[0], id: "new", recipe: { name: "Salad", allergens: "sesame" } }] });
+  const styles = new Map(baselineChanges(original, current).map(change => [change.field, baselineChangeStyle(change, original, current)]));
+  assert.equal(styles.get("Food line / Recipe")?.tone, "alert");
+  assert.equal(styles.get("Food new / Recipe")?.tone, "added");
+  assert.equal(styles.get("Food new / Allergens")?.tone, "alert");
+  const before = { version: 1 as const, guestCount: 80, fields: { "Station buffet / Name": "Buffet", "Station buffet / Food side / Food": "Rice", "Station buffet / vessel pan": "2 × Pan" } };
+  const after = { ...before, fields: { "Station buffet / Name": "Buffet" } };
+  for (const change of baselineChanges(before, after)) assert.equal(baselineChangeStyle(change, before, after).tone, "alert");
+});
+
+test("allergen comparison handles aliases, reordering, removals and unknown legacy tags", () => {
+  const snapshot = captureBaseline(event);
+  const style = (before: string, after: string) => baselineChangeStyle({ field: "Food line / Allergens", before, after }, snapshot, snapshot);
+  assert.equal(style("dairy,soy", "soy,milk").tone, "modified");
+  assert.equal(style("milk,soy", "milk").tone, "modified");
+  assert.equal(style("milk", "milk,sesame").tone, "alert");
+  assert.equal(style("milk", "milk,legacy allergen").tone, "alert");
+});
+
+test("revision markup keeps explicit change labels and before/after values for monochrome print", () => {
+  const original = captureBaseline(event);
+  const current = captureBaseline({ ...event, guestCount: 95, menuItems: [{ ...event.menuItems[0], orderedQty: 60, recipe: { name: "Dinner", allergens: "milk,sesame" } }] });
+  const markup = renderToStaticMarkup(<BanquetRevision data={{ snapshot: original, current, createdAt: "2026-11-01T12:00:00Z", updatedAt: "2026-11-02T12:00:00Z" }} />);
+  for (const text of ["beo-change-added", "beo-change-modified", "beo-change-alert", "+15 Guests", "! New allergen", "80 each", "60 each"]) assert.ok(markup.includes(text), text);
+  assert.equal(renderToStaticMarkup(<BanquetRevision />), "");
 });

@@ -6,16 +6,18 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { MAX_PRINT_SCALE, PRINT_SCALE_OPTIONS, validPrintScale } from "@/lib/printing/print-options";
 import { PrintButton } from "./PrintButton";
 
-export function PrintController({ children, className = "", allowScale = false, scale = 1, label = "Print / save PDF" }: {
+export function PrintController({ children, className = "", allowScale = false, allowRevisions = false, scale = 1, label = "Print / save PDF" }: {
   children: ReactNode;
   className?: string;
   allowScale?: boolean;
+  allowRevisions?: boolean;
   scale?: number;
   label?: string;
 }) {
   const router = useRouter();
   const params = useSearchParams();
   const compact = params.get("density") === "compact";
+  const showRevisions = params.get("revisions") !== "hide";
   const [pending, startTransition] = useTransition();
   const changeDensity = (value: boolean) => {
     const url = new URL(window.location.href);
@@ -29,7 +31,7 @@ export function PrintController({ children, className = "", allowScale = false, 
     url.searchParams.delete("print");
     startTransition(() => router.replace(`${url.pathname}${url.search}${url.hash}`, { scroll: false }));
   };
-  return <div className={`print-document ${compact ? "print-compact" : ""} ${className}`} data-print-scale={allowScale ? scale : undefined} aria-busy={pending}>
+  return <div className={`print-document ${compact ? "print-compact" : ""} ${className}`} data-print-scale={allowScale ? scale : undefined} data-print-revisions={allowRevisions && !showRevisions ? "hide" : undefined} aria-busy={pending}>
     <div className="print-controller no-print print:hidden" role="region" aria-label="Print controls">
       <fieldset className="print-control-group" disabled={pending}>
         <legend className="sr-only">Print density</legend>
@@ -50,6 +52,11 @@ export function PrintController({ children, className = "", allowScale = false, 
           <button type="submit" disabled={pending}>Apply</button>
         </form>
       </>}
+      {allowRevisions && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={showRevisions} onChange={event => {
+        const url = new URL(window.location.href);
+        if (event.target.checked) url.searchParams.delete("revisions"); else url.searchParams.set("revisions", "hide");
+        window.history.replaceState(null, "", url);
+      }} />Show Changes Since Baseline (print)</label>}
       <PrintButton label={label} autoPrint={params.get("print") === "1"} disabled={pending} className="print-controller-submit" />
       <p className="print-controller-hint" role="status">{pending ? "Updating print quantities…" : allowScale ? "Scale changes this print copy’s planned quantities. Squeeze reduces spacing; long documents may still need multiple pages." : "Squeeze reduces spacing; long documents may still need multiple pages."}</p>
     </div>
@@ -63,6 +70,7 @@ export function PrintQueryFields() {
   return <>
     {params.get("scale") && <input type="hidden" name="scale" value={params.get("scale")!} />}
     {params.get("density") === "compact" && <input type="hidden" name="density" value="compact" />}
+    {params.get("revisions") === "hide" && <input type="hidden" name="revisions" value="hide" />}
   </>;
 }
 

@@ -66,7 +66,7 @@ export default async function BanquetCookPacketPage({ params }: { params: Promis
   );
 
   return (
-    <PrintController className="recipe-print recipe-packet atelier-packet mx-auto max-w-[8.5in]" label="Print cook packet">
+    <PrintController allowRevisions className="recipe-print recipe-packet atelier-packet mx-auto max-w-[8.5in]" label="Print cook packet">
       <div className="no-print mb-5 flex items-center justify-between gap-3">
         <Link href={`/banquets/${banquet.id}`} className="text-sm text-blue-600 hover:underline">
           ← Back to banquet

@@ -9,7 +9,7 @@ import { requireUser } from "@/lib/auth/session";
 import { num, priceGapNames } from "@/lib/recipes/costing";
 import { unitLabel } from "@/lib/recipes/units";
 import { buildBanquetPlan, banquetRecipeSelect, type BanquetLine } from "@/lib/banquets/banquet";
-import { PrintButton } from "@/components/PrintButton";
+import { PrintController } from "@/components/PrintController";
 import { ProductionJobQr } from "@/components/ProductionJobQr";
 import { jobScanHref } from "@/lib/production/production-job-options";
 import { PriceIntegrityNotice } from "@/components/PriceIntegrityNotice";
@@ -57,7 +57,7 @@ export default async function BanquetPrepSheetPage({ params }: { params: Promise
   const printedOn = new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 
   return (
-    <div className="atelier-packet mx-auto max-w-[8.5in]">
+    <PrintController allowRevisions label="Print prep sheet" className="atelier-packet mx-auto max-w-[8.5in]">
       <RecipePrintSettings />
       <div className="no-print mb-5 flex items-center justify-between gap-3">
         <Link href={`/banquets/${banquet.id}`} className="text-sm text-blue-600 hover:underline">
@@ -67,7 +67,6 @@ export default async function BanquetPrepSheetPage({ params }: { params: Promise
           <Link href={`/banquets/${banquet.id}/packet`} className="text-sm text-blue-600 hover:underline">
             Cook packet
           </Link>
-          <PrintButton label="Print prep sheet" />
         </div>
       </div>
 
@@ -169,6 +168,6 @@ export default async function BanquetPrepSheetPage({ params }: { params: Promise
           </p>
         </div>
       )}
-    </div>
+    </PrintController>
   );
 }
