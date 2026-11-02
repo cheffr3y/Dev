@@ -1,3 +1,6 @@
+import { priceTrend, priceVariance, priceJump, varianceThreshold } from "@/lib/invoices/price-trends";
+import { PriceTrend } from "./PriceTrend";
+import { Badge } from "./ui";
 import Link from "next/link";
 import { prisma } from "@/lib/db/prisma";
 import { convertQty } from "@/lib/recipes/units";
@@ -6,13 +9,15 @@ import { Card, CardHeader } from "./ui";
 
 export async function IngredientPriceHistory({ itemId, unit }: { itemId: string; unit: string }) {
   const observations = await prisma.invoicePurchaseLine.findMany({ where: { itemId, voided: false }, include: { vendor: { select: { name: true } }, invoiceDocument: { select: { invoiceNumber: true } } }, orderBy: [{ invoiceDate: "desc" }, { createdAt: "desc" }, { id: "desc" }], take: 100 });
+  const threshold = varianceThreshold(process.env.PRICE_VARIANCE_THRESHOLD_PERCENT);
+  const trend = priceTrend(observations.map(row => ({ ...row, vendorName: row.vendor.name })), unit, null, threshold);
   const previous = new Map<string, number>();
   const rows = [...observations].reverse().map(row => {
     // Convert the price basis, never compare a case price with a pound price.
     const factor = row.normalizedUnit ? convertQty(1, unit, row.normalizedUnit) : null;
     const price = factor != null && row.normalizedUnitCost != null ? row.normalizedUnitCost * factor : null;
     const last = previous.get(row.vendorId);
-    const change = price != null && price > 0 && last != null ? (price - last) / last * 100 : null;
+    const change = price != null && price > 0 && last != null ? priceVariance(last, price) : null;
     if (price != null && price > 0) previous.set(row.vendorId, price);
     return { ...row, price, change };
   });
@@ -24,7 +29,7 @@ export async function IngredientPriceHistory({ itemId, unit }: { itemId: string;
   const y = (price: number) => high > low ? 130 - (price - low) / (high - low) * 110 : 75;
   const colors = ["var(--color-gold)", "var(--color-sage)", "var(--color-amber-600)", "var(--color-red-500)", "var(--color-zinc-400)"];
   return <Card><CardHeader>Invoice price history</CardHeader><div className="p-4">
-    <p className="mb-4 text-sm text-zinc-500">Latest {observations.length} recorded invoice lines (up to 100). Prices are normalized to {unit} when compatible. Changes compare consecutive positive purchases from the same supplier; credits are listed but excluded from trends. Current catalog prices and recipe costs are not automatically changed.</p>
+    <PriceTrend trend={trend} /><p className="mb-4 text-sm text-zinc-500">Latest {observations.length} recorded invoice lines (up to 100). Prices are normalized to {unit} when compatible. Changes compare consecutive positive purchases from the same supplier; credits are listed but excluded from trends. Current catalog prices and recipe costs are not automatically changed.</p>
     {!observations.length ? <p className="text-sm">Match this ingredient to a stored invoice line to start tracking paid prices.</p> : <>
       {chartRows.length > 0 && <figure className="mb-5" aria-label={`Paid ingredient prices in USD per ${unit} by invoice date`}>
         <figcaption className="mb-2 text-sm font-semibold">Paid price · USD / {unit}</figcaption>
@@ -36,7 +41,7 @@ export async function IngredientPriceHistory({ itemId, unit }: { itemId: string;
         <div className="ml-28 flex justify-between text-xs text-zinc-500"><span>{new Date(from).toISOString().slice(0, 10)}</span><span>{new Date(through).toISOString().slice(0, 10)}</span></div>
         <div className="mt-3 flex flex-wrap gap-4 text-xs">{vendors.map(([id, name], index) => <span key={id}><span aria-hidden="true" className="mr-2 inline-block h-2 w-3" style={{ backgroundColor: colors[index % colors.length] }} />{name}</span>)}</div>
       </figure>}
-      <div className="overflow-x-auto"><table className="atelier-table w-full text-left text-sm"><thead><tr><th>Invoice date</th><th>Supplier / invoice</th><th>Billed pack</th><th>Paid line total</th><th>Price / {unit}</th><th>Change</th></tr></thead><tbody>{[...rows].reverse().map(row => <tr key={row.id}><td className="whitespace-nowrap">{row.invoiceDate.toISOString().slice(0, 10)}</td><td>{row.vendor.name}<Link className="mt-1 block text-xs text-gold underline" href={`/vendors/invoices?id=${row.invoiceDocumentId}`}>{row.invoiceDocument.invoiceNumber || "Open invoice"}</Link></td><td>{preciseNum(row.quantity)} {row.purchaseUnit} × {preciseNum(row.packQty)} {row.packUnit}</td><td className="tabular-nums">{money(row.amountCents / 100)}{row.amountCents < 0 && <span className="block text-xs">Credit</span>}</td><td className="tabular-nums">{row.price == null ? `${money(row.normalizedUnitCost, 5)} / ${row.normalizedUnit} · different basis` : money(row.price, 5)}</td><td className="tabular-nums">{row.change == null ? "—" : `${row.change > 0 ? "+" : ""}${pct(row.change)}`}</td></tr>)}</tbody></table></div>
+      <div className="overflow-x-auto"><table className="atelier-table w-full text-left text-sm"><thead><tr><th>Invoice date</th><th>Supplier / invoice</th><th>Billed pack</th><th>Paid line total</th><th>Price / {unit}</th><th>Change</th></tr></thead><tbody>{[...rows].reverse().map(row => <tr key={row.id}><td className="whitespace-nowrap">{row.invoiceDate.toISOString().slice(0, 10)}</td><td>{row.vendor.name}<Link className="mt-1 block text-xs text-gold underline" href={`/vendors/invoices?id=${row.invoiceDocumentId}`}>{row.invoiceDocument.invoiceNumber || "Open invoice"}</Link></td><td>{preciseNum(row.quantity)} {row.purchaseUnit} × {preciseNum(row.packQty)} {row.packUnit}</td><td className="tabular-nums">{money(row.amountCents / 100)}{row.amountCents < 0 && <span className="block text-xs">Credit</span>}</td><td className="tabular-nums">{row.price == null ? `${money(row.normalizedUnitCost, 5)} / ${row.normalizedUnit} · different basis` : money(row.price, 5)}</td><td className="tabular-nums">{row.change == null ? "—" : priceJump(row.change, threshold) ? <Badge color="amber">+{pct(row.change)}</Badge> : `${row.change > 0 ? "+" : ""}${pct(row.change)}`}</td></tr>)}</tbody></table></div>
     </>}
   </div></Card>;
 }

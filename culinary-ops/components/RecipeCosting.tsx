@@ -1,9 +1,11 @@
+import { PriceTrend } from "./PriceTrend";
+import type { PriceTrend as Trend } from "@/lib/invoices/price-trends";
 import { useId } from "react";
 import { money, num, pct } from "@/lib/recipes/costing";
 import { unitLabel } from "@/lib/recipes/units";
 import type { RecipeCostSheet } from "@/lib/recipes/recipe-cost-sheet";
 
-export function RecipeCosting({ costs }: { costs: RecipeCostSheet }) {
+export function RecipeCosting({ costs, trends = {} }: { costs: RecipeCostSheet; trends?: Record<string, Trend | null> }) {
   const titleId = useId();
   const groups = [
     { label: "Ingredients", lines: costs.ingredients, subtotal: costs.ingredientsCost },
@@ -46,7 +48,7 @@ export function RecipeCosting({ costs }: { costs: RecipeCostSheet }) {
                   {!line.converted && <span className="block text-[9px] font-normal text-amber-800">Unit mismatch — verify cost</span>}
                 </th>
                 <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono tabular-nums">{num(line.quantity)} {unitLabel(line.unit)}</td>
-                <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">{money(line.unitCost, 5)} / {line.costUnit}</td>
+                <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">{money(line.unitCost, 5)} / {line.costUnit}<PriceTrend trend={group.label === "Ingredients" ? trends[line.id] : null} /></td>
                 <td className="whitespace-nowrap py-1.5 pl-2 text-right tabular-nums">{money(line.cost)}</td>
               </tr>
             ))}

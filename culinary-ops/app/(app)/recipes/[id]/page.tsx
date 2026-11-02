@@ -1,3 +1,5 @@
+import { PriceTrend } from "@/components/PriceTrend";
+import { loadPriceTrends } from "@/lib/invoices/price-trends-data";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
@@ -106,6 +108,7 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
   ]);
 
   if (!recipe) notFound();
+  const priceTrends = await loadPriceTrends(recipe.items.map(line => line.item));
 
   const groupNames = [...new Set(recipe.items.map(line => line.groupName?.trim()).filter((name): name is string => !!name))];
   const gapMap = buildPriceGapMap(allRecipes.map(node => ({ id: node.id, components: node.components, items: node.items.map(({ item }) => ({ itemId: item.id, unitCost: item.unitCost, priceUpdatedAt: item.priceUpdatedAt })) })));
@@ -231,7 +234,7 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
                         {num(m.qty)} {m.label}
                       </td>
                       <td className="px-4 py-2 text-right text-zinc-500">
-                        {money(ri.item.unitCost, 5)}/{unitLabel(ri.item.unit)}
+                        {money(ri.item.unitCost, 5)}/{unitLabel(ri.item.unit)}<PriceTrend trend={priceTrends[ri.item.id]} />
                       </td>
                       <td className="px-4 py-2 text-right font-medium text-zinc-800">{money(lc.cost)}</td>
                       {canEdit && (

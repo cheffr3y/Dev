@@ -1,3 +1,4 @@
+import { normalizedObservation, priceVariance, varianceThreshold } from "./price-trends";
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { prisma } from "../db/prisma";
 import { businessDate } from "../prep/prep-dates";
@@ -61,5 +62,22 @@ export async function saveInvoicePurchase(db: PrismaClient, userId: string, inpu
 }
 export async function loadInvoicePurchases(id: string): Promise<InvoicePurchaseData[]> {
   const rows = await prisma.invoicePurchaseLine.findMany({ where: { invoiceDocumentId: id }, orderBy: [{ createdAt: "asc" }, { id: "asc" }] });
-  return rows.map(row => ({ ...row, invoiceDate: row.invoiceDate.toISOString().slice(0, 10) }));
+  const itemIds = [...new Set(rows.flatMap(row => row.itemId ? [row.itemId] : []))];
+  const latestDate = rows.reduce((latest, row) => row.invoiceDate > latest ? row.invoiceDate : latest, new Date(0));
+  const history = itemIds.length ? await prisma.item.findMany({ where: { id: { in: itemIds } }, select: { id: true, purchaseLines: {
+    where: { invoiceDocumentId: { not: id }, voided: false, amountCents: { gt: 0 }, normalizedUnitCost: { gt: 0 }, invoiceDate: { lte: latestDate } },
+    orderBy: [{ invoiceDate: "desc" }, { createdAt: "desc" }, { id: "desc" }], take: 100,
+    select: { id: true, vendorId: true, invoiceDate: true, createdAt: true, normalizedUnit: true, normalizedUnitCost: true, amountCents: true },
+  } } }) : [];
+  const byItem = new Map(history.map(item => [item.id, item.purchaseLines]));
+  const threshold = varianceThreshold(process.env.PRICE_VARIANCE_THRESHOLD_PERCENT);
+  return rows.map(row => {
+    const previous = (byItem.get(row.itemId ?? "") ?? []).find(candidate => candidate.vendorId === row.vendorId &&
+      (candidate.invoiceDate < row.invoiceDate || candidate.invoiceDate.getTime() === row.invoiceDate.getTime() &&
+        (candidate.createdAt < row.createdAt || candidate.createdAt.getTime() === row.createdAt.getTime() && candidate.id < row.id)) &&
+      row.normalizedUnit && normalizedObservation({ ...candidate, vendorName: "" }, row.normalizedUnit) != null);
+    const previousUnitCost = previous && row.normalizedUnit ? normalizedObservation({ ...previous, vendorName: "" }, row.normalizedUnit) : null;
+    return { ...row, invoiceDate: row.invoiceDate.toISOString().slice(0, 10), previousUnitCost,
+      priceChange: row.voided || row.amountCents <= 0 ? null : priceVariance(previousUnitCost, row.normalizedUnitCost), varianceThreshold: threshold };
+  });
 }

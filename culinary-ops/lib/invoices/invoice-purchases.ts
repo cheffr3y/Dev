@@ -18,4 +18,4 @@ export function normalizedInvoicePrice(amountCents: number, quantity: number, pa
   if (!Number.isFinite(price) || Math.abs(price) > 1e9) throw new Error("The calculated unit price is outside the supported range. Review quantities and pack contents.");
   return price;
 }
-export type InvoicePurchaseData = Omit<z.infer<typeof invoicePurchaseSchema>, "amount" | "reason"> & { amountCents: number; itemName: string | null; normalizedUnit: string | null; normalizedUnitCost: number | null; history: unknown };
+export type InvoicePurchaseData = Omit<z.infer<typeof invoicePurchaseSchema>, "amount" | "reason"> & { amountCents: number; itemName: string | null; normalizedUnit: string | null; normalizedUnitCost: number | null; history: unknown; previousUnitCost?: number | null; priceChange?: number | null; varianceThreshold?: number };
