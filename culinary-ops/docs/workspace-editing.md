@@ -2,10 +2,16 @@
 
 Managers and admins can edit catalog cells in **Ingredients** and **Order Guides**. Staff retain read-only access.
 
-- Click a price, cost unit, vendor, item number, GCODE, or pack size to edit it. Tab and Shift+Tab move between cells; Enter moves down the same column. Leaving a changed cell saves it. Escape restores the last saved value.
-- A green **Saved** flash confirms persistence. Failed edits keep your entry and show a retry control. If another person changed the same field, choose **Use latest** or explicitly retry your edit. Changes to other fields are preserved.
+- Click a price, cost unit, vendor, item number, GCODE, or pack size to edit it. Tab and Shift+Tab move between cells; Enter and Shift+Enter move down/up the same column. Arrow keys move between adjacent cells; horizontal arrows preserve caret editing until the text edge, or navigate immediately when the whole value is selected. Vendor lists retain native arrow selection; Alt+arrows navigate out of the list. Leaving a changed cell saves it. Escape restores the last saved value.
+- A small pending indicator and a green check/border flash confirm save progress and persistence. Failed edits keep your entry and show a retry control. If another person changed the same field, choose **Use latest** or explicitly retry your edit. Changes to other fields are preserved.
 - Price is per cost unit. Pack size is descriptive; structured pack quantities and yield factors remain in the full ingredient editor. Catalog changes apply wherever that ingredient is used.
-- Order Guide par and order unit apply only to that guide. Stock and price quantities are converted between compatible units. Incompatible units or missing prices produce a partial total with a visible warning.
+- Order Guide totals update immediately when a valid cell is committed, while its save runs in the background. Errors roll the estimate back to the last known server value and retain the typed draft for retry. Par and order unit apply only to that guide. Stock and price quantities are converted between compatible units. Incompatible units or missing prices produce a partial total with a visible warning.
+
+## Daily prep keyboard entry
+
+Production, destination, shortage, waste, labor and lot fields support arrow navigation and Enter / Shift+Enter between matching visible fields across recipe groups. Closed detail sections and disabled fields are skipped. Tab keeps the normal form order, including optional controls and notes. Escape restores the current field to the value it had when focused. Multiline notes keep native text editing.
+
+Typing immediately updates the existing local production totals. Keyboard navigation never posts production/accounting records: use **Preview charges**, review the result, and choose **Save item results**. Enter in a navigable field cannot implicitly submit the form. Existing unsaved-change warnings and retry protection still apply.
 
 ## Keyboard recipe entry
 

@@ -99,15 +99,15 @@ Validation: baseline 219 unit tests; all 223 tests now pass, including variance/
 | 1.4 | OCR and invoice parsing progress | Merged as `cb51b72`; AI extraction remains deferred |
 | 2.1 | Line Mode | Skipped at the user's request; retain the existing interface |
 | 2.2 | Price sparklines and variance alerts | Complete; merged as `555c057` |
-| 2.3 | Banquet baseline visual diffs | Complete and verified on `codex/roadmap-2-3-banquet-diffs`; pending merge |
-| 2.4 | Spreadsheet keyboard navigation | Pending |
+| 2.3 | Banquet baseline visual diffs | Complete; merged as `dd8983c` |
+| 2.4 | Spreadsheet keyboard navigation | Complete and verified on `codex/roadmap-2-4-grid-navigation`; pending merge |
 | 3.1 | Recipe dependency tree | Pending |
 | 3.2 | Preservation and yield tracking | Pending |
 | 3.3 | Sales-mix menu engineering | Pending |
 
 Before each section, check what the application already supports and verify the proposed file paths. Mark work complete only with corresponding implementation and validation evidence.
 
-Section 2.1 (Atelier / Line Mode toggle) is omitted at the user's request. After merging section 2.3, continue with section 2.4: spreadsheet keyboard navigation.
+Section 2.1 (Atelier / Line Mode toggle) is omitted at the user's request. After merging section 2.4, continue with section 3.1: recipe dependency tree.
 
 ## Section 2.3 — banquet baseline visual diffs — November 2, 2026
 
@@ -116,3 +116,11 @@ Section 2.1 (Atelier / Line Mode toggle) is omitted at the user's request. After
 - Weekly event packets now use the existing recipe-content scroll containment, fixing a phone-width overflow discovered by the new checks. Existing locked references, role checks, request records and accounting behavior are preserved. No migration is needed.
 
 Validation: baseline 223 unit tests; all 227 now pass. Production webpack build, TypeScript and full lint pass. The disposable PostgreSQL harness passes 47 integration checks and the archive repair regression. Event-planning, expanded banquet-setup, print-controller and recipe-costing browser suites pass, including saved settings across reload/density changes, monochrome print visibility, all three change tones, desktop/mobile layout, original baseline comparisons and unchanged frozen/request data. Desktop screenshots and a rendered large-setup PDF were visually reviewed. Local Chromium was selected explicitly because the runtime Playwright default expected an uninstalled version. The initial sandboxed Turbopack build stalled; production validation used the successful webpack build.
+
+## Section 2.4 — spreadsheet keyboard navigation — November 2, 2026
+
+- Added shared row/column navigation for catalog cells, order guides and daily prep. Table row identity keeps catalog and guide-line fields on the same logical row. Enter/Shift+Enter follows matching columns; Tab/Shift+Tab traverses catalog cells, while daily prep retains normal form Tab order. Arrows skip hidden/disabled controls and closed detail sections. Horizontal text-caret editing and native vendor selection remain usable; Alt+arrows navigate from vendor lists.
+- Inline commits use React optimistic value/status updates, keep existing immediate order-guide estimates and show a compact pending/check indicator. Each cell saves independently. Validation preserves the draft, server errors roll estimates back, and navigation never silently retries a failed/conflicting write. Existing explicit retry and lost-response idempotence remain intact. Grid refresh timers clean up on unmount and do not refresh over unsaved/error cells.
+- Daily prep covers production, destination, shortage, waste, labor and lot inputs. Escape restores the focused field's entry value; an unchanged field does not dirty the worksheet. Enter in these fields navigates without submitting. Multiline notes retain normal editing. Production/accounting still requires the existing charge preview and explicit confirmation; no optimistic accounting records are posted.
+
+Validation: baseline 227 unit tests; all 230 pass, including sparse-row and boundary navigation. Production webpack build, standalone TypeScript and full lint pass. All 47 disposable PostgreSQL checks and archive repair regressions pass. Expanded workspace/prep and existing URL-state browser suites pass: arrows and Shift+Enter, hidden/disabled cells, native text/vendor editing, simultaneous delayed saves and immediate combined estimates, optimistic rollback, conflict navigation without retry, lost-response recovery, unchanged snapshots, prep Escape/navigation and explicit accounting confirmation, inspector focus/history, roles and print visibility. Desktop grid screenshots were reviewed. No migration is required. Section 2.3 was merged into main before this work as requested.

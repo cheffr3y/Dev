@@ -15,7 +15,7 @@ export function OrderGuideGrid({ rows: initial, vendors, guideId, canEdit }: { r
   const total = amounts.reduce((sum, value) => sum + (value.cost ?? 0), 0);
   function itemEdit(row: GuideRow, field: keyof CatalogItem, value: EditValue) { setEdits(previous => ({ ...previous, [row.id]: { ...previous[row.id], itemEdits: { ...previous[row.id]?.itemEdits, [field]: value } } })); }
   return <>
-    {canEdit && <p className="no-print border-b border-hairline p-3 text-xs text-zinc-500">Tab / Shift+Tab across cells · Enter down rows · Escape cancels. Catalog fields update the shared ingredient. Par and order unit belong to this guide.</p>}
+    {canEdit && <p className="no-print border-b border-hairline p-3 text-xs text-zinc-500">Arrows move between cells (left/right at text edges; Alt+arrows in vendor lists) · Tab / Shift+Tab across cells · Enter / Shift+Enter down/up rows · Escape cancels. Catalog fields update the shared ingredient. Par and order unit belong to this guide.</p>}
     <EditGrid className="catalog-grid overflow-x-auto"><table className="w-full text-sm"><thead><tr>
       <th className="px-3 py-2 text-left">Item</th>{canEdit && catalogColumns.map(([key, label]) => <th key={key} className="no-print px-2 py-2 text-left">{label}</th>)}
       <th className="px-3 py-2 text-right">Par</th><th className="px-3 py-2 text-left">Order unit</th><th className="px-3 py-2 text-right">On Hand</th><th className="px-3 py-2 text-right">Order</th><th className="px-3 py-2 text-right">Est. Cost</th>{canEdit && <th className="no-print" aria-label="Actions" />}
