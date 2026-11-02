@@ -36,6 +36,8 @@ import {
 import { RECIPE_CATEGORIES } from "@/lib/ingredients/categories";
 import { CostIntegrityBanner } from "@/components/CostAudit";
 import { LocalTime } from "@/components/LocalTime";
+import { RecipeDependencyTree } from "@/components/RecipeDependencyTree";
+import { loadDependencyData } from "@/lib/recipes/recipe-dependencies-data";
 
 // One changelog row per recipe version: all the change entries recorded in
 // that editing session, newest session first (input is already createdAt desc).
@@ -108,6 +110,9 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
   ]);
 
   if (!recipe) notFound();
+  const dependencyData = await loadDependencyData(id, allRecipes.map(node => ({ ...node,
+    items: node.items.map(line => ({ ...line, item: { ...line.item, priceUpdatedAt: line.item.priceUpdatedAt?.toISOString() ?? null } })),
+  })));
   const priceTrends = await loadPriceTrends(recipe.items.map(line => line.item));
 
   const groupNames = [...new Set(recipe.items.map(line => line.groupName?.trim()).filter((name): name is string => !!name))];
@@ -184,6 +189,8 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
         <StatCardBlock label="Menu Price" value={recipe.menuPrice ? money(recipe.menuPrice, 5) : "—"} sub={margin != null ? `${money(margin, 5)} margin / ${costUnit}` : undefined} />
         <StatCardBlock label="Food Cost %" value={fcp == null ? "—" : pct(fcp)} />
       </div>
+
+      <RecipeDependencyTree rootId={id} {...dependencyData} asOf={new Date().toISOString()} />
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* ---- Left: builds (ingredients, sub-recipes, method, changelog) ---- */}

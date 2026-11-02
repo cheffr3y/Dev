@@ -42,7 +42,7 @@ if [ "${PREP_BROWSER_SMOKE:-0}" = "1" ]; then
   node --import tsx scripts/seed-prep-browser.ts
   case " ${BROWSER_SELECTED[*]} " in *" morning-pulse "*) node --import tsx scripts/seed-morning-pulse-browser.ts;; esac
   for suite in "${BROWSER_SELECTED[@]}"; do
-    case "$suite" in price-trends|url-state|schedule-editor|workspace|event-planning|banquet-setup|print-controller|recipe-costing|production-jobs|accounting-invoices)
+    case "$suite" in recipe-dependencies|price-trends|url-state|schedule-editor|workspace|event-planning|banquet-setup|print-controller|recipe-costing|production-jobs|accounting-invoices)
       node --import tsx scripts/seed-print-controller-browser.ts; break;;
     esac
   done
