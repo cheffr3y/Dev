@@ -1,3 +1,4 @@
+import { WorkspaceInspector } from "@/components/WorkspaceInspector";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser, hasRole } from "@/lib/auth/session";
 import { money, priceFreshness, PRICE_STALE_DAYS } from "@/lib/recipes/costing";
@@ -5,6 +6,7 @@ import { Badge, Button, Card, Input, PageHeader, LinkButton } from "@/components
 import { createItem, deleteItem } from "./actions";
 import { AllergenBadges } from "@/components/AllergenBadges";
 import Link from "next/link";
+import Form from "next/form";
 import { IngredientFields } from "@/components/IngredientFields";
 import { INGREDIENT_CATEGORIES } from "@/lib/ingredients/ingredient-fields";
 import { duplicateIngredientGroups, ingredientNameKey } from "@/lib/ingredients/ingredient-cleanup";
@@ -67,7 +69,7 @@ export default async function ItemsPage({
   };
 
   return (
-    <div>
+    <WorkspaceInspector><div>
       <PageHeader
         title="Ingredients"
         subtitle="Shared ingredients, allergen tags, costs, and vendors."
@@ -82,48 +84,48 @@ export default async function ItemsPage({
         <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
           <span className="font-medium">Price coverage</span>
           {missingCount > 0 && (
-            <a href={hrefWith({ flag: flag === "missing" ? null : "missing" })} className="rounded-full bg-white/70 px-2.5 py-0.5 text-xs font-medium text-red-700 ring-1 ring-red-200 hover:bg-white">
+            <Link href={hrefWith({ flag: flag === "missing" ? null : "missing" })} className="rounded-full bg-white/70 px-2.5 py-0.5 text-xs font-medium text-red-700 ring-1 ring-red-200 hover:bg-white">
               {missingCount} missing a price →
-            </a>
+            </Link>
           )}
           {staleCount > 0 && (
-            <a href={hrefWith({ flag: flag === "stale" ? null : "stale" })} className="rounded-full bg-white/70 px-2.5 py-0.5 text-xs font-medium text-amber-800 ring-1 ring-amber-200 hover:bg-white">
+            <Link href={hrefWith({ flag: flag === "stale" ? null : "stale" })} className="rounded-full bg-white/70 px-2.5 py-0.5 text-xs font-medium text-amber-800 ring-1 ring-amber-200 hover:bg-white">
               {staleCount} stale (&gt;{PRICE_STALE_DAYS}d) →
-            </a>
+            </Link>
           )}
           {flag && (
-            <a href={hrefWith({ flag: null })} className="text-xs text-amber-700 underline">
+            <Link href={hrefWith({ flag: null })} className="text-xs text-amber-700 underline">
               clear filter
-            </a>
+            </Link>
           )}
         </div>
       )}
 
-      <form className="mb-4 flex flex-wrap items-center gap-2" method="get">
+      <Form action="/items" className="mb-4 flex flex-wrap items-center gap-2">
         {category && <input type="hidden" name="category" value={category} />}
         {flag && <input type="hidden" name="flag" value={flag} />}
-        <Input name="q" defaultValue={q} placeholder="Search name, vendor, item # or GCODE…" aria-label="Search ingredients" className="max-w-md" />
+        <Input key={q} name="q" defaultValue={q} placeholder="Search name, vendor, item # or GCODE…" aria-label="Search ingredients" className="max-w-md" />
         <Button type="submit" variant="secondary">Search</Button>
         <Link href={hrefWith({ flag: flag === "duplicates" ? null : "duplicates" })} className="text-sm text-blue-600 hover:underline">Possible duplicates ({groups.length})</Link>
         <Link href={hrefWith({ flag: flag === "unused" ? null : "unused" })} className="text-sm text-blue-600 hover:underline">Unused ({unused})</Link>
-      </form>
+      </Form>
 
       {/* Category filter */}
       <div className="mb-4 flex flex-wrap gap-2 text-sm">
-        <a
+        <Link
           href={hrefWith({ category: null })}
           className={`rounded-full px-3 py-1 ${!category ? "bg-zinc-900 text-white" : "bg-white text-zinc-600 border border-zinc-200"}`}
         >
           All
-        </a>
+        </Link>
         {categories.map((c) => (
-          <a
+          <Link
             key={c}
             href={hrefWith({ category: c })}
             className={`rounded-full px-3 py-1 ${category === c ? "bg-zinc-900 text-white" : "bg-white text-zinc-600 border border-zinc-200"}`}
           >
             {c}
-          </a>
+          </Link>
         ))}
       </div>
 
@@ -209,6 +211,6 @@ export default async function ItemsPage({
           </tbody>
         </table></EditGrid>
       </Card>
-    </div>
+    </div></WorkspaceInspector>
   );
 }

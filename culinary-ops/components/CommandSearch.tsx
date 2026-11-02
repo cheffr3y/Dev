@@ -63,10 +63,10 @@ export function CommandSearch({ recipes, items, role }: { recipes: Recipe[]; ite
       { name: "Actions", results: actions.filter(action => matches(`${action.name} ${action.meta} ${action.keywords}`)) },
       { name: "Recipes", results: recipes.filter(recipe => matches(`${recipe.name} ${recipe.category} ${recipe.station ?? ""}`)).slice(0, LIMIT).map(recipe => ({
         kind: "recipe", id: recipe.id, name: recipe.name,
-        meta: recipe.station ? `${recipe.category} · ${recipe.station}` : recipe.category, href: `/recipes/${recipe.id}`,
+        meta: recipe.station ? `${recipe.category} · ${recipe.station}` : recipe.category, href: `/recipes?${new URLSearchParams({ inspect: `recipe:${recipe.id}` })}`,
       })) },
       { name: "Ingredients", results: items.filter(item => matches(item.name)).slice(0, LIMIT).map(item => ({
-        kind: "item", id: item.id, name: item.name, meta: `per ${item.unit}`, href: `/items/${item.id}`,
+        kind: "item", id: item.id, name: item.name, meta: `per ${item.unit}`, href: `/items?${new URLSearchParams({ inspect: `item:${item.id}` })}`,
       })) },
     ];
     return { groups, flat: groups.flatMap(group => group.results) };

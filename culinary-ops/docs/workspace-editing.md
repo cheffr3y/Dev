@@ -22,3 +22,14 @@ Frozen prep packets and existing accounting records retain their captured facts.
 ## Verification
 
 Run `npm test` and `npm run test:transactions`. After a production build, use `PREP_BROWSER_SMOKE=1 WORKSPACE_BROWSER_SMOKE=1 bash scripts/test-prep-postgres.sh` with the repository's Playwright module and executable overrides. The harness creates a disposable database, tests keyboard entry and concurrent/error recovery flows, and saves desktop/mobile screenshots in `/tmp/workspace-editing-review`.
+## Shareable workspace state
+
+Recipe search, category, and ordering are stored as `q`, `category`, and `sort` URL parameters. Ingredient search, category, and price/usage flags also survive reloads and browser history. Recipe filters use the native History API; ingredient filters use Next.js client navigation.
+
+An open inspector is encoded as `inspect=recipe:<id>` or `inspect=item:<id>`. Repeated `inspect` parameters preserve the nested recipe/ingredient trail. For example, `/recipes?q=sauce&inspect=recipe:recipe-id` opens that record over the filtered catalog. Copy the current address to share it. Browser back/forward restores the trail, and the inspector's Back and Close controls preserve other filters. Invalid or unsaved inline edits block browser history navigation until saved or discarded. A blocked history move restores the current address and clears the attempted forward branch.
+
+Command search opens recipe and ingredient results through these inspector URLs. Full details remain available through the inspector's new-tab link.
+
+Invoice documents use `q` (filename, invoice number, or vendor name), `vendor` (vendor ID), `sort` (`newest` or `oldest`), and `id` (selected document). Filtering, selecting an invoice, and uploading a new document retain the other archive filters. The list shows up to 50 matching documents.
+
+Regression coverage: run the `url-state`, `workspace`, and `accounting-invoices` browser suites in separate disposable harnesses; see [repository structure](repository-structure.md).

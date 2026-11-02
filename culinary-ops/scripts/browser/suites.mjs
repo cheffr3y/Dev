@@ -1,4 +1,5 @@
 export const suites = {
+  "url-state": "prep_workflow_test",
   "schedule-editor": "prep_workflow_test",
   "style-cascade": "prep_workflow_test",
   smoking: "prep_workflow_test",

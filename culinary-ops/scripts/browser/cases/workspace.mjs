@@ -94,7 +94,7 @@ try {
   const dish = admin.getByRole("link", { name: "Clipboard Nested Dish", exact: true }).first();
   await dish.scrollIntoViewIfNeeded(); const scrollBefore = await admin.evaluate(() => scrollY); await dish.click();
   const inspector = admin.getByRole("dialog"); await inspector.getByRole("heading", { name: "Clipboard Nested Dish", exact: true }).first().waitFor();
-  assert.equal(admin.url(), `${base}/menus/clipboard-menu`);
+  assert.equal(new URL(admin.url()).searchParams.get("inspect"), "recipe:clipboard-dish");
   await inspector.getByLabel("Standard yield quantity", { exact: true }).fill("8"); await inspector.getByLabel("Standard yield quantity", { exact: true }).press("Tab"); await saved(admin);
   await until(async () => (await db.recipe.findUnique({ where: { id: "clipboard-dish" } })).yieldQty === 8, "Inspector yield did not save");
   await until(() => admin.locator('td').filter({ hasText: /^Standard: 8 each/ }).count().then(count => count > 0), "Parent menu yield did not recalculate");

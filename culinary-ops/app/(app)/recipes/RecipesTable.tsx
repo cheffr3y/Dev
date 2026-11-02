@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import Link from "next/link";
+import { useMemo } from "react";
+import { InspectorLink } from "@/components/InspectorLink";
+import { useWorkspaceUrl } from "@/components/useWorkspaceUrl";
 import { Badge, Card, TableScroll, cn } from "@/components/ui";
 import { CostIntegrityBanner } from "@/components/CostAudit";
 import { money, pct } from "@/lib/recipes/costing";
@@ -25,8 +26,12 @@ export type RecipeRow = {
 };
 
 export function RecipesTable({ rows }: { rows: RecipeRow[] }) {
-  const [query, setQuery] = useState("");
-  const [category, setCategory] = useState<string | null>(null);
+  const { params, update } = useWorkspaceUrl();
+  const query = params.get("q") ?? "";
+  const category = params.get("category");
+  const sort = params.get("sort") ?? "category";
+  const setQuery = (value: string) => update({ q: value || null });
+  const setCategory = (value: string | null) => update({ category: value });
 
   // Categories are free-form, so derive the chips from the data that's
   // actually present rather than a fixed list.
@@ -45,12 +50,17 @@ export function RecipesTable({ rows }: { rows: RecipeRow[] }) {
         r.category.toLowerCase().includes(q) ||
         (r.station ?? "").toLowerCase().includes(q)
       );
-    });
-  }, [rows, query, category]);
+    }).sort((a, b) => sort === "name" ? a.name.localeCompare(b.name) : sort === "cost" ? b.cost - a.cost || a.name.localeCompare(b.name) : a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
+  }, [rows, query, category, sort]);
 
   return (
     <div>
       <CostIntegrityBanner unpriced={[...new Set(rows.flatMap(row => row.unpricedNames ?? []))].sort()} stale={[...new Set(rows.flatMap(row => row.staleNames ?? []))].sort()} />
+      <label className="mb-3 block text-sm">Sort recipes
+        <select aria-label="Sort recipes" className="ml-2 rounded border border-hairline bg-canvas p-2" value={sort} onChange={event => update({ sort: event.target.value === "category" ? null : event.target.value })}>
+          <option value="category">Category</option><option value="name">Name</option><option value="cost">Highest batch cost</option>
+        </select>
+      </label>
       {/* Filter controls */}
       <div className="mb-4 space-y-3">
         <div className="relative max-w-sm">
@@ -123,9 +133,9 @@ export function RecipesTable({ rows }: { rows: RecipeRow[] }) {
               {filtered.map((r) => (
                 <tr key={r.id} className="hover:bg-zinc-50">
                   <td className="px-3 py-1">
-                    <Link href={`/recipes/${r.id}`} className="font-medium text-zinc-800 hover:underline">
+                    <InspectorLink kind="recipe" id={r.id} className="font-medium text-zinc-800 hover:underline">
                       {r.name}
-                    </Link>
+                    </InspectorLink>
                     {r.station && <span className="ml-2 text-xs text-zinc-400">{r.station}</span>}
                   </td>
                   <td className="px-3 py-1">
