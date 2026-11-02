@@ -1,4 +1,5 @@
 export const suites = {
+  smoking: "prep_workflow_test",
   prep: "prep_workflow_test",
   workspace: "prep_workflow_test",
   "morning-pulse": "prep_workflow_test",

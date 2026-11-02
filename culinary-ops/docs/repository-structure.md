@@ -15,6 +15,7 @@ Application URLs stay the same. This organization changes source locations, not 
 | `db/`, `auth/` | Shared Prisma client and pool limits; authentication, current-user checks and return paths |
 | `dashboard/`, `navigation/`, `workspace/`, `printing/` | Morning Pulse, action palette, workspace editing and print controls |
 | `venues/`, `schedule/`, `purchasing/` | Venue directory, shifts and shopping helpers |
+| `smoking/` | Smoker runs/lots, local OCR parsing, authenticated sources, yields and audited review |
 | `games/` | Homestead saves/rules and trivia engine/content |
 
 Tests live beside the domain they verify. `npm test` discovers unit tests in `lib/`, `app/` and `scripts/archive/`; it excludes `*.integration.test.ts`, which require their disposable database harnesses.
