@@ -53,15 +53,26 @@ Section 1.1 was merged and pushed to main as `7f39190`.
 - Retained existing memoized schedule lookups and totals. No new memoization was added without evidence of expensive repeated rendering; callback and state boundaries remain explicit.
 - Added the `schedule-editor` browser suite. It caught a pre-existing stale keyboard closure: Escape could discard edits without prompting. The dialog now uses an Effect Event to read current state while retaining its focus-trap listener.
 
-Validation: all 213 unit tests pass before and after extraction. Production build, TypeScript, and full lint pass. Prep, workspace, smoking (including real local OCR and lost-response recovery), schedule-editor, print-controller, and recipe-costing browser suites pass with disposable fixtures; supporting database integration checks pass. The schedule test explicitly covers the Escape-state fix. Changes remain on `codex/roadmap-1-2-components` pending merge; section 1.3 has not started.
+Validation: all 213 unit tests pass before and after extraction. Production build, TypeScript, and full lint pass. Prep, workspace, smoking (including real local OCR and lost-response recovery), schedule-editor, print-controller, and recipe-costing browser suites pass with disposable fixtures; supporting database integration checks pass. The schedule test explicitly covers the Escape-state fix. Section 1.2 was merged and pushed as `6e1ed4d`.
+
+## Section 1.3 — URL-driven workspace state
+
+- Recipe `q`, `category`, and `sort` state uses Next.js-integrated native history. Search and filter changes retain unrelated query parameters and anchors.
+- Inspectors use repeated `inspect=recipe:<id>` / `inspect=item:<id>` parameters to represent the nested record trail. Deep links, reloads, browser history, and drawer controls restore the selected records. Browser history retains invalid, pending, or unsaved edits with the existing save/discard warning.
+- Recipe and ingredient catalogs provide inspector contexts; command-search record results use shareable catalog inspector URLs.
+- Existing server-driven ingredient filters now use Next.js forms/links, with search fields keyed to URL values so back/forward restores visible controls.
+- Invoice search, vendor, ordering, and document selection are URL-driven. Filter changes, document links, and successful uploads preserve the other archive parameters.
+- Documented parameter meanings and the history guard in [workspace editing](workspace-editing.md).
+
+Validation: baseline 213 tests; 215 tests after adding URL patch/target parsing coverage. Production build, TypeScript and full lint pass. URL-state, workspace and accounting-invoices browser suites pass using separate disposable fixtures, including nested history, unsaved-edit protection, command-search inspector links and ingredient client-navigation history. Changes remain on `codex/roadmap-1-3-url-state` pending merge. Section 1.4 has not started.
 
 ## Section status
 
 | Section | Work | Status |
 | --- | --- | --- |
 | 1.1 | Stylesheets and shared primitives | Complete; merged as `7f39190` |
-| 1.2 | Heavy client components | Complete and verified; pending merge |
-| 1.3 | URL-driven filters and inspectors | Pending |
+| 1.2 | Heavy client components | Complete; merged as `6e1ed4d` |
+| 1.3 | URL-driven filters and inspectors | Complete and verified; pending merge |
 | 1.4 | OCR and invoice parsing progress | Pending |
 | 2.1 | Line Mode | Pending |
 | 2.2 | Price sparklines and variance alerts | Pending |

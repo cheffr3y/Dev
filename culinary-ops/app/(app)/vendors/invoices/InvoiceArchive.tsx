@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { patchUrl } from "@/lib/workspace/url-state";
 import { Button, Card, Input, Select, Textarea } from "@/components/ui";
 export function InvoiceArchive({vendors}:{vendors:{id:string;name:string}[]}) {
  const router=useRouter(),[busy,setBusy]=useState(false),[error,setError]=useState("");
@@ -8,7 +9,7 @@ export function InvoiceArchive({vendors}:{vendors:{id:string;name:string}[]}) {
   const data=new FormData(form);if(file)data.set("file",file);
   if(!(data.get("file") instanceof File)||(data.get("file") as File).size===0){setError("Choose a PDF or photo first.");return;}
   setBusy(true);setError("");
-  try{const response=await fetch("/api/invoices",{method:"POST",body:data});const result=await response.json();if(!response.ok)throw new Error(result.error);router.push(`/vendors/invoices?id=${encodeURIComponent(result.id)}`);router.refresh();form.reset();}
+  try{const response=await fetch("/api/invoices",{method:"POST",body:data});const result=await response.json();if(!response.ok)throw new Error(result.error);router.push(patchUrl(window.location.href, { id: result.id }));router.refresh();form.reset();}
   catch(error){setError(error instanceof Error?error.message:"Could not save invoice.");}finally{setBusy(false);}
  }
  return <Card className="p-5"><form aria-label="Store invoice" className="space-y-4" onSubmit={event=>{event.preventDefault();void save(event.currentTarget);}} onDragOver={event=>event.preventDefault()} onDrop={event=>{event.preventDefault();if(!busy)void save(event.currentTarget,event.dataTransfer.files[0]);}}>

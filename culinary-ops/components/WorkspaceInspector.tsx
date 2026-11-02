@@ -1,7 +1,9 @@
 "use client";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useWorkspaceUrl } from "./useWorkspaceUrl";
+import { inspectorStack } from "@/lib/workspace/url-state";
 import { InspectorContext, type InspectorTarget } from "./InspectorLink";
 import { RecipeDossier, type DossierRecipe } from "./RecipeDossier";
 import { InlineCell } from "./InlineCell";
@@ -19,12 +21,31 @@ type InspectorData = { kind: "item"; canEdit: boolean; item: CatalogItem; vendor
   };
 };
 export function WorkspaceInspector({ children }: { children: ReactNode }) {
-  const [stack, setStack] = useState<InspectorTarget[]>([]), [revision, setRevision] = useState(0);
+  const { params, update } = useWorkspaceUrl();
+  const search = params.toString();
+  const stack = useMemo(() => inspectorStack(new URLSearchParams(search)), [search]);
+  const setStack = (next: InspectorTarget[] | ((previous: InspectorTarget[]) => InspectorTarget[])) => {
+    const value = typeof next === "function" ? next(inspectorStack(new URLSearchParams(window.location.search))) : next;
+    update({ inspect: value.map(target => `${target.kind}:${target.id}`) });
+  };
+  const [revision, setRevision] = useState(0);
   const [response, setResponse] = useState<{ key: string; data?: InspectorData; error?: string } | null>(null);
   const [closeError, setCloseError] = useState("");
   const dialog = useRef<HTMLDialogElement>(null), opener = useRef<HTMLElement | null>(null), mounted = useRef(true);
   const router = useRouter();
   const target = stack.at(-1), resourceKey = target ? `${target.kind}:${target.id}` : "", key = `${resourceKey}:${revision}`;
+  const acceptedUrl = useRef("");
+  useEffect(() => { acceptedUrl.current = window.location.href; }, [search]);
+  useEffect(() => {
+    const pop = (event: PopStateEvent) => {
+      if (!dialog.current?.querySelector('[data-unsaved="true"], [aria-busy="true"], [aria-invalid="true"], input[readonly]')) return;
+      event.stopImmediatePropagation();
+      window.history.pushState(null, "", acceptedUrl.current);
+      setCloseError("Some edits have not saved. Retry the edit, use the latest value, or discard and close.");
+    };
+    window.addEventListener("popstate", pop, true);
+    return () => window.removeEventListener("popstate", pop, true);
+  }, []);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   useEffect(() => {
     if (!resourceKey || !target) return;
@@ -36,7 +57,7 @@ export function WorkspaceInspector({ children }: { children: ReactNode }) {
     return () => controller.abort();
   }, [key, target, resourceKey]);
   useEffect(() => {
-    if (!target) return;
+    if (!target) { opener.current?.focus({ preventScroll: true }); return; }
     const element = dialog.current;
     if (!element?.open) element?.showModal();
     const previous = document.body.style.overflow; document.body.style.overflow = "hidden";

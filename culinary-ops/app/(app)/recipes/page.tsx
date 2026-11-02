@@ -1,3 +1,4 @@
+import { WorkspaceInspector } from "@/components/WorkspaceInspector";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser, hasRole } from "@/lib/auth/session";
 import { buildCostMap, buildPriceGapMap, costPerYieldUnit, costUnitLabel, foodCostPct } from "@/lib/recipes/costing";
@@ -54,7 +55,7 @@ export default async function RecipesPage({ searchParams }: { searchParams: Prom
   });
 
   return (
-    <div>
+    <WorkspaceInspector><div>
       <PageHeader
         title="Recipes & Builds"
         subtitle="Standardized recipes with ingredient costing and margins."
@@ -101,6 +102,6 @@ export default async function RecipesPage({ searchParams }: { searchParams: Prom
         Food cost % targets: <span className="text-emerald-600">≤30% good</span> ·{" "}
         <span className="text-amber-600">30–38% watch</span> · <span className="text-red-600">&gt;38% high</span>
       </p>
-    </div>
+    </div></WorkspaceInspector>
   );
 }
