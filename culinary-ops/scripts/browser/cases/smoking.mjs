@@ -100,7 +100,7 @@ try {
   await upload
     .getByRole("button", { name: "Attach source document", exact: true })
     .click();
-  await upload.getByRole("status").filter({ hasText: "Saved." }).waitFor();
+  await upload.getByRole("status").filter({ hasText: "Saved." }).last().waitFor();
   assert.equal(await db.smokePhoto.count({ where: { runId } }), 1);
   await openDetails(lot, "Edit lot / enter summary and actuals");
   const edit = lot.getByRole("form", { name: "Edit Brisket A", exact: true });

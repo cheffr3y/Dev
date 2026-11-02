@@ -47,3 +47,8 @@ SMOKE_OCR_FIXTURE=/absolute/path/to/real-thermometer.png \
 ```
 
 The fixture path is explicit so private user screenshots are never committed. The smoking suite requires the supplied reference layout/values for the release benchmark. Shared Playwright/browser executable overrides work as described in [repository-structure.md](repository-structure.md).
+## Source upload queues and recognition progress
+
+Run and lot source forms accept multiple photos/PDFs. Files upload sequentially, each with progress and an independent retry action. Retries retain their operation ID, file, and run/lot assignment. A failure does not block later files. PDF preparation reports completed pages; other preparation stages use indeterminate progress. Keep the page open until the batch finishes; the queue is in browser memory and pending files stop when leaving the page.
+
+Local OCR shows recognition progress from the engine and a distinct draft-preparation stage. Cancellation, manual fallback, and explicit confirmation remain available. Uploading a source does not automatically recognize or approve its contents.

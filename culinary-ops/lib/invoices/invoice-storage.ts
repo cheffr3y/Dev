@@ -1,3 +1,4 @@
+import type { ReportProgress } from "../uploads/progress-response";
 import sharp from "sharp";
 import { PDFDocument } from "pdf-lib";
 import { createCanvas } from "@napi-rs/canvas";
@@ -8,8 +9,9 @@ import { invoiceFileType } from "./invoice-parser";
 export const INVOICE_UPLOAD_LIMIT = 8 * 1024 * 1024;
 export const INVOICE_PAGE_LIMIT = 20;
 export type CompactInvoice = { data: Buffer; preview: Buffer; mime: string; pages: number; originalBytes: number; storedBytes: number; fileHash: string };
-export async function compactInvoice(source: Uint8Array): Promise<CompactInvoice> {
+export async function compactInvoice(source: Uint8Array, report: ReportProgress = () => {}): Promise<CompactInvoice> {
   if (!source.length || source.length > INVOICE_UPLOAD_LIMIT) throw new Error("Choose an invoice between 1 byte and 8 MB.");
+  report({ message: "Preparing compact copy" });
   const mime = invoiceFileType(source), originalBytes = source.length;
   let data: Buffer, preview: Buffer, pages = 1, storedMime = mime === "application/pdf" ? mime : "image/jpeg";
   if (mime !== "application/pdf") {
@@ -35,6 +37,7 @@ export async function compactInvoice(source: Uint8Array): Promise<CompactInvoice
       const output = await PDFDocument.create();
       let first: Buffer | null = null;
       for (let index = 1; index <= pages; index++) {
+        report({ message: `Preparing page ${index} of ${pages}`, completed: index - 1, total: pages });
         const page = await document.getPage(index), base = page.getViewport({scale:1});
         const scale = Math.min(150/72, 2600/Math.max(base.width,base.height));
         const viewport = page.getViewport({scale});
@@ -46,6 +49,7 @@ export async function compactInvoice(source: Uint8Array): Promise<CompactInvoice
         const embedded = await output.embedJpg(image);
         output.addPage([base.width,base.height]).drawImage(embedded,{x:0,y:0,width:base.width,height:base.height});
         page.cleanup();
+        report({ message: `Prepared page ${index} of ${pages}`, completed: index, total: pages });
       }
       const compressed = Buffer.from(await output.save({useObjectStreams:true}));
       // Digital PDFs can already be smaller and sharper than a rasterized copy.

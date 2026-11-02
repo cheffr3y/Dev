@@ -2,7 +2,7 @@ import type { Worker } from "tesseract.js";
 import { parseSmokeOcr } from "./ocr-parser";
 export async function recognizeSmokePhoto(
   file: Blob,
-  progress: (message: string) => void,
+  progress: (message: string, fraction?: number) => void,
   signal: AbortSignal,
 ) {
   let worker: Worker | undefined;
@@ -84,6 +84,7 @@ export async function recognizeSmokePhoto(
             !stopped &&
             progress(
               `${message.status}${message.progress ? ` ${Math.round(message.progress * 100)}%` : ""}`,
+              message.status === "recognizing text" ? message.progress : undefined,
             ),
         }).then((created) => {
           if (stopped) void created.terminate();
@@ -101,6 +102,7 @@ export async function recognizeSmokePhoto(
         result.data.blocks?.flatMap((block) =>
           block.paragraphs.flatMap((paragraph) => paragraph.lines),
         ) ?? [];
+      progress("Preparing recognition draft for review…");
       return {
         draft: parseSmokeOcr(lines),
         seconds: (performance.now() - started) / 1000,

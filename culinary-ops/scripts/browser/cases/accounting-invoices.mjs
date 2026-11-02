@@ -29,6 +29,38 @@ try{
  const fake=await page.request.post(`${base}/api/invoices`,{multipart:{file:{name:"bad.pdf",mimeType:"application/pdf",buffer:Buffer.from("not a real PDF")}}});assert.equal(fake.status(),400);
  const disabled=await page.request.post(`${base}/api/invoices`,{data:{operation:"preview",id:pdf.id}});assert.equal(disabled.status(),410);
  assert.equal(await db.productionBatch.count(),beforeBatches);assert.equal(JSON.stringify(await db.item.findMany({select:{id:true,unitCost:true},orderBy:{id:"asc"}})),beforePrices);
+ // A response lost after storage must be retryable without duplicating the document.
+ const bytes=await readFile(`${output}/invoice-scan.pdf`);
+ let loseResponse=true;
+ await page.route("**/api/invoices",async route=>{
+  if(loseResponse&&route.request().headers()["accept"]==="application/x-ndjson"){
+   loseResponse=false;await route.fetch();await route.abort("failed");
+  }else await route.continue();
+ });
+ await page.getByLabel("Notes (optional)",{exact:true}).fill("Queue snapshot");
+ await page.getByLabel("Invoice PDF or photo",{exact:true}).setInputFiles([
+  {name:"queue-lost.pdf",mimeType:"application/pdf",buffer:Buffer.concat([bytes,Buffer.from("\n%lost-response")])},
+  {name:"queue-next.pdf",mimeType:"application/pdf",buffer:Buffer.concat([bytes,Buffer.from("\n%next-file")])},
+ ]);
+ await page.getByRole("button",{name:"Store invoice",exact:true}).click();
+ await page.getByLabel("Notes (optional)",{exact:true}).fill("Changed after queueing");
+ const queue=page.getByRole("list",{name:"File queue",exact:true});
+ const lost=queue.locator("li").filter({hasText:"queue-lost.pdf"}),next=queue.locator("li").filter({hasText:"queue-next.pdf"});
+ await lost.getByRole("alert").waitFor();
+ await next.getByRole("status").filter({hasText:"Ready for review"}).waitFor();
+ await lost.getByRole("button",{name:"Retry queue-lost.pdf",exact:true}).click();
+ await lost.getByRole("status").filter({hasText:"Ready for review"}).waitFor();
+ assert.equal(await db.invoiceDocument.count({where:{filename:"queue-lost.pdf"}}),1);
+ assert.equal((await db.invoiceDocument.findFirstOrThrow({where:{filename:"queue-lost.pdf"}})).notes,"Queue snapshot");
+ assert.equal((await db.invoiceDocument.findFirstOrThrow({where:{filename:"queue-next.pdf"}})).notes,"Queue snapshot");
+ await page.unroute("**/api/invoices");
+ const stream=await page.request.post(`${base}/api/invoices`,{headers:{Accept:"application/x-ndjson"},multipart:{file:{name:"queue-progress.pdf",mimeType:"application/pdf",buffer:Buffer.concat([bytes,Buffer.from("\n%progress")])}}});
+ const events=(await stream.text()).trim().split("\n").map(line=>JSON.parse(line));
+ assert.ok(events.some(event=>event.type==="progress"&&event.completed===2&&event.total===2));
+ assert.equal(events.at(-1).type,"ready");
+ assert.equal(await db.productionBatch.count(),beforeBatches);
+ assert.equal(JSON.stringify(await db.item.findMany({select:{id:true,unitCost:true},orderBy:{id:"asc"}})),beforePrices);
+ console.log("Batch upload continued after lost response; retry deduplicated storage and preserved metadata; PDF page progress streamed.");
  const staff=await login("staff");assert.equal((await staff.request.get(`${base}/api/invoices/file?id=${pdf.id}`)).status(),403);assert.equal((await staff.request.get(`${base}/api/invoices?id=${pdf.id}`)).status(),403);
  const anon=await browser.newContext();assert.equal((await anon.request.get(`${base}/api/invoices/file?id=${pdf.id}`)).status(),401);
  const mobile=await browser.newContext({viewport:{width:390,height:844},storageState:await page.context().storageState()});const phone=await mobile.newPage();await phone.goto(`${base}/vendors/invoices?id=${pdf.id}`);await phone.getByRole("img",{name:"First page of invoice-scan.pdf",exact:true}).waitFor();await phone.screenshot({path:`${output}/mobile-archive.png`,fullPage:true});assert.equal(await phone.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);

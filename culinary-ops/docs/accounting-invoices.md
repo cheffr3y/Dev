@@ -24,6 +24,16 @@ Uploading, viewing and downloading make **no OpenAI calls** and never change cat
 
 Stored invoices now support manually reviewed line items matched to the ingredient database, normalized paid-unit prices, supplier history, and explicit food-total confirmation into the monthly gross-sales/labor/food calendar. See [operating-calendar.md](operating-calendar.md). Uploading a document alone still makes no purchase entry and changes no catalog prices.
 
+## Upload queues and progress
+
+Choose multiple files or drop a batch into the archive to queue them one at a time. Each file shows its own status; PDFs report actual completed pages while preparing the compact copy. Vendor, invoice number, and notes are captured when files are queued and apply to every selected file. Later form edits do not change queued files or retries. Successful rows link to their document review.
+
+A failed file does not block later files. Retry uses the original file and metadata; identical bytes resolve to the existing stored document, including when a response was lost after storage. Queues live in the browser page, not a durable background job service. Keep the page open until they finish. Leaving the page stops pending files; an in-flight server operation may still finish. Reloading loses the in-memory queue; reselecting a file safely checks for its existing stored copy.
+
+Upload APIs support optional `Accept: application/x-ndjson` progress events and a terminal `ready` or `error` event. Ordinary callers retain JSON responses and HTTP status codes. Streaming errors carry their status inside the terminal event because stream headers have already been sent. Upload progress is indeterminate while sending bytes or doing work with no measurable total; page counts use actual completed pages.
+
+These stages describe document storage. Text extraction and catalog matching retain the deferred AI scope below.
+
 ## Future AI work
 
 AI extraction, matching, automated price proposals and margin approval are deferred in the roadmap. Before activation, benchmark a cheaper model, measure actual cost, add explicit opt-in extraction, record usage and enforce an application spending cap. Keep archive access available even when AI budgets are exhausted. Existing extraction/review helper code and historical review tables are internal groundwork; active routes do not invoke them. No API key is needed for this version.

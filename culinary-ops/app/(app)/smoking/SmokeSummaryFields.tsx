@@ -67,6 +67,7 @@ export function SummaryFields({
     ),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState("");
+  const [fraction, setFraction] = useState<number | undefined>();
   const controller = useRef<AbortController | null>(null),
     photo = photos.find((p) => p.id === draft.photoId);
   useEffect(() => () => controller.current?.abort(), []);
@@ -75,6 +76,7 @@ export function SummaryFields({
     const abort = new AbortController();
     controller.current = abort;
     setBusy(true);
+    setFraction(undefined);
     setMessage("Loading source photo…");
     try {
       const response = await fetch(`/api/smoking/file?id=${photo.id}`, {
@@ -83,7 +85,7 @@ export function SummaryFields({
       if (!response.ok) throw new Error("Could not load the source photo.");
       const result = await recognizeSmokePhoto(
         await response.blob(),
-        setMessage,
+        (message, progress) => { setMessage(message); setFraction(progress); },
         abort.signal,
       );
       setDraft((d) => ({
@@ -117,6 +119,7 @@ export function SummaryFields({
         Device titles and targets are source facts. Confirm the product and
         probe separately. The chart is retained as an image.
       </p>
+      {busy && <progress aria-label="Local recognition progress" max={1} value={fraction} className="w-full" />}
       <div className="smoke-photo-summary">
         <div>
           <label>
