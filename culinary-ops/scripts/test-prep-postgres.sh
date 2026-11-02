@@ -23,6 +23,7 @@ node --import tsx --test lib/db/database-pool.integration.test.ts
 node --import tsx --test lib/prep/prep-workflow.integration.test.ts
 node --import tsx --test lib/production/event-planning.integration.test.ts
 node --import tsx --test lib/accounting/operating-calendar.integration.test.ts
+node --import tsx --test lib/smoking/smoking.integration.test.ts
 node scripts/archive/test-annex-repairs.mjs
 if [ "${PREP_BROWSER_SMOKE:-0}" = "1" ]; then
   BROWSER_SELECTED=()
