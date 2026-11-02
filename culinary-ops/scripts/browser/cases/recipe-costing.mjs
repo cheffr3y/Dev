@@ -14,7 +14,10 @@ await mkdir(output, { recursive: true });
 
 async function openRecipe(name) {
   await page.goto(`${base}/recipes`);
-  await page.getByRole("link", { name, exact: true }).click();
+  // The catalog opens an inspector on click; this suite edits the full recipe.
+  const href = await page.getByRole("link", { name, exact: true }).getAttribute("href");
+  assert.ok(href);
+  await page.goto(new URL(href, base).href);
   await page.getByRole("heading", { name, exact: true }).waitFor();
   return page.url();
 }

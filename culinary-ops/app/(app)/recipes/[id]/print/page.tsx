@@ -1,3 +1,4 @@
+import { loadPriceTrends } from "@/lib/invoices/price-trends-data";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
@@ -41,6 +42,7 @@ export default async function RecipePrintPage({
     }),
   ]);
   if (!recipe) notFound();
+  const priceTrends = showCosts ? await loadPriceTrends(recipe.items.map(line => line.item)) : {};
 
   const scale = printScale(query.scale);
   const byId = new Map(allRecipes.map((r) => [r.id, r]));
@@ -88,7 +90,7 @@ export default async function RecipePrintPage({
         <RecipeDossier recipe={recipe} scale={scale} allergenKeys={allergenKeys}
           lines={lines} titleLevel={1} footerNote={costs && <CostAuditStamp unpriced={gap?.unpriced.size ?? 0} stale={gap?.stale.size ?? 0} />}>
           <RecipeDossierWorkspace recipe={recipe} lines={lines} scale={scale} />
-          {costs && <RecipeCosting costs={costs} />}
+          {costs && <RecipeCosting costs={costs} trends={Object.fromEntries(recipe.items.map(line => [line.id, priceTrends[line.item.id]]))} />}
         </RecipeDossier>
       </div>
     </PrintController>

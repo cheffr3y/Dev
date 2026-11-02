@@ -1,3 +1,5 @@
+import { loadPriceTrends } from "@/lib/invoices/price-trends-data";
+import { PriceTrend } from "@/components/PriceTrend";
 import { WorkspaceInspector } from "@/components/WorkspaceInspector";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser, hasRole } from "@/lib/auth/session";
@@ -55,6 +57,8 @@ export default async function ItemsPage({
     if (flag === "stale" && !freshness.stale) return false;
     return true;
   });
+
+  const trends = await loadPriceTrends(visible.map(({ item }) => item));
 
   // Build a catalog href preserving the other active filter.
   const hrefWith = (next: { category?: string | null; flag?: string | null }) => {
@@ -186,7 +190,7 @@ export default async function ItemsPage({
                 <td className="px-4 py-2.5 text-zinc-600">{canEdit ? <CatalogCell item={item} field="packSize" vendors={vendors} /> : item.packSize ?? "—"}</td>
                 <td className="px-4 py-2.5 text-zinc-600">{canEdit ? <CatalogCell item={item} field="unit" vendors={vendors} /> : item.unit}</td>
                 <td className={`px-4 py-2.5 text-right ${freshness.unpriced ? "text-red-600" : "text-zinc-800"}`}>
-                  {canEdit ? <CatalogCell item={item} field="unitCost" vendors={vendors} /> : freshness.unpriced ? "—" : money(item.unitCost, 5)}
+                  {canEdit ? <CatalogCell item={item} field="unitCost" vendors={vendors} trend={trends[item.id]} /> : freshness.unpriced ? "—" : <>{money(item.unitCost, 5)}<PriceTrend trend={trends[item.id]} /></>}
                 </td>
                 <td className="px-4 py-2.5 text-xs">
                   {freshness.unpriced ? (

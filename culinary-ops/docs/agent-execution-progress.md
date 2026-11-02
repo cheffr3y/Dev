@@ -76,7 +76,18 @@ Validation: baseline 213 tests; 215 tests after adding URL patch/target parsing 
 
 Implementation scope: the active invoice archive explicitly defers AI extraction, automatic catalog matching, usage tracking and spending controls (see [accounting invoices](accounting-invoices.md#future-ai-work)). This section adds truthful storage/recognition stages rather than displaying extraction or matching stages that do not run. The dormant paid parser is not activated. Automatic invoice extraction remains deferred within that existing product scope.
 
-Validation: 219 unit tests pass, including serial execution, failure isolation, retry snapshots, paused queues, fragmented/truncated progress streams and JSON compatibility. Production build, TypeScript and full lint pass. Invoice browser checks verify mixed batch results, lost-response retry, metadata preservation, two-page PDF progress, unchanged prices/ledger and role restrictions. The full smoking browser suite passes with the real screenshot, local OCR, cancellation, recovery, confirmation, mobile and QR checks. Supporting disposable database integration checks pass. Changes remain on `codex/roadmap-1-4-upload-queues` pending merge. Phase 2 has not started.
+Validation: 219 unit tests pass, including serial execution, failure isolation, retry snapshots, paused queues, fragmented/truncated progress streams and JSON compatibility. Production build, TypeScript and full lint pass. Invoice browser checks verify mixed batch results, lost-response retry, metadata preservation, two-page PDF progress, unchanged prices/ledger and role restrictions. The full smoking browser suite passes with the real screenshot, local OCR, cancellation, recovery, confirmation, mobile and QR checks. Supporting disposable database integration checks pass. Section 1.4 was merged and pushed as `cb51b72`.
+
+## Section 2.2 — paid-price sparklines and variance alerts
+
+- Added a dependency-free accessible SVG sparkline and shared paid-price indicator to catalog unit-cost cells, recipe ingredient costing, costing previews, and ingredient history.
+- Trends use up to eight comparable positive reviewed purchases from one supplier, sampled from the latest 100 eligible observations per ingredient. Units are normalized before comparison. Credits, voids and incompatible bases do not enter trends.
+- Saved invoice review lines compare with an earlier compatible positive purchase from the same supplier on another invoice. Future prices cannot be used as baselines. Missing history stays missing, without a percentage or alert.
+- Amber badges identify increases strictly greater than the server-configurable `PRICE_VARIANCE_THRESHOLD_PERCENT` (default 10); floating-point noise at the exact threshold does not trigger an alert.
+- Indicators explicitly describe paid-price changes. Catalog prices, current recipe costs and existing menu margin calculations are unchanged; no historical menu margin is inferred from ingredient observations. Mini trends are hidden in print to preserve costing-sheet layout.
+- Included the user's decision to skip section 2.1. Configuration, sample limits and comparison rules are documented in [accounting invoices](accounting-invoices.md#paid-price-trends-and-variance-alerts).
+
+Validation: baseline 219 unit tests; all 223 tests now pass, including variance/threshold edge cases, supplier/unit isolation, credits/voids and sparkline rendering. Production build, TypeScript and full lint pass. Price-trends, workspace, print-controller and recipe-costing browser suites pass, including mobile overflow, paper visibility, normalized $8/lb to $0.75/oz (+50%) observations, historical invoice comparisons, catalog-editing focus, and unchanged scaling/current catalog cost. The costing browser helper now navigates explicitly to the full recipe editor, accommodating section 1.3's inspector-on-click behavior. Changes remain on `codex/roadmap-2-2-price-trends` pending merge; section 2.3 has not started.
 
 ## Section status
 
@@ -85,9 +96,9 @@ Validation: 219 unit tests pass, including serial execution, failure isolation, 
 | 1.1 | Stylesheets and shared primitives | Complete; merged as `7f39190` |
 | 1.2 | Heavy client components | Complete; merged as `6e1ed4d` |
 | 1.3 | URL-driven filters and inspectors | Complete; merged as `f5349a2` |
-| 1.4 | OCR and invoice parsing progress | Active-workflow progress/queues verified; pending merge; AI extraction remains deferred |
-| 2.1 | Line Mode | Pending |
-| 2.2 | Price sparklines and variance alerts | Pending |
+| 1.4 | OCR and invoice parsing progress | Merged as `cb51b72`; AI extraction remains deferred |
+| 2.1 | Line Mode | Skipped at the user's request; retain the existing interface |
+| 2.2 | Price sparklines and variance alerts | Complete and verified; pending merge |
 | 2.3 | Banquet baseline visual diffs | Pending |
 | 2.4 | Spreadsheet keyboard navigation | Pending |
 | 3.1 | Recipe dependency tree | Pending |
@@ -95,3 +106,5 @@ Validation: 219 unit tests pass, including serial execution, failure isolation, 
 | 3.3 | Sales-mix menu engineering | Pending |
 
 Before each section, check what the application already supports and verify the proposed file paths. Mark work complete only with corresponding implementation and validation evidence.
+
+Section 2.1 (Atelier / Line Mode toggle) is omitted at the user's request. After merging section 2.2, continue with section 2.3: banquet baseline visual diffs.

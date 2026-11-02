@@ -34,6 +34,16 @@ Upload APIs support optional `Accept: application/x-ndjson` progress events and 
 
 These stages describe document storage. Text extraction and catalog matching retain the deferred AI scope below.
 
+## Paid-price trends and variance alerts
+
+The ingredient catalog and recipe costing show compact SVG price trends from up to eight compatible positive reviewed invoice observations from the same supplier. The current catalog supplier is used when assigned; otherwise the most recent supplier with compatible paid data is chosen. The chart label identifies the supplier, basis, and paid values. Samples come from the latest 100 eligible observations per ingredient, ordered by invoice date, entry time, and ID. One observation has no implied trend.
+
+Prices are converted to the displayed ingredient cost unit before comparison. Credits, voided lines, zero/nonfinite prices, and incompatible units are excluded. Invoice review compares a saved matched line to an earlier compatible positive line from the same supplier on another invoice; it never uses a future invoice as a prior price. A missing baseline produces no percentage or warning. Historical review searches the latest 100 eligible observations per ingredient through the invoice's latest line date.
+
+An amber badge flags increases strictly greater than `PRICE_VARIANCE_THRESHOLD_PERCENT` (default 10). Set that server environment variable and restart/redeploy to change it; invalid or negative values fall back to 10. Comparisons use full precision, with a small floating-point tolerance at the threshold. Visible percentages are rounded for readability.
+
+These are paid-price observations, not changes to current catalog costs or projected recipe margins. Recording or displaying them does not update catalog prices, recipe costs, accounting postings, or stock. Mini trends on costing previews are hidden on paper; the existing costing figures and layout remain the print source.
+
 ## Future AI work
 
 AI extraction, matching, automated price proposals and margin approval are deferred in the roadmap. Before activation, benchmark a cheaper model, measure actual cost, add explicit opt-in extraction, record usage and enforce an application spending cap. Keep archive access available even when AI budgets are exhausted. Existing extraction/review helper code and historical review tables are internal groundwork; active routes do not invoke them. No API key is needed for this version.
