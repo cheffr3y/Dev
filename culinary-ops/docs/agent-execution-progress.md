@@ -101,13 +101,13 @@ Validation: baseline 219 unit tests; all 223 tests now pass, including variance/
 | 2.2 | Price sparklines and variance alerts | Complete; merged as `555c057` |
 | 2.3 | Banquet baseline visual diffs | Complete; merged as `dd8983c` |
 | 2.4 | Spreadsheet keyboard navigation | Complete; merged as `20bb622` |
-| 3.1 | Recipe dependency tree | Complete and verified on `codex/roadmap-3-1-recipe-dependencies`; pending merge |
-| 3.2 | Preservation and yield tracking | Pending |
+| 3.1 | Recipe dependency tree | Complete; merged as `601c9ff` |
+| 3.2 | Preservation and yield tracking | Complete and verified on `codex/roadmap-3-2-preservation-batches`; pending merge |
 | 3.3 | Sales-mix menu engineering | Pending |
 
 Before each section, check what the application already supports and verify the proposed file paths. Mark work complete only with corresponding implementation and validation evidence.
 
-Section 2.1 (Atelier / Line Mode toggle) is omitted at the user's request. After merging section 3.1, continue with section 3.2: preservation and yield tracking.
+Section 2.1 (Atelier / Line Mode toggle) is omitted at the user's request. After merging section 3.2, continue with section 3.3: sales-mix menu engineering.
 
 ## Section 2.3 — banquet baseline visual diffs — November 2, 2026
 
@@ -133,3 +133,14 @@ Validation: baseline 227 unit tests; all 230 pass, including sparse-row and boun
 - Documented operation and limits in [recipe dependencies](recipe-dependencies.md). Existing role rules, costing panels, packets, production and accounting writes remain unchanged. No migration is required.
 
 Validation: baseline 230 unit tests; all 236 pass, covering recursive shared demand/costs, conversions, tiny fractions, inherited provenance, gaps, cycles, limits, consumers and immutable inputs. Production webpack build, standalone TypeScript and full lint pass. All 47 disposable PostgreSQL checks and archive repair regressions pass. New recipe-dependencies plus workspace, print-controller and recipe-costing browser suites pass: 250-portion previews and repeated-path totals, unit conversion/reset, tiny demand, cost shares/tags, direct/indirect links, missing/stale prices and unit mismatches, cycles, desktop/mobile, staff read-only preview and unchanged stored recipe/order/snapshot/production/accounting facts. Desktop/mobile and consumer screenshots were visually reviewed. Print checks were rerun successfully in a fresh harness after the workspace suite changed a shared recipe-yield fixture. Conflicting generated `.next/types` copies were removed before successful build/type validation; unrelated source copies were left intact. Section 2.4 was merged into main before this work as requested.
+
+## Section 3.2 — preservation batches and yield tracking — November 2, 2026
+
+- Added Production → Preservation batches with retained history/status filters, create/detail/finish workflows and explicit source recipe/output ingredient links. Initial/finished gross and tare weights determine net yield, loss/gain, actual multi-day duration and concentrated finished cost. Equipment, temperature/unit, humidity, planned cycle, reviewed input-cost reference, assigned use-by/storage instructions and notes are recorded. Zero output stays distinct from missing output; gains require explanation.
+- Creation freezes source names/version, venue and effective allergen tags, including additional selected and output-ingredient tags. Frozen reference IDs preserve history after source removal without blocking catalog consolidation. Staff create at their current home venue and finish their own batches; managers/admins review across venues, void unposted records and deliberately apply catalog prices.
+- Catalog posting converts the finished net weight into the current item's weight-based cost unit and checks its expected price/unit and the batch revision in a serializable transaction. Create/finish/post retries are idempotent, concurrent posts create one audit event, and replay never overwrites a later catalog edit. Original facts and previous/new prices remain in append-only audit history. Inventory, prep, stock-transfer and accounting records are unchanged.
+- Added one-page QR batch labels with captured allergens, production/use-by dates, storage text and yield. Running/void status is explicit, and sign-in returns to the scanned record. No shelf life is inferred. See [preservation batches](preservation-batches.md).
+
+Validation: baseline 236 unit tests; all 241 pass. Production webpack build, standalone TypeScript, full lint and Prisma schema validation pass. The migration applies to disposable PostgreSQL; all 53 integration checks plus the archive repair regression pass. Expanded production-jobs browser coverage passes create/finish/post response-loss recovery, tare validation, 48-hour duration, net yield/cost, stale catalog rejection, frozen label tags/dates, independently decoded QR/login return, role restrictions, phone layout and unchanged prep snapshots/ledger. Existing event-planning, banquet-setup, print-controller and recipe-costing suites also pass. Desktop/mobile screenshots and the rendered one-page Letter label were visually reviewed. An outdated weekly QR test selector was updated to the current event-specific banquet link.
+
+Deployment requires additive migration `20261102010000_preservation_batches`, applied by normal migration-first startup. It was tested only in disposable databases; live data was not migrated or modified.

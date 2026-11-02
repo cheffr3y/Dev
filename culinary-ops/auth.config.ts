@@ -22,7 +22,7 @@ export const authConfig = {
         if (isLoggedIn) return Response.redirect(new URL(safeReturnTo(nextUrl.searchParams.get("returnTo")), nextUrl));
         return true;
       }
-      if (!isLoggedIn && (pathname === "/prep-orders/closeout/scan" || pathname === "/smoking" || pathname.startsWith("/smoking/"))) {
+      if (!isLoggedIn && (pathname === "/prep-orders/closeout/scan" || pathname === "/smoking" || pathname.startsWith("/smoking/") || pathname.startsWith("/production/preservation"))) {
         const login = new URL("/login", nextUrl);
         login.searchParams.set("returnTo", `${pathname}${nextUrl.search}`);
         return Response.redirect(login);
