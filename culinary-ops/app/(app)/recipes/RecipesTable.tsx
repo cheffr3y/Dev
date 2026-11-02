@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Badge, Card, cn } from "@/components/ui";
+import { Badge, Card, TableScroll, cn } from "@/components/ui";
 import { CostIntegrityBanner } from "@/components/CostAudit";
 import { money, pct } from "@/lib/recipes/costing";
 
@@ -99,7 +99,7 @@ export function RecipesTable({ rows }: { rows: RecipeRow[] }) {
       </div>
 
       <Card className="overflow-hidden">
-        <div className="data-table-scroll overflow-x-auto" role="region" aria-label="Recipe costs" tabIndex={0}>
+        <TableScroll aria-label="Recipe costs">
           <table className="w-full text-xs">
             <thead className="bg-zinc-50 text-left font-mono text-[11px] uppercase tracking-[0.02em] text-zinc-600">
               <tr>
@@ -163,7 +163,7 @@ export function RecipesTable({ rows }: { rows: RecipeRow[] }) {
               ))}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
       </Card>
 
       <p className="mt-2 text-xs text-zinc-400">

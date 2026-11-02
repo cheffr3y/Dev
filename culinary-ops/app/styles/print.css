@@ -1,0 +1,447 @@
+@layer print {
+  @media print {
+    body:has(.to-go-packet),
+    body:has(.to-go-packet) .min-h-screen { min-height: 0 !important; }
+    body:has(.to-go-packet) .flex:has(> main.print-full) { display: block; }
+    .to-go-packet { width: 100%; max-width: none; }
+    .to-go-print-section { break-before: page; }
+    .to-go-packet .overflow-x-auto { overflow: visible; }
+    .to-go-packet table { table-layout: auto; overflow-wrap: anywhere; }
+    .to-go-packet thead { display: table-header-group; }
+    .to-go-packet h2 { break-after: avoid; }
+  }
+
+  @media print {
+    body:has(.atelier-packet), body:has(.atelier-event),
+    body:has(.atelier-packet) .min-h-screen,
+    body:has(.atelier-event) .min-h-screen { min-height: 0 !important; }
+    body:has(.atelier-packet) .flex:has(> main.print-full),
+    body:has(.atelier-event) .flex:has(> main.print-full) { display: block; }
+    .atelier-packet { width: 100%; max-width: none; }
+    .atelier-paper { margin: 0; border: 0; padding: 0; }
+    .atelier-cover { min-height: 9.9in; }
+    .atelier-packet-section,
+    .launch-recipe-sheet { break-before: page; page-break-before: always; }
+    .launch-recipe-sheet { margin: 0; }
+    .atelier-pull-sheet { break-before: page; padding-top: 0.2in; }
+    .atelier-category, .atelier-header, .atelier-table tr { break-inside: avoid; page-break-inside: avoid; }
+    .atelier-table thead { display: table-header-group; }
+    .atelier-table th, .atelier-table td { padding: 5px 4px; }
+    .atelier-vendor-heading { break-after: avoid; page-break-after: avoid; }
+    .atelier-vendor .atelier-table { font-size: 10px; line-height: 1.2; }
+    .atelier-vendor .atelier-table th, .atelier-vendor .atelier-table td { padding-block: 4px; }
+    .atelier-event table { font-size: 10px; }
+    .atelier-event > .grid, .atelier-event > div.grid { display: block; }
+    .atelier-event .overflow-x-auto, .atelier-packet .overflow-x-auto { overflow: visible; }
+    .atelier-event .rounded-lg { border-color: #e2ddd5; background: #fcfbf9; box-shadow: none; margin-bottom: 12px; }
+  }
+
+  @page {
+    margin: 0.5in;
+  }
+
+  @media print {
+    .no-print {
+      display: none !important;
+    }
+    .print-full {
+      width: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+    .print-sheet {
+      border: none !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      padding: 0 !important;
+    }
+    body {
+      background: #fff;
+      color: #000;
+      print-color-adjust: exact;
+      -webkit-print-color-adjust: exact;
+    }
+
+    /* Remove the app shell's viewport minimum only for a recipe dossier.
+       Otherwise its min-height can create a blank second sheet. */
+    body:has(.recipe-print),
+    body:has(.recipe-print) .min-h-screen {
+      min-height: 0 !important;
+    }
+    body:has(.recipe-print) .min-h-screen,
+    body:has(.recipe-print) .flex:has(> main.print-full) {
+      display: block;
+    }
+    .recipe-print {
+      width: 100%;
+      max-width: none;
+      margin: 0;
+    }
+    .recipe-sheet-scroll {
+      overflow: visible;
+    }
+    .recipe-dossier {
+      width: 100%;
+      min-width: 0;
+      /* Let content set the height. Full-page flex minimums can push a tiny
+         footer onto a separate sheet when the print margins change. */
+      min-height: 0;
+      display: block;
+      background: #fff;
+      font-size: 9pt;
+      line-height: 1.35;
+    }
+    .recipe-sheet-body {
+      display: block;
+      padding: 10px 0 0;
+    }
+    .recipe-hero {
+      padding-block: 10px;
+    }
+    .recipe-title {
+      font-size: 29pt;
+    }
+    .recipe-specs {
+      padding-block: 9px;
+    }
+    .recipe-spec {
+      padding-inline: 9px;
+    }
+    .recipe-spec:first-child {
+      padding-left: 0;
+    }
+    .recipe-spec:last-child {
+      padding-right: 0;
+    }
+    .recipe-meta {
+      font-size: 7px;
+    }
+    .recipe-workspace {
+      grid-template-columns: 38% 57%;
+      column-gap: 5%;
+      margin-top: 12px;
+      /* Align the independent columns at their tops across print engines. */
+      align-items: start;
+    }
+    .recipe-section-title {
+      padding-bottom: 6px;
+      font-size: 16pt;
+    }
+    .recipe-costing {
+      margin-top: 16px;
+    }
+    .recipe-costing h2,
+    .recipe-costing thead {
+      break-after: avoid;
+    }
+    .recipe-costing thead {
+      display: table-header-group;
+    }
+    .recipe-costing tfoot {
+      display: table-row-group;
+    }
+    .recipe-stage {
+      margin-top: 5px;
+    }
+    .recipe-stage-title {
+      font-size: 7px;
+    }
+    .recipe-ingredient {
+      padding-block: 2px;
+      gap: 8px;
+      font-size: 8.25pt;
+      line-height: 1.25;
+    }
+    .recipe-prep-note {
+      margin-top: 0;
+      font-size: 9.5px;
+      line-height: 1.2;
+    }
+    .recipe-method {
+      margin-top: 12px;
+      row-gap: 8px;
+    }
+    .recipe-step {
+      column-gap: 9px;
+    }
+    .recipe-step-number {
+      font-size: 21pt;
+    }
+    .recipe-step-prose {
+      line-height: 1.4;
+    }
+    .recipe-cues {
+      gap: 4px;
+    }
+    .recipe-cue {
+      padding: 2px 6px;
+      font-size: 7pt;
+    }
+    .recipe-cue svg {
+      width: 10px;
+      height: 10px;
+    }
+    .recipe-critical,
+    .recipe-storage {
+      margin-top: 12px;
+      padding: 8px;
+    }
+    .recipe-critical p,
+    .recipe-storage li {
+      font-size: 10px;
+      line-height: 1.4;
+    }
+    .recipe-footer {
+      padding-top: 12px;
+    }
+    .recipe-packet-content {
+      overflow: visible;
+    }
+    .recipe-packet-builds {
+      margin-block: 0 !important;
+    }
+    .recipe-packet-builds > * {
+      margin-block: 16px 0 !important;
+    }
+    .recipe-supporting-builds,
+    .recipe-references {
+      break-before: auto;
+      margin-top: 16px;
+    }
+    .recipe-packet-notes {
+      break-before: page;
+    }
+    .recipe-supporting-builds > h3,
+    .recipe-references > div:first-child,
+    .recipe-accent,
+    .recipe-masthead,
+    .recipe-hero,
+    .recipe-specs,
+    .recipe-context {
+      break-inside: avoid;
+      break-after: avoid;
+    }
+    .recipe-packet .recipe-dossier {
+      font-size: 8.5pt;
+      /* Allow long recipes to use remaining space instead of pushing their
+         entire card to the next sheet. Individual rows/steps stay together. */
+      break-inside: auto;
+      margin-top: 16px;
+    }
+    .recipe-packet .recipe-hero {
+      padding-block: 8px;
+    }
+    .recipe-packet .recipe-sheet-body {
+      padding-top: 8px;
+    }
+    .recipe-packet .recipe-specs {
+      padding-block: 7px;
+    }
+    .recipe-packet .recipe-title {
+      font-size: 26pt;
+    }
+    .recipe-packet .recipe-context {
+      margin-top: 8px;
+      font-size: 10px;
+      line-height: 1.25;
+    }
+    .recipe-packet .recipe-workspace {
+      margin-top: 8px;
+    }
+    .recipe-packet .recipe-section-title {
+      padding-bottom: 5px;
+      font-size: 15pt;
+    }
+    .recipe-packet .recipe-ingredient {
+      padding-block: 1.5px;
+    }
+    .recipe-packet .recipe-stage {
+      margin-top: 4px;
+    }
+    .recipe-packet .recipe-critical {
+      margin-top: 9px;
+      padding: 7px;
+    }
+    .recipe-packet .recipe-footer {
+      padding-top: 6px;
+    }
+    .recipe-packet .break-before-page {
+      margin-top: 0;
+    }
+    .recipe-production-record {
+      margin-top: 12px;
+      padding: 10px;
+      font-size: 10px;
+      line-height: 1.5;
+    }
+    .recipe-production-record h3 {
+      font-size: 15px;
+    }
+    .recipe-production-record > div {
+      display: grid;
+      row-gap: 10px;
+      margin-top: 8px;
+    }
+    .recipe-production-record p {
+      margin-block: 0;
+    }
+    .recipe-dossier.recipe-dossier-supporting {
+      min-height: 0;
+    }
+    .recipe-dossier-supporting .recipe-title {
+      font-size: 18pt;
+    }
+    .recipe-dossier-supporting .recipe-hero {
+      padding-block: 8px;
+    }
+  }
+
+  @media print {
+    /* Sticky is a screen affordance only — never in print. */
+    .schedule-print .sched-sticky {
+      position: static !important;
+    }
+    /* Flatten decoration; lean on clean hairline grid lines instead. */
+    .schedule-print table {
+      width: 100% !important;
+      border-collapse: collapse;
+    }
+    .schedule-print th,
+    .schedule-print td {
+      border: 1px solid var(--sched-border-strong) !important;
+    }
+    /* Compact the rows on paper so fuller rosters + multi-event days still fit one
+       page before spilling to a second (which degrades gracefully below). */
+    .schedule-print thead th,
+    .schedule-print tbody th,
+    .schedule-print tbody td,
+    .schedule-print tfoot td,
+    .schedule-print tfoot th {
+      padding-top: 2px;
+      padding-bottom: 2px;
+    }
+    /* Repeat the header on any overflow page; never split a cook across pages. */
+    .schedule-print thead {
+      display: table-header-group;
+    }
+    .schedule-print tfoot {
+      display: table-footer-group;
+    }
+    .schedule-print tr,
+    .schedule-print .break-avoid {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    /* Keep the announcements/footer with the grid, no orphan blank page. */
+    .schedule-print .print-tight > * {
+      margin-top: var(--sched-print-gap);
+    }
+  }
+
+  @media print {
+    .setup-print-only { display: block !important; }
+    .banquet-setup-sheet { background: white !important; margin: 0; padding: 0; border: 0; font-size: 10pt; }
+    .banquet-setup-sheet .setup-table { font-size: 9pt; }
+    .banquet-setup-sheet .setup-table th, .banquet-setup-sheet .setup-table td { padding: 5px 4px; }
+    .banquet-setup-sheet thead { display: table-header-group; }
+    .banquet-setup-sheet tr, .banquet-setup-heading { break-inside: avoid; }
+    .setup-station-heading, .setup-pull-section > h3 { break-after: avoid; }
+    .packet-setup-section { break-after: page; }
+  }
+
+  @media print {
+    body:has(.print-document), body:has(.print-document) .min-h-screen { min-height: 0 !important; }
+    body:has(.print-document) .min-h-screen, body:has(.print-document) .flex:has(> main.print-full) { display: block; }
+    .print-document { padding-bottom: 0 !important; width: 100%; max-width: none; color: #000; background: #fff; }
+    /* The shared header uses part of the cover page. A full-page minimum on
+       the old cover would otherwise leave a page containing only its footer. */
+    .print-document .atelier-cover { min-height: 0; }
+    .print-document :where(h1, h2, h3, h4, p, li, dt, dd, th, td, span) { color: #000; }
+    .print-document .recipe-accent { background: #000; }
+    .print-document .recipe-hero > span,
+    .print-document .recipe-allergen,
+    .print-document .recipe-critical,
+    .print-document .recipe-storage,
+    .print-document .recipe-cue,
+    .print-document .recipe-scaling-warning,
+    .print-document .setup-station-heading,
+    .print-document thead th { background: #f4f4f5; border-color: #bbb; color: #000; }
+    .print-document .print-controller { display: none !important; }
+    .print-document .print-spec-header { margin-bottom: 10px; padding-block: 8px; }
+    .print-document .print-spec-title { font-size: 12pt; }
+    .print-document .print-spec-meta { font-size: 7pt; }
+    .print-document .print-scaled-banner { font-size: 8pt; }
+    .print-document table { width: 100%; border-collapse: collapse; }
+    .print-document thead { display: table-header-group; position: static; }
+    .print-document tr { break-inside: avoid; page-break-inside: avoid; }
+    .print-document tbody tr:nth-child(even) > *,
+    .print-document .recipe-stage li:nth-child(even) {
+      background-color: #f4f4f5;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .print-document .print-write-in { min-height: 28px !important; }
+    .print-document td.print-write-in, .print-document th.print-write-in,
+    .print-document td:has(> .print-write-in) { height: 28px; }
+    .print-document .recipe-dossier,
+    .print-document .print-station-group,
+    .print-document .recipe-stage,
+    .print-document .recipe-production-record {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    /* A card longer than a page can still paginate naturally; its individual
+       ingredients and method steps remain indivisible. */
+    .print-document .recipe-dossier { background: #fff; }
+    .print-document .recipe-hero, .print-document .print-spec-header,
+    .print-document h1, .print-document h2, .print-document h3 { break-after: avoid; }
+
+    /* Compact spacing never reduces handwritten cells or changes quantities. */
+    .print-document.print-compact .recipe-dossier { font-size: 7.5pt; line-height: 1.2; }
+    .print-document.print-compact .recipe-sheet-body { padding-top: 6px; }
+    .print-document.print-compact .recipe-hero { padding-block: 6px; }
+    .print-document.print-compact .recipe-title { font-size: 24pt; }
+    .print-document.print-compact .recipe-specs { padding-block: 5px; }
+    .print-document.print-compact .recipe-workspace { margin-top: 7px; }
+    .print-document.print-compact .recipe-section-title { font-size: 13pt; padding-bottom: 4px; }
+    .print-document.print-compact .recipe-ingredient { padding-block: 1px; font-size: 7pt; line-height: 1.15; gap: 6px; }
+    .print-document.print-compact .recipe-ingredient > span { font-size: 9px; }
+    .print-document.print-compact .recipe-prep-note { font-size: 8px; line-height: 1.15; }
+    .print-document.print-compact .recipe-stage { margin-top: 3px; }
+    .print-document.print-compact .recipe-method { margin-top: 8px; row-gap: 6px; }
+    .print-document.print-compact .recipe-step-number { font-size: 18pt; }
+    .print-document.print-compact .recipe-step-prose { font-size: 9.5px; line-height: 1.2; }
+    .print-document.print-compact .recipe-cue { font-size: 6.5pt; padding: 1px 4px; }
+    .print-document.print-compact .recipe-critical,
+    .print-document.print-compact .recipe-storage { margin-top: 8px; padding: 6px; }
+    .print-document.print-compact .recipe-footer { padding-top: 6px; }
+    .print-document.print-compact .print-spec-header { padding-block: 6px; margin-bottom: 7px; }
+    .print-document.print-compact .print-spec-title { font-size: 10pt; }
+    .print-document.print-compact .print-scaled-banner { padding: 6px; margin-bottom: 6px; }
+    .print-document.print-compact .recipe-context { margin-top: 6px; font-size: 9px; line-height: 1.15; }
+    .print-document.print-compact table { font-size: 85%; }
+    .print-document.print-compact th, .print-document.print-compact td { padding-top: 3px; padding-bottom: 3px; }
+    .print-document.print-compact .recipe-production-record { margin-top: 8px; padding: 8px; }
+    .print-document.print-compact .recipe-production-record > div { row-gap: 6px; }
+  }
+
+  @media print {
+    .production-job-qr { width: 104px !important; padding: 4px; background: #fff !important; color: #000 !important; }
+    .production-job-qr svg { width: 96px !important; height: 96px !important; }
+  }
+
+  @media print {
+    .workspace-inspector { display: none !important; }
+    .inline-cell { border: none !important; }
+  }
+
+  @media print {
+    .event-work-sheet + .event-work-sheet, .event-cook-packet + .event-cook-packet { break-before: page; }
+    .event-work-sheet thead, .purchasing-table thead { display: table-header-group; }
+    .event-work-sheet tr, .purchasing-table tr, .beo-revision tr { break-inside: avoid; }
+    .event-work-sheet .overflow-x-auto, .production-planning .overflow-x-auto { overflow: visible; }
+    .event-work-sheet .print-write-in, .purchasing-table .print-write-in { min-height: 28px; height: 28px; }
+    .purchasing-table tbody tr:nth-child(even), .beo-revision tbody tr:nth-child(even) { background: #f4f4f5 !important; print-color-adjust: exact; }
+    .beo-revision { color: #000 !important; border: 2px solid #000 !important; background: #fff !important; }
+  }
+}

@@ -6,24 +6,49 @@ Source: [agent implementation roadmap](agent-execution-roadmap.md). Preserve tha
 
 - [x] Save the supplied roadmap in the repository and link it from the README.
 - [x] Inspect the first section against the current code.
-- [ ] Establish the unit-test baseline. Attempted `npm test`; the shell reported `command not found: npm`. No tests ran.
+- [x] Establish the unit-test baseline. After locating the bundled Node 24 runtime, `node scripts/test-unit.mjs` passed all 213 tests (the same runner used by `npm test`).
 
 The initial inspection found 1,020 lines in `app/globals.css`, 278 in `app/(app)/smoking/smoking.css`, and 203 in `components/ui.tsx`. Shared card, button, field, and badge primitives already exist. Global styles use Tailwind imports and theme declarations, paper defaults, and screen-scoped workspace overrides. Changes to cascade layers must account for those existing rules and print behavior.
 
-## Next slice: 1.1 — stylesheet and primitive inventory
+## Section 1.1 — stylesheet and primitive inventory
 
-- [ ] Restore access to Node >=22.13 and npm, then run `npm test` and record the baseline result.
-- [ ] Map global styles into tokens, base, components, print, and utilities; inspect Tailwind layer ordering before changing precedence.
-- [ ] Identify repeated surfaces and controls that can use the existing typed primitives.
-- [ ] Select one small extraction that preserves cascade order, selectors, and print behavior.
-- [ ] Implement and verify that extraction with typechecking, lint, and the workspace and print-controller browser suites using disposable fixtures described in [repository structure](repository-structure.md).
-- [ ] Record the changes and checks in a separate implementation commit. Section 1.1 remains incomplete until all its work is verified.
+- [x] Restore access to a compatible Node runtime and run the unit-test runner directly.
+- [x] Map global styles into tokens, base, components, print, and utilities; inspect Tailwind layer ordering before changing precedence.
+- [x] Identify repeated surfaces and controls that can use the existing typed primitives.
+- [x] Select one small extraction that preserves cascade order, selectors, and print behavior.
+- [x] Implement and verify that extraction with typechecking, application lint, and the workspace and print-controller browser suites using disposable fixtures described in [repository structure](repository-structure.md).
+- [x] Record the changes and checks in a separate implementation commit. Section 1.1 remains incomplete until all its work is verified.
+
+### First slice
+
+- Extract paper palette, schedule tokens, and Tailwind theme registration into `app/styles/tokens.css`, imported immediately after Tailwind. A parsed CSS comparison confirmed every rule, declaration, and its order survives the extraction.
+- Let `Card` forward native div attributes and use it inside `StatCard` to share the surface definition.
+- Restrict `Badge` colors to the five implemented variants and forward native span attributes and custom classes.
+- Extract `TableScroll` with a required accessible label and keyboard focus, and use it in the recipe costing table.
+
+The existing form controls already share `fieldBase`. Their styles need no duplicate abstraction in this slice. The first slice preserved the original cascade before the layer migration below.
+
+Validation: all 213 unit tests pass before and after the change; production build and TypeScript checks pass. Application lint passes with generated `public/ocr/**` excluded. Unfiltered lint reports 55 errors and 3,755 warnings in generated OCR assets. Workspace, print-controller, and recipe-costing browser suites pass using isolated fixtures; the supporting database integration and archive repair checks also pass.
+
+Run workspace and print-controller suites in separate disposable database harnesses: workspace edits the shared recipe yield from 4 to 8, which invalidates print-controller's original-yield expectations if they run consecutively against one fixture database.
+
+### Section 1.1 completed
+
+- Replaced the global stylesheet body with imports for named tokens, base, utilities, components, and print layers. Tailwind is nested in a lower framework layer to preserve existing component overrides. Top-level `@theme` compiler directives remain supported.
+- Scoped every smoking class selector to its workspace with zero additional specificity, in the component layer.
+- Added a production-CSS browser regression suite covering desktop/mobile palettes, table density, controls, smoking route isolation, and print resets.
+- Excluded generated OCR dependency copies from lint, so full application lint now passes.
+- Documented the cascade and validation commands in [stylesheet architecture](stylesheet-architecture.md).
+
+Final validation: production build, TypeScript, full lint, all 213 unit tests, supporting database integration checks, and style-cascade/workspace/print-controller/recipe-costing browser suites pass. A before/after computed-style comparison of representative workspace, recipe, schedule, banquet, and smoking fixtures at desktop/mobile widths in screen/print media found no differences in rendered elements. Hidden inspector font values follow print-layer precedence; the drawer remains hidden in print.
+
+Section 1.2 is next and has not started. Section 1.1 remains on its working branch pending merge.
 
 ## Section status
 
 | Section | Work | Status |
 | --- | --- | --- |
-| 1.1 | Stylesheets and shared primitives | Initial inspection; implementation pending |
+| 1.1 | Stylesheets and shared primitives | Complete and verified; pending merge |
 | 1.2 | Heavy client components | Pending |
 | 1.3 | URL-driven filters and inspectors | Pending |
 | 1.4 | OCR and invoice parsing progress | Pending |

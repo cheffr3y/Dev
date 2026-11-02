@@ -1,4 +1,5 @@
 export const suites = {
+  "style-cascade": "prep_workflow_test",
   smoking: "prep_workflow_test",
   prep: "prep_workflow_test",
   workspace: "prep_workflow_test",

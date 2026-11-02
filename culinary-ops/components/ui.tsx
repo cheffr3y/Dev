@@ -34,17 +34,29 @@ export function PageHeader({
 export function Card({
   children,
   className,
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
+  ...props
+}: ComponentProps<"div">) {
   return (
     <div
+      {...props}
       className={cn(
         "rounded-lg border border-hairline bg-canvas",
         className,
       )}
     >
+      {children}
+    </div>
+  );
+}
+
+/** A named, keyboard-focusable scrolling region for operational tables. */
+export function TableScroll({
+  children,
+  className,
+  ...props
+}: ComponentProps<"div"> & { "aria-label": string }) {
+  return (
+    <div role="region" tabIndex={0} {...props} className={cn("data-table-scroll overflow-x-auto", className)}>
       {children}
     </div>
   );
@@ -145,7 +157,7 @@ export function Select(props: ComponentProps<"select">) {
   return <select {...props} className={cn(fieldBase, props.className)} />;
 }
 
-const badgeStyles: Record<string, string> = {
+const badgeStyles = {
   gray: "border-hairline bg-zinc-50 text-zinc-600",
   green: "border-emerald-600/30 bg-emerald-100 text-emerald-700",
   red: "border-red-200 bg-red-50 text-red-600",
@@ -156,15 +168,18 @@ const badgeStyles: Record<string, string> = {
 export function Badge({
   children,
   color = "gray",
-}: {
-  children: ReactNode;
+  className,
+  ...props
+}: Omit<ComponentProps<"span">, "color"> & {
   color?: keyof typeof badgeStyles;
 }) {
   return (
     <span
+      {...props}
       className={cn(
         "inline-flex items-center whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-medium tabular-nums",
         badgeStyles[color],
+        className,
       )}
     >
       {children}
@@ -193,11 +208,11 @@ export function StatCard({
   href?: string;
 }) {
   const inner = (
-    <div className="rounded-lg border border-hairline bg-canvas p-4 transition-colors hover:border-zinc-300">
+    <Card className="p-4 transition-colors hover:border-zinc-300">
       <p className="font-mono text-xs uppercase tracking-[0.02em] text-zinc-600">{label}</p>
       <p className="mt-2 text-2xl font-semibold leading-none tracking-tight tabular-nums text-ink">{value}</p>
       {sub && <p className="mt-2 text-xs tabular-nums text-zinc-500">{sub}</p>}
-    </div>
+    </Card>
   );
   return href ? <Link href={href}>{inner}</Link> : inner;
 }

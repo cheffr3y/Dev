@@ -1,278 +1,281 @@
-.smoking {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 24px;
-  color: var(--color-ink);
-}
-.smoking h1 {
-  font-size: 30px;
-  font-weight: 700;
-  margin: 8px 0;
-}
-.smoking h2 {
-  font-size: 23px;
-  font-weight: 650;
-  margin: 4px 0 12px;
-}
-.smoking h3 {
-  font-size: 17px;
-  font-weight: 650;
-  margin: 12px 0 6px;
-}
-.smoking p {
-  margin: 8px 0;
-  line-height: 1.5;
-}
-.smoking header {
-  margin-bottom: 24px;
-}
-.smoke-eyebrow {
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-zinc-500);
-}
-.smoke-card {
-  padding: 22px;
-  border: 1px solid var(--color-hairline);
-  border-radius: 14px;
-  margin: 18px 0;
-  background: var(--color-canvas);
-}
-.smoking summary {
-  cursor: pointer;
-  font-weight: 650;
-  padding: 9px 0;
-}
-.smoking details[open] > summary {
-  margin-bottom: 12px;
-}
-.smoke-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-.smoke-wide {
-  grid-column: 1/-1;
-}
-.smoking label {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  font-size: 14px;
-  min-width: 0;
-}
-.smoking input,
-.smoking select,
-.smoking textarea {
-  width: 100%;
-  min-width: 0;
-  border: 1px solid var(--color-hairline);
-  border-radius: 7px;
-  padding: 10px;
-  background: var(--color-cream);
-  color: inherit;
-  font-size: 16px;
-}
-.smoking input[type="checkbox"] {
-  width: 20px;
-  height: 20px;
-  flex: none;
-}
-.smoking button,
-.smoke-link-button {
-  border: 1px solid var(--color-hairline);
-  border-radius: 7px;
-  padding: 10px 14px;
-  font-weight: 600;
-  cursor: pointer;
-  background: var(--color-cream);
-  color: inherit;
-  text-decoration: none;
-  min-height: 44px;
-}
-.smoking button:disabled {
-  opacity: 0.5;
-  cursor: wait;
-}
-.smoking a {
-  color: var(--color-primary);
-  overflow-wrap: anywhere;
-}
-.smoking fieldset {
-  border: 0;
-  padding: 0;
-  margin: 0;
-  min-width: 0;
-}
-.smoke-form {
-  margin: 16px 0;
-}
-.smoke-form > fieldset > label,
-.smoke-form > fieldset > details,
-.smoke-form > fieldset > h3 {
-  margin: 16px 0;
-}
-.smoke-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: center;
-  margin-top: 16px;
-}
-.smoke-pair {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  min-width: 0;
-}
-.smoke-check {
-  flex-direction: row !important;
-  align-items: flex-start;
-}
-.smoke-muted {
-  font-size: 13px;
-  color: var(--color-zinc-500);
-}
-.smoke-lot {
-  scroll-margin-top: 24px;
-}
-.smoke-lot-heading {
-  display: flex;
-  gap: 16px;
-  justify-content: space-between;
-}
-.smoke-metrics {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-  margin: 18px 0;
-}
-.smoke-metrics > div {
-  border: 1px solid var(--color-hairline);
-  padding: 12px;
-  border-radius: 9px;
-}
-.smoke-metrics span,
-.smoke-metrics strong {
-  display: block;
-}
-.smoke-metrics span {
-  font-size: 12px;
-  margin-bottom: 6px;
-}
-.smoke-source-facts {
-  padding: 14px;
-  border-left: 3px solid #6bbca7;
-  background: #6bbca70c;
-  margin: 16px 0;
-}
-.smoke-reading {
-  border-bottom: 1px solid var(--color-hairline);
-  padding: 12px 0;
-}
-.smoke-void {
-  opacity: 0.6;
-}
-.smoke-gallery {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 18px;
-}
-.smoke-gallery img {
-  height: 200px;
-  object-fit: contain;
-  width: 100%;
-  background: #101010;
-  border-radius: 7px;
-}
-.smoke-gallery article {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-.smoke-photo-summary {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 22px;
-}
-.smoke-source {
-  max-width: 100%;
-  max-height: 650px;
-  object-fit: contain;
-  display: block;
-  margin: 14px auto;
-}
-.smoke-prewrap {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-.smoke-audit {
-  border-top: 1px solid var(--color-hairline);
-  padding: 10px 0;
-}
-.smoke-audit pre {
-  font-size: 12px;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  background: #0002;
-  padding: 12px;
-  max-height: 400px;
-  overflow: auto;
-}
-.smoke-run-row {
-  border-top: 1px solid var(--color-hairline);
-  padding: 15px 0;
-}
-.smoke-history-lot {
-  display: grid;
-  grid-template-columns: 1fr 2fr;
-  gap: 8px;
-  font-size: 14px;
-  margin: 8px 0;
-  padding: 12px;
-  border-radius: 7px;
-  background: #8881;
-}
-.smoke-history-lot > span:last-of-type,
-.smoke-history-lot p {
-  grid-column: 1/-1;
-}
-.smoking :focus-visible {
-  outline: 2px solid #8dd6c2;
-  outline-offset: 3px;
-}
-@media (max-width: 700px) {
+/* Zero-specificity scope prevents route CSS from leaking after navigation. */
+@layer components {
   .smoking {
-    padding: 16px;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px;
+    color: var(--color-ink);
   }
-  .smoke-card {
-    padding: 16px;
+  .smoking h1 {
+    font-size: 30px;
+    font-weight: 700;
+    margin: 8px 0;
   }
-  .smoke-grid,
-  .smoke-photo-summary {
-    grid-template-columns: 1fr;
+  .smoking h2 {
+    font-size: 23px;
+    font-weight: 650;
+    margin: 4px 0 12px;
   }
-  .smoke-metrics {
+  .smoking h3 {
+    font-size: 17px;
+    font-weight: 650;
+    margin: 12px 0 6px;
+  }
+  .smoking p {
+    margin: 8px 0;
+    line-height: 1.5;
+  }
+  .smoking header {
+    margin-bottom: 24px;
+  }
+  :where(.smoking) .smoke-eyebrow {
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-zinc-500);
+  }
+  :where(.smoking) .smoke-card {
+    padding: 22px;
+    border: 1px solid var(--color-hairline);
+    border-radius: 14px;
+    margin: 18px 0;
+    background: var(--color-canvas);
+  }
+  .smoking summary {
+    cursor: pointer;
+    font-weight: 650;
+    padding: 9px 0;
+  }
+  .smoking details[open] > summary {
+    margin-bottom: 12px;
+  }
+  :where(.smoking) .smoke-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+  :where(.smoking) .smoke-wide {
+    grid-column: 1/-1;
+  }
+  .smoking label {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    font-size: 14px;
+    min-width: 0;
+  }
+  .smoking input,
+  .smoking select,
+  .smoking textarea {
+    width: 100%;
+    min-width: 0;
+    border: 1px solid var(--color-hairline);
+    border-radius: 7px;
+    padding: 10px;
+    background: var(--color-cream);
+    color: inherit;
+    font-size: 16px;
+  }
+  .smoking input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    flex: none;
+  }
+  .smoking button,
+  :where(.smoking) .smoke-link-button {
+    border: 1px solid var(--color-hairline);
+    border-radius: 7px;
+    padding: 10px 14px;
+    font-weight: 600;
+    cursor: pointer;
+    background: var(--color-cream);
+    color: inherit;
+    text-decoration: none;
+    min-height: 44px;
+  }
+  .smoking button:disabled {
+    opacity: 0.5;
+    cursor: wait;
+  }
+  .smoking a {
+    color: var(--color-primary);
+    overflow-wrap: anywhere;
+  }
+  .smoking fieldset {
+    border: 0;
+    padding: 0;
+    margin: 0;
+    min-width: 0;
+  }
+  :where(.smoking) .smoke-form {
+    margin: 16px 0;
+  }
+  :where(.smoking) .smoke-form > fieldset > label,
+  :where(.smoking) .smoke-form > fieldset > details,
+  :where(.smoking) .smoke-form > fieldset > h3 {
+    margin: 16px 0;
+  }
+  :where(.smoking) .smoke-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    margin-top: 16px;
+  }
+  :where(.smoking) .smoke-pair {
+    display: grid;
     grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    min-width: 0;
   }
-  .smoke-lot-heading {
+  :where(.smoking) .smoke-check {
+    flex-direction: row !important;
+    align-items: flex-start;
+  }
+  :where(.smoking) .smoke-muted {
+    font-size: 13px;
+    color: var(--color-zinc-500);
+  }
+  :where(.smoking) .smoke-lot {
+    scroll-margin-top: 24px;
+  }
+  :where(.smoking) .smoke-lot-heading {
+    display: flex;
+    gap: 16px;
+    justify-content: space-between;
+  }
+  :where(.smoking) .smoke-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin: 18px 0;
+  }
+  :where(.smoking) .smoke-metrics > div {
+    border: 1px solid var(--color-hairline);
+    padding: 12px;
+    border-radius: 9px;
+  }
+  :where(.smoking) .smoke-metrics span,
+  :where(.smoking) .smoke-metrics strong {
     display: block;
   }
-  .smoke-history-lot {
-    grid-template-columns: 1fr;
+  :where(.smoking) .smoke-metrics span {
+    font-size: 12px;
+    margin-bottom: 6px;
   }
-  .smoke-gallery {
-    grid-template-columns: 1fr 1fr;
+  :where(.smoking) .smoke-source-facts {
+    padding: 14px;
+    border-left: 3px solid #6bbca7;
+    background: #6bbca70c;
+    margin: 16px 0;
   }
-  .smoke-gallery img {
-    height: 160px;
+  :where(.smoking) .smoke-reading {
+    border-bottom: 1px solid var(--color-hairline);
+    padding: 12px 0;
   }
-}
-@media (max-width: 420px) {
-  .smoke-gallery {
-    grid-template-columns: 1fr;
+  :where(.smoking) .smoke-void {
+    opacity: 0.6;
   }
-  .smoke-pair {
+  :where(.smoking) .smoke-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 18px;
+  }
+  :where(.smoking) .smoke-gallery img {
+    height: 200px;
+    object-fit: contain;
+    width: 100%;
+    background: #101010;
+    border-radius: 7px;
+  }
+  :where(.smoking) .smoke-gallery article {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  :where(.smoking) .smoke-photo-summary {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 22px;
+  }
+  :where(.smoking) .smoke-source {
+    max-width: 100%;
+    max-height: 650px;
+    object-fit: contain;
+    display: block;
+    margin: 14px auto;
+  }
+  :where(.smoking) .smoke-prewrap {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  :where(.smoking) .smoke-audit {
+    border-top: 1px solid var(--color-hairline);
+    padding: 10px 0;
+  }
+  :where(.smoking) .smoke-audit pre {
+    font-size: 12px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    background: #0002;
+    padding: 12px;
+    max-height: 400px;
+    overflow: auto;
+  }
+  :where(.smoking) .smoke-run-row {
+    border-top: 1px solid var(--color-hairline);
+    padding: 15px 0;
+  }
+  :where(.smoking) .smoke-history-lot {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
     gap: 8px;
+    font-size: 14px;
+    margin: 8px 0;
+    padding: 12px;
+    border-radius: 7px;
+    background: #8881;
+  }
+  :where(.smoking) .smoke-history-lot > span:last-of-type,
+  :where(.smoking) .smoke-history-lot p {
+    grid-column: 1/-1;
+  }
+  .smoking :focus-visible {
+    outline: 2px solid #8dd6c2;
+    outline-offset: 3px;
+  }
+  @media (max-width: 700px) {
+    .smoking {
+      padding: 16px;
+    }
+    :where(.smoking) .smoke-card {
+      padding: 16px;
+    }
+    :where(.smoking) .smoke-grid,
+    :where(.smoking) .smoke-photo-summary {
+      grid-template-columns: 1fr;
+    }
+    :where(.smoking) .smoke-metrics {
+      grid-template-columns: 1fr 1fr;
+    }
+    :where(.smoking) .smoke-lot-heading {
+      display: block;
+    }
+    :where(.smoking) .smoke-history-lot {
+      grid-template-columns: 1fr;
+    }
+    :where(.smoking) .smoke-gallery {
+      grid-template-columns: 1fr 1fr;
+    }
+    :where(.smoking) .smoke-gallery img {
+      height: 160px;
+    }
+  }
+  @media (max-width: 420px) {
+    :where(.smoking) .smoke-gallery {
+      grid-template-columns: 1fr;
+    }
+    :where(.smoking) .smoke-pair {
+      gap: 8px;
+    }
   }
 }
