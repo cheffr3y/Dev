@@ -1,3 +1,4 @@
+import { progressResponse, type ReportProgress } from "@/lib/uploads/progress-response";
 import { ZodError } from "zod";
 import { getPrepUser } from "@/lib/auth/prep-session";
 import { mutateSmoke, SmokeError, uploadSmokePhoto } from "@/lib/smoking/data";
@@ -24,7 +25,8 @@ async function limitedBody(request: Request, limit: number) {
   }
   return Buffer.concat(parts);
 }
-export async function POST(request: Request) {
+export function POST(request: Request) { return progressResponse(request, report => handle(request, report)); }
+async function handle(request: Request, report: ReportProgress) {
   const user = await getPrepUser();
   if (!user) return Response.json({ error: "Sign in again." }, { status: 401 });
   try {
@@ -57,9 +59,12 @@ export async function POST(request: Request) {
         lotId: String(form.get("lotId") ?? "") || null,
         filename: file.name.replace(/[\r\n]/g, " ").slice(0, 200),
       };
+      report({ message: "Preparing source document" });
       const compact = await compactSmokeDocument(
         new Uint8Array(await file.arrayBuffer()),
+        report,
       );
+      report({ message: "Storing source document" });
       return Response.json(await uploadSmokePhoto(user.id, input, compact));
     }
     if (!type.startsWith("application/json"))

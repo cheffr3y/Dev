@@ -1,11 +1,11 @@
 /* eslint-disable @next/next/no-img-element -- Authenticated source documents must bypass public image optimization. */
 "use client";
 import Link from "next/link";
+import { Upload } from "./Upload";
 import { useRouter } from "next/navigation";
 import {
   useEffect,
   useState,
-  type FormEvent,
 } from "react";
 import type { AppUser } from "@/lib/auth/session";
 import {
@@ -688,44 +688,6 @@ function ReadingForm({
       </div>
       <Reason required />
     </SaveForm>
-  );
-}
-function Upload({
-  run,
-  lotId = null,
-}: {
-  run: RunView;
-  lotId?: string | null;
-}) {
-  const { save, pending, message } = useSave();
-  return (
-    <form
-      aria-label="Attach smoking photo"
-      className="smoke-form"
-      onSubmit={async (e: FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        const form = e.currentTarget,
-          f = new FormData(form);
-        f.set("runId", run.id);
-        f.set("lotId", lotId ?? "");
-        if (await save(f)) form.reset();
-      }}
-    >
-      <label>
-        Photo / supporting PDF (under 8 MB)
-        <input
-          type="file"
-          name="file"
-          accept="image/png,image/jpeg,application/pdf"
-          required
-          disabled={pending}
-        />
-      </label>
-      <button disabled={pending}>
-        {pending ? "Storing…" : "Attach source document"}
-      </button>
-      <p role="status">{message}</p>
-    </form>
   );
 }
 export function SmokeRunWorkspace({

@@ -1,3 +1,4 @@
+import type { ReportProgress } from "../uploads/progress-response";
 import sharp from "sharp";
 import { createHash } from "node:crypto";
 import { invoiceFileType } from "../invoices/invoice-parser";
@@ -7,11 +8,11 @@ import {
 } from "../invoices/invoice-storage";
 
 export const SMOKE_UPLOAD_LIMIT = INVOICE_UPLOAD_LIMIT;
-export async function compactSmokeDocument(source: Uint8Array) {
+export async function compactSmokeDocument(source: Uint8Array, report: ReportProgress = () => {}) {
   if (!source.length || source.length > SMOKE_UPLOAD_LIMIT)
     throw new Error("Choose a photo or PDF under 8 MB.");
   const mime = invoiceFileType(source);
-  if (mime === "application/pdf") return compactInvoice(source);
+  if (mime === "application/pdf") return compactInvoice(source, report);
   const metadata = await sharp(source, {
     limitInputPixels: 60_000_000,
   }).metadata();

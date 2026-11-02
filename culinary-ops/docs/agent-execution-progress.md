@@ -64,7 +64,19 @@ Validation: all 213 unit tests pass before and after extraction. Production buil
 - Invoice search, vendor, ordering, and document selection are URL-driven. Filter changes, document links, and successful uploads preserve the other archive parameters.
 - Documented parameter meanings and the history guard in [workspace editing](workspace-editing.md).
 
-Validation: baseline 213 tests; 215 tests after adding URL patch/target parsing coverage. Production build, TypeScript and full lint pass. URL-state, workspace and accounting-invoices browser suites pass using separate disposable fixtures, including nested history, unsaved-edit protection, command-search inspector links and ingredient client-navigation history. Changes remain on `codex/roadmap-1-3-url-state` pending merge. Section 1.4 has not started.
+Validation: baseline 213 tests; 215 tests after adding URL patch/target parsing coverage. Production build, TypeScript and full lint pass. URL-state, workspace and accounting-invoices browser suites pass using separate disposable fixtures, including nested history, unsaved-edit protection, command-search inspector links and ingredient client-navigation history. Section 1.3 was merged and pushed as `f5349a2`.
+
+## Section 1.4 — upload progress and file queues
+
+- Invoice and smoking source uploads accept batches and process one file at a time. Queue rows show individual progress, success, review links where applicable, and retryable errors. One failed file does not block later files.
+- File bytes and metadata are captured at enqueue time; smoking retries retain their operation ID and run/lot assignment. Invoice retries use the existing content-hash deduplication. Lost responses after successful storage cannot create duplicate documents.
+- Upload endpoints optionally stream newline-delimited progress events. Standard JSON callers retain existing response shapes and status codes; streamed errors carry a terminal error/status event. PDF preparation reports actual completed pages, with indeterminate indicators for stages that have no measurable total.
+- Local smoking OCR exposes engine recognition progress and draft preparation while preserving cancellation, manual entry and explicit confirmation.
+- Pending uploads stop when their page unmounts; the queue is browser memory, not a durable server job service. An active storage operation can still complete. Queue lifetime, metadata snapshots, retry semantics and the streaming protocol are documented in the accounting and smoking guides.
+
+Implementation scope: the active invoice archive explicitly defers AI extraction, automatic catalog matching, usage tracking and spending controls (see [accounting invoices](accounting-invoices.md#future-ai-work)). This section adds truthful storage/recognition stages rather than displaying extraction or matching stages that do not run. The dormant paid parser is not activated. Automatic invoice extraction remains deferred within that existing product scope.
+
+Validation: 219 unit tests pass, including serial execution, failure isolation, retry snapshots, paused queues, fragmented/truncated progress streams and JSON compatibility. Production build, TypeScript and full lint pass. Invoice browser checks verify mixed batch results, lost-response retry, metadata preservation, two-page PDF progress, unchanged prices/ledger and role restrictions. The full smoking browser suite passes with the real screenshot, local OCR, cancellation, recovery, confirmation, mobile and QR checks. Supporting disposable database integration checks pass. Changes remain on `codex/roadmap-1-4-upload-queues` pending merge. Phase 2 has not started.
 
 ## Section status
 
@@ -72,8 +84,8 @@ Validation: baseline 213 tests; 215 tests after adding URL patch/target parsing 
 | --- | --- | --- |
 | 1.1 | Stylesheets and shared primitives | Complete; merged as `7f39190` |
 | 1.2 | Heavy client components | Complete; merged as `6e1ed4d` |
-| 1.3 | URL-driven filters and inspectors | Complete and verified; pending merge |
-| 1.4 | OCR and invoice parsing progress | Pending |
+| 1.3 | URL-driven filters and inspectors | Complete; merged as `f5349a2` |
+| 1.4 | OCR and invoice parsing progress | Active-workflow progress/queues verified; pending merge; AI extraction remains deferred |
 | 2.1 | Line Mode | Pending |
 | 2.2 | Price sparklines and variance alerts | Pending |
 | 2.3 | Banquet baseline visual diffs | Pending |
