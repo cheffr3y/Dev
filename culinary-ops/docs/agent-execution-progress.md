@@ -42,14 +42,25 @@ Run workspace and print-controller suites in separate disposable database harnes
 
 Final validation: production build, TypeScript, full lint, all 213 unit tests, supporting database integration checks, and style-cascade/workspace/print-controller/recipe-costing browser suites pass. A before/after computed-style comparison of representative workspace, recipe, schedule, banquet, and smoking fixtures at desktop/mobile widths in screen/print media found no differences in rendered elements. Hidden inspector font values follow print-layer precedence; the drawer remains hidden in print.
 
-Section 1.2 is next and has not started. Section 1.1 remains on its working branch pending merge.
+Section 1.1 was merged and pushed to main as `7f39190`.
+
+## Section 1.2 — client component boundaries
+
+- Split smoking save/retry behavior into `useSmokeSave`, reusable save forms into `SaveForm`, form-value readers into `smoke-form-data`, and OCR summary/measurement editing into `SmokeSummaryFields`. The workspace remains the composition point for run and lot workflows.
+- Split prep ingredient deductions into `SupplyEditor`, close/return/cost-completion forms into `CloseoutForms`, submission retry state into `usePrepSubmission`, and shared input types into `entry-types`. Existing `EntryForms` imports remain supported through re-exports.
+- Reduced `DailyWorksheet` to group composition. `WorksheetRow` owns each item's production/preview/save state, `ChargePreview` renders charges, and `useWorksheetDirtyRows` owns navigation protection and listener cleanup.
+- Split the schedule into grid, cell, and dialog components, with trigger focus restoration in `useScheduleGridNavigation`.
+- Retained existing memoized schedule lookups and totals. No new memoization was added without evidence of expensive repeated rendering; callback and state boundaries remain explicit.
+- Added the `schedule-editor` browser suite. It caught a pre-existing stale keyboard closure: Escape could discard edits without prompting. The dialog now uses an Effect Event to read current state while retaining its focus-trap listener.
+
+Validation: all 213 unit tests pass before and after extraction. Production build, TypeScript, and full lint pass. Prep, workspace, smoking (including real local OCR and lost-response recovery), schedule-editor, print-controller, and recipe-costing browser suites pass with disposable fixtures; supporting database integration checks pass. The schedule test explicitly covers the Escape-state fix. Changes remain on `codex/roadmap-1-2-components` pending merge; section 1.3 has not started.
 
 ## Section status
 
 | Section | Work | Status |
 | --- | --- | --- |
-| 1.1 | Stylesheets and shared primitives | Complete and verified; pending merge |
-| 1.2 | Heavy client components | Pending |
+| 1.1 | Stylesheets and shared primitives | Complete; merged as `7f39190` |
+| 1.2 | Heavy client components | Complete and verified; pending merge |
 | 1.3 | URL-driven filters and inspectors | Pending |
 | 1.4 | OCR and invoice parsing progress | Pending |
 | 2.1 | Line Mode | Pending |
