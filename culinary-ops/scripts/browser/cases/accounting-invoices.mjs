@@ -64,7 +64,9 @@ try{
  assert.equal(JSON.stringify(await db.item.findMany({select:{id:true,unitCost:true},orderBy:{id:"asc"}})),beforePrices);
  console.log("Batch upload continued after lost response; retry deduplicated storage and preserved metadata; PDF page progress streamed.");
  const staff=await login("staff");assert.equal((await staff.request.get(`${base}/api/invoices/file?id=${pdf.id}`)).status(),403);assert.equal((await staff.request.get(`${base}/api/invoices?id=${pdf.id}`)).status(),403);
- const anon=await browser.newContext();assert.equal((await anon.request.get(`${base}/api/invoices/file?id=${pdf.id}`)).status(),401);
+ assert.equal((await staff.request.post(`${base}/api/invoice-review-draft`,{data:{}})).status(),403);
+ assert.equal((await page.request.post(`${base}/api/invoice-review-draft`,{headers:{Origin:"https://foreign.test"},data:{}})).status(),403);
+ const anon=await browser.newContext();assert.equal((await anon.request.post(`${base}/api/invoice-review-draft`,{data:{}})).status(),401);assert.equal((await anon.request.get(`${base}/api/invoices/file?id=${pdf.id}`)).status(),401);
  const mobile=await browser.newContext({viewport:{width:390,height:844},storageState:await page.context().storageState()});const phone=await mobile.newPage();await phone.goto(`${base}/invoices?id=${pdf.id}`);await phone.getByRole("button",{name:/View invoice · p/}).click();await phone.getByLabel("invoice-scan.pdf, page 1",{exact:true}).waitFor();await phone.screenshot({path:`${output}/mobile-archive.png`,fullPage:true});assert.equal(await phone.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
  assert.deepEqual(errors,[]);console.log(`Compressed photo/PDF uploads, stored preview/download, duplicate detection, no-AI boundary, unchanged prices/ledger, role restrictions, mobile layout and accounting exports passed. Review: ${output}`);
 }catch(error){if(page)await page.screenshot({path:`${output}/failure.png`,fullPage:true});throw error;}finally{await browser.close();await db.$disconnect();}

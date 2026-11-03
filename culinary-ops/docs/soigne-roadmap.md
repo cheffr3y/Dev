@@ -49,10 +49,24 @@ Phase 1 starts first. Phase 2's data and migration design can be investigated al
 
 Implemented on `codex/soigne-invoice-workspace`: source/review columns with PDF page rendering and zoom; a phone source/review switch; compact candidate navigation; one expanded row; progress and automatic next-row selection after approval; collapsed capture with visible upload queues; progressive source-field editing; and a separate saved-lines/accounting section with always-visible stale-total warnings.
 
-This is partial Phase 1 delivery. Drafts remain in memory during the mounted review, including row/phone-view switching. Durable draft recovery, richer inbox states, completion impact links, comprehensive review-time measurements and Phase 2 conversions remain pending. The implementation uses the existing approval and calculation services.
+At this first checkpoint, Phase 1 was partially delivered and drafts remained in memory during the mounted review. Durable recovery is implemented in the next slice below; richer inbox states, completion impact links, workflow timing and Phase 2 conversions remain pending. The implementation uses the existing approval and calculation services.
 
 Validation: the production webpack build (including TypeScript), full lint and all 245 unit tests pass with an official Node 24 runtime. Disposable database integration checks and the local-invoices, accounting-invoices, operating-calendar and URL-state browser suites pass. Browser coverage includes real local photo/scanned-PDF recognition, source-page selection and zoom, focused review/next-row progression, lost-response approval recovery, phone source/review switching with retained field values, empty-recognition manual fallback, upload queue recovery, unchanged production history, calendar confirmation, role restrictions and navigation history. Desktop/mobile screenshots were reviewed. Phase 1 workflow-timing targets have not yet been measured.
 
+
+### Account-backed draft recovery — November 3, 2026
+
+Implemented on `codex/soigne-invoice-drafts`:
+
+- Personal invoice working copies restore recognized-row edits, shared metadata, selected line, source page/zoom, phone view, and manual line entry/correction fields after reload or another visit/device.
+- Debounced, serialized saves expose unsaved/saving/saved/error states. Lost save responses retry the original snapshot before newer edits. Concurrent writers receive a conflict with their local entries retained.
+- Draft saving has no purchase, price or accounting effect. Recovery uses current server facts and clears currency/line verification. Purchase IDs and matching-operation receipts survive recovery.
+- Manual drafts retain their original saved-line revision. A late/lost commit cannot silently erase subsequent edits or authorize an overwrite of a changed record; the user can explicitly load the latest saved line.
+- Additive migration `20261103000000_invoice_review_drafts` creates one draft per user/invoice. Normal migration-first startup applies it. Only disposable databases were migrated during implementation.
+
+Validation: production webpack build and TypeScript, full lint, 249 unit tests, 60 disposable-database tests and local-invoices/operating-calendar/accounting-invoices/URL-state browser suites pass. Coverage includes cross-device conflicts, reload with both recognized and manual edits, cleared verification, save-response loss followed by newer edits, retry-safe ingredient creation, lost manual commits with later edits preserved, ownership/role checks, cross-origin rejection, source view recovery and unchanged financial/production facts. Desktop/mobile review screenshots were inspected.
+
+Phase 1 remains in progress. Inbox states, richer completion links and workflow timing remain pending. Food-total confirmation drafts, exact scroll/caret restoration and unfinished upload/OCR processing are outside this slice; only server-confirmed draft saves are durable.
 
 ### One workspace, from capture to completion
 

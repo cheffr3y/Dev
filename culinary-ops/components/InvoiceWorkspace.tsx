@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { useInvoiceDraft } from "./InvoiceDraftProvider";
 import { Button } from "./ui";
 
 const SourceContext = createContext<(page: number) => void>(() => {});
@@ -50,7 +51,9 @@ function DocumentCanvas({ document, page, zoom }: { document: Document; page: nu
 }
 
 export function InvoiceWorkspace({ document, children }: { document: Document; children: ReactNode }) {
-  const [page, setPage] = useState(1), [zoom, setZoom] = useState(100), [mobileSource, setMobileSource] = useState(false);
+  const { draft, update } = useInvoiceDraft();
+  const [page, setPage] = useState(Math.min(document.pages, draft.view.page)), [zoom, setZoom] = useState<number>(draft.view.zoom), [mobileSource, setMobileSource] = useState(draft.view.mobileSource);
+  useEffect(() => { update(previous => ({ ...previous, view: { page, zoom: zoom as 100 | 150 | 200, mobileSource } })); }, [page, zoom, mobileSource, update]);
   const file = `/api/invoices/file?id=${encodeURIComponent(document.id)}`;
   const selectPage = useCallback((value: number) => { setPage(Math.max(1, Math.min(document.pages, value))); }, [document.pages]);
   return <SourceContext.Provider value={selectPage}>
