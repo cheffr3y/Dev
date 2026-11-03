@@ -38,6 +38,6 @@ export function InvoiceArchive({vendors}:{vendors:{id:string;name:string}[]}) {
    <label className="block text-sm">Notes (optional)<Textarea name="notes" maxLength={5000} /></label>
    <Button type="submit">Store invoice</Button>
   </fieldset>
-  <DocumentQueueStatus entries={entries} retry={retry} href={id => patchUrl(typeof window === "undefined" ? "http://localhost/vendors/invoices" : window.location.href, { id })} />{error&&<p role="alert" className="text-sm text-red-600">{error}</p>}
+  <DocumentQueueStatus entries={entries} retry={retry} href={id => patchUrl(typeof window === "undefined" ? "http://localhost/invoices" : window.location.href, { id })} />{error&&<p role="alert" className="text-sm text-red-600">{error}</p>}
  </form></Card>;
 }

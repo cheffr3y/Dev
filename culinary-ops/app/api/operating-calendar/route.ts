@@ -20,7 +20,7 @@ export async function POST(request: Request) {
   const result = await saveOperatingRecord(prisma, user.id, input);
   if (result.ok) {
     revalidatePath("/operating-calendar", "layout");
-    revalidatePath("/vendors/invoices");
+    revalidatePath("/invoices");
   }
   return Response.json(result, { status: result.ok ? 200 : result.conflict ? 409 : 400 });
 }

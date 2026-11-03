@@ -30,7 +30,7 @@ export async function loadProductionPlanning(from: string, to: string, includeUn
   }
   for (const r of retail) {
     const plan = buildToGoRollup(r, recipes);
-    sources.push({ id: `to-go:${r.id}`, kind: "To-Go", name: r.name, date: r.orderCutoff || null, dateLabel: "Order cutoff (service date unspecified)", time: r.pickupNotes || "Pickup / production deadline to confirm", destination: r.venue?.name || "Company-wide / destination to confirm", venueId: r.venueId, notes: r.notes || "", href: `/to-go/${r.id}`, packetHref: `/to-go/${r.id}/packet?mode=packing`,
+    sources.push({ id: `to-go:${r.id}`, kind: "Home Meal Replacement", name: r.name, date: r.orderCutoff || null, dateLabel: "Order cutoff (service date unspecified)", time: r.pickupNotes || "Pickup / production deadline to confirm", destination: r.venue?.name || "Company-wide / destination to confirm", venueId: r.venueId, notes: r.notes || "", href: `/to-go/${r.id}`, packetHref: `/to-go/${r.id}/packet?mode=packing`,
       lines: plan.rows.map(l => ({ id: l.id, recipeId: l.recipeId, name: l.name, quantity: l.productionYield, unit: l.recipe?.yieldUnit || "", notes: [l.packingNotes, l.notes].filter(Boolean).join("\n"), warning: l.productionYield == null ? "Production quantity or package mapping is missing; excluded from purchasing totals." : undefined })) });
   }
   for (const p of prep) {

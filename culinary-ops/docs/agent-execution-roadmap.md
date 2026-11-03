@@ -50,7 +50,7 @@ Before executing any phase below, adhere strictly to existing repository pattern
   - `components/CommandSearch.tsx`
   - `app/(app)/items/page.tsx`
   - `app/(app)/recipes/RecipesTable.tsx`
-  - `app/(app)/vendors/invoices/InvoiceArchive.tsx`
+  - `app/(app)/invoices/InvoiceArchive.tsx`
 - **Implementation Tasks:**
   - Synchronize table search queries, category/venue filters, sort orders, and active `WorkspaceInspector` entity IDs with URL search parameters (`?q=`, `?category=`, `?inspect=`).
   - Ensure browser back/forward navigation cleanly restores filter and inspector states without full page reloads.

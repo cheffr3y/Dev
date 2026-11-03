@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
+import { mkdir } from "node:fs/promises";
 import { launchBrowser, browserBaseUrl } from "../harness.mjs";
 const browser = await launchBrowser();
 const base = browserBaseUrl();
+const output = "/tmp/app-navigation-review";
+await mkdir(output, { recursive: true });
 try {
   const context = await browser.newContext();
   await context.addCookies([{ name: "activeVenue", value: "clipboard-venue", url: base }]);
@@ -12,6 +15,17 @@ try {
   await page.getByLabel("Password", { exact: true }).fill("local-smoke-only");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.waitForURL(`${base}/`);
+  const nav = page.locator("aside").getByRole("navigation", { name: "Main navigation" });
+  assert.equal(await nav.getByRole("link", { name: "Inventory", exact: true }).count(), 0);
+  assert.equal(await nav.getByRole("link", { name: "Order Guides", exact: true }).count(), 0);
+  await nav.getByRole("link", { name: "Invoices", exact: true }).click();
+  await page.waitForURL(`${base}/invoices`);
+  await page.getByRole("heading", { name: "Invoices", exact: true }).waitFor();
+  assert.equal(await nav.locator('[aria-current="page"]').textContent(), "Invoices");
+  await page.screenshot({ path: `${output}/desktop-invoices.png` });
+  await page.getByRole("button", { name: "Collapse sidebar", exact: true }).click();
+  assert.equal(await nav.getByRole("link", { name: "Home Meal Replacement", exact: true }).getAttribute("title"), "Home Meal Replacement");
+  await page.getByRole("button", { name: "Expand sidebar", exact: true }).click();
   await page.goto(`${base}/recipes?q=Clipboard&sort=name&new=1`);
   await page.evaluate(() => { window.urlStateMarker = "same-document"; });
   assert.equal(await page.getByLabel("Filter recipes").inputValue(), "Clipboard");
@@ -56,6 +70,9 @@ try {
   assert.equal(await page.getByLabel("Search ingredients").inputValue(), "Clipboard");
   assert.equal(await page.evaluate(() => window.urlStateMarker), "ingredient-navigation");
   await page.goto(`${base}/vendors/invoices?q=nonexistent&vendor=unknown&sort=oldest&id=missing`);
+  await page.waitForURL(url => url.pathname === "/invoices");
+  assert.equal(new URL(page.url()).searchParams.get("vendor"), "unknown");
+  assert.equal(new URL(page.url()).searchParams.get("id"), "missing");
   assert.equal(await page.getByLabel("Search invoices", { exact: true }).inputValue(), "nonexistent");
   assert.equal(await page.getByLabel("Invoice order", { exact: true }).inputValue(), "oldest");
   await page.getByLabel("Search invoices", { exact: true }).fill("new search");
@@ -70,5 +87,36 @@ try {
   await page.getByRole("option").filter({ hasText: "Clipboard Nested Dish" }).click();
   await page.waitForURL(url => url.pathname === "/recipes" && url.searchParams.get("inspect") === "recipe:clipboard-dish");
   await inspector.getByRole("heading", { name: "Clipboard Nested Dish", exact: true }).first().waitFor();
-  console.log("URL filters, sorting, inspector deep links and nested history, unsaved back protection, and invoice filter history passed.");
+  await page.goto(`${base}/invoices`);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("button", { name: "Open navigation", exact: true }).click();
+  const drawer = page.getByRole("dialog", { name: "Navigation", exact: true });
+  await drawer.waitFor();
+  assert.equal(await drawer.locator('[aria-current="page"]').textContent(), "Invoices");
+  await page.screenshot({ path: `${output}/mobile-navigation.png`, animations: "disabled" });
+  await drawer.getByRole("link", { name: "Home Meal Replacement", exact: true }).click();
+  await page.waitForURL(`${base}/to-go`);
+  await drawer.waitFor({ state: "hidden" });
+  await page.getByRole("heading", { name: "HMR Rollouts", exact: true }).waitFor();
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  for (const role of ["manager", "staff"]) {
+    const roleContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    const rolePage = await roleContext.newPage();
+    await rolePage.goto(`${base}/login`);
+    await rolePage.getByLabel("Email", { exact: true }).fill(`${role}@local.test`);
+    await rolePage.getByLabel("Password", { exact: true }).fill("local-smoke-only");
+    await rolePage.getByRole("button", { name: "Sign in", exact: true }).click();
+    await rolePage.waitForURL(`${base}/`);
+    await rolePage.getByRole("button", { name: "Open navigation", exact: true }).click();
+    const roleDrawer = rolePage.getByRole("dialog", { name: "Navigation", exact: true });
+    await roleDrawer.waitFor();
+    assert.equal(await roleDrawer.getByRole("link", { name: "Inventory", exact: true }).count(), 0);
+    assert.equal(await roleDrawer.getByRole("link", { name: "Order Guides", exact: true }).count(), 0);
+    assert.equal(await roleDrawer.getByRole("link", { name: "Invoices", exact: true }).count(), role === "manager" ? 1 : 0);
+    if (role === "manager") await roleDrawer.getByRole("link", { name: "Invoices", exact: true }).click();
+    else await rolePage.goto(`${base}/invoices`);
+    await rolePage.waitForURL(`${base}/${role === "manager" ? "invoices" : "prep-orders"}`);
+    await roleContext.close();
+  }
+  console.log("URL filters, inspector history, invoice legacy redirects/filter history, desktop/collapsed/mobile navigation, HMR naming, and role restrictions passed.");
 } finally { await browser.close(); }
