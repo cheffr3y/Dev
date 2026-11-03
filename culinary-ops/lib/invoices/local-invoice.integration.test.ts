@@ -63,6 +63,33 @@ test("OCR approval requires USD/review and cannot approve the same recognized li
  const approved={...data,ocrReviewed:true,confirmedUsd:true};await Promise.all([saveInvoicePurchase(prisma,admin,approved),saveInvoicePurchase(prisma,admin,approved)]);
  assert.equal(await prisma.invoicePurchaseLine.count({where:{invoiceDocumentId:docId,ocrLineKey:key}}),1);
  assert.equal((await saveInvoicePurchase(prisma,admin,{...approved,id:randomUUID()})).ok,false);
+ await assert.rejects(mutateLocalInvoice(admin,{action:"remove",operationId:randomUUID(),documentId:docId,key}),/approved/);
+});
+test("false OCR rows can be removed and restored without invoice metadata, learning aliases or changing prices",async()=>{
+ const documentId=randomUUID();
+ const draft=parseInvoiceText([{page:1,text:"77412 GARLIC 2 CS 60.00 120.00\n77412 GARLIC 2 CS 60.00 120.00"}]);
+ // Existing saved recognition is retained even when today's parser would skip a footer.
+ draft.lines[0].rawDescription="The perishable agriculture commodities listed on this invoice SUBTOTAL";
+ await prisma.invoiceDocument.create({data:{id:documentId,fileHash:documentId,filename:"false-rows.pdf",mime:"application/pdf",data:new Uint8Array([1]),preview:new Uint8Array([1]),originalBytes:1,storedBytes:1,pages:1,createdBy:admin,ocrDraft:draft,ocrRevision:1}});
+ const key=draft.lines[0].key,command={action:"remove",operationId:randomUUID(),documentId,key};
+ const aliases=await prisma.invoiceItemAlias.count(),cost=(await prisma.item.findUniqueOrThrow({where:{id:itemId}})).unitCost;
+ await assert.rejects(mutateLocalInvoice(staff,command),/Manager/);
+ await assert.rejects(mutateLocalInvoice(admin,{...command,key:"missing"}),/row not found/);
+ await Promise.all([mutateLocalInvoice(admin,command),mutateLocalInvoice(admin,command)]);
+ let state=await loadLocalInvoice(documentId);
+ assert.deepEqual(state.removed,[key]);assert.deepEqual(state.ignored,[key]);assert.equal(state.vendorId,null);
+ assert.deepEqual(state.draft,draft);assert.equal(state.removed.includes(draft.lines[1].key),false);
+ assert.equal((await prisma.invoiceDocument.findUniqueOrThrow({where:{id:documentId}})).reviewedCandidateCount,1);
+ const purchase=line({invoiceDocumentId:documentId,ocrLineKey:key,ocrReviewed:true,confirmedUsd:true});
+ const blocked=await saveInvoicePurchase(prisma,admin,purchase);assert.equal(blocked.ok,false);assert.match(blocked.error??"",/removed/);
+ assert.equal(await prisma.invoicePurchaseLine.count({where:{invoiceDocumentId:documentId}}),0);
+ assert.equal(await prisma.invoiceItemAlias.count(),aliases);assert.equal((await prisma.item.findUniqueOrThrow({where:{id:itemId}})).unitCost,cost);
+ const restore={...command,action:"restore",operationId:randomUUID()};
+ await mutateLocalInvoice(admin,restore);await mutateLocalInvoice(admin,restore);
+ state=await loadLocalInvoice(documentId);assert.deepEqual(state.removed,[]);assert.deepEqual(state.ignored,[]);
+ assert.equal((await prisma.invoiceDocument.findUniqueOrThrow({where:{id:documentId}})).reviewedCandidateCount,0);
+ assert.ok((await saveInvoicePurchase(prisma,admin,purchase)).ok);
+ await assert.rejects(mutateLocalInvoice(admin,{...command,operationId:randomUUID()}),/approved/);
 });
 test("concurrent invoices select the newest source, and reversals preserve later manual catalog corrections",async()=>{
  const isolated=await prisma.item.create({data:{name:"Cascade concurrency",unit:"lb",unitCost:2}});

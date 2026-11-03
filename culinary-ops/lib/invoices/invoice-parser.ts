@@ -18,6 +18,9 @@ export type LocalInvoiceLine = z.infer<typeof localInvoiceLineSchema>;
 export const localInvoiceDraftSchema = z.object({ version: z.literal(1), pages: z.array(z.object({ page: z.number().int().min(1).max(20), text: z.string().max(150000) })).min(1).max(20), lines: z.array(localInvoiceLineSchema).max(200) });
 export type LocalInvoiceDraft = z.infer<typeof localInvoiceDraftSchema>;
 const footer = /^(?:INVOICE\s+(?:TOTAL|NUMBER|NO|DATE)|SUB\s*TOTAL|GRAND\s+TOTAL|TOTAL\s+(?:DUE|AMOUNT)|TAX\b|SALES TAX|PAGE\s+\d|DELIVERY DATE|BILL TO|SHIP TO|TELEPHONE|PHONE|FAX|THANK YOU|PAYMENT TERMS|TERMS:|QTY\s+|ITEM\s+(?:CODE|NUMBER|DESCRIPTION))/i;
+// Legal notices can share an OCR line with a subtotal in the adjacent column.
+const legalFooter = /^(?:THE\s+)?PERISHABLE\s+AGRICULTUR(?:AL|E)\s+COMMODITIES\b/i;
+const totalFooter = /^(?:TOTAL|AMOUNT\s+DUE|BALANCE\s+DUE)\s*:?\s*\$?\s*[-(]?[\dOIlS][\dOIlS,]*\.[\dOIlS]{2}\)?$/i;
 function numeric(raw: string) {
   const source = raw.replace(/[, $]/g, "").replace(/^\((.*)\)$/, "-$1");
   const repaired = source.replace(/[Oo]/g, "0").replace(/[Il|]/g, "1").replace(/S/g, "5");
@@ -34,7 +37,7 @@ export function parseInvoiceText(pages: { page: number; text: string }[]): Local
   const lines: LocalInvoiceLine[] = [];
   for (const page of pages) for (const [index, source] of page.text.split(/\r?\n/).entries()) {
     const raw = source.trim().replace(/\s+/g, " ");
-    if (!raw || footer.test(raw) || /^(?:\+?1[- .])?\(?\d{3}\)?[- .]\d{3}[- .]\d{4}$/.test(raw) || /^\d+\s+.*\b(?:STREET|ST|AVENUE|AVE|ROAD|RD|DRIVE|DR)\.?$/i.test(raw)) continue;
+    if (!raw || footer.test(raw) || legalFooter.test(raw) || totalFooter.test(raw) || /^(?:\+?1[- .])?\(?\d{3}\)?[- .]\d{3}[- .]\d{4}$/.test(raw) || /^\d+\s+.*\b(?:STREET|ST|AVENUE|AVE|ROAD|RD|DRIVE|DR)\.?$/i.test(raw)) continue;
     const money = [...raw.matchAll(/(?:^|\s)([-(]?[\dOIlS$8][\dOIlS,$.]*[.][\dOIlS]{2}\)?)(?=\s|$)/g)];
     if (!money.length) {
       const unknown=raw.match(/^([A-Z0-9-]{3,30})\s+(.+)$/i);

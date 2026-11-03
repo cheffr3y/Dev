@@ -19,7 +19,37 @@ try{
  async function upload(name,mimeType,buffer){await page.goto(`${base}/invoices`);await page.getByLabel("Invoice vendor",{exact:true}).selectOption(vendor.id);await page.getByLabel("Invoice PDF or photo",{exact:true}).setInputFiles({name,mimeType,buffer:Buffer.from(buffer)});await page.getByRole("button",{name:"Store invoice",exact:true}).click();await page.waitForURL(/\/invoices\?.*id=/);await page.getByRole("region",{name:"Local invoice OCR review",exact:true}).getByText(/to review/).waitFor();return new URL(page.url()).searchParams.get("id");}
  const before=JSON.stringify({batches:await db.productionBatch.findMany(),transfers:await db.stockTransfer.findMany(),packets:await db.prepPacketSnapshot.findMany()});
  const documentId=await upload("local-text.pdf","application/pdf",await pdf.save());
+ // Reproduce a footer in recognition saved by the old parser.
+ const saved=await db.invoiceDocument.findUniqueOrThrow({where:{id:documentId}}),footerKey="p1-l48-legacy-footer";
+ const footerText="The perishable agriculture commodities listed on this invoice SUBTOTAL";
+ await db.invoiceDocument.update({where:{id:documentId},data:{ocrDraft:{...saved.ocrDraft,lines:[...saved.ocrDraft.lines,{key:footerKey,page:1,lineNumber:48,rawText:`${footerText} $712.78`,rawCode:null,rawDescription:footerText,quantity:null,unit:"",unitPrice:null,extendedPrice:712.78,packQty:null,packUnit:"",warnings:["Confirm billed quantity and unit."]}]}}});
+ await page.reload();
  const review=page.getByRole("region",{name:"Local invoice OCR review",exact:true}),row=review.getByRole("form").filter({has:page.getByLabel("OCR raw code",{exact:true}).and(page.locator('input[value="77412"]'))}).first();
+ await review.getByRole("button",{name:/Review line 1-48:/}).click();
+ const footerRow=review.getByRole("form",{name:"OCR row 1-48",exact:true});
+ await page.setViewportSize({width:390,height:844});
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+ await footerRow.evaluate(element=>window.scrollTo(0,window.scrollY+element.getBoundingClientRect().top-128));
+ await page.screenshot({path:`${output}/remove-line-mobile.png`});
+ await page.setViewportSize({width:1440,height:1100});
+ await footerRow.evaluate(element=>window.scrollTo(0,window.scrollY+element.getBoundingClientRect().top-80));
+ await page.screenshot({path:`${output}/remove-line-desktop.png`});
+ const aliasCount=await db.invoiceItemAlias.count();
+ await page.route("**/api/invoice-ocr",async route=>{await route.fetch();await route.abort();},{times:1});
+ await footerRow.getByRole("button",{name:"Remove line",exact:true}).click();await footerRow.getByRole("status").waitFor();
+ await footerRow.getByRole("button",{name:"Remove line",exact:true}).click();await review.getByText(/1 removed · 4 to review/).waitFor();
+ await page.getByLabel("Invoice draft status",{exact:true}).getByText("Draft saved to your account",{exact:true}).waitFor();
+ await page.reload();await review.getByText(/1 removed · 4 to review/).waitFor();
+ assert.equal(await review.getByRole("button",{name:/Review line 1-48:/}).count(),0);
+ await review.getByLabel("Show removed or ignored rows",{exact:true}).check();
+ await review.getByRole("button",{name:/Review line 1-48:/}).click();
+ assert.equal(await footerRow.getByRole("button",{name:"Approve invoice price",exact:true}).count(),0);
+ await footerRow.getByRole("button",{name:"Restore line",exact:true}).click();await review.getByText(/0 removed · 5 to review/).waitFor();
+ assert.equal(await footerRow.getByLabel("I verified this line and conversion against the invoice",{exact:true}).isChecked(),false);
+ await review.getByLabel("Show removed or ignored rows",{exact:true}).uncheck();
+ await footerRow.getByRole("button",{name:"Remove line",exact:true}).click();await review.getByText(/1 removed · 4 to review/).waitFor();
+ assert.equal(await db.invoiceItemAlias.count(),aliasCount);
+ assert.equal(await db.invoicePurchaseLine.count({where:{invoiceDocumentId:documentId}}),0);
  assert.equal(await review.getByRole("form").count(),1);
  assert.equal(await review.getByRole("navigation",{name:"Invoice review lines"}).getByRole("button").count(),4);
  await page.getByRole("region",{name:"Invoice source document",exact:true}).getByLabel("Invoice source page",{exact:true}).waitFor();
