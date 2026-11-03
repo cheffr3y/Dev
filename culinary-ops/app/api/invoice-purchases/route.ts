@@ -12,6 +12,8 @@ export async function POST(request: Request) {
   let input: unknown;
   try { input = await request.json(); } catch { return Response.json({ ok: false, error: "Invalid line." }, { status: 400 }); }
   const result = await saveInvoicePurchase(prisma, user.id, input);
-  if (result.ok) { revalidatePath("/vendors/invoices"); revalidatePath("/operating-calendar"); revalidatePath("/items/[id]", "page"); }
-  return Response.json(result, { status: result.ok ? 200 : result.conflict ? 409 : 400 });
+  if (result.ok) { revalidatePath("/", "layout"); }
+  const itemId = result.ok && input && typeof input === "object" && "itemId" in input && typeof input.itemId === "string" ? input.itemId : null;
+  const catalogItem = itemId ? await prisma.item.findUnique({ where: { id: itemId }, select: { id: true, name: true, unit: true, unitCost: true } }) : null;
+  return Response.json({ ...result, catalogItem }, { status: result.ok ? 200 : result.conflict ? 409 : 400 });
 }

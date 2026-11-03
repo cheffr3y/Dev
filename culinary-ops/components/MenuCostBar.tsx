@@ -4,7 +4,7 @@ export function MenuCostBar({ value, target, stale }: { value: number | null; ta
   if (value == null) return <span className="text-xs font-semibold text-amber-700">Needs cost / price review</span>;
   const ceiling = Math.max(100, value, target);
   const over = value > target;
-  return <div className="min-w-40 text-xs">
+  return <div className="min-w-40 text-xs" title="Calculated from current catalog costs, including approved invoice prices">
     <span className={`tabular-nums font-semibold ${over ? "text-red-700" : "text-emerald-700"}`}>{pct(value)} · {over ? "Over target" : "On target"}</span>
     <div className="relative my-1 h-2 rounded bg-zinc-200" role="img" aria-label={`Food cost ${pct(value)}, target ${pct(target)}`}>
       <div className={`h-full rounded ${over ? "bg-red-600" : "bg-emerald-600"}`} style={{ width: `${Math.max(0, value) / ceiling * 100}%` }} />

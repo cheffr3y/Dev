@@ -19,13 +19,8 @@ test("invoice file validation checks content signatures instead of trusting file
   assert.throws(()=>invoiceFileType(Buffer.from("not an invoice")),/Choose a PDF/);
 });
 
-test("PDF parsing sends bounded structured input and rejects incomplete output",async()=>{
-  const {parseInvoice}=await import("./invoice-parser");
-  const fixture={vendorName:"Supplier",invoiceNumber:"INV1",invoiceDate:null,currency:"USD",lines:[line]};
-  const request:typeof fetch=async(_url,init)=>{
-    const body=JSON.parse(String(init?.body));assert.equal(body.store,false);assert.equal(body.text.format.type,"json_schema");assert.equal(body.text.format.strict,true);assert.equal(body.input[0].content[0].type,"input_file");assert.match(body.input[0].content[0].file_data,/^data:application\/pdf;base64,/);
-    return Response.json({status:"completed",output:[{content:[{type:"output_text",text:JSON.stringify(fixture)}]}]});
-  };
-  assert.deepEqual(await parseInvoice(Buffer.from("%PDF-test"),"invoice.pdf","application/pdf",{apiKey:"fixture-only",request}),fixture);
-  await assert.rejects(parseInvoice(Buffer.from("%PDF-test"),"invoice.pdf","application/pdf",{apiKey:"fixture-only",request:async()=>Response.json({status:"incomplete"})}),/incomplete/);
+test("invoice parser has no paid extraction dependency", async () => {
+  const { parseInvoiceText } = await import("./invoice-parser");
+  const result = parseInvoiceText([{page:1,text:"123 Butter 2 CS 10.00 20.00"}]);
+  assert.equal(result.lines[0].extendedPrice,20);
 });

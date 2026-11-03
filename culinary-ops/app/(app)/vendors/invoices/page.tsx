@@ -17,7 +17,7 @@ export default async function InvoicePage({ searchParams }: { searchParams: Prom
  ]);
  const review = selected ? await Promise.all([
   loadInvoicePurchases(selected.id), getVenues({ includeLegacy: true }),
-  prisma.item.findMany({ select: { id: true, name: true, unit: true, sku: true, gcode: true, vendor: { select: { name: true } } }, orderBy: { name: "asc" } }),
+  prisma.item.findMany({ select: { id: true, name: true, unit: true, unitCost: true, sku: true, gcode: true, vendor: { select: { name: true } } }, orderBy: { name: "asc" } }),
   prisma.operatingFoodExpense.findUnique({ where: { invoiceDocumentId: selected.id } }),
  ]) : null;
  const spending = review?.[3];
@@ -31,7 +31,7 @@ export default async function InvoicePage({ searchParams }: { searchParams: Prom
  {/* eslint-disable-next-line @next/next/no-img-element */}
  <a href={`/api/invoices/file?id=${selected.id}`} target="_blank" rel="noreferrer"><img src={`/api/invoices/file?id=${selected.id}&preview=1`} alt={`First page of ${selected.filename}`} className="mt-2 h-auto max-w-full rounded border border-hairline" /></a>
  </Card>}
- {selected && review && <InvoicePurchaseReview invoice={{ id: selected.id, filename: selected.filename, vendor: selected.vendor?.name ?? null, invoiceNumber: selected.invoiceNumber }} vendorId={selected.vendorId} lineRevision={selected.lineRevision} lines={review[0]} expense={expense} vendors={vendors} venues={review[1].map(v => ({ id: v.id, name: v.name }))} items={review[2].map(item => ({ id: item.id, label: item.name, meta: `${item.unit} · ${item.vendor?.name ?? "No catalog vendor"}`, keywords: [item.sku, item.gcode, item.vendor?.name].filter(Boolean).join(" ") }))} />}
+ {selected && review && <InvoicePurchaseReview invoice={{ id: selected.id, filename: selected.filename, vendor: selected.vendor?.name ?? null, invoiceNumber: selected.invoiceNumber }} vendorId={selected.vendorId} lineRevision={selected.lineRevision} lines={review[0]} expense={expense} vendors={vendors} venues={review[1].map(v => ({ id: v.id, name: v.name }))} items={review[2].map(item => ({ id: item.id, label: item.name, unit: item.unit, unitCost: item.unitCost, meta: `${item.unit} · ${item.vendor?.name ?? "No catalog vendor"}`, keywords: [item.sku, item.gcode, item.vendor?.name].filter(Boolean).join(" ") }))} />}
  <Form action="/vendors/invoices" className="mt-5 flex flex-wrap gap-3">
  {id && <input type="hidden" name="id" value={id} />}
  <label>Search invoices<input key={q} className="ml-2 rounded border p-2" name="q" defaultValue={q} /></label>

@@ -102,12 +102,12 @@ Validation: baseline 219 unit tests; all 223 tests now pass, including variance/
 | 2.3 | Banquet baseline visual diffs | Complete; merged as `dd8983c` |
 | 2.4 | Spreadsheet keyboard navigation | Complete; merged as `20bb622` |
 | 3.1 | Recipe dependency tree | Complete; merged as `601c9ff` |
-| 3.2 | Preservation and yield tracking | Complete and verified on `codex/roadmap-3-2-preservation-batches`; pending merge |
-| 3.3 | Sales-mix menu engineering | Pending |
+| 3.2 | Preservation and yield tracking | Complete; merged as `8f5b168` |
+| 3.3 | Sales-mix menu engineering | Deferred at the user's request |
 
 Before each section, check what the application already supports and verify the proposed file paths. Mark work complete only with corresponding implementation and validation evidence.
 
-Section 2.1 (Atelier / Line Mode toggle) is omitted at the user's request. After merging section 3.2, continue with section 3.3: sales-mix menu engineering.
+Section 2.1 (Atelier / Line Mode toggle) is omitted and section 3.3 is deferred at the user's request. No additional roadmap work is scheduled.
 
 ## Section 2.3 — banquet baseline visual diffs — November 2, 2026
 
@@ -144,3 +144,14 @@ Validation: baseline 230 unit tests; all 236 pass, covering recursive shared dem
 Validation: baseline 236 unit tests; all 241 pass. Production webpack build, standalone TypeScript, full lint and Prisma schema validation pass. The migration applies to disposable PostgreSQL; all 53 integration checks plus the archive repair regression pass. Expanded production-jobs browser coverage passes create/finish/post response-loss recovery, tare validation, 48-hour duration, net yield/cost, stale catalog rejection, frozen label tags/dates, independently decoded QR/login return, role restrictions, phone layout and unchanged prep snapshots/ledger. Existing event-planning, banquet-setup, print-controller and recipe-costing suites also pass. Desktop/mobile screenshots and the rendered one-page Letter label were visually reviewed. An outdated weekly QR test selector was updated to the current event-specific banquet link.
 
 Deployment requires additive migration `20261102010000_preservation_batches`, applied by normal migration-first startup. It was tested only in disposable databases; live data was not migrated or modified.
+
+## Additional requested work — local invoice OCR and approved price cascading — November 2, 2026
+
+- Added browser-local invoice recognition using the existing self-hosted Tesseract worker, contrast/adaptive-threshold preprocessing and PDF text extraction before scanned-page OCR. Archived originals, raw recognized text, editable candidates, cancellation and manual fallback are retained. The former paid extraction implementation was removed; recognition makes no external requests.
+- Added persistent supplier/global aliases, reviewed ignore decisions, fuzzy catalog suggestions and explicit quick-create. Remembered mappings and pack conversions assist review without approving purchases. USD and row verification are required before OCR rows can change prices; operation receipts prevent duplicate purchases or learning on response-loss retries.
+- Approved positive food purchases normalize into the ingredient's existing cost unit and update catalog prices transactionally with paid history and immutable price-change events. Invoice chronology determines the eligible source; credits, incompatible conversions and nonfood rows cannot replace it. Corrections, remaps and voids restore eligible prior sources while preserving intervening manual edits.
+- Existing recursive recipe costing, menu margins, rollouts and order-guide estimates read the updated catalog costs live. Approval invalidates application views and refreshes the next candidate's comparison immediately. Frozen packets and accounting records remain unchanged. Manual and recognized review show normalized prices and deltas, and documentation now explains the cascade.
+
+Validation: all 245 unit tests, 58 disposable PostgreSQL integration checks and the archive repair regression pass. Production webpack build, TypeScript, full lint and Prisma validation pass. Local-invoices, operating-calendar, accounting-invoices, price-trends and workspace browser suites pass; final local-invoices and operating-calendar checks were repeated after the last change. Real photo and two-page scanned-PDF recognition pass with external requests blocked, including mapping/ignore learning, quick-create, changed packs, duplicate-response recovery, live menu/guide costs and mobile layout. The smoking OCR regression also passes against the real thermometer screenshot. Desktop/mobile review screenshots were visually checked. `npm` is unavailable in this environment, so its exact test command, `node scripts/test-unit.mjs`, was executed directly.
+
+Deployment requires additive migration `20261102020000_local_invoice_learning`, applied by normal migration-first startup. Only disposable databases were migrated; live data was not modified.

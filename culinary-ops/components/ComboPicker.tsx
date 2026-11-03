@@ -27,6 +27,7 @@ export function ComboPicker({
   placeholder = "Search…",
   disabled = false,
   defaultId = "",
+  valueId,
   onSelect,
   selectOnTab = false,
   ariaLabel,
@@ -36,6 +37,7 @@ export function ComboPicker({
   placeholder?: string;
   disabled?: boolean;
   defaultId?: string;
+  valueId?: string;
   onSelect?: (option: ComboOption | null) => void;
   selectOnTab?: boolean;
   ariaLabel?: string;
@@ -46,6 +48,12 @@ export function ComboPicker({
   const [selectedId, setSelectedId] = useState(initial?.id ?? "");
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
+  const [observedId, setObservedId] = useState(valueId);
+  if (valueId !== undefined && valueId !== observedId) {
+    setObservedId(valueId);
+    // A typed search already cleared the internal selection. Preserve its text.
+    if (selectedId !== valueId) { setSelectedId(valueId); setQuery(options.find(option => option.id === valueId)?.label ?? ""); setOpen(false); }
+  }
   const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const results = useMemo(() => {

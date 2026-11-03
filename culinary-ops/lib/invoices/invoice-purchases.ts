@@ -2,13 +2,16 @@ import { z } from "zod";
 import { convertQty } from "../recipes/units";
 import { operatingDate } from "../accounting/operating-calendar";
 export const invoicePurchaseSchema = z.object({
+  rawCode: z.string().trim().max(100).nullable().default(null), ocrLineKey: z.string().max(100).nullable().default(null), remember: z.boolean().default(false),
+  ocrReviewed: z.boolean().default(false), confirmedUsd: z.boolean().default(false),
+  billedUnitPrice: z.number().finite().nullable().default(null),
   id: z.string().min(1).max(150), invoiceDocumentId: z.string().min(1).max(150), revision: z.number().int().min(0).nullable(),
   itemId: z.string().min(1).max(150).nullable(), vendorId: z.string().min(1).max(150), venueId: z.string().min(1).max(150),
   invoiceDate: operatingDate, description: z.string().trim().min(1).max(500), amount: z.string().max(30),
   quantity: z.number().finite().positive().max(1e8), purchaseUnit: z.string().trim().min(1).max(40),
   packQty: z.number().finite().positive().max(1e8), packUnit: z.string().trim().min(1).max(40),
   countsAsFood: z.boolean(), voided: z.boolean().default(false), reason: z.string().trim().max(1000).default(""),
-});
+}).refine(row=>!row.ocrLineKey || row.ocrReviewed && row.confirmedUsd, "Verify the OCR line against the invoice and confirm USD before approval.");
 export type InvoicePurchaseInput = z.input<typeof invoicePurchaseSchema>;
 export function normalizedInvoicePrice(amountCents: number, quantity: number, packQty: number, packUnit: string, catalogUnit: string) {
   if (![amountCents, quantity, packQty].every(Number.isFinite) || quantity <= 0 || packQty <= 0 || !packUnit.trim() || !catalogUnit.trim()) throw new Error("Confirm the billed quantity and pack contents.");
@@ -18,4 +21,4 @@ export function normalizedInvoicePrice(amountCents: number, quantity: number, pa
   if (!Number.isFinite(price) || Math.abs(price) > 1e9) throw new Error("The calculated unit price is outside the supported range. Review quantities and pack contents.");
   return price;
 }
-export type InvoicePurchaseData = Omit<z.infer<typeof invoicePurchaseSchema>, "amount" | "reason"> & { amountCents: number; itemName: string | null; normalizedUnit: string | null; normalizedUnitCost: number | null; history: unknown; previousUnitCost?: number | null; priceChange?: number | null; varianceThreshold?: number };
+export type InvoicePurchaseData = Omit<z.infer<typeof invoicePurchaseSchema>, "amount" | "reason" | "remember" | "ocrReviewed" | "confirmedUsd"> & { amountCents: number; itemName: string | null; normalizedUnit: string | null; normalizedUnitCost: number | null; history: unknown; previousUnitCost?: number | null; priceChange?: number | null; varianceThreshold?: number };

@@ -3,7 +3,7 @@ import { priceTrend, varianceThreshold, type PriceTrend } from "./price-trends";
 export async function loadPriceTrends(items: { id: string; unit: string; vendorId?: string | null }[]) {
   if (!items.length) return {} as Record<string, PriceTrend | null>;
   const observations = await prisma.item.findMany({ where: { id: { in: items.map(item => item.id) } }, select: { id: true, purchaseLines: {
-    where: { voided: false, amountCents: { gt: 0 }, normalizedUnitCost: { gt: 0 } },
+    where: { voided: false, countsAsFood: true, amountCents: { gt: 0 }, normalizedUnitCost: { gt: 0 } },
     orderBy: [{ invoiceDate: "desc" }, { createdAt: "desc" }, { id: "desc" }], take: 100,
     select: { vendorId: true, vendor: { select: { name: true } }, normalizedUnit: true, normalizedUnitCost: true, amountCents: true, invoiceDate: true },
   } } });
