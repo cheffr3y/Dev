@@ -1,3 +1,4 @@
+import { ingredientPurchaseQuantity, type IngredientMeasure } from "../ingredients/measurements";
 import { convertQty } from "../recipes/units";
 import {
   DEFAULT_PRODUCTION_LABOR_RATE,
@@ -15,7 +16,7 @@ export type CapturedRecipe = {
     itemId: string;
     quantity: number;
     unit: string;
-    item: {
+    item: IngredientMeasure & {
       name: string;
       unit: string;
       unitCost: number | null;
@@ -175,7 +176,8 @@ export function calculateCharge(c: Capture): Charge {
       const q =
         factor == null
           ? null
-          : converted(ri.quantity * factor, ri.unit, ri.item.unit, ri.id);
+          : ri.item.measurementReviewedAt ? ingredientPurchaseQuantity(ri.quantity * factor, ri.unit, ri.item) : converted(ri.quantity * factor, ri.unit, ri.item.unit, ri.id);
+      if (q == null && ri.item.measurementReviewedAt) issues.push(`UNIT:${ri.id}: ingredient conversion or usable yield needs review`);
       const price = ri.item.unitCost;
       if (price == null) issues.push(`PRICE:${ri.id}: ${ri.item.name}`);
       if (!ri.item.gcode?.trim())

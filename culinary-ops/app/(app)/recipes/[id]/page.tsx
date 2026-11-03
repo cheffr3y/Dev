@@ -1,3 +1,5 @@
+import { recipePurchaseQuantity } from "@/lib/ingredients/measurements";
+import { measurementSelect } from "@/lib/ingredients/measurements";
 import { PriceTrend } from "@/components/PriceTrend";
 import { loadPriceTrends } from "@/lib/invoices/price-trends-data";
 import Link from "next/link";
@@ -13,7 +15,7 @@ import {
   lineCost,
   componentLineCost,
   buildCostMap,
-  money,
+  preciseNum, money,
   pct,
   num,
 } from "@/lib/recipes/costing";
@@ -102,7 +104,7 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
         yieldQty: true,
         yieldUnit: true,
         allergens: true,
-        items: { select: { quantity: true, unit: true, item: { select: { id: true, priceUpdatedAt: true, name: true, allergens: true, unitCost: true, unit: true } } } },
+        items: { select: { quantity: true, unit: true, item: { select: { id: true, priceUpdatedAt: true, name: true, allergens: true, ...measurementSelect, unitCost: true, unit: true } } } },
         components: { select: { childId: true, quantity: true, unit: true } },
       },
       orderBy: { name: "asc" },
@@ -231,7 +233,7 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
                         {!lc.converted && (
                           <span
                             className="ml-2 align-middle"
-                            title={`Can't convert ${unitLabel(ri.unit)} to ${unitLabel(ri.item.unit)} — cost assumes quantity is in ${unitLabel(ri.item.unit)}.`}
+                            title={ri.item.measurementReviewedAt ? "Reviewed ingredient conversion is unavailable; cost remains unknown." : `Can't convert ${unitLabel(ri.unit)} to ${unitLabel(ri.item.unit)} — cost assumes quantity is in ${unitLabel(ri.item.unit)}.`}
                           >
                             <Badge color="amber">unit mismatch</Badge>
                           </span>
@@ -239,6 +241,7 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
                       </td>
                       <td className="px-4 py-2 text-right text-zinc-600">
                         {num(m.qty)} {m.label}
+                        {ri.item.measurementReviewedAt && <span className="block text-xs text-zinc-500">Purchased: {recipePurchaseQuantity(ri.quantity,ri.unit,ri.item)==null?"Needs review":`${preciseNum(recipePurchaseQuantity(ri.quantity,ri.unit,ri.item)!)} ${ri.item.unit}`}</span>}
                       </td>
                       <td className="px-4 py-2 text-right text-zinc-500">
                         {money(ri.item.unitCost, 5)}/{unitLabel(ri.item.unit)}<PriceTrend trend={priceTrends[ri.item.id]} />

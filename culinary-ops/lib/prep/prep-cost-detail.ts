@@ -1,3 +1,4 @@
+import { recipePurchaseQuantity, type IngredientMeasure } from "../ingredients/measurements";
 import { componentBatchFactor, lineCost } from "../recipes/costing";
 import { convertQty } from "../recipes/units";
 
@@ -9,7 +10,7 @@ export type CostDetailRecipeNode = {
     itemId: string;
     quantity: number;
     unit: string;
-    item: {
+    item: IngredientMeasure & {
       name: string;
       category: string;
       unit: string;
@@ -56,7 +57,7 @@ function walk(
 
   for (const ri of recipe.items) {
     const scaled = { ...ri, quantity: ri.quantity * factor };
-    const convertedQty = convertQty(scaled.quantity, scaled.unit, ri.item.unit);
+    const convertedQty = recipePurchaseQuantity(scaled.quantity, scaled.unit, ri.item);
     const quantity = convertedQty ?? scaled.quantity;
     const unit = convertedQty == null ? scaled.unit : ri.item.unit;
     const detail: PrepCostDetailRow = {

@@ -1,3 +1,4 @@
+import { measurementSelect } from "@/lib/ingredients/measurements";
 import { prisma } from "../db/prisma";
 import { Prisma } from "@prisma/client";
 import { buildCloseoutQueue, buildMarginWatchlist, ingredientIntegrity, inUseIngredientWhere, pulseDates } from "./morning-pulse";
@@ -9,7 +10,7 @@ export async function loadMorningPulse(venueId: string | null, admin: boolean, n
   const venue = venueId ? { venueId } : {};
   const sharedVenue = venueId ? { OR: [{ venueId }, { venueId: null }] } : {};
   const [ingredients, banquets, events, festivals, menus, recipes, queue] = await Promise.all([
-    prisma.item.findMany({ where: inUseIngredientWhere, select: { unitCost: true, unit: true, vendorId: true } }),
+    prisma.item.findMany({ where: inUseIngredientWhere, select: { ...measurementSelect, unitCost: true, unit: true, vendorId: true } }),
     prisma.banquet.findMany({ where: { date, status, ...venue }, select: { id: true, name: true, date: true, guestCount: true, venue: { select: { code: true } } }, orderBy: [{ date: "asc" }, { name: "asc" }] }),
     prisma.event.findMany({ where: { date, status, ...venue }, select: { id: true, name: true, date: true, guestCount: true, venue: { select: { code: true } } }, orderBy: [{ date: "asc" }, { name: "asc" }] }),
     prisma.festival.findMany({ where: { date, status, ...sharedVenue }, select: { id: true, name: true, date: true, expectedAttendance: true }, orderBy: [{ date: "asc" }, { name: "asc" }] }),
@@ -17,7 +18,7 @@ export async function loadMorningPulse(venueId: string | null, admin: boolean, n
     prisma.recipe.findMany({ select: {
       id: true, name: true, yieldQty: true, yieldUnit: true, menuPrice: true,
       components: { select: { childId: true, quantity: true, unit: true } },
-      items: { select: { quantity: true, unit: true, item: { select: { id: true, unit: true, unitCost: true, priceUpdatedAt: true } } } },
+      items: { select: { quantity: true, unit: true, item: { select: { id: true, unit: true, ...measurementSelect, unitCost: true, priceUpdatedAt: true } } } },
     } }),
     admin ? loadCloseoutQueue(dates.start) : Promise.resolve(null),
   ]);

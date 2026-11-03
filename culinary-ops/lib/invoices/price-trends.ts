@@ -1,5 +1,6 @@
 import { convertQty } from "../recipes/units";
-export type PriceObservation = { vendorId: string; vendorName: string; normalizedUnit: string | null; normalizedUnitCost: number | null; amountCents: number; voided?: boolean; invoiceDate: Date | string };
+import { convertIngredientQty, type IngredientMeasure } from "../ingredients/measurements";
+export type PriceObservation = { vendorId: string; vendorName: string; normalizedUnit: string | null; normalizedUnitCost: number | null; amountCents: number; voided?: boolean; invoiceDate: Date | string; measurementSnapshot?: unknown };
 export type PriceTrend = { prices: number[]; supplier: string; unit: string; change: number | null; threshold: number };
 export function priceVariance(previous: number | null, current: number | null) {
   if (previous == null || current == null || !Number.isFinite(previous) || !Number.isFinite(current) || previous <= 0 || current <= 0) return null;
@@ -13,9 +14,16 @@ export function varianceThreshold(value: unknown) {
   const number = typeof value === "number" ? value : typeof value === "string" && value.trim() ? Number(value) : NaN;
   return Number.isFinite(number) && number >= 0 ? number : 10;
 }
+export function observationUnitFactor(row: Pick<PriceObservation, "normalizedUnit" | "measurementSnapshot">, unit: string) {
+  if (!row.normalizedUnit) return null;
+  const snapshot = row.measurementSnapshot;
+  return snapshot && typeof snapshot === "object" && !Array.isArray(snapshot)
+    ? convertIngredientQty(1, unit, row.normalizedUnit, snapshot as IngredientMeasure)
+    : convertQty(1, unit, row.normalizedUnit);
+}
 export function normalizedObservation(row: PriceObservation, unit: string) {
   if (row.voided || row.amountCents <= 0 || row.normalizedUnitCost == null || !Number.isFinite(row.normalizedUnitCost) || row.normalizedUnitCost <= 0 || !row.normalizedUnit) return null;
-  const factor = convertQty(1, unit, row.normalizedUnit);
+  const factor = observationUnitFactor(row, unit);
   const value = factor == null ? null : factor * row.normalizedUnitCost;
   return value != null && Number.isFinite(value) && value > 0 ? value : null;
 }

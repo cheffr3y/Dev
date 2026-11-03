@@ -1,9 +1,12 @@
+import { isDeepStrictEqual } from "node:util";
+import { measurementSelect, measurementSnapshot, measurementVersion, type IngredientMeasure } from "../ingredients/measurements";
+import { refreshInvoiceReview } from "./inbox-data";
 import { normalizedObservation, priceVariance, varianceThreshold } from "./price-trends";
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { prisma } from "../db/prisma";
 import { businessDate } from "../prep/prep-dates";
 import { dollarsToCents } from "../accounting/operating-calendar";
-import { invoicePurchaseSchema, normalizedInvoicePrice, type InvoicePurchaseData } from "./invoice-purchases";
+import { invoicePurchaseSchema, normalizedInvoicePrice, invoiceNormalizationMeasure, type InvoicePurchaseData } from "./invoice-purchases";
 import type { OperatingSaveResult } from "../accounting/operating-calendar-data";
 import { cascadeInvoiceCost } from "./invoice-cascade";
 import { rememberInvoiceAlias } from "./invoice-learning-data";
@@ -29,7 +32,7 @@ export async function saveInvoicePurchase(db: PrismaClient, userId: string, inpu
         if (!user || user.role === "STAFF") return { ok: false, error: "Manager access required." };
         const [doc, current, item, vendor, venue] = await Promise.all([
           tx.invoiceDocument.findUnique({ where: { id: edit.invoiceDocumentId }, select: { id: true, vendorId: true, ocrDraft: true } }),
-          tx.invoicePurchaseLine.findUnique({ where: { id: edit.id } }), edit.itemId ? tx.item.findUnique({ where: { id: edit.itemId }, select: { name: true, unit: true } }) : null,
+          tx.invoicePurchaseLine.findUnique({ where: { id: edit.id } }), edit.itemId ? tx.item.findUnique({ where: { id: edit.itemId }, select: { name: true, unit: true, ...measurementSelect } }) : null,
           tx.vendor.findUnique({ where: { id: edit.vendorId }, select: { id: true } }), tx.venue.findUnique({ where: { id: edit.venueId }, select: { id: true } }),
         ]);
         if (!doc || !vendor || !venue || edit.itemId && !item) return { ok: false, error: "Choose an existing invoice, supplier, venue, and ingredient." };
@@ -41,20 +44,22 @@ export async function saveInvoicePurchase(db: PrismaClient, userId: string, inpu
         if (otherVendor) return { ok: false, error: "All active lines on this invoice must use the same supplier." };
         const amountCents = dollarsToCents(edit.amount, true);
         if (amountCents == null || amountCents === 0) return { ok: false, error: "Enter the paid line amount; use negative amounts for credits." };
-        const price = item ? normalizedInvoicePrice(amountCents, edit.quantity, edit.packQty, edit.packUnit, item.unit) : null;
-        const state = { billedUnitPrice: edit.billedUnitPrice ?? current?.billedUnitPrice ?? null, rawCode: edit.rawCode, ocrLineKey: current?.ocrLineKey ?? edit.ocrLineKey, invoiceDocumentId: doc.id, venueId: edit.venueId, vendorId: edit.vendorId, itemId: edit.itemId,
+        const {sameBasis,measure} = item ? invoiceNormalizationMeasure(item,current,edit) : {sameBasis:false,measure:{}};
+        if (item?.measurementReviewedAt && !sameBasis && edit.expectedMeasurementVersion !== measurementVersion(item)) return {ok:false,error:"Ingredient conversions changed. Refresh ingredient data and verify the normalization before approval."};
+        const price = item ? normalizedInvoicePrice(amountCents, edit.quantity, edit.packQty, edit.packUnit, item.unit, measure) : null;
+        const state = { measurementSnapshot: sameBasis ? current?.measurementSnapshot??null : item ? {...measurementSnapshot({...measure,unit:item.unit}),eachWeightOverride:edit.eachWeightOz} : null, billedUnitPrice: edit.billedUnitPrice ?? current?.billedUnitPrice ?? null, rawCode: edit.rawCode, ocrLineKey: current?.ocrLineKey ?? edit.ocrLineKey, invoiceDocumentId: doc.id, venueId: edit.venueId, vendorId: edit.vendorId, itemId: edit.itemId,
           invoiceDate: businessDate(edit.invoiceDate), description: edit.description, quantity: edit.quantity,
           purchaseUnit: edit.purchaseUnit, packQty: edit.packQty, packUnit: edit.packUnit, amountCents,
           itemName: item?.name ?? null, normalizedUnit: item?.unit ?? null, normalizedUnitCost: price,
           countsAsFood: edit.countsAsFood, voided: edit.voided };
-        if (current && Object.entries(state).every(([key, value]) => { const old = (current as unknown as Record<string, unknown>)[key]; return old instanceof Date && value instanceof Date ? old.getTime() === value.getTime() : old === value; })) { await learnPurchase(tx,userId,current.id,current.revision,edit); return { ok: true, revision: current.revision }; }
+        if (current && Object.entries(state).every(([key, value]) => { const old = (current as unknown as Record<string, unknown>)[key]; return old instanceof Date && value instanceof Date ? old.getTime() === value.getTime() : typeof value === "object" ? isDeepStrictEqual(old,value) : old === value; })) { await learnPurchase(tx,userId,current.id,current.revision,edit); return { ok: true, revision: current.revision }; }
         if (current ? current.revision !== edit.revision : edit.revision != null) return { ok: false, conflict: true, error: "This invoice line changed. Reload before saving; your entry is kept." };
         if (current && !edit.reason) return { ok: false, error: "Explain the invoice-line correction or void." };
         if (!current && edit.voided) return { ok: false, error: "Save the line before voiding it." };
-        const before = current ? { description: current.description, amountCents: current.amountCents, itemId: current.itemId, itemName: current.itemName, quantity: current.quantity, packQty: current.packQty, packUnit: current.packUnit, invoiceDate: current.invoiceDate, venueId: current.venueId, vendorId: current.vendorId, countsAsFood: current.countsAsFood, voided: current.voided, normalizedUnitCost: current.normalizedUnitCost, normalizedUnit: current.normalizedUnit } : null;
+        const before = current ? { measurementSnapshot:current.measurementSnapshot, description: current.description, amountCents: current.amountCents, itemId: current.itemId, itemName: current.itemName, quantity: current.quantity, packQty: current.packQty, packUnit: current.packUnit, invoiceDate: current.invoiceDate, venueId: current.venueId, vendorId: current.vendorId, countsAsFood: current.countsAsFood, voided: current.voided, normalizedUnitCost: current.normalizedUnitCost, normalizedUnit: current.normalizedUnit } : null;
         const history = json([...(Array.isArray(current?.history) ? current.history : []), { at: new Date().toISOString(), userId, userName: user.name, reason: edit.reason || "Reviewed invoice line", before, after: state }]);
-        const saved = current ? await tx.invoicePurchaseLine.update({ where: { id: current.id }, data: { ...state, history, revision: { increment: 1 } } })
-          : await tx.invoicePurchaseLine.create({ data: { id: edit.id, ...state, history, createdBy: userId } });
+        const saved = current ? await tx.invoicePurchaseLine.update({ where: { id: current.id }, data: { ...state, measurementSnapshot:state.measurementSnapshot==null?Prisma.DbNull:json(state.measurementSnapshot), history, revision: { increment: 1 } } })
+          : await tx.invoicePurchaseLine.create({ data: { id: edit.id, ...state, measurementSnapshot:state.measurementSnapshot==null?Prisma.DbNull:json(state.measurementSnapshot), history, createdBy: userId } });
         await learnPurchase(tx,userId,saved.id,saved.revision,edit);
         for (const itemId of new Set([current?.itemId, saved.itemId].filter((value): value is string => !!value))) {
           await cascadeInvoiceCost(tx, itemId, saved.id, doc.id, userId, itemId === saved.itemId && !saved.voided && saved.countsAsFood && saved.amountCents > 0);
@@ -69,6 +74,7 @@ export async function saveInvoicePurchase(db: PrismaClient, userId: string, inpu
             await tx.operatingDay.update({ where: { id: day.id }, data: { foodReviewed: false, revision: { increment: 1 }, history: audit } });
           }
         }
+        await refreshInvoiceReview(tx,doc.id);
         return { ok: true, revision: saved.revision };
       }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     } catch (error) {
@@ -85,7 +91,7 @@ export async function loadInvoicePurchases(id: string): Promise<InvoicePurchaseD
   const history = itemIds.length ? await prisma.item.findMany({ where: { id: { in: itemIds } }, select: { id: true, purchaseLines: {
     where: { invoiceDocumentId: { not: id }, voided: false, countsAsFood: true, amountCents: { gt: 0 }, normalizedUnitCost: { gt: 0 }, invoiceDate: { lte: latestDate } },
     orderBy: [{ invoiceDate: "desc" }, { createdAt: "desc" }, { id: "desc" }], take: 100,
-    select: { id: true, vendorId: true, invoiceDate: true, createdAt: true, normalizedUnit: true, normalizedUnitCost: true, amountCents: true },
+    select: { id: true, vendorId: true, invoiceDate: true, createdAt: true, normalizedUnit: true, normalizedUnitCost: true, amountCents: true, measurementSnapshot: true },
   } } }) : [];
   const byItem = new Map(history.map(item => [item.id, item.purchaseLines]));
   const threshold = varianceThreshold(process.env.PRICE_VARIANCE_THRESHOLD_PERCENT);
@@ -95,7 +101,7 @@ export async function loadInvoicePurchases(id: string): Promise<InvoicePurchaseD
         (candidate.createdAt < row.createdAt || candidate.createdAt.getTime() === row.createdAt.getTime() && candidate.id < row.id)) &&
       row.normalizedUnit && normalizedObservation({ ...candidate, vendorName: "" }, row.normalizedUnit) != null);
     const previousUnitCost = previous && row.normalizedUnit ? normalizedObservation({ ...previous, vendorName: "" }, row.normalizedUnit) : null;
-    return { ...row, invoiceDate: row.invoiceDate.toISOString().slice(0, 10), previousUnitCost,
+    return { ...row, measurementSnapshot:row.measurementSnapshot as IngredientMeasure|null, eachWeightOz:(row.measurementSnapshot as (IngredientMeasure & {eachWeightOverride?:number|null}) | null)?.eachWeightOverride??null, invoiceDate: row.invoiceDate.toISOString().slice(0, 10), previousUnitCost,
       priceChange: row.voided || !row.countsAsFood || row.amountCents <= 0 ? null : priceVariance(previousUnitCost, row.normalizedUnitCost), varianceThreshold: threshold };
   });
 }

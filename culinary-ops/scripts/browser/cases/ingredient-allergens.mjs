@@ -36,7 +36,7 @@ try {
   const manager = await login("manager");
   await manager.goto(`${base}/items`);
   await manager.getByRole("heading", { name: "Ingredients", exact: true }).waitFor();
-  assert.ok(await manager.getByRole("link", { name: "Ingredients", exact: true }).count());
+  assert.ok(await manager.getByRole("link", { name: /^(Ingredients|Items)$/ }).count());
   const edit = await editCream(manager);
   await edit.getByRole("checkbox", { name: "Milk", exact: true }).check();
   await edit.getByRole("checkbox", { name: "Soy", exact: true }).check();

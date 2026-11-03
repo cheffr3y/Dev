@@ -1,3 +1,4 @@
+import { measurementSelect } from "../ingredients/measurements";
 import { createHash } from "node:crypto";
 import { prisma } from "../db/prisma";
 import {
@@ -95,7 +96,7 @@ async function packetContents(
         select: {
           quantity: true,
           unit: true,
-          item: { select: { id: true, name: true, category: true } },
+          item: { select: { id: true, name: true, category: true, unit:true, ...measurementSelect } },
         },
       },
       components: { select: { childId: true, quantity: true, unit: true } },

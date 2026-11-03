@@ -1,3 +1,4 @@
+import { measurementSelect } from "@/lib/ingredients/measurements";
 import { loadPriceTrends } from "@/lib/invoices/price-trends-data";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -36,7 +37,7 @@ export default async function RecipePrintPage({
     prisma.recipe.findMany({
       select: {
         id: true, allergens: true, yieldQty: true, yieldUnit: true,
-        items: { select: { quantity: true, unit: true, item: { select: { id: true, priceUpdatedAt: true, allergens: true, unitCost: true, unit: true } } } },
+        items: { select: { quantity: true, unit: true, item: { select: { id: true, priceUpdatedAt: true, allergens: true, ...measurementSelect, unitCost: true, unit: true } } } },
         components: { select: { childId: true, quantity: true, unit: true } },
       },
     }),

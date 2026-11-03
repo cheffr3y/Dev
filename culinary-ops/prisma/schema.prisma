@@ -175,6 +175,12 @@ model Vendor {
 
 // Master catalog item / ingredient / purchasable product.
 model Item {
+  eachLabel String @default("each")
+  eachWeightOz Float?
+  densityGPerMl Float?
+  usableCosting Boolean @default(false)
+  measurementReviewedAt DateTime?
+  measurementRevision Int @default(0)
   invoiceAliases InvoiceItemAlias[]
   invoiceCostState InvoiceCatalogState?
   purchaseLines InvoicePurchaseLine[]
@@ -1235,6 +1241,13 @@ model VendorQuote {
 
 // Readable compact document archive, independent of AI extraction and pricing.
 model InvoiceDocument {
+  reviewState String @default("NEEDS_REVIEW")
+  candidateLineCount Int @default(0)
+  reviewedCandidateCount Int @default(0)
+  reviewCompletedAt DateTime?
+  reviewedLineRevision Int?
+  reviewedOcrRevision Int?
+  reviewedBy String?
   reviewDrafts InvoiceReviewDraft[]
   ocrDecisions InvoiceOcrDecision[]
   ocrDraft Json?
@@ -1257,6 +1270,7 @@ model InvoiceDocument {
   vendor        Vendor? @relation(fields: [vendorId], references: [id], onDelete: SetNull)
   invoiceNumber String?
   notes         String?
+  @@index([reviewState, createdAt])
 }
 
 // Locked BEO reference. Later edits are compared with this immutable snapshot.
@@ -1309,6 +1323,7 @@ model OperatingFoodExpense {
 
 // Reviewed invoice observations, separate from the current catalog price.
 model InvoicePurchaseLine {
+  measurementSnapshot Json?
   billedUnitPrice Float?
   ocrLineKey String?
   rawCode String?
@@ -1516,4 +1531,17 @@ model InvoiceReviewDraft {
   revision Int @default(1)
   updatedAt DateTime @updatedAt
   @@id([userId, documentId])
+}
+
+// Append-only receipts and captured impact for reviewed measurement changes.
+model IngredientMeasurementChange {
+  id String @id
+  itemId String
+  actorId String
+  requestHash String
+  before Json
+  after Json
+  impact Json
+  createdAt DateTime @default(now())
+  @@index([itemId, createdAt])
 }

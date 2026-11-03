@@ -18,6 +18,7 @@ export async function saveWorkspaceCell(db: PrismaClient, actorId: string, input
       if (current === value) return { ok: true, value };
       if (current !== edit.expected) return { ok: false, error: "Someone changed this field. Your entry is kept below; use the latest value or retry your edit.", current };
       if (edit.entity === "item") {
+        if (edit.field === "unit" && "measurementReviewedAt" in row && row.measurementReviewedAt) return {ok:false,error:"Use the ingredient measurement review to change its cost unit."};
         if (edit.field === "vendorId" && value && !await tx.vendor.findUnique({ where: { id: String(value) } })) return { ok: false, error: "That vendor no longer exists." };
         await tx.item.update({ where: { id: edit.id }, data: { [edit.field]: value, ...(["unitCost", "unit"].includes(edit.field) ? { priceUpdatedAt: new Date() } : {}) } });
       } else if (edit.entity === "guideLine") {

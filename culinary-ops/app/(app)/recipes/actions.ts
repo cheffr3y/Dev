@@ -1,12 +1,13 @@
 "use server";
 
+import { recipePurchaseQuantity } from "@/lib/ingredients/measurements";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
 import { requireRole, requireActiveUser, type AppUser } from "@/lib/auth/session";
 import { money } from "@/lib/recipes/costing";
-import { canConvert, unitLabel } from "@/lib/recipes/units";
+import { unitLabel } from "@/lib/recipes/units";
 import { generateProdCode } from "@/lib/prep/prep";
 import { allergenLabels, parseAllergens, serializeAllergens } from "@/lib/recipes/allergens";
 
@@ -289,7 +290,7 @@ export async function addRecipeItem(formData: FormData) {
   });
   const item = await prisma.item.findUnique({ where: { id: d.itemId } });
   if (!item) throw new Error("This ingredient no longer exists. Refresh the recipe.");
-  if (!canConvert(d.unit, item.unit)) throw new Error(`Use a unit convertible to ${item.unit}. No weight-to-volume conversion is assumed.`);
+  if (recipePurchaseQuantity(1,d.unit,item)==null) throw new Error(`Use a unit convertible to ${item.unit}. Review the ingredient’s each weight, density or pack specification first.`);
   if (existing) throw new Error("This ingredient is already in the recipe. Use Edit ingredient to change its quantity or prep note.");
   await prisma.recipeItem.create({ data: { ...d, note: d.note || null, groupName: d.groupName || null, sortOrder: d.sortOrder } });
   const label = `${item?.name ?? "ingredient"} (${d.quantity} ${unitLabel(d.unit)})${d.note ? ` — ${d.note}` : ""}`;
@@ -322,7 +323,7 @@ export async function updateRecipeIngredient(_previous: { error: string; saved: 
     await prisma.$transaction(async tx => {
       const [existing, item] = await Promise.all([tx.recipeItem.findUnique({ where: { id }, include: { item: true } }), tx.item.findUnique({ where: { id: d.itemId } })]);
       if (!existing || existing.recipeId !== d.recipeId || !item) throw new Error("The recipe line or ingredient no longer exists. Refresh the recipe.");
-      if ((existing.itemId !== d.itemId || existing.unit !== d.unit) && !canConvert(d.unit, item.unit)) throw new Error(`Use a unit convertible to ${item.unit} for the selected ingredient. No weight-to-volume conversion is assumed.`);
+      if ((existing.itemId !== d.itemId || existing.unit !== d.unit) && recipePurchaseQuantity(1,d.unit,item)==null) throw new Error(`Use a unit convertible to ${item.unit} for the selected ingredient. Review the ingredient’s each weight, density or pack specification first.`);
       const duplicate = await tx.recipeItem.findUnique({ where: { recipeId_itemId: { recipeId: d.recipeId, itemId: d.itemId } } });
       if (duplicate && duplicate.id !== id) throw new Error("This ingredient already has a line in the recipe. Edit that line, or consolidate through Ingredient cleanup.");
       await tx.recipeItem.update({ where: { id }, data: { itemId: d.itemId, quantity: d.quantity, unit: d.unit, note: d.note || null, groupName: d.groupName || null, sortOrder: d.sortOrder } });

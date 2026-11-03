@@ -5,6 +5,7 @@ const numeric = z.number().finite().nullable();
 // Drafts deliberately accept incomplete/invalid business values. Approval uses
 // the existing, stricter purchase validator; no verification flags are saved.
 export const reviewRowSchema = z.object({
+  eachWeightOz: z.number().finite().nullable().optional(),
   key: id, purchaseId: z.string().uuid(), itemId: id,
   rawCode: z.string().max(100).nullable(), rawDescription: z.string().max(500),
   quantity: numeric, unit: z.string().max(40), unitPrice: numeric, extendedPrice: numeric,

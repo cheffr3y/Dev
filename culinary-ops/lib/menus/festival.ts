@@ -1,3 +1,5 @@
+import { convertQty } from "../recipes/units";
+import { convertIngredientQty, ingredientPurchaseQuantity, measurementSelect, type IngredientMeasure } from "../ingredients/measurements";
 // Festival plan-to-order engine. With no reliable sales history yet, a
 // festival's demand is forecast from assumptions rather than measured:
 //
@@ -17,7 +19,6 @@
 // Everything below is pure: no Prisma, no derived numbers persisted. Mirrors
 // lib/banquets/banquet.ts in style — typed rows in, typed rows out.
 
-import { convertQty } from "../recipes/units";
 import type { ShoppingList } from "../purchasing/shopping";
 
 // --- Forecast --------------------------------------------------------------
@@ -99,7 +100,7 @@ export function buildForecast(assumptions: ForecastAssumptions, lines: ForecastL
 
 // Item purchasing metadata the order guide needs. Selected from Prisma via
 // festivalItemMetaSelect below.
-export type FestivalItemMeta = {
+export type FestivalItemMeta = IngredientMeasure & {
   id: string;
   name: string;
   unit: string;
@@ -170,7 +171,7 @@ export function buildFestivalOrderGuide(
       let need = 0;
       let unconvertible = false;
       for (const a of it.amounts) {
-        const q = convertQty(a.qty, a.unit, unit);
+        const q = (meta?.measurementReviewedAt ? convertIngredientQty(a.qty, a.unit, unit, meta) : convertQty(a.qty,a.unit,unit));
         if (q == null) {
           unconvertible = true;
         } else {
@@ -183,13 +184,13 @@ export function buildFestivalOrderGuide(
 
       // 2. Raw need accounts for cooking/trim loss.
       const yieldFactor = meta?.yieldFactor ?? 1;
-      const rawNeed = need / Math.max(yieldFactor, 0.0001);
+      const rawNeed = meta?.measurementReviewedAt ? it.amounts.reduce((sum,a)=>sum+(ingredientPurchaseQuantity(a.qty,a.unit,meta) ?? Number.NaN),0) : need / Math.max(yieldFactor, 0.0001);
 
       // 3. Subtract on-hand (converted into item.unit).
       const oh = onHandMap.get(it.itemId);
       let onHand = 0;
       if (oh) {
-        const conv = convertQty(oh.quantity, oh.unit, unit);
+        const conv = convertIngredientQty(oh.quantity, oh.unit, unit, meta);
         if (conv == null) {
           warnings.push(`${name}: on-hand ${oh.unit} doesn't convert to ${unit} — ignored on-hand.`);
         } else {
@@ -200,7 +201,7 @@ export function buildFestivalOrderGuide(
 
       // 4. Round up to pack size when we have usable structured pack data.
       const pack =
-        meta?.packQty != null ? convertQty(meta.packQty, meta.packUnit ?? unit, unit) : null;
+        meta?.packQty != null ? convertIngredientQty(meta.packQty, meta.packUnit ?? unit, unit, meta) : null;
       let orderQty: number;
       let packCount: number | null;
       let packQtyInUnit: number | null;
@@ -274,13 +275,11 @@ function trim(n: number): string {
 // Prisma `select` for the Item purchasing fields (+ vendor) the order guide
 // needs. Reuse banquetRecipeSelect directly in pages for recipe rows.
 export const festivalItemMetaSelect = {
+  ...measurementSelect,
   id: true,
   name: true,
   unit: true,
   unitCost: true,
   packSize: true,
-  packQty: true,
-  packUnit: true,
-  yieldFactor: true,
   vendor: { select: { id: true, name: true } },
 } as const;

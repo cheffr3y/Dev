@@ -1,3 +1,4 @@
+import { convertIngredientQty, ingredientPurchaseQuantity, type IngredientMeasure } from "../ingredients/measurements";
 import { businessDate } from "../prep/prep-dates";
 import { convertQty } from "../recipes/units";
 import type { ShoppingRecipeNode } from "../purchasing/shopping";
@@ -8,7 +9,7 @@ export type PlanningSource = {
   destination: string; venueId: string | null; notes: string; href: string; packetHref: string;
   lines: PlanningLine[]; recipes?: ShoppingRecipeNode[];
 };
-export type PurchasingItem = { id: string; name: string; category: string; unit: string; yieldFactor: number;
+export type PurchasingItem = IngredientMeasure & { id: string; name: string; category: string; unit: string; yieldFactor: number;
   packQty: number | null; packUnit: string | null; packSize: string | null; sku: string | null; vendor: { name: string } | null };
 export function planningRange(from: string, to: string) {
   const start = businessDate(from), last = businessDate(to);
@@ -33,7 +34,7 @@ export function buildPurchasingList(sources: PlanningSource[], recipes: Shopping
     for (const line of source.lines) {
       if (line.warning) { warnings.add(`${source.name} / ${line.name}: ${line.warning}`); continue; }
       if (line.quantity === 0) continue;
-      const contributions: Array<{ itemId: string; name: string; category: string; quantity: number; unit: string }> = [];
+      const contributions: Array<{ measure?: IngredientMeasure & {unit:string}; legacyFrozen?:boolean; itemId: string; name: string; category: string; quantity: number; unit: string }> = [];
       const visit = (id: string, quantity: number, unit: string, path: Set<string>) => {
         const recipe = byId.get(id);
         if (!recipe) throw new Error("Recipe contents are unavailable; excluded from purchasing totals.");
@@ -62,10 +63,13 @@ export function buildPurchasingList(sources: PlanningSource[], recipes: Shopping
       }
       for (const c of contributions) {
         const item = items.get(c.itemId);
-        const converted = item ? convertQty(c.quantity, c.unit, item.unit) : null;
-        const validYield = item && Number.isFinite(item.yieldFactor) && item.yieldFactor > 0 && item.yieldFactor <= 1;
+        const measure = c.measure ?? item;
+        const raw = measure?.measurementReviewedAt && measure.unit ? ingredientPurchaseQuantity(c.quantity,c.unit,{...measure,unit:measure.unit}) : null;
+        const converted = item && measure && !c.legacyFrozen ? (measure.measurementReviewedAt ? raw == null ? null : convertIngredientQty(raw,measure.unit??item.unit,item.unit,measure) : convertQty(c.quantity,c.unit,item.unit)) : null;
+        const factor = measure?.measurementReviewedAt ? (measure.usableCosting ? measure.yieldFactor??1 : 1) : measure?.yieldFactor??1;
+        const validYield = item && Number.isFinite(factor) && factor > 0 && factor <= 1;
         const unit = converted != null && validYield ? item!.unit : c.unit;
-        const quantity = converted != null && validYield ? converted / item!.yieldFactor : c.quantity;
+        const quantity = converted != null && validYield ? (measure?.measurementReviewedAt ? converted : converted / factor) : c.quantity;
         if (!item || converted == null || !validYield) warnings.add(`${c.name}: purchase-unit conversion or usable yield needs review; shown as recipe-use quantity in ${c.unit}, without a raw-purchase adjustment.`);
         const basis = converted != null && validYield ? "Raw purchase quantity" : "Recipe-use quantity — review";
         const match = buckets.get(c.itemId)?.find(row => row.basis === basis && convertQty(quantity, unit, row.unit) != null);
@@ -83,7 +87,7 @@ export function buildPurchasingList(sources: PlanningSource[], recipes: Shopping
   }
   for (const row of rows) {
     const item = items.get(row.itemId);
-    const packQty = row.basis === "Raw purchase quantity" && item?.packQty && item.packUnit ? convertQty(item.packQty, item.packUnit, row.unit) : null;
+    const packQty = row.basis === "Raw purchase quantity" && item?.packQty && item.packUnit ? convertIngredientQty(item.packQty, item.packUnit, row.unit,item) : null;
     row.suggestedPacks = packQty && packQty > 0 ? Math.ceil(Math.round(row.quantity / packQty * 1e9) / 1e9) : null;
     if ((buckets.get(row.itemId)?.length ?? 0) > 1) warnings.add(`${row.name}: incompatible unit families are listed separately; resolve before ordering.`);
   }

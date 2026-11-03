@@ -1,7 +1,8 @@
+import { convertQty } from "../recipes/units";
+import { recipePurchaseQuantity } from "../ingredients/measurements";
 import { buildCostMap, buildPriceGapMap, componentBatchFactor, costPerYieldUnit, foodCostPct, type PriceGap } from "../recipes/costing";
 import { buildBanquetPlan, type BanquetRecipeRow } from "../banquets/banquet";
 import { effectiveAllergens } from "../recipes/allergens";
-import { convertQty } from "../recipes/units";
 
 export const ROLLOUT_STATUSES = ["ACTIVE", "REVIEW", "DRAFT", "ARCHIVED"] as const;
 export const PACKET_MODES = [
@@ -113,7 +114,7 @@ export function buildMenuRollout(rollout: { items: RolloutLine[] }, recipes: Rol
   const catalog = new Map(recipes.flatMap(recipe => recipe.items.map(({ item }) => [item.id, item] as const)));
   const orderLines = openingPlan.shoppingList.categories.flatMap(category => category.items.map(line => {
     const item = catalog.get(line.itemId)!;
-    const quantities = line.amounts.map(amount => convertQty(amount.qty, amount.unit, item.unit));
+    const quantities = line.amounts.map(amount => recipePurchaseQuantity(amount.qty, amount.unit, item));
     const converted = quantities.every(quantity => quantity != null);
     const purchaseQty = converted ? quantities.reduce<number>((sum, quantity) => sum + quantity!, 0) : null;
     return { ...line, item, purchaseQty, converted, extendedCost: purchaseQty != null ? purchaseQty * item.unitCost : null };

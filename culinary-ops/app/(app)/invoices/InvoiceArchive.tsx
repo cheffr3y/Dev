@@ -10,7 +10,7 @@ export function InvoiceArchive({vendors,compact=false}:{vendors:{id:string;name:
  const activeOcr=useRef<AbortController|null>(null);
  useEffect(()=>()=>activeOcr.current?.abort(),[]);
  const { entries, enqueue, retry } = useDocumentQueue("/api/invoices", id => {
-  router.push(patchUrl(window.location.href, { id })); router.refresh();
+  const target=new URL(patchUrl(window.location.href,{id}),window.location.origin);target.hash="invoice-review";router.push(`${target.pathname}${target.search}${target.hash}`);router.refresh();
  },async(id,task,report)=>{
   const controller=new AbortController();activeOcr.current=controller;
   try {
