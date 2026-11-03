@@ -18,9 +18,10 @@ try{
  const beforeDocuments=await db.invoiceDocument.count(),beforeBatches=await db.productionBatch.count(),beforePrices=JSON.stringify(await db.item.findMany({select:{id:true,unitCost:true},orderBy:{id:"asc"}}));
  await page.goto(`${base}/invoices`);
  assert.equal(await page.getByText(/OPENAI_API_KEY/).count(),0);assert.equal(await page.getByRole("button",{name:"Preview selected price changes",exact:true}).count(),0);
- await page.getByLabel("Invoice PDF or photo",{exact:true}).setInputFiles(`${output}/invoice-scan.pdf`);await page.getByRole("button",{name:"Store invoice",exact:true}).click();await page.getByRole("status").filter({hasText:"Stored"}).waitFor();
+ await page.getByLabel("Invoice PDF or photo",{exact:true}).setInputFiles(`${output}/invoice-scan.pdf`);await page.getByRole("button",{name:"Store invoice",exact:true}).click();await page.waitForURL(/\/invoices\?.*id=/);
  const pdf=await db.invoiceDocument.findFirstOrThrow({where:{filename:"invoice-scan.pdf"}});assert.equal(pdf.pages,2);assert.ok(pdf.storedBytes<pdf.originalBytes);
- const image=page.getByRole("img",{name:"First page of invoice-scan.pdf",exact:true});await image.waitFor();assert.ok(await image.evaluate(element=>element.complete&&element.naturalWidth>0));
+ const image=page.getByLabel("invoice-scan.pdf, page 1",{exact:true});await image.waitFor();await page.waitForFunction(()=>document.querySelector('canvas[aria-label="invoice-scan.pdf, page 1"]')?.width > 300);
+ await page.getByRole("region",{name:"Invoice source document",exact:true}).getByRole("status").waitFor({state:"hidden"});
  await page.screenshot({path:`${output}/desktop-archive.png`,fullPage:true});
  const download=await page.request.get(`${base}/api/invoices/file?id=${pdf.id}&download=1`);assert.equal(download.status(),200);assert.match(download.headers()["content-disposition"],/^attachment/);assert.equal((await download.body()).length,pdf.storedBytes);
  // Identical upload returns the same stored document even with another filename.
@@ -37,6 +38,7 @@ try{
    loseResponse=false;await route.fetch();await route.abort("failed");
   }else await route.continue();
  });
+ await page.getByText("＋ Add invoices · PDF or photo",{exact:true}).click();
  await page.getByLabel("Notes (optional)",{exact:true}).fill("Queue snapshot");
  await page.getByLabel("Invoice PDF or photo",{exact:true}).setInputFiles([
   {name:"queue-lost.pdf",mimeType:"application/pdf",buffer:Buffer.concat([bytes,Buffer.from("\n%lost-response")])},
@@ -63,6 +65,6 @@ try{
  console.log("Batch upload continued after lost response; retry deduplicated storage and preserved metadata; PDF page progress streamed.");
  const staff=await login("staff");assert.equal((await staff.request.get(`${base}/api/invoices/file?id=${pdf.id}`)).status(),403);assert.equal((await staff.request.get(`${base}/api/invoices?id=${pdf.id}`)).status(),403);
  const anon=await browser.newContext();assert.equal((await anon.request.get(`${base}/api/invoices/file?id=${pdf.id}`)).status(),401);
- const mobile=await browser.newContext({viewport:{width:390,height:844},storageState:await page.context().storageState()});const phone=await mobile.newPage();await phone.goto(`${base}/invoices?id=${pdf.id}`);await phone.getByRole("img",{name:"First page of invoice-scan.pdf",exact:true}).waitFor();await phone.screenshot({path:`${output}/mobile-archive.png`,fullPage:true});assert.equal(await phone.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+ const mobile=await browser.newContext({viewport:{width:390,height:844},storageState:await page.context().storageState()});const phone=await mobile.newPage();await phone.goto(`${base}/invoices?id=${pdf.id}`);await phone.getByRole("button",{name:/View invoice · p/}).click();await phone.getByLabel("invoice-scan.pdf, page 1",{exact:true}).waitFor();await phone.screenshot({path:`${output}/mobile-archive.png`,fullPage:true});assert.equal(await phone.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
  assert.deepEqual(errors,[]);console.log(`Compressed photo/PDF uploads, stored preview/download, duplicate detection, no-AI boundary, unchanged prices/ledger, role restrictions, mobile layout and accounting exports passed. Review: ${output}`);
 }catch(error){if(page)await page.screenshot({path:`${output}/failure.png`,fullPage:true});throw error;}finally{await browser.close();await db.$disconnect();}

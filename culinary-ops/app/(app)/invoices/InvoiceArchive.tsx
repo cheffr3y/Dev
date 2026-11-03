@@ -5,7 +5,7 @@ import { patchUrl } from "@/lib/workspace/url-state";
 import { useDocumentQueue } from "@/components/useDocumentQueue";
 import { DocumentQueueStatus } from "@/components/DocumentQueueStatus";
 import { Button, Card, Input, Select, Textarea } from "@/components/ui";
-export function InvoiceArchive({vendors}:{vendors:{id:string;name:string}[]}) {
+export function InvoiceArchive({vendors,compact=false}:{vendors:{id:string;name:string}[];compact?:boolean}) {
  const router=useRouter(),[error,setError]=useState("");
  const activeOcr=useRef<AbortController|null>(null);
  useEffect(()=>()=>activeOcr.current?.abort(),[]);
@@ -30,14 +30,15 @@ export function InvoiceArchive({vendors}:{vendors:{id:string;name:string}[]}) {
   form.reset();
  }
  return <Card className="p-5"><form aria-label="Store invoice" className="space-y-4" onSubmit={event=>{event.preventDefault();void save(event.currentTarget);}} onDragOver={event=>event.preventDefault()} onDrop={event=>{event.preventDefault();save(event.currentTarget,Array.from(event.dataTransfer.files));}}>
-  <p className="text-sm text-zinc-500">Drop a PDF/photo here, choose a file, or take a photo. Up to 8 MB and 20 PDF pages. A readable compact copy is stored with a preview. Metadata applies to all selected files. Keep this page open until the queue finishes.</p>
+  <details open={!compact}><summary className="cursor-pointer text-sm font-medium">＋ Add invoices · PDF or photo</summary><div className="mt-4 space-y-4"><p className="text-sm text-zinc-500">Drop a PDF/photo here, choose a file, or take a photo. Up to 8 MB and 20 PDF pages. A readable compact copy is stored with a preview. Metadata applies to all selected files. Keep this page open until the queue finishes.</p>
   <fieldset className="space-y-4">
    <label className="block text-sm">Invoice PDF or photo<Input aria-label="Invoice PDF or photo" type="file" multiple name="file" accept="application/pdf,image/jpeg,image/png,image/webp" /></label>
    <label className="block text-sm">Or take a photo<Input aria-label="Take invoice photo" type="file" accept="image/*" capture="environment" onChange={event=>{const file=event.target.files?.[0];if(file&&event.currentTarget.form)save(event.currentTarget.form,[file]);}} /></label>
    <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm">Vendor (optional)<Select name="vendorId" aria-label="Invoice vendor"><option value="">Unassigned</option>{vendors.map(vendor=><option key={vendor.id} value={vendor.id}>{vendor.name}</option>)}</Select></label><label className="text-sm">Invoice number (optional)<Input name="invoiceNumber" maxLength={120} /></label></div>
    <label className="block text-sm">Notes (optional)<Textarea name="notes" maxLength={5000} /></label>
-   <Button type="submit">Store invoice</Button>
+   <Button type="submit" aria-label="Store invoice">Scan &amp; review →</Button>
   </fieldset>
+  </div></details>
   <DocumentQueueStatus entries={entries} retry={retry} href={id => patchUrl(typeof window === "undefined" ? "http://localhost/invoices" : window.location.href, { id })} />{error&&<p role="alert" className="text-sm text-red-600">{error}</p>}
  </form></Card>;
 }

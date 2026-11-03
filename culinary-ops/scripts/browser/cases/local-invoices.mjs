@@ -16,11 +16,17 @@ try{
  await page.goto(`${base}/login`);await page.getByLabel("Email").fill("admin@local.test");await page.getByLabel("Password").fill("local-smoke-only");await page.getByRole("button",{name:"Sign in",exact:true}).click();await page.waitForURL(`${base}/`);
  const source=["77412 SYS IMP PEELED GRLC 4/5LB 2 CS 60.00 120.00","FUEL SURCHARGE 5.00","90123 NEW SPICE 1 CS 40.00 40.00","77412 SYS IMP PEELED GRLC 4/5LB 1 CS 80.00 80.00"];
  const pdf=await PDFDocument.create(),font=await pdf.embedFont(StandardFonts.Courier),sheet=pdf.addPage([1000,400]);source.forEach((text,index)=>sheet.drawText(text,{x:30,y:340-index*50,size:16,font}));
- async function upload(name,mimeType,buffer){await page.goto(`${base}/invoices`);await page.getByLabel("Invoice vendor",{exact:true}).selectOption(vendor.id);await page.getByLabel("Invoice PDF or photo",{exact:true}).setInputFiles({name,mimeType,buffer:Buffer.from(buffer)});await page.getByRole("button",{name:"Store invoice",exact:true}).click();await page.waitForURL(/\/invoices\?.*id=/);await page.getByRole("region",{name:"Local invoice OCR review",exact:true}).getByText(/Saved recognition reused/).waitFor();return new URL(page.url()).searchParams.get("id");}
+ async function upload(name,mimeType,buffer){await page.goto(`${base}/invoices`);await page.getByLabel("Invoice vendor",{exact:true}).selectOption(vendor.id);await page.getByLabel("Invoice PDF or photo",{exact:true}).setInputFiles({name,mimeType,buffer:Buffer.from(buffer)});await page.getByRole("button",{name:"Store invoice",exact:true}).click();await page.waitForURL(/\/invoices\?.*id=/);await page.getByRole("region",{name:"Local invoice OCR review",exact:true}).getByText(/to review/).waitFor();return new URL(page.url()).searchParams.get("id");}
  const before=JSON.stringify({batches:await db.productionBatch.findMany(),transfers:await db.stockTransfer.findMany(),packets:await db.prepPacketSnapshot.findMany()});
  const documentId=await upload("local-text.pdf","application/pdf",await pdf.save());
  const review=page.getByRole("region",{name:"Local invoice OCR review",exact:true}),row=review.getByRole("form").filter({has:page.getByLabel("OCR raw code",{exact:true}).and(page.locator('input[value="77412"]'))}).first();
- assert.equal(await review.getByRole("form").count(),4);
+ assert.equal(await review.getByRole("form").count(),1);
+ assert.equal(await review.getByRole("navigation",{name:"Invoice review lines"}).getByRole("button").count(),4);
+ await page.getByRole("region",{name:"Invoice source document",exact:true}).getByLabel("Invoice source page",{exact:true}).waitFor();
+ await page.getByLabel("Invoice source zoom",{exact:true}).selectOption("150");
+ assert.equal(await page.getByLabel("Invoice source zoom",{exact:true}).inputValue(),"150");
+ await page.getByRole("region",{name:"Invoice source document",exact:true}).getByRole("status").waitFor({state:"hidden"});
+ await page.screenshot({path:`${output}/workspace-desktop.png`,fullPage:true});
  await review.getByLabel("OCR invoice date",{exact:true}).fill("2026-11-02");await review.getByLabel("OCR venue",{exact:true}).selectOption("clipboard-venue");
  const picker=row.getByRole("combobox",{name:"Override OCR ingredient",exact:true});await picker.fill(item.name);await row.getByRole("option").filter({hasText:item.name}).click();await row.getByRole("status").filter({hasText:"Mapping remembered."}).waitFor();
  assert.equal((await db.item.findUniqueOrThrow({where:{id:item.id}})).unitCost,2);assert.match(await row.innerText(),/New unit cost: \$3.00 \/ lb/);
@@ -28,7 +34,9 @@ try{
  await page.route("**/api/invoice-purchases",async route=>{await route.fetch();await route.abort();},{times:1});await row.getByRole("button",{name:"Approve invoice price",exact:true}).click();await row.getByRole("status").filter({hasText:"Connection interrupted"}).waitFor();
  await row.getByRole("button",{name:"Approve invoice price",exact:true}).click();await review.getByText(/1 approved/).waitFor();
  assert.equal((await db.item.findUniqueOrThrow({where:{id:item.id}})).unitCost,3);assert.equal(await db.invoicePriceChange.count({where:{itemId:item.id}}),1);
+ await review.getByRole("button",{name:/Review line 1-4:/}).click();
  assert.match(await row.innerText(),/New unit cost: \$4.00 \/ lb.*\+33.3% vs current catalog/);
+ await review.getByRole("button",{name:/Review line 1-2:/}).click();
  const fee=review.getByRole("form").filter({has:page.getByLabel("OCR description",{exact:true}).and(page.locator('input[value="FUEL SURCHARGE"]'))});await fee.getByLabel("Ignore line (non-food / fee)",{exact:true}).check();await fee.getByRole("button",{name:"Save ignored line",exact:true}).click();await review.getByText(/1 ignored/).waitFor();
  const spice=review.getByRole("form").filter({has:page.getByLabel("OCR raw code",{exact:true}).and(page.locator('input[value="90123"]'))});await spice.getByText("+ Quick-Create Ingredient",{exact:true}).click();await spice.getByLabel("New OCR ingredient name",{exact:true}).fill("Local Invoice New Spice");await spice.getByLabel("New OCR ingredient cost unit",{exact:true}).fill("lb");await spice.getByRole("button",{name:"Create ingredient for this row",exact:true}).click();await spice.getByRole("status").filter({hasText:"Ingredient created"}).waitFor();
  assert.equal((await db.item.findFirstOrThrow({where:{name:"Local Invoice New Spice"}})).unitCost,0);
@@ -37,9 +45,23 @@ try{
  await page.goto(`${base}/menus/${menu.id}`);await page.getByRole("img",{name:/Food cost 3.8%/}).waitFor();
  await page.goto(`${base}/order-guides/${guide.id}`);assert.equal(await page.getByLabel("Estimated order total",{exact:true}).innerText(),"$6.00");
  const canvas=createCanvas(2600,500),ctx=canvas.getContext("2d");ctx.fillStyle="white";ctx.fillRect(0,0,2600,500);ctx.fillStyle="black";ctx.font="38px monospace";ctx.fillText(source[0].replace("4/5LB","4/6LB").replace("60.00 120.00","72.00 144.00"),70,150);ctx.fillText("FUEL SURCHARGE 5.00",70,250);const photo=canvas.toBuffer("image/png");
- await upload("local-photo.png","image/png",photo);await review.getByText("Learned Alias",{exact:true}).first().waitFor();assert.equal(await review.getByLabel("OCR pack quantity",{exact:true}).first().inputValue(),"24");assert.ok(await review.getByText("Ignored Line",{exact:true}).count());
- await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await review.screenshot({path:`${output}/photo-mobile.png`});await page.setViewportSize({width:1440,height:1100});
- const scanned=await PDFDocument.create(),image=await scanned.embedPng(photo);for(let i=0;i<2;i++)scanned.addPage([1000,400]).drawImage(image,{x:0,y:100,width:1000,height:200});await upload("local-scanned.pdf","application/pdf",await scanned.save());assert.ok(await review.getByText(/Page 2, line/).count());
+ await upload("local-photo.png","image/png",photo);await review.getByText("Learned Alias",{exact:true}).first().waitFor();assert.equal(await review.getByLabel("OCR pack quantity",{exact:true}).first().inputValue(),"24");assert.ok(await review.getByRole("navigation",{name:"Invoice review lines"}).getByText(/· Ignored/).count());
+ await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await review.getByLabel("OCR pack quantity",{exact:true}).fill("25");
+ await page.getByRole("button",{name:/View invoice · p/}).click();
+ await page.getByRole("region",{name:"Invoice source document",exact:true}).getByRole("img").waitFor();
+ await page.screenshot({path:`${output}/source-mobile.png`,fullPage:true});
+ await page.getByRole("button",{name:"Review lines",exact:true}).click();
+ assert.equal(await review.getByLabel("OCR pack quantity",{exact:true}).inputValue(),"25");
+ await review.screenshot({path:`${output}/photo-mobile.png`});await page.setViewportSize({width:1440,height:1100});
+ const scanned=await PDFDocument.create(),image=await scanned.embedPng(photo);for(let i=0;i<2;i++)scanned.addPage([1000,400]).drawImage(image,{x:0,y:100,width:1000,height:200});await upload("local-scanned.pdf","application/pdf",await scanned.save());await review.getByRole("button",{name:/Review line 2-/}).first().click();
+ assert.equal(await page.getByLabel("Invoice source page",{exact:true}).inputValue(),"2");
+ await page.getByRole("region",{name:"Invoice source document",exact:true}).getByLabel(/local-scanned.pdf, page 2/).waitFor();
+ const emptyUpload=await page.request.post(`${base}/api/invoices`,{multipart:{file:{name:"manual-entry.png",mimeType:"image/png",buffer:Buffer.concat([photo,Buffer.from("manual-entry")])}}});
+ assert.equal(emptyUpload.status(),200);const emptyId=(await emptyUpload.json()).id;
+ const emptyDraft=await page.request.post(`${base}/api/invoice-ocr`,{data:{action:"draft",documentId:emptyId,expectedRevision:0,pages:[{page:1,text:"INVOICE TOTAL $100.00"}]}});assert.equal(emptyDraft.status(),200);
+ await page.goto(`${base}/invoices?id=${emptyId}`);await review.getByRole("heading",{name:"No lines recognized",exact:true}).waitFor();
+ assert.equal(await review.getByRole("button",{name:"Approve invoice price",exact:true}).count(),0);
+ await page.getByText(/Saved lines & food spending ·/).click();await page.getByRole("button",{name:"Add invoice line",exact:true}).waitFor();
  const unchanged=JSON.stringify({batches:await db.productionBatch.findMany(),transfers:await db.stockTransfer.findMany(),packets:await db.prepPacketSnapshot.findMany()});assert.equal(unchanged,before);
  assert.equal((await db.invoicePurchaseLine.findMany({where:{invoiceDocumentId:documentId}})).length,2);assert.deepEqual(external,[]);assert.deepEqual(errors,[]);
  console.log(`Digital PDF text, real photo/scanned-PDF Tesseract, learned/ignored aliases, quick-create, reviewed live menu/guide cascade, response-loss dedupe, mobile and no external requests passed. Review: ${output}`);
