@@ -9,6 +9,7 @@ export const reviewRowSchema = z.object({
   key: id, purchaseId: z.string().uuid(), itemId: id,
   rawCode: z.string().max(100).nullable(), rawDescription: z.string().max(500),
   quantity: numeric, unit: z.string().max(40), unitPrice: numeric, extendedPrice: numeric,
+  totalMode: z.enum(["calculated", "entered"]).optional(),
   packQty: numeric, packUnit: z.string().max(40), ignored: z.boolean(), remember: z.boolean(),
   newName: z.string().max(500), newUnit: z.string().max(40), manual: z.boolean().optional(),
 });
