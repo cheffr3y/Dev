@@ -30,6 +30,33 @@ try{
  await review.getByLabel("OCR invoice date",{exact:true}).fill("2026-11-02");await review.getByLabel("OCR venue",{exact:true}).selectOption("clipboard-venue");
  const picker=row.getByRole("combobox",{name:"Override OCR ingredient",exact:true});await picker.fill(item.name);await row.getByRole("option").filter({hasText:item.name}).click();await row.getByRole("status").filter({hasText:"Mapping remembered."}).waitFor();
  assert.equal((await db.item.findUniqueOrThrow({where:{id:item.id}})).unitCost,2);assert.match(await row.innerText(),/New unit cost: \$3.00 \/ lb/);
+ async function draftSaved() { await page.getByLabel("Invoice draft status",{exact:true}).getByText("Draft saved to your account",{exact:true}).waitFor(); }
+ await row.getByLabel("OCR pack quantity",{exact:true}).fill("31");
+ await review.getByRole("button",{name:/Review line 1-4:/}).click();await row.getByLabel("OCR pack quantity",{exact:true}).fill("28");
+ await page.getByLabel("Invoice source zoom",{exact:true}).selectOption("200");
+ await review.getByLabel("I verified this invoice is in USD",{exact:true}).check();await row.getByLabel("I verified this line and conversion against the invoice",{exact:true}).check();
+ await draftSaved();await page.reload();await review.getByText("Your draft was restored. Verify the invoice currency and each line before approval.",{exact:true}).waitFor();
+ assert.equal(await row.getByLabel("OCR pack quantity",{exact:true}).inputValue(),"28");
+ assert.equal(await page.getByLabel("Invoice source zoom",{exact:true}).inputValue(),"200");
+ assert.equal(await review.getByLabel("I verified this invoice is in USD",{exact:true}).isChecked(),false);
+ assert.equal(await row.getByLabel("I verified this line and conversion against the invoice",{exact:true}).isChecked(),false);
+ await row.getByLabel("OCR pack quantity",{exact:true}).fill("20");await review.getByRole("button",{name:/Review line 1-1:/}).click();
+ assert.equal(await row.getByLabel("OCR pack quantity",{exact:true}).inputValue(),"31");await row.getByLabel("OCR pack quantity",{exact:true}).fill("20");await draftSaved();
+ // A second device saves first; this tab must keep its visible edits without replacing them on the server.
+ const secondContext=await browser.newContext({storageState:await context.storageState(),viewport:{width:1440,height:1100}}),second=await secondContext.newPage();
+ await second.goto(page.url());const secondReview=second.getByRole("region",{name:"Local invoice OCR review",exact:true});await secondReview.getByRole("form").getByLabel("OCR pack quantity",{exact:true}).fill("19");
+ await second.getByLabel("Invoice draft status",{exact:true}).getByText("Draft saved to your account",{exact:true}).waitFor();
+ await row.getByLabel("OCR pack quantity",{exact:true}).fill("18");await page.getByLabel("Invoice draft status",{exact:true}).getByRole("alert").filter({hasText:"another tab"}).waitFor();
+ assert.equal(await row.getByLabel("OCR pack quantity",{exact:true}).inputValue(),"18");
+ page.once("dialog",dialog=>dialog.accept());await page.getByRole("button",{name:"Reload saved draft",exact:true}).click();await review.getByText(/Your draft was restored/).waitFor();
+ assert.equal(await row.getByLabel("OCR pack quantity",{exact:true}).inputValue(),"19");await secondContext.close();
+ // Lose a save response after commit, then edit again. The old snapshot must replay before the new one.
+ await page.route("**/api/invoice-review-draft",async route=>{await route.fetch();await route.abort();},{times:1});
+ await row.getByLabel("OCR pack quantity",{exact:true}).fill("21");await page.getByRole("button",{name:"Retry draft save",exact:true}).waitFor();
+ await row.getByLabel("OCR pack quantity",{exact:true}).fill("22");await draftSaved();await page.reload();await review.getByText(/Your draft was restored/).waitFor();
+ assert.equal(await row.getByLabel("OCR pack quantity",{exact:true}).inputValue(),"22");
+ assert.equal(await db.invoicePurchaseLine.count({where:{invoiceDocumentId:documentId}}),0);assert.equal((await db.item.findUniqueOrThrow({where:{id:item.id}})).unitCost,2);
+ await row.getByLabel("OCR pack quantity",{exact:true}).fill("20");
  await review.getByLabel("I verified this invoice is in USD",{exact:true}).check();await row.getByLabel("I verified this line and conversion against the invoice",{exact:true}).check();
  await page.route("**/api/invoice-purchases",async route=>{await route.fetch();await route.abort();},{times:1});await row.getByRole("button",{name:"Approve invoice price",exact:true}).click();await row.getByRole("status").filter({hasText:"Connection interrupted"}).waitFor();
  await row.getByRole("button",{name:"Approve invoice price",exact:true}).click();await review.getByText(/1 approved/).waitFor();
@@ -38,7 +65,10 @@ try{
  assert.match(await row.innerText(),/New unit cost: \$4.00 \/ lb.*\+33.3% vs current catalog/);
  await review.getByRole("button",{name:/Review line 1-2:/}).click();
  const fee=review.getByRole("form").filter({has:page.getByLabel("OCR description",{exact:true}).and(page.locator('input[value="FUEL SURCHARGE"]'))});await fee.getByLabel("Ignore line (non-food / fee)",{exact:true}).check();await fee.getByRole("button",{name:"Save ignored line",exact:true}).click();await review.getByText(/1 ignored/).waitFor();
- const spice=review.getByRole("form").filter({has:page.getByLabel("OCR raw code",{exact:true}).and(page.locator('input[value="90123"]'))});await spice.getByText("+ Quick-Create Ingredient",{exact:true}).click();await spice.getByLabel("New OCR ingredient name",{exact:true}).fill("Local Invoice New Spice");await spice.getByLabel("New OCR ingredient cost unit",{exact:true}).fill("lb");await spice.getByRole("button",{name:"Create ingredient for this row",exact:true}).click();await spice.getByRole("status").filter({hasText:"Ingredient created"}).waitFor();
+ const spice=review.getByRole("form").filter({has:page.getByLabel("OCR raw code",{exact:true}).and(page.locator('input[value="90123"]'))});await spice.getByText("+ Quick-Create Ingredient",{exact:true}).click();await spice.getByLabel("New OCR ingredient name",{exact:true}).fill("Local Invoice New Spice");await spice.getByLabel("New OCR ingredient cost unit",{exact:true}).fill("lb");await page.route("**/api/invoice-ocr",async route=>{await route.fetch();await route.abort();},{times:1});await spice.getByRole("button",{name:"Create ingredient for this row",exact:true}).click();await spice.getByRole("status").waitFor();
+ await draftSaved();await page.reload();await review.getByText(/Your draft was restored/).waitFor();await spice.getByText("+ Quick-Create Ingredient",{exact:true}).click();
+ await spice.getByRole("button",{name:"Create ingredient for this row",exact:true}).click();await spice.getByRole("status").filter({hasText:"Ingredient created"}).waitFor();
+ assert.equal(await db.item.count({where:{name:"Local Invoice New Spice"}}),1);await review.getByLabel("I verified this invoice is in USD",{exact:true}).check();
  assert.equal((await db.item.findFirstOrThrow({where:{name:"Local Invoice New Spice"}})).unitCost,0);
  await spice.getByLabel("OCR pack quantity",{exact:true}).fill("10");await spice.getByLabel("OCR pack unit",{exact:true}).fill("lb");await spice.getByLabel("I verified this line and conversion against the invoice",{exact:true}).check();await spice.getByRole("button",{name:"Approve invoice price",exact:true}).click();await review.getByText(/2 approved/).waitFor();
  await review.screenshot({path:`${output}/digital-review.png`});await page.reload();await review.getByText(/2 approved/).waitFor();assert.equal(await review.getByRole("form").count(),1);
@@ -64,5 +94,5 @@ try{
  await page.getByText(/Saved lines & food spending ·/).click();await page.getByRole("button",{name:"Add invoice line",exact:true}).waitFor();
  const unchanged=JSON.stringify({batches:await db.productionBatch.findMany(),transfers:await db.stockTransfer.findMany(),packets:await db.prepPacketSnapshot.findMany()});assert.equal(unchanged,before);
  assert.equal((await db.invoicePurchaseLine.findMany({where:{invoiceDocumentId:documentId}})).length,2);assert.deepEqual(external,[]);assert.deepEqual(errors,[]);
- console.log(`Digital PDF text, real photo/scanned-PDF Tesseract, learned/ignored aliases, quick-create, reviewed live menu/guide cascade, response-loss dedupe, mobile and no external requests passed. Review: ${output}`);
+ console.log(`Account draft recovery, cleared verification, concurrent-device conflicts, lost-save replay, retry-safe ingredient creation, real local OCR, reviewed price cascade, mobile and no external requests passed. Review: ${output}`);
 }catch(error){if(page)await page.screenshot({path:`${output}/failure.png`,fullPage:true});throw error;}finally{await browser.close();await db.$disconnect();}

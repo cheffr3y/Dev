@@ -12,7 +12,15 @@ The candidate list shows the unresolved lines. Select one to review its ingredie
 
 Confirm USD and the individual line's conversion before **Confirm line & next**. A successful approval advances to the next unresolved line; a failed request leaves the row available for retry. **Saved lines & food spending** contains manual entry, corrections, paid-price history and the explicit calendar total confirmation. A stale calendar-total warning stays visible outside that section.
 
-This first interface slice retains drafts while the workspace is mounted, including switching between rows or phone views. Unapproved edits and source-view settings are not yet persisted across a full reload or leaving the invoice; the existing browser unload warning remains. Durable draft recovery and the remaining Phase 1 work are tracked in the [Soigné roadmap](soigne-roadmap.md).
+Working drafts now save to the signed-in manager/admin account, separately for each invoice. **Saving draft…**, **Draft saved to your account**, and explicit retry/error states show whether the latest work reached the server. Saved recognized-row edits, supplier/date/venue, the selected line, source page/zoom and phone source/review choice return after reload or a later visit. In-progress manual line entries and corrections also recover, including checked/unchecked food and mapping choices. Draft saving never approves purchases or updates catalog prices, invoice totals, packets or accounting.
+
+Recovery reloads current matches/prices and the authoritative approved/ignored rows. Currency and individual-line verification must be confirmed again. Approved rows do not return to the candidate list. Drafts retain purchase and matching-operation identifiers before submission, so response-loss retries cannot duplicate purchases or quick-created ingredients.
+
+A different tab/device editing the same account's draft produces a conflict rather than overwriting it. Current entries remain visible; **Reload saved draft** uses the newer account draft. Other users have their own working copies. If a saved invoice line changed after a manual draft began, its original revision and entered fields are retained; **Use latest saved line** deliberately replaces those entries with the current record before a further correction.
+
+Save failures offer **Retry draft save** and retain the local entries. Pending saves warn before a browser unload; navigation also attempts to flush the current draft. Only a server-confirmed save is durable—an unsaved edit cannot be guaranteed if the browser/process is killed. OCR and upload processing still require the page to remain open. The separate food-total/calendar confirmation form and exact scroll/caret positions are not included in this recovery slice.
+
+Deployment requires additive migration `20261103000000_invoice_review_drafts`, applied by the normal migration-first start command. This adds personal working copies with user/invoice ownership and revisions; no existing invoice, purchase or accounting values are rewritten. See the [Soigné roadmap](soigne-roadmap.md) for the remaining Phase 1 work.
 
 ## Accounting codes and exports
 

@@ -74,6 +74,7 @@ enum StockAdjustmentType {
 }
 
 model User {
+  invoiceReviewDrafts InvoiceReviewDraft[]
   preservationBatches PreservationBatch[]
   preservationAudits PreservationAudit[]
   smokeRuns SmokeRun[]
@@ -1234,6 +1235,7 @@ model VendorQuote {
 
 // Readable compact document archive, independent of AI extraction and pricing.
 model InvoiceDocument {
+  reviewDrafts InvoiceReviewDraft[]
   ocrDecisions InvoiceOcrDecision[]
   ocrDraft Json?
   ocrRevision Int @default(0)
@@ -1502,4 +1504,16 @@ model SmokeAudit {
 
   @@unique([entityType, entityId, revision])
   @@index([entityId, createdAt])
+}
+
+// Personal working copies. These never approve invoice lines or change prices.
+model InvoiceReviewDraft {
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documentId String
+  document InvoiceDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  payload Json
+  revision Int @default(1)
+  updatedAt DateTime @updatedAt
+  @@id([userId, documentId])
 }
