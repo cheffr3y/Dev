@@ -80,7 +80,7 @@ export default async function ItemsPage({
         action={canEdit ? <LinkButton href="/items/cleanup">Review duplicates ({groups.length})</LinkButton> : undefined}
       />
 
-      {canEdit && <Link href="/vendors/invoices" className="mb-4 inline-block text-sm text-blue-600 underline">Invoice documents</Link>}
+      {canEdit && <Link href="/invoices" className="mb-4 inline-block text-sm text-blue-600 underline">Invoices</Link>}
       {flag === "integrity" && <p className="mb-4 text-sm text-amber-700">Showing in-use ingredients with missing costs, units, or vendors. <Link href="/items" className="underline">View all ingredients</Link></p>}
 
       {/* Price coverage — theo food cost is only as honest as these prices. */}

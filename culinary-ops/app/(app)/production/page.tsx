@@ -34,10 +34,10 @@ export default async function ProductionPage({ searchParams }: { searchParams: P
         <div className="flex flex-wrap items-end gap-3">
           <label className="text-sm">From<input className="block rounded border p-2" aria-label="Planning from" name="from" type="date" defaultValue={from} required /></label>
           <label className="text-sm">Through<input className="block rounded border p-2" aria-label="Planning through" name="to" type="date" defaultValue={to} required /></label>
-          <label className="text-sm"><input type="checkbox" name="undated" value="1" defaultChecked={undated} /> Include undated To-Go plans</label>
+          <label className="text-sm"><input type="checkbox" name="undated" value="1" defaultChecked={undated} /> Include undated Home Meal Replacement plans</label>
           <button className="rounded border px-3 py-2 text-sm" name="view" value="events">Show event work</button>
         </div>
-        <p className="text-xs text-zinc-500">Up to 31 days · Active banquets/festivals and unfinished prep. To-Go dates are order cutoffs, not service dates; undated plans are included only when selected above. Prep deadlines require confirmation on each event sheet.</p>
+        <p className="text-xs text-zinc-500">Up to 31 days · Active banquets/festivals and unfinished prep. Home Meal Replacement dates are order cutoffs, not service dates; undated plans are included only when selected above. Prep deadlines require confirmation on each event sheet.</p>
         {canPurchase && data && <fieldset className="space-y-2"><legend className="mb-2 font-semibold">Select events / jobs for purchasing</legend>
           {data.sources.map(source => <label key={source.id} className="flex items-start gap-2 rounded border border-hairline p-2 text-sm"><input className="mt-1" type="checkbox" name="source" value={source.id} defaultChecked={requested.has(source.id)} />
             <span>{source.name} <span className="text-xs text-zinc-500">· {source.kind} · {source.date ?? "Undated"} · {source.destination}</span></span></label>)}

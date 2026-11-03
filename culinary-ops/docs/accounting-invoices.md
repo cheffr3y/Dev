@@ -1,5 +1,7 @@
 # Accounting codes and stored invoice documents
 
+Invoices have their own navigation entry at `/invoices` for managers and admins. Previous `/vendors/invoices` links forward there with the selected invoice and filters preserved. Vendors remain the supplier directory.
+
 ## Accounting codes and exports
 
 GL means general ledger: expense accounts supplied by accounting. Venue codes identify cost centers. **Accounting → Configure accounting codes** lets admins assign category/labor accounts and venue codes. Unknown codes start blank and remain visibly unmapped in exports.

@@ -44,7 +44,7 @@ export default async function VendorsPage() {
     <div>
       <PageHeader title="Vendors" subtitle="Suppliers and their contact details." />
 
-      {canEdit && <Link href="/vendors/invoices" className="mb-4 inline-block text-sm text-blue-600 underline">Store invoice photos / PDFs</Link>}
+      {canEdit && <Link href="/invoices" className="mb-4 inline-block text-sm text-blue-600 underline">Open invoices</Link>}
       {canEdit && (
         <details className="mb-5">
           <summary className="cursor-pointer text-sm font-medium text-blue-600">+ Add vendor</summary>

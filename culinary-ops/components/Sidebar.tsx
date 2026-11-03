@@ -13,7 +13,7 @@ type IconKey =
   | "prep"
   | "production"
   | "reports"
-  | "inventory"
+  | "invoice"
   | "orders"
   | "catalog"
   | "vendors"
@@ -42,17 +42,16 @@ const SECTIONS: NavSection[] = [
       { href: "/banquets", label: "Banquets", icon: "events" },
       { href: "/events", label: "Events", icon: "events" },
       { href: "/festivals", label: "Festivals", icon: "events" },
-      { href: "/to-go", label: "To-Go", icon: "orders" },
+      { href: "/to-go", label: "Home Meal Replacement", icon: "orders" },
     ],
   },
   {
     heading: "Purchasing & Accounting",
     items: [
       { href: "/operating-calendar", label: "Monthly Tracker", icon: "reports", managerOnly: true },
+      { href: "/invoices", label: "Invoices", icon: "invoice", managerOnly: true },
       { href: "/items", label: "Items", icon: "catalog" },
       { href: "/vendors", label: "Vendors", icon: "vendors" },
-      { href: "/order-guides", label: "Order Guides", icon: "orders" },
-      { href: "/inventory", label: "Inventory", icon: "inventory" },
       { href: "/prep-orders/report", label: "Prep Reports", icon: "reports", adminOnly: true },
     ],
   },
@@ -111,11 +110,10 @@ function Icon({ name }: { name: IconKey }) {
         <path d="M4 3h16v18H4zM8 16v-4M12 16V8M16 16v-6" />
       </>
     ),
-    inventory: (
+    invoice: (
       <>
-        <path d="M3 7l9-4 9 4-9 4-9-4Z" />
-        <path d="M3 7v10l9 4 9-4V7" />
-        <path d="M12 11v10" />
+        <path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Z" />
+        <path d="M9 7h6M9 11h6M9 15h3" />
       </>
     ),
     orders: (

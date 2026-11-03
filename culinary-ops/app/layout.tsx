@@ -58,7 +58,7 @@ const atelierMono = localFont({
 
 export const metadata: Metadata = {
   title: "Mise — Culinary Operations",
-  description: "Recipes, inventory, order guides, and event planning across every venue.",
+  description: "Recipes, invoice pricing, menu planning, and culinary operations across every venue.",
 };
 
 // viewport-fit=cover lets the mobile nav drawer pad itself with

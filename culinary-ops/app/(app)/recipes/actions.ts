@@ -245,7 +245,7 @@ export async function deleteRecipe(formData: FormData) {
   if (banquetItems) blockers.push(plural(banquetItems, "banquet"));
   if (rolloutItems) blockers.push(plural(rolloutItems, "menu rollout"));
   if (festivalItems) blockers.push(plural(festivalItems, "festival"));
-  if (toGoItems) blockers.push(plural(toGoItems, "holiday / to-go item"));
+  if (toGoItems) blockers.push(plural(toGoItems, "Home Meal Replacement item"));
   if (usedIn) blockers.push(`${plural(usedIn, "recipe")} (as a sub-recipe)`);
 
   if (blockers.length > 0) {

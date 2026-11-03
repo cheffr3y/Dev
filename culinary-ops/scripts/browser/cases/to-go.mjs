@@ -59,7 +59,7 @@ async function pickRecipe(form, recipe) {
 }
 try {
   manager = await login("manager");
-  await manager.getByRole("link", { name: "To-Go", exact: true }).click();
+  await manager.getByRole("link", { name: "Home Meal Replacement", exact: true }).click();
   const header = manager.locator("#new-to-go-rollup");
   assert.equal(await header.getByLabel("Start with", { exact: true }).inputValue(), "blank");
   await header.getByLabel("Name", { exact: true }).fill("November HMR Proposal");

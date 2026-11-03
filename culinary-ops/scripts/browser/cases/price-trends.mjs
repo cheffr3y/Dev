@@ -49,11 +49,11 @@ try {
   await page.emulateMedia({ media: "print" });
   assert.equal(await page.getByText("Paid price +50.0%", { exact: true }).isVisible(), false);
   await page.emulateMedia({ media: "screen" });
-  await page.goto(`${base}/vendors/invoices?id=trend-current`);
+  await page.goto(`${base}/invoices?id=trend-current`);
   await page.getByText("Price +50.0%", { exact: true }).waitFor();
-  await page.goto(`${base}/vendors/invoices?id=trend-old`);
+  await page.goto(`${base}/invoices?id=trend-old`);
   assert.equal(await page.getByText(/^Price \+/).count(), 0, "Future purchases must not become a prior price");
-  await page.goto(`${base}/vendors/invoices?id=trend-credit`);
+  await page.goto(`${base}/invoices?id=trend-credit`);
   assert.equal(await page.getByText(/^Price \+/).count(), 0, "Credits are not price jumps");
   assert.equal((await db.item.findUniqueOrThrow({ where: { id: item.id } })).unitCost, originalCost);
   assert.deepEqual(errors, []);
