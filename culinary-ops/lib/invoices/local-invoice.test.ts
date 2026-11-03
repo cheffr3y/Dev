@@ -5,6 +5,21 @@ import { matchInvoiceLine, invoiceTokens, normalizeInvoiceText, type InvoiceAlia
 import { preprocessInvoicePixels } from "./invoice-preprocess";
 const items=[{id:"garlic",name:"Garlic, Peeled",unit:"lb",unitCost:2},{id:"cream",name:"Heavy Cream",unit:"qt",unitCost:3}];
 const alias=(patch:Partial<InvoiceAlias>={}):InvoiceAlias=>({id:"alias",vendorId:"vendor",rawCode:"77412",normalizedOcrText:normalizeInvoiceText("SYS IMP PEELED GRLC 4/5LB"),tokens:invoiceTokens("SYS IMP PEELED GRLC 4/5LB"),itemId:"garlic",isIgnored:false,defaultUnit:"cs",defaultPackQty:20,defaultPackUnit:"lb",hitCount:3,...patch});
+test("legal footers merged with subtotals are not invoice items; real products and fees remain reviewable",()=>{
+ const text=[
+  "The perishable agriculture commodities listed on this invoice SUBTOTAL $712.78",
+  "The perishable agricultural commodities listed on this invoice are sold subject to trust. TOTAL $712.78",
+  "PERISHABLE AGRICULTURAL COMMODITIES ACT 1930",
+  "SUB TOTAL 712.78", "TOTAL: $712.78", "AMOUNT DUE 712.78", "BALANCE DUE: 712.78",
+  "77412 GARLIC 2 CS 60.00 120.00", "12345 TOTAL CEREAL 1 CS 25.00 25.00",
+  "TOTAL CEREAL 1 CS 25.00 25.00", "TOTAL 1 CS 25.00 25.00", "FUEL SURCHARGE 5.00", "LINEN BAG 2.00",
+  "90123 UNREADABLE SPICE",
+ ].join("\n");
+ const draft=parseInvoiceText([{page:1,text}]);
+ assert.deepEqual(draft.lines.map(row=>row.rawDescription),["GARLIC","TOTAL CEREAL","TOTAL CEREAL","TOTAL","FUEL SURCHARGE","LINEN BAG","UNREADABLE SPICE"]);
+ assert.equal(draft.lines[0].lineNumber,8);
+ assert.equal(draft.pages[0].text,text,"Original recognized text remains available");
+});
 test("noisy invoice columns recover numeric swaps using line math and retain raw provenance and pack contents",()=>{
  const draft=parseInvoiceText([{page:1,text:"INVOICE TOTAL 25.00\nPAGE 1 OF 1\n77412 SYS IMP PEELED GRLC 4/5LB 2 CS S12.50 25.OO\n77500 HVY CRM 1 CS 10.00 50.00\nFUEL SURCHARGE 5.00"}]);
  assert.equal(draft.lines.length,3);const row=draft.lines[0];assert.equal(row.rawCode,"77412");assert.equal(row.quantity,2);assert.equal(row.unitPrice,12.5);assert.equal(row.extendedPrice,25);assert.equal(row.packQty,20);assert.equal(row.packUnit,"lb");assert.match(row.warnings.join(" "),/corrected/);assert.match(row.rawText,/S12.50/);assert.match(draft.lines[1].warnings.join(" "),/does not match/);

@@ -11,6 +11,7 @@ import type { OperatingSaveResult } from "../accounting/operating-calendar-data"
 import { cascadeInvoiceCost } from "./invoice-cascade";
 import { rememberInvoiceAlias } from "./invoice-learning-data";
 import { localInvoiceDraftSchema } from "./invoice-parser";
+import { isRemovedInvoiceDecision } from "./invoice-decisions";
 const json = (value: unknown) => JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
 async function learnPurchase(tx: Prisma.TransactionClient, userId: string, lineId: string, revision: number, edit: ReturnType<typeof invoicePurchaseSchema.parse>) {
   if (!edit.remember || edit.voided || !edit.itemId) return;
@@ -38,6 +39,10 @@ export async function saveInvoicePurchase(db: PrismaClient, userId: string, inpu
         if (!doc || !vendor || !venue || edit.itemId && !item) return { ok: false, error: "Choose an existing invoice, supplier, venue, and ingredient." };
         if (doc.vendorId && doc.vendorId !== edit.vendorId) return { ok: false, error: "Use the supplier recorded on this invoice." };
         if(edit.ocrLineKey && !localInvoiceDraftSchema.safeParse(doc.ocrDraft).data?.lines.some(line=>line.key===edit.ocrLineKey)) return {ok:false,error:"Recognition row not found. Reload this invoice."};
+        if(edit.ocrLineKey && !current) {
+          const decision=await tx.invoiceOcrDecision.findUnique({where:{documentId_lineKey:{documentId:doc.id,lineKey:edit.ocrLineKey}}});
+          if(isRemovedInvoiceDecision(decision?.facts))return {ok:false,error:"This row was removed. Restore it before approving it."};
+        }
         if(edit.ocrLineKey && !current && await tx.invoicePurchaseLine.findFirst({where:{invoiceDocumentId:doc.id,ocrLineKey:edit.ocrLineKey}})) return {ok:false,conflict:true,error:"This OCR row was already approved. Edit its saved line below."};
         if (current && current.invoiceDocumentId !== doc.id) return { ok: false, error: "An invoice line cannot be moved to another document." };
         const otherVendor = await tx.invoicePurchaseLine.findFirst({ where: { invoiceDocumentId: doc.id, voided: false, vendorId: { not: edit.vendorId }, id: { not: edit.id } }, select: { id: true } });
