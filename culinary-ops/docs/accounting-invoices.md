@@ -2,6 +2,18 @@
 
 Invoices have their own navigation entry at `/invoices` for managers and admins. Previous `/vendors/invoices` links forward there with the selected invoice and filters preserved. Vendors remain the supplier directory.
 
+## Focused invoice workspace
+
+Use **Add invoices · PDF or photo**, select the document and any supplier/reference, then choose **Scan & review**. The capture form collapses while an invoice is selected; queued uploads, progress and recovery actions remain visible.
+
+On desktop, the source stays beside review. Use page controls and zoom to inspect the stored document; choosing a candidate line selects its source page. On a phone, the sticky **Review lines / View invoice** controls switch surfaces while retaining the current row and entered values.
+
+The candidate list shows the unresolved lines. Select one to review its ingredient and pack. **Edit recognized text & amounts** opens the source fields when a correction is needed; arithmetic exceptions open those fields automatically. Invoice details are shared across the review and collapse after supplier, date and venue are supplied. Changing that metadata clears row verification.
+
+Confirm USD and the individual line's conversion before **Confirm line & next**. A successful approval advances to the next unresolved line; a failed request leaves the row available for retry. **Saved lines & food spending** contains manual entry, corrections, paid-price history and the explicit calendar total confirmation. A stale calendar-total warning stays visible outside that section.
+
+This first interface slice retains drafts while the workspace is mounted, including switching between rows or phone views. Unapproved edits and source-view settings are not yet persisted across a full reload or leaving the invoice; the existing browser unload warning remains. Durable draft recovery and the remaining Phase 1 work are tracked in the [Soigné roadmap](soigne-roadmap.md).
+
 ## Accounting codes and exports
 
 GL means general ledger: expense accounts supplied by accounting. Venue codes identify cost centers. **Accounting → Configure accounting codes** lets admins assign category/labor accounts and venue codes. Unknown codes start blank and remain visibly unmapped in exports.
@@ -12,7 +24,7 @@ The usual CSV retains its sectioned report format. **Transfer CSV (single table)
 
 ## Invoice storage
 
-Managers/admins open **Vendors → Store invoice photos / PDFs** or **Ingredients → Invoice documents**. Drop/upload a PDF/JPEG/PNG/WebP under 8 MB, or take a phone photo. Add an optional vendor, invoice number and notes before storing. PDFs may contain 1–20 pages. Encrypted or malformed documents are rejected.
+Managers/admins open **Invoices** or follow an invoice link from an ingredient. Drop/upload a PDF/JPEG/PNG/WebP under 8 MB, or take a phone photo. Add an optional vendor, invoice number and notes before storing. PDFs may contain 1–20 pages. Encrypted or malformed documents are rejected.
 
 Photos are automatically oriented, limited to a 2600-pixel longest edge without upscaling, and compressed at JPEG quality 82. PNG sources use a smaller PNG result when that better preserves sharp text. Unnecessary photo metadata is stripped. PDF copies target 150 dpi with a 2600-pixel page limit, retain each page's dimensions/order, and use JPEG compression. If the raster copy would be larger, the original PDF is retained, preserving the sharp text of compact digital documents. Savings depend on the source; compression cannot repair an already blurry photo.
 

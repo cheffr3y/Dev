@@ -45,6 +45,15 @@ Phase 1 starts first. Phase 2's data and migration design can be investigated al
 
 ## Phase 1 — Make invoices the standard
 
+### First interface slice — November 3, 2026
+
+Implemented on `codex/soigne-invoice-workspace`: source/review columns with PDF page rendering and zoom; a phone source/review switch; compact candidate navigation; one expanded row; progress and automatic next-row selection after approval; collapsed capture with visible upload queues; progressive source-field editing; and a separate saved-lines/accounting section with always-visible stale-total warnings.
+
+This is partial Phase 1 delivery. Drafts remain in memory during the mounted review, including row/phone-view switching. Durable draft recovery, richer inbox states, completion impact links, comprehensive review-time measurements and Phase 2 conversions remain pending. The implementation uses the existing approval and calculation services.
+
+Validation: the production webpack build (including TypeScript), full lint and all 245 unit tests pass with an official Node 24 runtime. Disposable database integration checks and the local-invoices, accounting-invoices, operating-calendar and URL-state browser suites pass. Browser coverage includes real local photo/scanned-PDF recognition, source-page selection and zoom, focused review/next-row progression, lost-response approval recovery, phone source/review switching with retained field values, empty-recognition manual fallback, upload queue recovery, unchanged production history, calendar confirmation, role restrictions and navigation history. Desktop/mobile screenshots were reviewed. Phase 1 workflow-timing targets have not yet been measured.
+
+
 ### One workspace, from capture to completion
 
 - [ ] Make the invoice list an inbox with clear states: processing, needs review, partly reviewed, complete, and needs recovery. Keep failed recognition separate from a failed upload; a stored document can still be reviewed manually.
