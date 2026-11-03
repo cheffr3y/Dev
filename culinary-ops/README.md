@@ -33,7 +33,7 @@ Recipe details include a read-only dependency tree, recursive scaling totals, co
 
 The monthly operating tracker and manual invoice line matching are implemented as Chunk 10; see the [calendar and invoice-price guide](docs/operating-calendar.md).
 
-For the next round of architectural cleanup, interface improvements, and culinary ERP features, see the [agent implementation roadmap](docs/agent-execution-roadmap.md) and its [execution progress](docs/agent-execution-progress.md). The implementation roadmap is a planning reference; validate its assumptions against current code before starting each task.
+For the next round of product work, see the [Soigné roadmap](docs/soigne-roadmap.md): a refined invoice workspace, ingredient-specific conversions and consistent yield costing, followed by interface improvements across the app and selected hospitality features. Earlier architectural work and its evidence remain in the [agent implementation roadmap](docs/agent-execution-roadmap.md) and [execution progress](docs/agent-execution-progress.md). Roadmaps are planning references; validate their assumptions against current code before starting each task.
 
 Chunk 9 implements a **smoking program** with multi-product runs, thermometer photo records, cook checkpoints, actual yields, searchable history, and printable QR smoke sheets. Browser-local OCR drafts screenshot summary fields for confirmation, with manual entry available and no paid AI service required. Paid AI fallback and graph reconstruction are deferred. See [the smoking-program roadmap](ROADMAP.md#chunk-9-smoking-program--batch-logs--thermometer-photos).
 

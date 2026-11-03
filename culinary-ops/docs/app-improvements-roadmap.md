@@ -2,6 +2,8 @@
 
 Confirmed with the chef November 2, 2026. Previous roadmap section 3.3 remains deferred.
 
+The [Soigné roadmap](soigne-roadmap.md) consolidates the next implementation sequence: a refined invoice workspace, ingredient-specific conversions and yield costing, consistent interfaces across the app, and later product extensions. This document retains the earlier decisions and completed navigation work; later proposals are not marked implemented.
+
 ## 1. Navigation first — complete on `codex/app-navigation-cleanup`
 
 - Make Invoices a first-class destination at `/invoices`, with a sidebar entry for managers/admins and forwarding from old vendor invoice links.
