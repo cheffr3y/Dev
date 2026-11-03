@@ -4,6 +4,7 @@ import {
   copyFile,
   writeFile,
   readFile,
+  cp,
 } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
@@ -41,6 +42,10 @@ for (const file of await readdir("node_modules/tesseract.js-core")) {
       join("node_modules/tesseract.js-core", file),
       `${destination}/core/${file}`,
     ]);
+}
+copies.push(["node_modules/pdfjs-dist/build/pdf.worker.min.mjs", `${destination}/pdf.worker.min.mjs`]);
+for (const folder of ["standard_fonts", "wasm"]) {
+  await cp(`node_modules/pdfjs-dist/${folder}`, `${destination}/pdf/${folder}`, { recursive: true });
 }
 const assets = [];
 for (const [from, to] of copies) {

@@ -1,11 +1,12 @@
 "use client";
 import { useEffect, useEffectEvent, useState } from "react";
-import { DocumentQueue, uploadDocument, type UploadState } from "@/lib/uploads/document-queue";
+import { DocumentQueue, uploadDocument, type UploadState, type UploadTask } from "@/lib/uploads/document-queue";
+import type { UploadProgress } from "@/lib/uploads/progress-response";
 
-export function useDocumentQueue(endpoint: string, onReady: (id: string) => void) {
+export function useDocumentQueue(endpoint: string, onReady: (id: string) => void, afterStored?: (id: string, task: UploadTask, report: (progress: UploadProgress) => void) => Promise<void>) {
   const [entries, setEntries] = useState<UploadState[]>([]);
   const [queue] = useState(() => new DocumentQueue(
-    (task, report) => uploadDocument(endpoint, task, report),
+    async (task, report) => { const id=await uploadDocument(endpoint,task,report);if(afterStored)await afterStored(id,task,report);return id; },
     entry => setEntries(previous => previous.some(item => item.key === entry.key) ? previous.map(item => item.key === entry.key ? entry : item) : [...previous, entry]),
   ));
   useEffect(() => () => queue.stop(), [queue]);

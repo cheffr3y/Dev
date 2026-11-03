@@ -37,7 +37,7 @@ test("daily entries enforce current roles, preserve cents, deduplicate retries a
   await assert.rejects(prisma.operatingDay.update({ where: { id: saved.id }, data: { laborCents: 0 } }), /preserve original facts/);
   await assert.rejects(prisma.operatingDay.delete({ where: { id: saved.id } }), /retained/);
 });
-test("invoice matches preserve source prices, calculate paid unit costs, and cannot mutate catalog or ledger", async () => {
+test("invoice matches cascade normalized catalog prices while preserving ledger facts", async () => {
   const before = { price: (await prisma.item.findUniqueOrThrow({ where: { id: "operating-item" } })).unitCost, batches: await prisma.productionBatch.count(), transfers: await prisma.stockTransfer.count() };
   assert.equal((await saveInvoicePurchase(prisma, staff, purchase())).ok, false);
   assert.equal((await saveInvoicePurchase(prisma, admin, purchase({ packUnit: "quart" }))).ok, false);
@@ -45,7 +45,7 @@ test("invoice matches preserve source prices, calculate paid unit costs, and can
   assert.ok(results.every(result => result.ok));
   const row = await prisma.invoicePurchaseLine.findUniqueOrThrow({ where: { id: "operating-line" } });
   assert.equal(row.normalizedUnitCost, 3); assert.equal(row.normalizedUnit, "lb"); assert.equal((await prisma.invoiceDocument.findUniqueOrThrow({ where: { id: docId } })).lineRevision, 1);
-  assert.equal((await prisma.item.findUniqueOrThrow({ where: { id: "operating-item" } })).unitCost, before.price);
+  assert.equal((await prisma.item.findUniqueOrThrow({ where: { id: "operating-item" } })).unitCost, 3);
   assert.equal(await prisma.productionBatch.count(), before.batches); assert.equal(await prisma.stockTransfer.count(), before.transfers);
   const preview = await ingredientReplacementPreview(prisma, "operating-item", "operating-replacement");
   assert.ok(preview.otherUses > 0);

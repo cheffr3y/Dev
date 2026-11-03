@@ -1,0 +1,77 @@
+import test,{before,after} from "node:test";
+import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
+import { prisma } from "../db/prisma";
+import { saveInvoicePurchase } from "./invoice-purchases-data";
+import { mutateLocalInvoice,loadLocalInvoice } from "./invoice-ocr-data";
+import { buildCostMap } from "../recipes/costing";
+import { buildMenuRollout } from "../menus/menu-rollout";
+import { buildMenuMarginMatrix } from "../menus/menu-margin";
+import { loadMenuRollout } from "../menus/menu-rollout-data";
+import { loadPriceTrends } from "./price-trends-data";
+import { parseInvoiceText } from "./invoice-parser";
+const url=new URL(process.env.DATABASE_URL??"postgresql://invalid");if(process.env.PREP_DISPOSABLE_DB!=="1"||url.hostname!=="127.0.0.1"||url.pathname!=="/prep_workflow_test")throw new Error("Disposable database required.");
+let admin:string,staff:string,itemId:string,recipeId:string,menuId:string;
+const vendorId="local-ocr-vendor",venueId="local-ocr-venue",docId="local-ocr-doc";
+const pages=[{page:1,text:"77412 SYS IMP PEELED GRLC 4/5LB 2 CS 60.00 120.00\nFUEL SURCHARGE 5.00"}];
+const line=(patch:Record<string,unknown>={})=>({id:randomUUID(),invoiceDocumentId:docId,revision:null,itemId,vendorId,venueId,invoiceDate:"2026-10-15",description:"Reviewed garlic",quantity:2,purchaseUnit:"cs",packQty:20,packUnit:"lb",amount:"120",countsAsFood:true,...patch});
+before(async()=>{
+ admin=(await prisma.user.findFirstOrThrow({where:{role:"ADMIN"}})).id;staff=(await prisma.user.findFirstOrThrow({where:{role:"STAFF"}})).id;
+ await prisma.vendor.create({data:{id:vendorId,name:"Local OCR supplier"}});await prisma.venue.create({data:{id:venueId,name:"Local OCR kitchen",code:"LOCR"}});
+ itemId=(await prisma.item.create({data:{name:"Garlic, Peeled",unit:"oz",unitCost:.1,vendorId}})).id;
+ recipeId=(await prisma.recipe.create({data:{name:"OCR garlic base",prodCode:"OCB",yieldQty:2,yieldUnit:"qt",items:{create:{itemId,quantity:1,unit:"lb"}}}})).id;
+ const dish=await prisma.recipe.create({data:{name:"OCR garlic dish",prodCode:"OCD",yieldQty:4,yieldUnit:"each",menuPrice:10,components:{create:{childId:recipeId,quantity:1,unit:"qt"}}}});
+ menuId=(await prisma.menuRollout.create({data:{name:"OCR margin menu",status:"ACTIVE",items:{create:{recipeId:dish.id}}}})).id;
+ await prisma.invoiceDocument.create({data:{id:docId,fileHash:docId,filename:"local.pdf",mime:"application/pdf",data:new Uint8Array([1]),preview:new Uint8Array([1]),originalBytes:1,storedBytes:1,pages:1,createdBy:admin,vendorId}});
+});after(()=>prisma.$disconnect());
+test("reviewed invoice normalization cascades through nested recipes and active menus with immutable price provenance",async()=>{
+ const data=line(), before=await prisma.productionBatch.count();assert.ok((await saveInvoicePurchase(prisma,admin,data)).ok);
+ assert.equal((await prisma.item.findUniqueOrThrow({where:{id:itemId}})).unitCost,.1875);
+ const recipes=await prisma.recipe.findMany({include:{items:{include:{item:true}},components:true}});assert.equal(buildCostMap(recipes).get(recipeId),3);
+ const [menu,rows]=await loadMenuRollout(menuId);const plan=buildMenuRollout(menu!,rows);assert.equal(plan.rows[0].portionCost,.375);assert.equal(buildMenuMarginMatrix(plan,rows,28).rows[0].fcp,3.75);
+ assert.equal(await prisma.invoicePriceChange.count({where:{itemId}}),1);await saveInvoicePurchase(prisma,admin,data);assert.equal(await prisma.invoicePriceChange.count({where:{itemId}}),1);
+ const trend=await loadPriceTrends([{id:itemId,unit:"oz",vendorId}]);assert.deepEqual(trend[itemId]?.prices,[.1875]);assert.equal(await prisma.productionBatch.count(),before);
+ const change=await prisma.invoicePriceChange.findFirstOrThrow({where:{itemId}});assert.equal(change.invoiceDocumentId,docId);await assert.rejects(prisma.invoicePriceChange.delete({where:{id:change.id}}),/retained/);
+ await saveInvoicePurchase(prisma,admin,{...data,remember:true});await saveInvoicePurchase(prisma,admin,{...data,remember:true});
+ assert.equal((await prisma.invoiceItemAlias.findFirstOrThrow({where:{vendorId,normalizedOcrText:"REVIEWED GARLIC"}})).hitCount,1,"An unchanged manual save can learn once without replaying catalog writes");
+ assert.equal(await prisma.invoicePriceChange.count({where:{itemId}}),1);
+});
+test("older invoices, credits and ignored purchases cannot replace a newer positive food price; void restores eligible source",async()=>{
+ const newer=line({invoiceDate:"2026-10-20",amount:"160"});assert.ok((await saveInvoicePurchase(prisma,admin,newer)).ok);
+ for(const patch of [{invoiceDate:"2026-10-10",amount:"80"},{invoiceDate:"2026-10-25",amount:"-20"},{invoiceDate:"2026-10-26",amount:"500",countsAsFood:false}])assert.ok((await saveInvoicePurchase(prisma,admin,line(patch))).ok);
+ assert.equal((await prisma.item.findUniqueOrThrow({where:{id:itemId}})).unitCost,.25);
+ assert.ok((await saveInvoicePurchase(prisma,admin,{...newer,revision:0,voided:true,reason:"Duplicate invoice correction"})).ok);
+ assert.equal((await prisma.item.findUniqueOrThrow({where:{id:itemId}})).unitCost,.1875);
+ assert.equal((await saveInvoicePurchase(prisma,staff,line())).ok,false);
+});
+test("learned overrides, ignored memory and quick creation are durable and idempotent, without approving costs",async()=>{
+ await mutateLocalInvoice(admin,{action:"draft",documentId:docId,expectedRevision:0,pages});const draft=parseInvoiceText(pages),key=draft.lines[0].key;
+ const command={action:"remember",operationId:randomUUID(),documentId:docId,vendorId,key,rawCode:"77412",description:draft.lines[0].rawDescription,itemId,isIgnored:false};
+ await Promise.all([mutateLocalInvoice(admin,command),mutateLocalInvoice(admin,command)]);
+ const alias=await prisma.invoiceItemAlias.findFirstOrThrow({where:{vendorId,rawCode:"77412"}});assert.equal(alias.hitCount,1);
+ const state=await loadLocalInvoice(docId);assert.equal(state.matches[0].confidence,"learned-exact");assert.equal(state.matches[0].itemId,itemId);
+ const ignore={...command,action:"ignore",operationId:randomUUID(),key:draft.lines[1].key,rawCode:null,description:"FUEL SURCHARGE",itemId:null,isIgnored:true,remember:true};await mutateLocalInvoice(admin,ignore);
+ assert.equal((await loadLocalInvoice(docId)).matches[1].isIgnored,true);
+ const create={...command,action:"createItem",operationId:randomUUID(),name:"New Local Ingredient",unit:"lb",remember:true};await mutateLocalInvoice(admin,create);await mutateLocalInvoice(admin,create);
+ assert.equal(await prisma.item.count({where:{name:"New Local Ingredient"}}),1);assert.equal((await prisma.item.findFirstOrThrow({where:{name:"New Local Ingredient"}})).unitCost,0);
+ await assert.rejects(mutateLocalInvoice(staff,command),/Manager/);
+ assert.equal((await prisma.item.findUniqueOrThrow({where:{id:itemId}})).unitCost,.1875);
+});
+test("OCR approval requires USD/review and cannot approve the same recognized line twice",async()=>{
+ const key=parseInvoiceText(pages).lines[0].key, data=line({ocrLineKey:key,rawCode:"77412",remember:true});
+ assert.equal((await saveInvoicePurchase(prisma,admin,data)).ok,false);
+ const approved={...data,ocrReviewed:true,confirmedUsd:true};await Promise.all([saveInvoicePurchase(prisma,admin,approved),saveInvoicePurchase(prisma,admin,approved)]);
+ assert.equal(await prisma.invoicePurchaseLine.count({where:{invoiceDocumentId:docId,ocrLineKey:key}}),1);
+ assert.equal((await saveInvoicePurchase(prisma,admin,{...approved,id:randomUUID()})).ok,false);
+});
+test("concurrent invoices select the newest source, and reversals preserve later manual catalog corrections",async()=>{
+ const isolated=await prisma.item.create({data:{name:"Cascade concurrency",unit:"lb",unitCost:2}});
+ const older=line({itemId:isolated.id,invoiceDate:"2026-10-27",amount:"160"}),newer=line({itemId:isolated.id,invoiceDate:"2026-10-28",amount:"200"});
+ const results=await Promise.all([saveInvoicePurchase(prisma,admin,older),saveInvoicePurchase(prisma,admin,newer)]);assert.ok(results.every(row=>row.ok));
+ assert.equal((await prisma.item.findUniqueOrThrow({where:{id:isolated.id}})).unitCost,5);
+ await saveInvoicePurchase(prisma,admin,{...newer,revision:0,voided:true,reason:"Wrong invoice"});assert.equal((await prisma.item.findUniqueOrThrow({where:{id:isolated.id}})).unitCost,4);
+ await prisma.item.update({where:{id:isolated.id},data:{unitCost:7}});
+ await saveInvoicePurchase(prisma,admin,{...older,revision:0,voided:true,reason:"Wrong prior purchase"});assert.equal((await prisma.item.findUniqueOrThrow({where:{id:isolated.id}})).unitCost,7);
+ const replacement=line({itemId:isolated.id,invoiceDate:"2026-10-29",amount:"320"});await saveInvoicePurchase(prisma,admin,replacement);assert.equal((await prisma.item.findUniqueOrThrow({where:{id:isolated.id}})).unitCost,8);
+ await saveInvoicePurchase(prisma,admin,{...replacement,revision:0,voided:true,reason:"Replacement cancelled"});assert.equal((await prisma.item.findUniqueOrThrow({where:{id:isolated.id}})).unitCost,7);
+});

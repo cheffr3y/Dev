@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { patchUrl } from "@/lib/workspace/url-state";
 import { useDocumentQueue } from "@/components/useDocumentQueue";
@@ -7,8 +7,19 @@ import { DocumentQueueStatus } from "@/components/DocumentQueueStatus";
 import { Button, Card, Input, Select, Textarea } from "@/components/ui";
 export function InvoiceArchive({vendors}:{vendors:{id:string;name:string}[]}) {
  const router=useRouter(),[error,setError]=useState("");
+ const activeOcr=useRef<AbortController|null>(null);
+ useEffect(()=>()=>activeOcr.current?.abort(),[]);
  const { entries, enqueue, retry } = useDocumentQueue("/api/invoices", id => {
   router.push(patchUrl(window.location.href, { id })); router.refresh();
+ },async(id,task,report)=>{
+  const controller=new AbortController();activeOcr.current=controller;
+  try {
+   const existing=await fetch(`/api/invoice-ocr?id=${encodeURIComponent(id)}`,{signal:controller.signal}).then(response=>response.json());
+   if(existing.draft)return;
+   const {recognizeInvoice}=await import("@/lib/invoices/invoice-ocr-browser");
+   const draft=await recognizeInvoice(task.file,(message,fraction)=>report({message,...(fraction===undefined?{}:{completed:Math.round(fraction*100),total:100})}),controller.signal);
+   const response=await fetch("/api/invoice-ocr",{method:"POST",headers:{"Content-Type":"application/json"},signal:controller.signal,body:JSON.stringify({action:"draft",documentId:id,expectedRevision:existing.revision??0,pages:draft.pages})});const result=await response.json();if(!result.ok)throw new Error(result.error);
+  }catch(error){if(!controller.signal.aborted)setError(`${task.file.name} is stored. Local OCR: ${error instanceof Error?error.message:"unavailable"}. Open it to retry or enter lines manually.`);}
  });
  function save(form: HTMLFormElement, selected?: File[]) {
   const data = new FormData(form);

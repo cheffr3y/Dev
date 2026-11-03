@@ -1,36 +1,9 @@
-import type { Worker } from "tesseract.js";
+import { recognizeLocalCanvas } from "../ocr/browser";
 import { parseSmokeOcr } from "./ocr-parser";
-export async function recognizeSmokePhoto(
-  file: Blob,
-  progress: (message: string, fraction?: number) => void,
-  signal: AbortSignal,
-) {
-  let worker: Worker | undefined;
-  let stopped = false;
-  let rejectStopped: (reason: Error) => void = () => {};
-  const interrupted = new Promise<never>((_, reject) => {
-    rejectStopped = reject;
-  });
-  void interrupted.catch(() => {});
-  function stop(reason: Error) {
-    stopped = true;
-    rejectStopped(reason);
-    void worker?.terminate();
-  }
-  const cancel = () => stop(new DOMException("Cancelled", "AbortError"));
-  const timer = setTimeout(
-    () => stop(new Error("Recognition timed out. Enter manually or retry.")),
-    120000,
-  );
-  signal.addEventListener("abort", cancel);
-  const wait = <T>(task: Promise<T>) => Promise.race([task, interrupted]);
+export async function recognizeSmokePhoto(file: Blob, progress: (message: string, fraction?: number) => void, signal: AbortSignal) {
   const started = performance.now();
-  try {
-    if (!file.type.startsWith("image/"))
-      throw new Error(
-        "Local OCR accepts still images. Enter PDF and handwritten records manually.",
-      );
-    progress("Preparing image on this device…");
+  if (!file.type.startsWith("image/")) throw new Error("Local OCR accepts still images. Enter PDF and handwritten records manually.");
+  progress("Preparing image on this device…");
     const bitmap = await createImageBitmap(file);
     try {
       if (bitmap.width * bitmap.height > 60_000_000)
@@ -66,53 +39,8 @@ export async function recognizeSmokePhoto(
         values[i] = values[i + 1] = values[i + 2] = value;
       }
       context.putImageData(pixels, 0, 0);
-      if (signal.aborted) throw new DOMException("Cancelled", "AbortError");
-      const { createWorker, PSM } = await import("tesseract.js");
-      const ready = await wait<Worker>(
-        createWorker("eng", 1, {
-          workerPath: "/ocr/worker.min.js",
-          corePath: "/ocr/core",
-          langPath: "/ocr/lang",
-          workerBlobURL: false,
-          errorHandler: () =>
-            stop(
-              new Error(
-                "The local recognition engine could not read this image.",
-              ),
-            ),
-          logger: (message) =>
-            !stopped &&
-            progress(
-              `${message.status}${message.progress ? ` ${Math.round(message.progress * 100)}%` : ""}`,
-              message.status === "recognizing text" ? message.progress : undefined,
-            ),
-        }).then((created) => {
-          if (stopped) void created.terminate();
-          return created;
-        }),
-      );
-      if (signal.aborted) throw new DOMException("Cancelled", "AbortError");
-      worker = ready;
-      await wait(
-        ready.setParameters({ tessedit_pageseg_mode: PSM.SPARSE_TEXT }),
-      );
-      const result = await wait(ready.recognize(canvas, {}, { blocks: true }));
-      if (signal.aborted) throw new DOMException("Cancelled", "AbortError");
-      const lines =
-        result.data.blocks?.flatMap((block) =>
-          block.paragraphs.flatMap((paragraph) => paragraph.lines),
-        ) ?? [];
-      progress("Preparing recognition draft for review…");
-      return {
-        draft: parseSmokeOcr(lines),
-        seconds: (performance.now() - started) / 1000,
-      };
-    } finally {
-      bitmap.close();
-    }
-  } finally {
-    clearTimeout(timer);
-    signal.removeEventListener("abort", cancel);
-    if (worker) await worker.terminate().catch(() => {});
-  }
+      const result = await recognizeLocalCanvas(canvas, "sparse", progress, signal);
+      const lines = result.blocks?.flatMap(block => block.paragraphs.flatMap(paragraph => paragraph.lines)) ?? [];
+      return { draft: parseSmokeOcr(lines), seconds: (performance.now() - started) / 1000 };
+    } finally { bitmap.close(); }
 }

@@ -17,7 +17,7 @@ async function store(request: Request, report: ReportProgress) {
   const user = await actor(); if (!user) return Response.json({error:"Manager access required."},{status:403});
   const origin = request.headers.get("origin");
   if (origin) { try {const host=new URL(origin).host;if(origin!==new URL(request.url).origin && host!==request.headers.get("host") && host!==request.headers.get("x-forwarded-host")) throw new Error();} catch {return Response.json({error:"Invalid request origin."},{status:403});} }
-  if (!request.headers.get("content-type")?.startsWith("multipart/form-data")) return Response.json({error:"AI invoice extraction and automatic price updates are deferred. Upload a document to store it."},{status:410});
+  if (!request.headers.get("content-type")?.startsWith("multipart/form-data")) return Response.json({error:"Upload a document for storage and local OCR. Paid AI extraction is disabled."},{status:410});
   if (Number(request.headers.get("content-length")) > INVOICE_UPLOAD_LIMIT + 65536) return Response.json({error:"Choose an invoice under 8 MB."},{status:413});
   try {
     const form=await request.formData(),file=form.get("file");

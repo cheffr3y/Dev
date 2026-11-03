@@ -155,6 +155,7 @@ model Venue {
 }
 
 model Vendor {
+  invoiceAliases InvoiceItemAlias[]
   id        String   @id @default(cuid())
   name      String
   contact   String?
@@ -173,6 +174,8 @@ model Vendor {
 
 // Master catalog item / ingredient / purchasable product.
 model Item {
+  invoiceAliases InvoiceItemAlias[]
+  invoiceCostState InvoiceCatalogState?
   purchaseLines InvoicePurchaseLine[]
   id             String    @id @default(cuid())
   name           String
@@ -1231,6 +1234,9 @@ model VendorQuote {
 
 // Readable compact document archive, independent of AI extraction and pricing.
 model InvoiceDocument {
+  ocrDecisions InvoiceOcrDecision[]
+  ocrDraft Json?
+  ocrRevision Int @default(0)
   foodExpense OperatingFoodExpense?
   purchaseLines InvoicePurchaseLine[]
   lineRevision Int @default(0)
@@ -1301,6 +1307,10 @@ model OperatingFoodExpense {
 
 // Reviewed invoice observations, separate from the current catalog price.
 model InvoicePurchaseLine {
+  billedUnitPrice Float?
+  ocrLineKey String?
+  rawCode String?
+  @@unique([invoiceDocumentId, ocrLineKey])
   id String @id
   invoiceDocumentId String
   invoiceDocument InvoiceDocument @relation(fields: [invoiceDocumentId], references: [id], onDelete: Restrict)
@@ -1329,6 +1339,72 @@ model InvoicePurchaseLine {
   updatedAt DateTime @updatedAt
   @@index([itemId, invoiceDate])
   @@index([invoiceDocumentId])
+}
+
+model InvoiceItemAlias {
+  id String @id @default(cuid())
+  vendorId String?
+  vendor Vendor? @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  rawCode String?
+  normalizedOcrText String
+  tokens String[]
+  itemId String?
+  item Item? @relation(fields: [itemId], references: [id], onDelete: SetNull)
+  isIgnored Boolean @default(false)
+  defaultUnit String?
+  defaultPackQty Float?
+  defaultPackUnit String?
+  hitCount Int @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([vendorId, rawCode])
+  @@unique([vendorId, normalizedOcrText])
+}
+
+model InvoiceCatalogState {
+  itemId String @id
+  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  baselineCost Float
+  baselineUnit String
+  lineId String?
+  lineRevision Int?
+  appliedCost Float
+  appliedUnit String
+  updatedAt DateTime @updatedAt
+}
+
+// Immutable catalog-change provenance; line IDs remain meaningful after voids.
+model InvoicePriceChange {
+  id String @id @default(cuid())
+  itemId String
+  invoiceDocumentId String
+  triggerLineId String
+  sourceLineId String?
+  beforeCost Float
+  afterCost Float
+  unit String
+  actorId String
+  reason String
+  createdAt DateTime @default(now())
+  @@index([itemId, createdAt])
+}
+
+model InvoiceLearningEvent {
+  id String @id
+  actorId String
+  requestHash String
+  result Json
+  createdAt DateTime @default(now())
+}
+model InvoiceOcrDecision {
+  id String @id @default(cuid())
+  documentId String
+  document InvoiceDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  lineKey String
+  facts Json
+  actorId String
+  createdAt DateTime @default(now())
+  @@unique([documentId, lineKey])
 }
 
 model SmokeRun {
