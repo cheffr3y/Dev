@@ -1,3 +1,4 @@
+import { recipePurchaseQuantity } from "../ingredients/measurements";
 import {
   buildCostMap, componentBatchFactor, componentLineCost, costPerYieldUnit,
   costUnitLabel, foodCostPct, lineCost, type RecipeCostNode, type RecipeItemWithCost,
@@ -18,7 +19,7 @@ export function recipeCostSheet(recipe: CostSheetRecipe, recipes: RecipeCostNode
     return {
       id: line.id, name: line.item.name, quantity: line.quantity * scale, unit: line.unit,
       unitCost: line.item.unitCost, costUnit: costUnitLabel(line.item.unit),
-      cost: cost * scale, converted,
+      cost: cost * scale, converted, purchasedQuantity: line.item.measurementReviewedAt ? recipePurchaseQuantity(line.quantity*scale,line.unit,line.item) : null, purchasedUnit:line.item.unit,
     };
   });
   const components = recipe.components.map((line) => {
@@ -27,7 +28,7 @@ export function recipeCostSheet(recipe: CostSheetRecipe, recipes: RecipeCostNode
       id: line.id, name: line.child.name, quantity: line.quantity * scale, unit: line.unit,
       unitCost: child ? costPerYieldUnit(costMap.get(child.id) ?? 0, child.yieldQty) : null,
       costUnit: child ? costUnitLabel(child.yieldUnit) : "unit",
-      cost: componentLineCost(line, costMap, catalog) * scale,
+      cost: componentLineCost(line, costMap, catalog) * scale, purchasedQuantity:null, purchasedUnit:null,
       converted: child ? componentBatchFactor(line.quantity, line.unit, child.yieldQty, child.yieldUnit).converted : false,
     };
   });

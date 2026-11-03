@@ -1,3 +1,4 @@
+import { measurementSelect } from "../ingredients/measurements";
 import { prisma } from "../db/prisma";
 import { buildForecast } from "../menus/festival";
 import { buildToGoRollup } from "../menus/to-go-rollup";
@@ -14,7 +15,7 @@ export async function loadProductionPlanning(from: string, to: string, includeUn
     prisma.prepOrder.findMany({ where: { forDate: { gte: start, lt: end }, lines: { some: { status: { in: ["REQUESTED", "PRINTED", "IN_PROGRESS"] } } } }, include: { destinationVenue: true, lines: { where: { status: { in: ["REQUESTED", "PRINTED", "IN_PROGRESS"] } }, include: { recipe: { select: { name: true } }, destinationVenue: true } } }, take: 1001 }),
     prisma.toGoRollup.findMany({ where: { status: { in: ["DRAFT", "REVIEW", "ACTIVE"] }, OR: [{ orderCutoff: { gte: from, lte: to } }, ...(includeUndated ? [{ orderCutoff: null }, { orderCutoff: "" }] : [])] }, include: { venue: true, items: { orderBy: { sortOrder: "asc" } } }, take: 1001 }),
     prisma.recipe.findMany({ include: menuRecipeInclude, orderBy: { id: "asc" } }),
-    prisma.item.findMany({ select: { id: true, name: true, category: true, unit: true, yieldFactor: true, packQty: true, packUnit: true, packSize: true, sku: true, vendor: { select: { name: true } } } }),
+    prisma.item.findMany({ select: { id: true, name: true, category: true, unit: true, ...measurementSelect, packSize: true, sku: true, vendor: { select: { name: true } } } }),
   ]);
   if ([banquets, festivals, prep, retail].some(rows => rows.length > 1000)) throw new Error("Too many source jobs. Narrow the date range.");
   const shoppingRecipes: ShoppingRecipeNode[] = recipes.map(r => ({ id: r.id, yieldQty: r.yieldQty, yieldUnit: r.yieldUnit,
@@ -51,7 +52,7 @@ export async function loadProductionPlanning(from: string, to: string, includeUn
       const date = p.forDate.toISOString().slice(0, 10);
       sources.push({ id: `prep:${p.id}:${suffix}`, kind: "Daily Prep", name: `Prep ${p.destinationVenue?.name || "Request"} · ${p.id.slice(-6)} · ${suffix}`, date, dateLabel: "Production date", time: "Prep deadline to confirm", destination: [...new Set(lines.map(l => l.destinationVenue.name))].join(" / "), venueId: p.destinationVenueId, notes: p.notes || "", href: `/prep-orders/${p.id}`, packetHref: frozen && suffix === "printed" ? `/prep-orders/${frozen.order.id}/packet` : `/prep-orders?date=${date}`,
         ...(suffix === "printed" && frozen ? { recipes: frozen.shoppingRecipes.map(r => ({ id: r.id, yieldQty: r.yieldQty, yieldUnit: r.yieldUnit,
-          items: r.items.map(i => ({ itemId: i.item.id, name: i.item.name, category: i.item.category, quantity: i.quantity, unit: i.unit })), components: r.components })) } : {}),
+          items: r.items.map(i => ({ itemId: i.item.id, name: i.item.name, category: i.item.category, quantity: i.quantity, unit: i.unit, ...(i.item.unit ? {measure:{...i.item}} : {legacyFrozen:true}) })), components: r.components })) } : {}),
         lines: lines.map(l => { const saved = frozenLines.get(l.id); return { id: l.id, recipeId: l.recipeId, name: saved?.recipe.name || l.recipe.name, quantity: saved?.requestedQty ?? l.requestedQty, unit: saved?.requestedUnit || l.requestedUnit, notes: [l.notes, l.lot ? `Lot ${l.lot}` : "Not yet printed"].filter(Boolean).join(" · "), warning: l.lot && !saved ? "Frozen request packet is unavailable; open the original daily packet. Excluded from purchasing totals." : undefined }; }) });
     }
   }

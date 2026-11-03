@@ -1,3 +1,4 @@
+import { recipePurchaseQuantity } from "./measurements";
 import { createHash } from "node:crypto";
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { packageBasisConflict, planIngredientReplacement } from "./ingredient-cleanup";
@@ -15,6 +16,8 @@ export async function ingredientReplacementPreview(tx: Prisma.TransactionClient,
   if (!source || !target) throw new Error("An ingredient no longer exists. Refresh the ingredient list.");
   const plan = planIngredientReplacement(source.unit, target.unit, lines.filter(line => line.itemId === sourceId), lines.filter(line => line.itemId === targetId));
   if (packageBasisConflict(source, target)) for (const line of plan) line.error = "Package measurements differ. Review the recipe quantities before replacing cases, bags or other package units.";
+  if((source.measurementReviewedAt || target.measurementReviewedAt) && source.usableCosting!==target.usableCosting) for(const line of plan)line.error="Recipe quantity bases differ. Review purchased versus usable quantities before replacing this ingredient.";
+  if(target.measurementReviewedAt)for(const line of plan)if(recipePurchaseQuantity(line.quantity,line.unit,target)==null)line.error="The target ingredient cannot interpret this recipe quantity. Review its measurements first.";
   const otherUses = source._count.inventoryItems + source._count.orderGuideLines + source._count.festivalOnHand + source._count.purchaseLines;
   const fingerprint = createHash("sha256").update(JSON.stringify({ source, target, lines })).digest("hex");
   return { source, target, plan, otherUses, fingerprint };

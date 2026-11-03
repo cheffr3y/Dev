@@ -24,7 +24,8 @@ export async function updateItem(formData: FormData) {
   const data = parseIngredientForm(formData);
   // Stamp priceUpdatedAt only when the cost actually moved, so freshness
   // reflects the last re-quote — not an unrelated edit to name/vendor/etc.
-  const existing = await prisma.item.findUnique({ where: { id }, select: { unitCost: true, unit: true } });
+  const existing = await prisma.item.findUnique({ where: { id }, select: { unitCost: true, unit: true, measurementReviewedAt:true, packQty:true, packUnit:true, yieldFactor:true } });
+  if(existing?.measurementReviewedAt && ["unit","packQty","packUnit","yieldFactor"].some(key=>existing[key as keyof typeof existing]!==data[key as keyof typeof data])) throw new Error("Use Purchase → prep → recipe to preview and apply measurement changes.");
   const priceChanged = existing != null && (existing.unitCost !== data.unitCost || existing.unit !== data.unit);
   await prisma.item.update({
     where: { id },

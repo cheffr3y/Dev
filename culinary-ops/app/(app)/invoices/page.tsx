@@ -5,38 +5,86 @@ import Link from "next/link";
 import Form from "next/form";
 import { requirePrepUser } from "@/lib/auth/prep-session";
 import { prisma } from "@/lib/db/prisma";
-import { PageHeader, Card } from "@/components/ui";
+import { Badge, PageHeader, Card } from "@/components/ui";
 import { InvoiceArchive } from "./InvoiceArchive";
 import { reviewDraftSchema } from "@/lib/invoices/review-draft";
 import { InvoiceDraftProvider } from "@/components/InvoiceDraftProvider";
 import { InvoiceWorkspace } from "@/components/InvoiceWorkspace";
-const size=(bytes:number)=>bytes<1024*1024?`${Math.round(bytes/1024)} KB`:`${(bytes/1024/1024).toFixed(2)} MB`;
-export default async function InvoicePage({ searchParams }: { searchParams: Promise<{ id?: string; q?: string; vendor?: string; sort?: string }> }) {
- const user = await requirePrepUser("MANAGER");const {id, q = "", vendor = "", sort = "newest"}=await searchParams;
- const [documents,vendors,selected]=await Promise.all([
-  prisma.invoiceDocument.findMany({where:{...(vendor ? { vendorId: vendor } : {}), ...(q ? { OR: [{ filename: { contains: q, mode: "insensitive" } }, { invoiceNumber: { contains: q, mode: "insensitive" } }, { vendor: { name: { contains: q, mode: "insensitive" } } }] } : {})},orderBy:{createdAt:sort === "oldest" ? "asc" : "desc"},take:50,select:{id:true,filename:true,storedBytes:true,pages:true,createdAt:true,vendor:{select:{name:true}},invoiceNumber:true}}),
-  prisma.vendor.findMany({select:{id:true,name:true},orderBy:{name:"asc"}}),
-  id?prisma.invoiceDocument.findUnique({where:{id},select:{id:true,filename:true,mime:true,originalBytes:true,storedBytes:true,pages:true,createdAt:true,vendor:{select:{name:true}},vendorId:true,lineRevision:true,ocrRevision:true,invoiceNumber:true,notes:true}}):null,
- ]);
- const review = selected ? await Promise.all([
-  loadInvoicePurchases(selected.id), getVenues({ includeLegacy: true }),
-  prisma.item.findMany({ select: { id: true, name: true, unit: true, unitCost: true, sku: true, gcode: true, vendor: { select: { name: true } } }, orderBy: { name: "asc" } }),
-  prisma.operatingFoodExpense.findUnique({ where: { invoiceDocumentId: selected.id } }),
- ]) : null;
- const savedDraft = selected ? await prisma.invoiceReviewDraft.findUnique({where:{userId_documentId:{userId:user.id,documentId:selected.id}}}) : null;
- const parsedDraft = reviewDraftSchema.safeParse(savedDraft?.payload);
- const initialDraft = savedDraft && parsedDraft.success ? {revision:savedDraft.revision,payload:parsedDraft.data} : null;
- const spending = review?.[3];
- const expense = spending ? { ...spending, invoiceDate: spending.invoiceDate.toISOString().slice(0, 10), invoiceReviewPending: spending.invoiceLineRevision != null && spending.invoiceLineRevision !== selected?.lineRevision } : null;
- return <div><PageHeader title="Invoices" subtitle="Store invoices, match ingredients, track paid prices, and review food spending." /><div className="mb-5"><InvoiceArchive vendors={vendors} compact={!!selected}/></div>
- {id&&!selected&&<p role="alert" className="mt-4 text-sm">Invoice not found.</p>}
- {selected && review && <InvoiceDraftProvider key={selected.id} documentId={selected.id} sourceRevision={selected.ocrRevision} initial={initialDraft}><InvoiceWorkspace document={selected}><InvoicePurchaseReview invoice={{ id: selected.id, filename: selected.filename, vendor: selected.vendor?.name ?? null, invoiceNumber: selected.invoiceNumber }} vendorId={selected.vendorId} lineRevision={selected.lineRevision} lines={review[0]} expense={expense} vendors={vendors} venues={review[1].map(v => ({ id: v.id, name: v.name }))} items={review[2].map(item => ({ id: item.id, label: item.name, unit: item.unit, unitCost: item.unitCost, meta: `${item.unit} · ${item.vendor?.name ?? "No catalog vendor"}`, keywords: [item.sku, item.gcode, item.vendor?.name].filter(Boolean).join(" ") }))} /></InvoiceWorkspace></InvoiceDraftProvider>}
- <Form action="/invoices" className="mt-5 flex flex-wrap gap-3">
- {id && <input type="hidden" name="id" value={id} />}
- <label>Search invoices<input key={q} className="ml-2 rounded border p-2" name="q" defaultValue={q} /></label>
- <label>Vendor<select aria-label="Filter invoice vendor" key={vendor} className="ml-2 rounded border p-2" name="vendor" defaultValue={vendor}><option value="">All vendors</option>{vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}</select></label>
- <label>Order<select aria-label="Invoice order" key={sort} className="ml-2 rounded border p-2" name="sort" defaultValue={sort}><option value="newest">Newest first</option><option value="oldest">Oldest first</option></select></label>
- <button className="rounded border px-3" type="submit">Filter invoices</button>
- </Form>
- <Card className="mt-5 overflow-x-auto p-4"><h2 className="mb-3 font-semibold">Recent invoices</h2><table className="w-full text-left text-sm"><thead><tr><th>Document</th><th>Vendor / reference</th><th>Pages</th><th>Stored size</th></tr></thead><tbody>{documents.map(document=><tr key={document.id}><td className="max-w-64 break-words"><Link className="text-blue-600 underline" href={`/invoices?${new URLSearchParams({ ...(q ? {q} : {}), ...(vendor ? {vendor} : {}), sort, id: document.id })}`}>{document.filename}</Link></td><td>{document.vendor?.name??"Unassigned"}{document.invoiceNumber?` · ${document.invoiceNumber}`:""}</td><td>{document.pages}</td><td className="tabular-nums">{size(document.storedBytes)}</td></tr>)}</tbody></table>{!documents.length&&<p className="text-sm text-zinc-500">No invoices stored yet.</p>}</Card></div>;
+import { InvoiceCompletion, type InvoiceCompletionData } from "@/components/InvoiceCompletion";
+import { invoiceStateLabels, invoiceStates, type InvoiceState } from "@/lib/invoices/inbox";
+import { affectedRecipes } from "@/lib/ingredients/measurement-impact";
+import { measurementSelect } from "@/lib/ingredients/measurements";
+import { money } from "@/lib/recipes/costing";
+
+export default async function InvoicePage({ searchParams }: { searchParams: Promise<{ id?: string; q?: string; vendor?: string; sort?: string; state?: string; page?: string }> }) {
+  const user = await requirePrepUser("MANAGER");
+  const { id, q = "", vendor = "", sort = "newest", state = "ALL", page = "1" } = await searchParams;
+  const filter = invoiceStates.includes(state as InvoiceState) ? state as InvoiceState : null;
+  const where = { ...(vendor ? { vendorId: vendor } : {}), ...(q ? { OR: [{ filename: { contains: q, mode: "insensitive" as const } }, { invoiceNumber: { contains: q, mode: "insensitive" as const } }, { vendor: { name: { contains: q, mode: "insensitive" as const } } }] } : {}) };
+  const counts = await prisma.invoiceDocument.groupBy({ by: ["reviewState"], where, _count: true });
+  const total = counts.reduce((sum, row) => sum + (!filter || row.reviewState === filter ? row._count : 0), 0);
+  const pages = Math.max(1, Math.ceil(total / 25)), currentPage = Math.min(pages, Math.max(1, Number.isSafeInteger(Number(page)) ? Number(page) : 1));
+  const listWhere = { ...where, ...(filter ? { reviewState: filter } : {}) };
+  const order = sort === "oldest" ? "asc" as const : "desc" as const;
+  function href(patch: Record<string, string | null> = {}) {
+    const params = new URLSearchParams({ ...(q ? { q } : {}), ...(vendor ? { vendor } : {}), sort, ...(filter ? { state: filter } : {}), ...(currentPage > 1 ? { page: String(currentPage) } : {}) });
+    for (const [key, value] of Object.entries(patch)) { if (value == null) params.delete(key); else params.set(key, value); }
+    return `/invoices${params.size ? `?${params}` : ""}${patch.id ? "#invoice-review" : "#invoice-inbox"}`;
+  }
+  const [documents, vendors, selected] = await Promise.all([
+    prisma.invoiceDocument.findMany({ where: listWhere, orderBy: [{ createdAt: order }, { id: order }], take: 25, skip: (currentPage - 1) * 25,
+      select: { id: true, filename: true, vendor: { select: { name: true } }, invoiceNumber: true, reviewState: true, candidateLineCount: true, reviewedCandidateCount: true, lineRevision: true,
+        foodExpense: { select: { voided: true, amountCents: true, invoiceLineRevision: true } }, _count: { select: { purchaseLines: { where: { voided: false, countsAsFood: true } } } } } }),
+    prisma.vendor.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    id ? prisma.invoiceDocument.findUnique({ where: { id }, select: { id: true, filename: true, mime: true, pages: true, vendor: { select: { name: true } }, vendorId: true, lineRevision: true, ocrRevision: true, invoiceNumber: true, notes: true, reviewState: true } }) : null,
+  ]);
+  const review = selected ? await Promise.all([
+    loadInvoicePurchases(selected.id), getVenues({ includeLegacy: true }),
+    prisma.item.findMany({ select: { id: true, name: true, unit: true, unitCost: true, ...measurementSelect, sku: true, gcode: true, vendor: { select: { name: true } } }, orderBy: { name: "asc" } }),
+    prisma.operatingFoodExpense.findUnique({ where: { invoiceDocumentId: selected.id } }),
+    prisma.invoiceReviewDraft.findUnique({ where: { userId_documentId: { userId: user.id, documentId: selected.id } } }),
+  ]) : null;
+  const parsedDraft = reviewDraftSchema.safeParse(review?.[4]?.payload);
+  const initialDraft = review?.[4] && parsedDraft.success ? { revision: review[4].revision, payload: parsedDraft.data } : null;
+  const spending = review?.[3];
+  const expense = spending ? { ...spending, invoiceDate: spending.invoiceDate.toISOString().slice(0, 10), invoiceReviewPending: spending.invoiceLineRevision != null && spending.invoiceLineRevision !== selected?.lineRevision } : null;
+  let completion: InvoiceCompletionData | null = null;
+  if (selected && review && ["READY", "COMPLETE"].includes(selected.reviewState)) {
+    const [changes, graph, next, ignored] = await Promise.all([
+      prisma.invoicePriceChange.findMany({ where: { invoiceDocumentId: selected.id }, orderBy: [{ createdAt: "asc" }, { id: "asc" }] }),
+      prisma.recipe.findMany({ select: { id: true, name: true, items: { select: { itemId: true } }, components: { select: { childId: true } } } }),
+      prisma.invoiceDocument.findFirst({ where: { ...where, id: { not: selected.id }, reviewState: { not: "COMPLETE" } }, orderBy: [{ createdAt: order }, { id: order }], select: { id: true } }),
+      prisma.invoiceOcrDecision.count({ where: { documentId: selected.id, lineKey:{notIn:review[0].flatMap(line=>line.ocrLineKey?[line.ocrLineKey]:[])} } }),
+    ]);
+    // Price history is grouped by its captured rate unit, never comparing unlike bases.
+    const priceGroups = new Map<string, InvoiceCompletionData["changes"][number]>();
+    for (const change of changes) { const key = `${change.itemId}:${change.unit}`, previous = priceGroups.get(key); priceGroups.set(key, { id: change.itemId, name: review[2].find(item => item.id === change.itemId)?.name ?? "Archived ingredient", unit: change.unit, before: previous?.before ?? change.beforeCost, after: change.afterCost }); }
+    const changed = [...priceGroups.values()].filter(change => change.before !== change.after);
+    const active = review[0].filter(line => !line.voided), food = active.filter(line => line.countsAsFood);
+    completion = { id: selected.id, reviewState: selected.reviewState, lineRevision: selected.lineRevision, ocrRevision: selected.ocrRevision, saved: active.length, voided: review[0].length - active.length, ignored,
+      foodTotal: food.reduce((sum, line) => sum + line.amountCents, 0), accounting: !food.length ? "not_needed" : !expense || expense.voided || expense.invoiceLineRevision == null ? "unconfirmed" : expense.invoiceReviewPending ? "changed" : "current",
+      changes: changed, recipes: affectedRecipes(graph, changed.map(change => change.id)).map(recipe => ({ id: recipe.id, name: recipe.name })), nextHref: next ? href({ id: next.id, page: null, state: null }) : null, inboxHref: href() };
+  }
+  const inbox = <section id="invoice-inbox" aria-label="Invoice inbox" className="scroll-mt-20 space-y-4">
+    <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-semibold">Invoice inbox</h2><span className="text-sm text-zinc-500">{total} invoices · Page {currentPage} of {pages}</span></div>
+    <nav aria-label="Invoice status filters" className="flex flex-wrap gap-2">{[null, ...invoiceStates].map(value => <Link key={value ?? "ALL"} aria-current={value === filter ? "page" : undefined} className={`rounded-full border px-3 py-1.5 text-sm ${value === filter ? "border-primary bg-primary text-white" : "border-hairline bg-canvas"}`} href={href({ state: value, page: null })}>{value ? invoiceStateLabels[value] : "All"} · {counts.reduce((sum, row) => sum + (!value || row.reviewState === value ? row._count : 0), 0)}</Link>)}</nav>
+    <Form action="/invoices" className="flex flex-wrap items-end gap-3">
+      {id && <input type="hidden" name="id" value={id} />}{filter && <input type="hidden" name="state" value={filter} />}
+      <label className="text-sm">Search invoices<input key={q} className="ml-2 rounded border border-hairline bg-canvas p-2" name="q" defaultValue={q} /></label>
+      <label className="text-sm">Vendor<select aria-label="Filter invoice vendor" key={vendor} className="ml-2 rounded border border-hairline bg-canvas p-2" name="vendor" defaultValue={vendor}><option value="">All vendors</option>{vendors.map(value => <option key={value.id} value={value.id}>{value.name}</option>)}</select></label>
+      <label className="text-sm">Order<select aria-label="Invoice order" key={sort} className="ml-2 rounded border border-hairline bg-canvas p-2" name="sort" defaultValue={sort}><option value="newest">Newest first</option><option value="oldest">Oldest first</option></select></label><button className="rounded border border-hairline px-3 py-2 text-sm" type="submit">Filter invoices</button>
+    </Form>
+    <Card className="overflow-hidden"><table className="block w-full text-left text-sm md:table"><thead className="hidden md:table-header-group"><tr><th className="p-3">Invoice</th><th>Review</th><th>Progress</th><th>Accounting</th></tr></thead><tbody className="block md:table-row-group">{documents.map(document => <tr key={document.id} className="grid grid-cols-2 border-t border-hairline md:table-row"><td className="col-span-2 min-w-0 break-words p-3 md:max-w-64"><Link className="text-blue-600 underline" href={href({ id: document.id })}>{document.filename}</Link><p className="mt-1 text-xs text-zinc-500">{document.vendor?.name ?? "Unassigned vendor"}{document.invoiceNumber ? ` · ${document.invoiceNumber}` : ""}</p></td><td className="min-w-0 px-3 pb-3 md:p-3"><span className="mb-1 block text-xs text-zinc-500 md:hidden">Review</span><Badge color={document.reviewState === "COMPLETE" ? "green" : document.reviewState === "NEEDS_ATTENTION" ? "amber" : "blue"}>{invoiceStateLabels[document.reviewState as InvoiceState] ?? "Needs review"}</Badge></td><td className="min-w-0 px-3 pb-3 md:p-3"><span className="mb-1 block text-xs text-zinc-500 md:hidden">Progress</span>{document.candidateLineCount ? `${document.reviewedCandidateCount} / ${document.candidateLineCount} lines resolved` : "Manual review / recognition pending"}</td><td className="col-span-2 px-3 pb-3 md:p-3"><span className="mb-1 block text-xs text-zinc-500 md:hidden">Accounting</span>{document.foodExpense && !document.foodExpense.voided ? <><span className="tabular-nums">{money(document.foodExpense.amountCents / 100)}</span><span className="block text-xs text-zinc-500">{document.foodExpense.invoiceLineRevision === document.lineRevision ? "Confirmed" : "Reconfirmation needed"}</span></> : document._count.purchaseLines === 0 && ["COMPLETE", "READY"].includes(document.reviewState) ? "No food lines" : "Not confirmed"}</td></tr>)}</tbody></table>{!documents.length && <p className="p-5 text-sm text-zinc-500">No invoices match this view.</p>}</Card>
+    {pages > 1 && <nav aria-label="Invoice pages" className="flex justify-between text-sm">{currentPage > 1 ? <Link href={href({ page: String(currentPage - 1) })}>← Previous page</Link> : <span />}{currentPage < pages && <Link href={href({ page: String(currentPage + 1) })}>Next page →</Link>}</nav>}
+  </section>;
+  return <div className="space-y-5"><PageHeader title="Invoices" subtitle="Review purchases, protect ingredient costs, and keep accounting clear." action={<Link href="#invoice-upload" className="text-sm text-blue-600 underline">Add invoices →</Link>} />
+    {!selected && inbox}
+    <div id="invoice-upload"><InvoiceArchive vendors={vendors} compact={!!selected} /></div>
+    {id && !selected && <p role="alert" className="text-sm">Invoice not found.</p>}
+    {selected && review && <div id="invoice-review" className="scroll-mt-20"><InvoiceDraftProvider key={selected.id} documentId={selected.id} sourceRevision={selected.ocrRevision} initial={initialDraft}>
+      {completion && <InvoiceCompletion data={completion} />}
+      <InvoiceWorkspace document={selected}><InvoicePurchaseReview invoice={{ id: selected.id, filename: selected.filename, vendor: selected.vendor?.name ?? null, invoiceNumber: selected.invoiceNumber }} vendorId={selected.vendorId} lineRevision={selected.lineRevision} lines={review[0]} expense={expense} vendors={vendors} venues={review[1].map(venue => ({ id: venue.id, name: venue.name }))} items={review[2].map(item => ({ ...item, label: item.name, meta: `${item.unit} · ${item.vendor?.name ?? "No catalog vendor"}`, keywords: [item.sku, item.gcode, item.vendor?.name].filter(Boolean).join(" ") }))} /></InvoiceWorkspace>
+    </InvoiceDraftProvider></div>}
+    {selected && inbox}
+  </div>;
 }

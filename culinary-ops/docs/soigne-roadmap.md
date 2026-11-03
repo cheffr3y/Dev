@@ -1,6 +1,6 @@
 # Mise — The Soigné Roadmap
 
-November 2, 2026 · Product direction and implementation plan · Implementation pending
+November 3, 2026 · Product direction and implementation progress
 
 Mise should feel like a kitchen that is ready for service: considered, organized, responsive, and easy to work in. The software should carry the administrative work forward while the chef makes the decisions that matter.
 
@@ -66,7 +66,23 @@ Implemented on `codex/soigne-invoice-drafts`:
 
 Validation: production webpack build and TypeScript, full lint, 249 unit tests, 60 disposable-database tests and local-invoices/operating-calendar/accounting-invoices/URL-state browser suites pass. Coverage includes cross-device conflicts, reload with both recognized and manual edits, cleared verification, save-response loss followed by newer edits, retry-safe ingredient creation, lost manual commits with later edits preserved, ownership/role checks, cross-origin rejection, source view recovery and unchanged financial/production facts. Desktop/mobile review screenshots were inspected.
 
-Phase 1 remains in progress. Inbox states, richer completion links and workflow timing remain pending. Food-total confirmation drafts, exact scroll/caret restoration and unfinished upload/OCR processing are outside this slice; only server-confirmed draft saves are durable.
+At this checkpoint, inbox states, richer completion links and workflow timing remained pending. The next slice delivers inbox and completion. Food-total confirmation drafts, exact scroll/caret restoration and unfinished upload/OCR processing remain outside durable draft recovery; only server-confirmed draft saves are durable.
+
+### Invoice inbox and reviewed ingredient measurements — November 3, 2026
+
+Implemented on `codex/soigne-inbox-conversions`:
+
+- A paginated invoice inbox exposes Needs review, In progress, Needs attention, Ready to finish and Complete, with filters and review counts. Opening an upload moves directly to its review workspace. Completion is explicit and records the reviewed revisions; subsequent changes reopen review.
+- Completion shows reviewed food spending, actual catalog price changes, affected recipes and the next unfinished invoice. Finishing review does not confirm spending or post accounting entries.
+- Ingredient measurement settings support a named each (for example, head), average purchased ounces per each, optional density, supplier pack and usable yield. A live explanation and before/after recipe-cost preview precede an explicit basis confirmation. Changes require a current preview and are retained in append-only history.
+- Existing recipe interpretation stays unchanged until that ingredient's measurement settings are reviewed. Review applies to every recipe using the ingredient, including nested parents. No recipe quantities are rewritten. A missing reviewed conversion produces an unknown cost rather than an invented numeric total.
+- Shared math carries reviewed measurements through recipes and print, nested recipes, menu costing, dependency planning and purchasing. Counts describe whole purchased items; trim affects usable weight/volume. At $4/head, 20 purchased oz/head and 90% yield, 9 usable oz consumes 10 purchased oz, costs $2 and requires half a head. Three heads remain three heads and supply 54 usable oz.
+- Invoice normalization uses purchased quantities without trim. A received-weight override applies only to that invoice. Saved observations retain their captured conversion; changing an average never retroactively renormalizes them. Compatible historical price comparisons use their captured basis. New prep snapshots retain measurements; existing frozen records remain unchanged.
+- Additive migration `20261103010000_inbox_ingredient_measurements` creates measurement fields/history, captured invoice measurements and cached inbox metadata. Its backfill changes review metadata only and never marks an old invoice explicitly complete. Only disposable databases were migrated during implementation.
+
+Validation includes a ten-line invoice browser scenario covering stale conversion rejection, line approval, impact links, completion without accounting, next invoice, mobile layout and permissions. Automated click/scroll/time observations are recorded by the test. A human before/after timing baseline and the proposed 30% improvement target remain unverified. See [ingredient measurements](ingredient-measurements.md) for operation and rollout details.
+
+Release checks: production webpack build with TypeScript, full lint, 255 unit tests and 63 disposable-database tests pass. Browser checks cover the new workflow plus existing invoice recovery, accounting, calendar, navigation, recipe costing/print, nested dependencies, event purchasing and banquet setup. Desktop and phone screenshots were inspected. These delivered slices do not imply completion of every broader Phase 1/2 roadmap item below.
 
 ### One workspace, from capture to completion
 

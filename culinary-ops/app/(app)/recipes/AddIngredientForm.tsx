@@ -1,10 +1,11 @@
 "use client";
 
+import { ingredientUnits } from "@/lib/ingredients/measurements";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { ComboPicker, type ComboOption } from "@/components/ComboPicker";
 import { Button, Field, Input, Select } from "@/components/ui";
-import { allowedUnitsFor, defaultUnitFor, unitLabel } from "@/lib/recipes/units";
+import { defaultUnitFor, unitLabel } from "@/lib/recipes/units";
 import { money } from "@/lib/recipes/costing";
 import { addRecipeIngredientWithState } from "./actions";
 import type { IngredientOption } from "@/components/RecipeIngredientEditor";
@@ -34,7 +35,7 @@ export function AddIngredientForm({ recipeId, items, groupNames = [], nextSortOr
     keywords: `${it.category} ${it.vendor?.name ?? ""} ${it.sku ?? ""} ${it.gcode ?? ""}`,
   }));
 
-  const units = picked ? allowedUnitsFor(picked.unit) : [];
+  const units = picked ? ingredientUnits(picked) : [];
 
   return (
     <form ref={form} className="flex flex-wrap items-end gap-2" aria-label="Add recipe ingredients" onSubmit={async event => {

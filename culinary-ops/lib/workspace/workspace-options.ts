@@ -1,3 +1,4 @@
+import { convertIngredientQty, type IngredientMeasure } from "../ingredients/measurements";
 import { z } from "zod";
 import { convertQty } from "../recipes/units";
 
@@ -31,15 +32,15 @@ export function parseCellValue(entity: EditEntity, field: string, value: string)
   throw new Error("This field cannot be edited here.");
 }
 
-export type CatalogItem = {
+export type CatalogItem = IngredientMeasure & {
   id: string; name: string; category: string; allergens: string | null; unitCost: number; unit: string;
   packSize: string | null; vendorId: string | null; sku: string | null; gcode: string | null;
 };
 export type GuideRow = { id: string; par: number; unit: string; item: CatalogItem; stock: { quantity: number; unit: string } | null };
 export function guideAmounts(row: GuideRow) {
-  const have = row.stock ? convertQty(row.stock.quantity, row.stock.unit, row.unit) : 0;
+  const have = row.stock ? (row.item.measurementReviewedAt ? convertIngredientQty(row.stock.quantity,row.stock.unit,row.unit,row.item) : convertQty(row.stock.quantity,row.stock.unit,row.unit)) : 0;
   const need = have == null ? null : Math.max(0, row.par - have);
-  const pricedQty = need == null ? null : convertQty(need, row.unit, row.item.unit);
+  const pricedQty = need == null ? null : (row.item.measurementReviewedAt ? convertIngredientQty(need,row.unit,row.item.unit,row.item) : convertQty(need,row.unit,row.item.unit));
   const cost = need === 0 ? 0 : pricedQty == null || row.item.unitCost <= 0 ? null : pricedQty * row.item.unitCost;
   return { have, need, cost };
 }

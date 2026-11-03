@@ -50,6 +50,7 @@ try {
   assert.equal(await page.getByText("Paid price +50.0%", { exact: true }).isVisible(), false);
   await page.emulateMedia({ media: "screen" });
   await page.goto(`${base}/invoices?id=trend-current`);
+  await page.locator("#invoice-accounting > summary").click();
   await page.getByText("Price +50.0%", { exact: true }).waitFor();
   await page.goto(`${base}/invoices?id=trend-old`);
   assert.equal(await page.getByText(/^Price \+/).count(), 0, "Future purchases must not become a prior price");

@@ -1,9 +1,8 @@
-import { priceTrend, priceVariance, priceJump, varianceThreshold } from "@/lib/invoices/price-trends";
+import { priceTrend, priceVariance, priceJump, varianceThreshold, observationUnitFactor } from "@/lib/invoices/price-trends";
 import { PriceTrend } from "./PriceTrend";
 import { Badge } from "./ui";
 import Link from "next/link";
 import { prisma } from "@/lib/db/prisma";
-import { convertQty } from "@/lib/recipes/units";
 import { money, pct, preciseNum } from "@/lib/recipes/costing";
 import { Card, CardHeader } from "./ui";
 
@@ -14,7 +13,7 @@ export async function IngredientPriceHistory({ itemId, unit }: { itemId: string;
   const previous = new Map<string, number>();
   const rows = [...observations].reverse().map(row => {
     // Convert the price basis, never compare a case price with a pound price.
-    const factor = row.normalizedUnit ? convertQty(1, unit, row.normalizedUnit) : null;
+    const factor = observationUnitFactor(row, unit);
     const price = factor != null && row.normalizedUnitCost != null ? row.normalizedUnitCost * factor : null;
     const last = previous.get(row.vendorId);
     const change = price != null && price > 0 && last != null ? priceVariance(last, price) : null;

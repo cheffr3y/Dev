@@ -1,3 +1,4 @@
+import { convertIngredientQty } from "@/lib/ingredients/measurements";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/session";
 import { getActiveVenue } from "@/lib/venues/venue";
@@ -32,7 +33,8 @@ export default async function InventoryPage() {
   const availableItems = allItems.filter((i) => !stockedItemIds.has(i.id));
 
   const lowCount = stock.filter((s) => s.quantity < s.par).length;
-  const totalValue = stock.reduce((sum, s) => sum + s.quantity * s.item.unitCost, 0);
+  const value = (s:typeof stock[number]) => {if(!s.item.measurementReviewedAt)return s.quantity*s.item.unitCost;if(s.quantity===0)return 0;const qty=convertIngredientQty(s.quantity,s.unit,s.item.unit,s.item);return qty==null||s.item.unitCost<=0?Number.NaN:qty*s.item.unitCost;};
+  const totalValue = stock.reduce((sum,s)=>sum+value(s),0);
 
   return (
     <div>
@@ -41,7 +43,7 @@ export default async function InventoryPage() {
       <div className="mb-6 grid grid-cols-3 gap-4">
         <StatCard label="Items Tracked" value={stock.length} />
         <StatCard label="Below Par" value={lowCount} sub={lowCount ? "needs ordering" : "all stocked"} />
-        <StatCard label="Inventory Value" value={money(totalValue)} />
+        <StatCard label="Inventory Value" value={money(totalValue)} sub={Number.isFinite(totalValue)?"Current purchased costs":"Some measurements or prices need review"} />
       </div>
 
       <details className="mb-5">
@@ -113,7 +115,7 @@ export default async function InventoryPage() {
                     <td className="px-4 py-2 text-right text-zinc-700">
                       {need > 0 ? `${num(need)} ${s.unit}` : "—"}
                     </td>
-                    <td className="px-4 py-2 text-right text-zinc-600">{money(s.quantity * s.item.unitCost)}</td>
+                    <td className="px-4 py-2 text-right text-zinc-600">{money(value(s))}</td>
                     <td className="px-4 py-2 text-right">
                       <form action={removeInventoryItem}>
                         <input type="hidden" name="id" value={s.id} />

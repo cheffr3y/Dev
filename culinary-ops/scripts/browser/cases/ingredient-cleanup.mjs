@@ -3,10 +3,12 @@ import { launchBrowser, browserBaseUrl } from "../harness.mjs";
 import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
+import { PrismaClient } from "@prisma/client";
 
 const base = browserBaseUrl();
 const browser = await launchBrowser();
 const contexts = [];
+const db = new PrismaClient();
 async function login(role) {
   const context = await browser.newContext({ viewport: { width: 1440, height: 1100 } });
   contexts.push(context);
@@ -25,10 +27,10 @@ async function screenshot(page, name) {
 try {
   const page = await login("manager");
   await page.goto(`${base}/items?q=roma&flag=duplicates`);
-  const oldRow = page.getByRole("row").filter({ hasText: "Roma Tomato" }).filter({ has: page.getByRole("cell", { name: "ROMA", exact: true }) });
-  const keptRow = page.getByRole("row").filter({ hasText: "ROMA-KEEP" });
-  const sourcePath = await oldRow.getByRole("link", { name: "edit / usage", exact: true }).getAttribute("href");
-  const targetPath = await keptRow.getByRole("link", { name: "edit / usage", exact: true }).getAttribute("href");
+  const sourceItem = await db.item.findFirstOrThrow({where:{recipeItems:{some:{recipe:{prodCode:"CLP"}}}}});
+  const targetItem = await db.item.findFirstOrThrow({where:{gcode:"ROMA-KEEP",recipeItems:{some:{recipe:{prodCode:"CLS"}}}}});
+  const sourcePath = `/items/${sourceItem.id}`, targetPath = `/items/${targetItem.id}`;
+  await page.locator(`a[href="${targetPath}"]`).filter({hasText:"edit / usage"}).waitFor();
   const source = sourcePath.split("/").at(-1), target = targetPath.split("/").at(-1);
   await page.goto(base + targetPath);
   const ingredient = page.locator("#ingredientForm");
@@ -66,8 +68,7 @@ try {
   assert.match(await soupRow.innerText(), /3 oz/);
   await page.goto(`${base}/items?q=roma`);
   assert.equal(await page.locator(`a[href="${sourcePath}"]`).count(), 0);
-  const kept = page.getByRole("row").filter({ hasText: "ROMA-KEEP" });
-  assert.equal((await kept.getByRole("cell").nth(9).innerText()).trim(), "2");
+  assert.equal(await page.locator(`a[href="${targetPath}"]`).filter({hasText:/^2$/}).count(), 1);
   await screenshot(page, "ingredient-list.png");
   console.log("Reviewed consolidation replaces two recipes, converts/sums matching quantities, retains prep notes and removes only the confirmed duplicate.");
   const staff = await login("staff"); await staff.goto(`${base}/items/cleanup`); await staff.waitForURL(`${base}/`);
@@ -76,4 +77,4 @@ try {
 } catch (error) {
   for (const context of contexts) for (const page of context.pages()) { console.error("Cleanup browser check stopped at", page.url()); await screenshot(page, "cleanup-failure.png"); }
   throw error;
-} finally { for (const context of contexts) await context.close(); await browser.close(); }
+} finally { for (const context of contexts) await context.close(); await browser.close(); await db.$disconnect(); }

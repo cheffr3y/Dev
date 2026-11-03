@@ -1,7 +1,7 @@
 import { PriceTrend } from "./PriceTrend";
 import type { PriceTrend as Trend } from "@/lib/invoices/price-trends";
 import { useId } from "react";
-import { money, num, pct } from "@/lib/recipes/costing";
+import { money, num, pct, preciseNum } from "@/lib/recipes/costing";
 import { unitLabel } from "@/lib/recipes/units";
 import type { RecipeCostSheet } from "@/lib/recipes/recipe-cost-sheet";
 
@@ -45,6 +45,7 @@ export function RecipeCosting({ costs, trends = {} }: { costs: RecipeCostSheet; 
               <tr key={line.id} className="border-b border-dotted border-[#E2DDD5]">
                 <th scope="row" className="py-1.5 pr-3 font-medium">
                   {line.name}
+                  {line.purchasedQuantity != null && <span className="block text-[10px] font-normal text-zinc-500">Purchased: {preciseNum(line.purchasedQuantity)} {line.purchasedUnit}</span>}
                   {!line.converted && <span className="block text-[9px] font-normal text-amber-800">Unit mismatch — verify cost</span>}
                 </th>
                 <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono tabular-nums">{num(line.quantity)} {unitLabel(line.unit)}</td>

@@ -5,7 +5,7 @@ export async function loadPriceTrends(items: { id: string; unit: string; vendorI
   const observations = await prisma.item.findMany({ where: { id: { in: items.map(item => item.id) } }, select: { id: true, purchaseLines: {
     where: { voided: false, countsAsFood: true, amountCents: { gt: 0 }, normalizedUnitCost: { gt: 0 } },
     orderBy: [{ invoiceDate: "desc" }, { createdAt: "desc" }, { id: "desc" }], take: 100,
-    select: { vendorId: true, vendor: { select: { name: true } }, normalizedUnit: true, normalizedUnitCost: true, amountCents: true, invoiceDate: true },
+    select: { vendorId: true, vendor: { select: { name: true } }, normalizedUnit: true, normalizedUnitCost: true, amountCents: true, invoiceDate: true, measurementSnapshot: true },
   } } });
   const units = new Map(items.map(item => [item.id, item]));
   const threshold = varianceThreshold(process.env.PRICE_VARIANCE_THRESHOLD_PERCENT);

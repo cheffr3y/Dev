@@ -1,3 +1,4 @@
+import { measurementSelect } from "@/lib/ingredients/measurements";
 import { getPrepUser } from "@/lib/auth/prep-session";
 import { prisma } from "@/lib/db/prisma";
 import { saveInvoicePurchase } from "@/lib/invoices/invoice-purchases-data";
@@ -14,6 +15,6 @@ export async function POST(request: Request) {
   const result = await saveInvoicePurchase(prisma, user.id, input);
   if (result.ok) { revalidatePath("/", "layout"); }
   const itemId = result.ok && input && typeof input === "object" && "itemId" in input && typeof input.itemId === "string" ? input.itemId : null;
-  const catalogItem = itemId ? await prisma.item.findUnique({ where: { id: itemId }, select: { id: true, name: true, unit: true, unitCost: true } }) : null;
+  const catalogItem = itemId ? await prisma.item.findUnique({ where: { id: itemId }, select: { id: true, name: true, unit: true, unitCost: true, ...measurementSelect } }) : null;
   return Response.json({ ...result, catalogItem }, { status: result.ok ? 200 : result.conflict ? 409 : 400 });
 }

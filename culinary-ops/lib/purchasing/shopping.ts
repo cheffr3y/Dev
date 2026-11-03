@@ -1,3 +1,4 @@
+import type { IngredientMeasure } from "../ingredients/measurements";
 // Shopping (pull) list for a prep order: every raw ingredient needed across
 // the whole packet, summed and rolled up into natural units. Sub-recipes are
 // exploded down to their purchasable raw items — the same recursion the cost
@@ -14,6 +15,8 @@ export type ShoppingRecipeNode = {
   yieldQty: number;
   yieldUnit: string;
   items: Array<{
+    measure?: IngredientMeasure & {unit:string};
+    legacyFrozen?:boolean;
     itemId: string;
     name: string;
     category: string;

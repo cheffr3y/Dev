@@ -1,3 +1,5 @@
+import type { IngredientMeasure } from "../ingredients/measurements";
+import { measurementSelect } from "@/lib/ingredients/measurements";
 // Banquet kitchen rollup. Given the transcribed BEO food lines (recipe +
 // ordered qty) and the recipe catalog, scale every dish by the ordered amount
 // and produce (1) a per-line fully-loaded cost, (2) the banquet's total food
@@ -20,7 +22,7 @@ export type BanquetRecipeRow = {
   items: Array<{
     quantity: number;
     unit: string;
-    item: { id: string; name: string; category: string; unitCost: number; unit: string; priceUpdatedAt: Date | null };
+    item: IngredientMeasure & { id: string; name: string; category: string; unitCost: number; unit: string; priceUpdatedAt: Date | null };
   }>;
   components: Array<{ childId: string; quantity: number; unit: string }>;
 };
@@ -51,7 +53,7 @@ export function buildBanquetPlan(lines: BanquetLine[], recipes: BanquetRecipeRow
     id: r.id,
     yieldQty: r.yieldQty,
     yieldUnit: r.yieldUnit,
-    items: r.items.map((ri) => ({ quantity: ri.quantity, unit: ri.unit, item: { unitCost: ri.item.unitCost, unit: ri.item.unit } })),
+    items: r.items.map((ri) => ({ quantity: ri.quantity, unit: ri.unit, item: ri.item })),
     components: r.components,
   }));
   const costMap = buildCostMap(costNodes);
@@ -226,6 +228,6 @@ export const banquetRecipeSelect = {
   id: true,
   yieldQty: true,
   yieldUnit: true,
-  items: { select: { quantity: true, unit: true, item: { select: { id: true, name: true, category: true, unitCost: true, unit: true, priceUpdatedAt: true } } } },
+  items: { select: { quantity: true, unit: true, item: { select: { id: true, name: true, category: true, ...measurementSelect, unitCost: true, unit: true, priceUpdatedAt: true } } } },
   components: { select: { childId: true, quantity: true, unit: true } },
 } as const;

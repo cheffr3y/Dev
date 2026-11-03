@@ -1,3 +1,4 @@
+import { IngredientMeasurements } from "@/components/IngredientMeasurements";
 import { IngredientPriceHistory } from "@/components/IngredientPriceHistory";
 import { requirePrepUser } from "@/lib/auth/prep-session";
 import Link from "next/link";
@@ -33,6 +34,7 @@ export default async function IngredientPage({ params }: { params: Promise<{ id:
       action={canEdit ? <LinkButton href={`/items/cleanup?source=${id}`}>Replace / consolidate</LinkButton> : undefined} />
     {duplicates.length > 0 && <Card className="border-amber-300 bg-amber-50 p-4"><p className="font-medium">Possible duplicates</p><div className="mt-2 flex flex-wrap gap-3">{duplicates.map(candidate => <Link key={candidate.id} href={canEdit ? `/items/merge?source=${id}&target=${candidate.id}` : `/items/${candidate.id}`} className="text-sm text-blue-600 underline">Compare {candidate.name}</Link>)}</div></Card>}
     <Card><CardHeader>Ingredient details</CardHeader>{canEdit ? <form id="ingredientForm" action={updateItem} className="space-y-5 p-5"><input type="hidden" name="id" value={item.id} /><IngredientFields item={item} vendors={vendors} /><Button type="submit">Save</Button></form> : <div className="p-5"><AllergenBadges allergens={item.allergens} /><p className="mt-3 text-sm text-zinc-500">Item # {item.sku ?? "—"} · GCODE {item.gcode ?? "—"} · Pack {item.packSize ?? "—"}</p></div>}</Card>
+    <IngredientMeasurements item={item} canEdit={canEdit} />
     {canEdit && <IngredientPriceHistory itemId={item.id} unit={item.unit} />}
     <div className="grid gap-5 lg:grid-cols-2">
       <Card><CardHeader>Recipes using this ingredient ({item.recipeItems.length})</CardHeader>{item.recipeItems.length ? <ul className="divide-y divide-hairline">{item.recipeItems.map(line => <li key={line.id} className="flex justify-between gap-4 p-4 text-sm"><Link href={`/recipes/${line.recipe.id}`} className="text-blue-600 hover:underline">{line.recipe.name}</Link><span className="font-mono">{num(line.quantity)} {line.unit}</span></li>)}</ul> : <p className="p-5 text-sm text-zinc-500">No current recipe uses.</p>}</Card>

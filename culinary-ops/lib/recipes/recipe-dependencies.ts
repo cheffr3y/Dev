@@ -1,3 +1,4 @@
+import { recipePurchaseQuantity, type IngredientMeasure } from "../ingredients/measurements";
 import { convertQty } from "./units";
 import { ALLERGENS, parseAllergens } from "./allergens";
 import { money, preciseNum, priceFreshness } from "./costing";
@@ -5,7 +6,7 @@ import { allergenLabels } from "./allergens";
 
 export type DependencyRecipe = {
   id: string; name: string; yieldQty: number; yieldUnit: string; allergens: string | null;
-  items: { quantity: number; unit: string; item: { id: string; name: string; unit: string; unitCost: number; allergens: string | null; priceUpdatedAt: string | null } }[];
+  items: { quantity: number; unit: string; item: IngredientMeasure & { id: string; name: string; unit: string; unitCost: number; allergens: string | null; priceUpdatedAt: string | null } }[];
   components: { childId: string; quantity: number; unit: string }[];
 };
 export type DependencyBranch = {
@@ -70,7 +71,7 @@ export function buildDependencyPlan(rootId: string, recipes: DependencyRecipe[],
       if (--remaining < 0) { truncated = true; issues.push("Preview limit reached — remaining demand is incomplete"); break; }
       const lineIssues: string[] = [];
       const amount = valid(line.quantity) && line.unit.trim() ? multiply(batches, line.quantity) : null;
-      const converted = amount === null ? null : convertQty(amount, line.unit, line.item.unit);
+      const converted = amount === null ? null : recipePurchaseQuantity(amount, line.unit, line.item);
       if (amount === null) lineIssues.push("Unknown or invalid ingredient quantity");
       else if (converted === null) lineIssues.push(`Unit mismatch: ${line.unit} → ${line.item.unit}`);
       const freshness = priceFreshness(line.item.priceUpdatedAt ? new Date(line.item.priceUpdatedAt) : null, line.item.unitCost, now);
@@ -80,7 +81,7 @@ export function buildDependencyPlan(rootId: string, recipes: DependencyRecipe[],
       const ingredient: DependencyBranch = { key: `${path}/i${index}`, id: line.item.id, name: line.item.name, kind: "ingredient", quantity: amount, unit: line.unit,
         batches: null, cost, share: null, allergens: parseAllergens(line.item.allergens), inherited: [], issues: lineIssues, children: [] };
       node.children.push(ingredient);
-      const compatible = !!line.unit.trim() && !!line.item.unit.trim() && convertQty(1, line.unit, line.item.unit) !== null;
+      const compatible = !!line.unit.trim() && !!line.item.unit.trim() && recipePurchaseQuantity(1, line.unit, line.item) !== null;
       const totalUnit = compatible ? line.item.unit : line.unit;
       accumulate(ingredientTotals, `${line.item.id}:${totalUnit}`, { id: line.item.id, name: line.item.name, unit: totalUnit, quantity: compatible ? converted : amount, cost });
     }

@@ -1,3 +1,4 @@
+import { recipePurchaseQuantity } from "../ingredients/measurements";
 import { buildCostMap, buildPriceGapMap } from "../recipes/costing";
 import { buildDayPlan } from "../banquets/banquet";
 import { buildMenuRollout, type RolloutRecipe } from "./menu-rollout";
@@ -22,7 +23,7 @@ function recipeIssues(id: string, byId: Map<string, RolloutRecipe>, stack = new 
   if (!(recipe.yieldQty > 0)) issues.push(`${recipe.name}: standard yield needs review.`);
   if (!recipe.items.length && !recipe.components.length) issues.push(`${recipe.name}: ingredients and build are still empty.`);
   for (const line of recipe.items) {
-    if (convertQty(line.quantity, line.unit, line.item.unit) == null) {
+    if (recipePurchaseQuantity(line.quantity, line.unit, line.item) == null) {
       issues.push(`${recipe.name}: ${line.item.name} uses ${line.unit}, but is purchased in ${line.item.unit}. Review conversion.`);
     }
   }

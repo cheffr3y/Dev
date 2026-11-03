@@ -5,17 +5,18 @@
 // back to the legacy same-unit assumption and report `converted: false` so
 // the UI can flag the line.
 
+import { recipePurchaseQuantity, type IngredientMeasure } from "../ingredients/measurements";
 import { convertQty, unitLabel } from "./units";
 
 export type RecipeItemWithCost = {
   quantity: number;
   unit: string;
-  item: { unitCost: number; unit: string };
+  item: IngredientMeasure & { unitCost: number; unit: string };
 };
 
 export function lineCost(ri: RecipeItemWithCost): { cost: number; converted: boolean } {
-  const qty = convertQty(ri.quantity, ri.unit, ri.item.unit);
-  if (qty == null) return { cost: ri.quantity * (ri.item.unitCost ?? 0), converted: false };
+  const qty = recipePurchaseQuantity(ri.quantity, ri.unit, ri.item);
+  if (qty == null) return { cost: ri.item.measurementReviewedAt ? Number.NaN : ri.quantity * (ri.item.unitCost ?? 0), converted: false };
   return { cost: qty * (ri.item.unitCost ?? 0), converted: true };
 }
 
@@ -217,12 +218,12 @@ export function priceGapNames(
 
 // Menu price and food cost use the same recipe yield unit.
 export function foodCostPct(costPerUnit: number, menuPrice?: number | null): number | null {
-  if (!menuPrice || menuPrice <= 0) return null;
+  if (!menuPrice || menuPrice <= 0 || !Number.isFinite(costPerUnit)) return null;
   return (costPerUnit / menuPrice) * 100;
 }
 
 export function money(n: number | null | undefined, maximumFractionDigits = 2): string {
-  if (n == null || Number.isNaN(n)) return "—";
+  if (n == null || !Number.isFinite(n)) return "—";
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
@@ -232,12 +233,12 @@ export function money(n: number | null | undefined, maximumFractionDigits = 2): 
 }
 
 export function pct(n: number | null | undefined): string {
-  if (n == null || Number.isNaN(n)) return "—";
+  if (n == null || !Number.isFinite(n)) return "—";
   return `${n.toFixed(1)}%`;
 }
 
 export function num(n: number | null | undefined): string {
-  if (n == null || Number.isNaN(n)) return "—";
+  if (n == null || !Number.isFinite(n)) return "—";
   // trim trailing zeros but keep up to 2 decimals
   return Number(n.toFixed(2)).toString();
 }
