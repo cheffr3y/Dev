@@ -3,13 +3,13 @@ import { revalidatePath } from "next/cache";
 import { getPrepUser } from "@/lib/auth/prep-session";
 import { prisma } from "@/lib/db/prisma";
 import { completeInvoiceReview } from "@/lib/invoices/complete-review";
+import { validRequestOrigin } from "@/lib/auth/request-origin";
 
 export async function POST(request: Request) {
   const user = await getPrepUser();
   if (!user) return Response.json({ ok: false, error: "Sign in first." }, { status: 401 });
   if (user.role === "STAFF") return Response.json({ ok: false, error: "Manager access required." }, { status: 403 });
-  const origin = request.headers.get("origin");
-  if (origin && origin !== new URL(request.url).origin) return Response.json({ ok: false, error: "Invalid request origin." }, { status: 403 });
+  if (!validRequestOrigin(request)) return Response.json({ ok: false, error: "Invalid request origin." }, { status: 403 });
   try {
     const input = z.object({ id: z.string().min(1).max(150), lineRevision: z.number().int().nonnegative(), ocrRevision: z.number().int().nonnegative() }).strict().parse(await request.json());
     const result = await completeInvoiceReview(prisma, user.id, input.id, input.lineRevision, input.ocrRevision);

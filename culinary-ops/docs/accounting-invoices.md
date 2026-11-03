@@ -80,6 +80,12 @@ Override with the ingredient picker or a candidate, mark ignored, or quick-creat
 
 Paid extraction is disabled, including the former unused parser. Uploaded documents and local OCR text are treated as data, never instructions.
 
+### “Invalid request origin” behind a deployment proxy
+
+OCR saves, personal draft saves, review completion and ingredient measurement updates validate the browser's Origin against the direct request URL or the proxy's public host/protocol. An HTTPS browser request can legitimately reach Next.js through an internal HTTP address. Comparing only `request.url` rejected that setup before recognition could be saved; the shared `lib/auth/request-origin.ts` check handles the forwarded public address while rejecting unrelated origins, malformed values and protocol/port mismatches.
+
+The hosting proxy must overwrite incoming `X-Forwarded-Host` and `X-Forwarded-Proto` with its trusted public address and scheme (or preserve the public Host when no forwarded host is supplied). Do not remove the origin check or enable arbitrary origins. This fix requires an application deployment, with no database migration or changes to stored invoices. After deployment, reopen the invoice and retry local OCR. Regression checks save a real recognition draft using public HTTPS forwarding headers and verify cross-site writes remain blocked on all four endpoints.
+
 ## Deployment and verification
 
 Use Node 22.13+ (24 recommended). Apply `20261101000000_accounting_invoice_review` and `20261101010000_invoice_document_archive` through normal `npm start` / `prisma migrate deploy`. Also deploy `20261102020000_local_invoice_learning` and regenerate Prisma Client. It adds alias/correction memory, reusable local drafts, unique recognized rows, learning receipts and catalog-price provenance without repricing existing historical lines in a backfill. Database backups include document bytes, previews, drafts and learning records. The PDF.js worker/fonts/WASM assets are included in Next's deployment tracing.

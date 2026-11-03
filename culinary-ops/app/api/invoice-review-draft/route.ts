@@ -2,13 +2,13 @@ import { getPrepUser } from "@/lib/auth/prep-session";
 import { prisma } from "@/lib/db/prisma";
 import { saveInvoiceReviewDraft } from "@/lib/invoices/review-draft-data";
 import { z } from "zod";
+import { validRequestOrigin } from "@/lib/auth/request-origin";
 
 export async function POST(request: Request) {
   const actor = await getPrepUser();
   if (!actor) return Response.json({ ok: false, error: "Sign in again to save your draft." }, { status: 401 });
   if (actor.role === "STAFF") return Response.json({ ok: false, error: "Manager access required." }, { status: 403 });
-  const origin = request.headers.get("origin");
-  if (origin && origin !== new URL(request.url).origin) return Response.json({ ok: false, error: "Invalid request origin." }, { status: 403 });
+  if (!validRequestOrigin(request)) return Response.json({ ok: false, error: "Invalid request origin." }, { status: 403 });
   try {
     const text = await request.text();
     if (text.length > 1000000) throw new Error("Draft is too large. Split this invoice.");
