@@ -3,13 +3,13 @@ import { revalidatePath } from "next/cache";
 import { getPrepUser } from "@/lib/auth/prep-session";
 import { prisma } from "@/lib/db/prisma";
 import { applyMeasurements, measurementPreview, measurementSchema } from "@/lib/ingredients/measurement-data";
+import { validRequestOrigin } from "@/lib/auth/request-origin";
 
 export async function POST(request: Request) {
   const user = await getPrepUser();
   if (!user) return Response.json({ ok: false, error: "Sign in first." }, { status: 401 });
   if (user.role === "STAFF") return Response.json({ ok: false, error: "Manager access required." }, { status: 403 });
-  const origin = request.headers.get("origin");
-  if (origin && origin !== new URL(request.url).origin) return Response.json({ ok: false, error: "Invalid request origin." }, { status: 403 });
+  if (!validRequestOrigin(request)) return Response.json({ ok: false, error: "Invalid request origin." }, { status: 403 });
   try {
     const input = z.object({ action: z.enum(["preview", "apply"]), id: z.string().min(1).max(150), settings: measurementSchema, operationId: z.string().uuid().optional(), token: z.string().optional(), confirmedBasis: z.boolean().optional() }).strict().parse(await request.json());
     if (input.action === "preview") {

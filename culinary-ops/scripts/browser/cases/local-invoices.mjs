@@ -88,7 +88,13 @@ try{
  await page.getByRole("region",{name:"Invoice source document",exact:true}).getByLabel(/local-scanned.pdf, page 2/).waitFor();
  const emptyUpload=await page.request.post(`${base}/api/invoices`,{multipart:{file:{name:"manual-entry.png",mimeType:"image/png",buffer:Buffer.concat([photo,Buffer.from("manual-entry")])}}});
  assert.equal(emptyUpload.status(),200);const emptyId=(await emptyUpload.json()).id;
- const emptyDraft=await page.request.post(`${base}/api/invoice-ocr`,{data:{action:"draft",documentId:emptyId,expectedRevision:0,pages:[{page:1,text:"INVOICE TOTAL $100.00"}]}});assert.equal(emptyDraft.status(),200);
+ // A TLS-terminating deployment sees a public HTTPS Origin and an internal URL.
+ const proxyHeaders={origin:"https://mise-proxy.example.test","x-forwarded-host":"mise-proxy.example.test","x-forwarded-proto":"https"};
+ const emptyDraft=await page.request.post(`${base}/api/invoice-ocr`,{headers:proxyHeaders,data:{action:"draft",documentId:emptyId,expectedRevision:0,pages:[{page:1,text:"INVOICE TOTAL $100.00"}]}});assert.equal(emptyDraft.status(),200);
+ for(const endpoint of ["invoice-ocr","invoice-review-draft","invoice-review-complete","ingredient-measurements"]){
+   const forwarded=await page.request.post(`${base}/api/${endpoint}`,{headers:proxyHeaders,data:{}});assert.equal(forwarded.status(),400,`${endpoint}: same-site proxy requests reach input validation`);
+   const crossSite=await page.request.post(`${base}/api/${endpoint}`,{headers:{...proxyHeaders,origin:"https://attacker.example.test"},data:{}});assert.equal(crossSite.status(),403,`${endpoint}: cross-site writes stay blocked`);
+ }
  await page.goto(`${base}/invoices?id=${emptyId}`);await review.getByRole("heading",{name:"No lines recognized",exact:true}).waitFor();
  assert.equal(await review.getByRole("button",{name:"Approve invoice price",exact:true}).count(),0);
  await page.getByText(/Saved lines & food spending ·/).click();await page.getByRole("button",{name:"Add invoice line",exact:true}).waitFor();
