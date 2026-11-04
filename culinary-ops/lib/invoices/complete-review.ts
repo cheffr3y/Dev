@@ -8,7 +8,8 @@ export async function completeInvoiceReview(db: PrismaClient, actorId: string, i
       return await db.$transaction(async tx => {
         const actor = await tx.user.findUnique({ where: { id: actorId }, select: { role: true } });
         if (!actor || actor.role === "STAFF") throw new Error("Manager access required.");
-        const doc = await tx.invoiceDocument.findUniqueOrThrow({ where: { id }, select: { lineRevision: true, ocrRevision: true, reviewedLineRevision: true, reviewedOcrRevision: true, reviewCompletedAt: true } });
+        const doc = await tx.invoiceDocument.findUniqueOrThrow({ where: { id }, select: { reviewState: true, lineRevision: true, ocrRevision: true, reviewedLineRevision: true, reviewedOcrRevision: true, reviewCompletedAt: true } });
+        if (doc.reviewState === "DISCARDED") throw new Error("This invoice was discarded. Upload it again to start over.");
         if (doc.lineRevision !== lineRevision || doc.ocrRevision !== ocrRevision) throw new Error("Invoice changed. Reload and review its latest lines before finishing.");
         const state = await refreshInvoiceReview(tx, id);
         if (!state.ready) throw new Error("Resolve all candidate lines or enter the invoice manually before finishing review.");

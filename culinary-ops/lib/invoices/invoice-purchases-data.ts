@@ -32,11 +32,12 @@ export async function saveInvoicePurchase(db: PrismaClient, userId: string, inpu
         const user = await tx.user.findUnique({ where: { id: userId }, select: { role: true, name: true } });
         if (!user || user.role === "STAFF") return { ok: false, error: "Manager access required." };
         const [doc, current, item, vendor, venue] = await Promise.all([
-          tx.invoiceDocument.findUnique({ where: { id: edit.invoiceDocumentId }, select: { id: true, vendorId: true, ocrDraft: true } }),
+          tx.invoiceDocument.findUnique({ where: { id: edit.invoiceDocumentId }, select: { id: true, vendorId: true, ocrDraft: true, reviewState: true } }),
           tx.invoicePurchaseLine.findUnique({ where: { id: edit.id } }), edit.itemId ? tx.item.findUnique({ where: { id: edit.itemId }, select: { name: true, unit: true, ...measurementSelect } }) : null,
           tx.vendor.findUnique({ where: { id: edit.vendorId }, select: { id: true } }), tx.venue.findUnique({ where: { id: edit.venueId }, select: { id: true } }),
         ]);
         if (!doc || !vendor || !venue || edit.itemId && !item) return { ok: false, error: "Choose an existing invoice, supplier, venue, and ingredient." };
+        if (doc.reviewState === "DISCARDED") return { ok: false, error: "This invoice was discarded. Upload it again to start over." };
         if (doc.vendorId && doc.vendorId !== edit.vendorId) return { ok: false, error: "Use the supplier recorded on this invoice." };
         if(edit.ocrLineKey && !localInvoiceDraftSchema.safeParse(doc.ocrDraft).data?.lines.some(line=>line.key===edit.ocrLineKey)) return {ok:false,error:"Recognition row not found. Reload this invoice."};
         if(edit.ocrLineKey && !current) {

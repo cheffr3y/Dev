@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { emptyReviewDraft, serializeReviewDraft, ReviewDraftConflict, ReviewDraftSaver, type DraftSaveState, type ReviewDraft, type SavedReviewDraft } from "@/lib/invoices/review-draft";
 import { Button } from "./ui";
 
-type DraftContext = { draft: ReviewDraft; update: (change: (previous: ReviewDraft) => ReviewDraft) => void; flush: () => Promise<void>; recovered: boolean };
+type DraftContext = { draft: ReviewDraft; update: (change: (previous: ReviewDraft) => ReviewDraft) => void; flush: () => Promise<void>; recovered: boolean; abandon: () => void };
 const Context = createContext<DraftContext | null>(null);
 export function useInvoiceDraft() {
   const context = useContext(Context);
@@ -43,7 +43,7 @@ export function InvoiceDraftProvider({ documentId, sourceRevision, initial, chil
     return () => { window.removeEventListener("beforeunload", warn); window.removeEventListener("pagehide", leaving); leaving(); };
   }, [saver]);
   const failed = save.state === "error" || save.state === "conflict";
-  return <Context.Provider value={{ draft, update, flush: () => saver.flush(), recovered }}>
+  return <Context.Provider value={{ draft, update, flush: () => saver.flush(), recovered, abandon: () => saver.abandon() }}>
     <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-sm" aria-label="Invoice draft status">
       <p role={failed ? "alert" : "status"} className={failed ? "text-amber-700" : "text-zinc-500"}>{failed ? save.message : save.state === "saved" ? saver.hasSaved ? "Draft saved to your account" : "No unsaved draft changes" : save.state === "saving" ? "Saving draft…" : "Unsaved draft changes"}</p>
       {save.state === "error" && <Button type="button" variant="secondary" onClick={() => { void saver.flush().catch(() => {}); }}>Retry draft save</Button>}

@@ -27,11 +27,10 @@ export function InvoiceLocalReview({invoiceId,vendorId,vendors,venues,defaults}:
   const { draft, update: updateDraft, flush: saveDraft, recovered } = useInvoiceDraft();
   const recovery = useRef(draft);
   const router=useRouter(),[data,setData]=useState<Data|null>(null),[rows,setRows]=useState<Row[]>([]),[status,setStatus]=useState(""),[busy,setBusy]=useState<string|null>(null),[showIgnored,setShowIgnored]=useState(draft.showIgnored);
-  const supplier=vendorId||draft.supplier||defaults?.vendorId||"",date=draft.date,venue=draft.venue,usd=draft.currency==="USD";
+  const supplier=vendorId||draft.supplier||defaults?.vendorId||"",date=draft.date,venue=draft.venue;
   const setSupplier=(supplier:string)=>updateDraft(previous=>({...previous,supplier}));
   const setDate=(date:string)=>updateDraft(previous=>({...previous,date}));
   const setVenue=(venue:string)=>updateDraft(previous=>({...previous,venue}));
-  const setUsd=(usd:boolean)=>updateDraft(previous=>({...previous,currency:usd?"USD":"OTHER"}));
   const [batchReview,setBatchReview]=useState(false);
   const [selectedKey, setSelectedKey] = useState<string | null>(draft.selectedKey);
   const selectSourcePage = useInvoiceSource();
@@ -40,14 +39,14 @@ export function InvoiceLocalReview({invoiceId,vendorId,vendors,venues,defaults}:
   useEffect(()=>{const stop=new AbortController();void fetch(`/api/invoice-ocr?id=${encodeURIComponent(invoiceId)}&vendor=${encodeURIComponent(supplier)}`,{signal:stop.signal}).then(response=>response.json()).then((result:Data)=>{
     if(!result.ok)throw new Error("Could not load local recognition.");setData(result);
     const suggested=invoiceDetailsFromText(result.draft?.pages??[],venues);
-    updateDraft(previous=>({...previous,date:previous.date||defaults?.date||suggested.date,venue:previous.venue||defaults?.venueId||suggested.venueId,currency:suggested.currency==="OTHER"&&!recovery.current.rows.length?"OTHER":previous.currency}));
+    updateDraft(previous=>({...previous,date:previous.date||defaults?.date||suggested.date,venue:previous.venue||defaults?.venueId||suggested.venueId}));
     setRows(previous=>previous.length?previous:(result.draft?.lines??[]).map(line=>initialRow(line,result.matches.find(match=>match.key===line.key)!,result,recovery.current.sourceRevision===result.revision?recovery.current.rows.find(saved=>saved.key===line.key):undefined)));
   }).catch(error=>{if(!stop.signal.aborted)setStatus(error.message);});return()=>stop.abort();},[invoiceId,supplier,venues,defaults?.date,defaults?.venueId,updateDraft]);
   useEffect(() => {
     if (!data) return;
-    updateDraft(previous => ({ ...previous, sourceRevision: data.revision, supplier, date, venue, currency:usd?"USD":"OTHER",selectedKey, showIgnored,
+    updateDraft(previous => ({ ...previous, sourceRevision: data.revision, supplier, date, venue, currency:"USD",selectedKey, showIgnored,
       rows: rows.filter(row=>!data.approved.includes(row.key)).map(row=>reviewRowSchema.parse(row)) }));
-  }, [data, rows, supplier, date, venue, usd,selectedKey, showIgnored, updateDraft]);
+  }, [data, rows, supplier, date, venue,selectedKey, showIgnored, updateDraft]);
   function savePending() { updateDraft(previous => ({ ...previous, pending: [...pending.current].map(([key, value]) => ({ key, ...value })) })); }
   useEffect(()=>()=>controller.current?.abort(),[]);
   useEffect(()=>{if(!busy)return;const warn=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue="";};window.addEventListener("beforeunload",warn);return()=>window.removeEventListener("beforeunload",warn);},[busy]);
@@ -118,7 +117,6 @@ export function InvoiceLocalReview({invoiceId,vendorId,vendors,venues,defaults}:
       ...(!supplier ? ["Choose the invoice supplier."] : []),
       ...(!date ? ["Enter the invoice date."] : []),
       ...(!venue ? ["Choose the invoice venue."] : []),
-      ...(!usd ? ["Choose USD in invoice details. Other currencies need conversion before approval."] : []),
     ] };
   }
   async function saveApprovedRow(row:Row){
@@ -162,7 +160,6 @@ export function InvoiceLocalReview({invoiceId,vendorId,vendors,venues,defaults}:
     {!data?.draft&&<Button type="button" disabled={!!busy||!data} onClick={()=>void recognize()}>Run local invoice OCR</Button>}{busy==="ocr"&&<Button type="button" variant="secondary" onClick={()=>controller.current?.abort()}>Cancel OCR</Button>}
     {data?.draft&&<><p className="text-xs text-zinc-500" aria-live="polite">{data.approved.length} approved · {data.ignored.length - data.removed.length} ignored · {data.removed.length} removed · {rows.length - resolved} to review</p><label className="text-sm"><input type="checkbox" checked={showIgnored} onChange={event=>setShowIgnored(event.target.checked)} /> Show removed or ignored rows</label>
       <details open={!supplier || !date || !venue} className="rounded-lg border border-hairline p-3"><summary className="cursor-pointer text-sm font-medium">Invoice details{supplier && date && venue ? ` · ${date} · ${venues.find(option=>option.id===venue)?.name ?? ""}` : " · Choose supplier, date & venue"}</summary><div className="mt-3 grid gap-3 sm:grid-cols-3"><label className="text-sm">Supplier<Select aria-label="OCR invoice supplier" value={supplier} disabled={!!vendorId||!!busy} onChange={event=>{setSupplier(event.target.value);setRows(previous=>previous.map(row=>({...row,verified:false})));}}><option value="">Choose supplier</option>{vendors.map(vendor=><option key={vendor.id} value={vendor.id}>{vendor.name}</option>)}</Select></label><label className="text-sm">Invoice date<Input aria-label="OCR invoice date" type="date" value={date} disabled={!!busy} onChange={event=>{setDate(event.target.value);setRows(previous=>previous.map(row=>({...row,verified:false})));}} /></label><label className="text-sm">Venue<Select aria-label="OCR venue" value={venue} disabled={!!busy} onChange={event=>{setVenue(event.target.value);setRows(previous=>previous.map(row=>({...row,verified:false})));}}><option value="">Choose venue</option>{venues.map(venue=><option key={venue.id} value={venue.id}>{venue.name}</option>)}</Select></label></div></details>
-      <label className="block text-sm">Invoice currency <Select aria-label="Invoice currency" value={usd?"USD":"OTHER"} disabled={!!busy} onChange={event=>setUsd(event.target.value==="USD")}><option value="USD">USD — US dollars</option><option value="OTHER">Other currency — conversion required</option></Select></label>
       {readyRows.length>1&&<div className="space-y-3 rounded-lg border border-hairline p-3"><Button type="button" variant="secondary" disabled={!!busy} onClick={()=>setBatchReview(previous=>!previous)}>Review {readyRows.length} ready lines together</Button>{batchReview&&<><p className="text-sm">Review these matches, packs and paid totals, then confirm them together.</p><div className="overflow-x-auto"><table className="atelier-table w-full text-left text-sm" aria-label="Ready invoice lines"><thead><tr><th>Ingredient</th><th>Billed pack</th><th>Paid total</th></tr></thead><tbody>{readyRows.map(row=><tr key={row.key}><td>{data.items.find(item=>item.id===row.itemId)?.name}</td><td>{row.quantity} {row.unit} × {row.packQty} {row.packUnit}</td><td>{money(invoiceLineAmounts(row).total)}</td></tr>)}</tbody></table></div><Button type="button" disabled={!!busy} onClick={()=>void approveReady()}>Confirm {readyRows.length} reviewed lines</Button></>}</div>}
       <nav aria-label="Invoice review lines" className="max-h-48 divide-y divide-hairline overflow-y-auto rounded-lg border border-hairline">{visible.map(row => <button key={row.key} type="button" disabled={!!busy} aria-current={active?.key === row.key ? "step" : undefined} aria-label={`Review line ${row.page}-${row.lineNumber}: ${row.rawDescription}`} onClick={() => selectRow(row)} className={`flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-sm transition-colors hover:bg-stone ${active?.key === row.key ? "bg-blue-100" : "bg-canvas"}`}><span className="min-w-0"><span className="block truncate font-medium">{row.rawDescription || "Unnamed line"}</span><span className="text-xs text-zinc-500">Page {row.page} · {data.removed.includes(row.key) ? "Removed" : row.ignored ? "Ignored" : !row.itemId ? "Needs ingredient" : "Check pack & price"}</span></span><span className="shrink-0 tabular-nums">{money(invoiceLineAmounts(row).total)}</span></button>)}</nav>
       {visible.map(row=>{

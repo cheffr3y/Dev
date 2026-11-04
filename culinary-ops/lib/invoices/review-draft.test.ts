@@ -8,6 +8,7 @@ test("review drafts retain unfinished values without preserving approval verific
   const parsed = reviewDraftSchema.parse({ ...draft, rows: draft.rows.map(row => ({ ...row, verified: true })) });
   assert.equal("verified" in parsed.rows[0], false);
   assert.equal(parsed.rows[0].packQty, 0);
+  assert.equal(reviewDraftSchema.parse({ ...draft, currency: "OTHER" }).currency, "USD", "An old currency choice cannot block saving");
   assert.equal(reviewDraftSchema.safeParse({ ...draft, usd: true }).success, false);
 });
 
@@ -49,4 +50,20 @@ test("a stale tab stops saving without overwriting its visible draft", async () 
   await assert.rejects(saver.flush(), ReviewDraftConflict);
   assert.equal(requests, 1);
   assert.equal(saver.unsaved, true);
+});
+
+
+test("discarding a draft stops queued saves and navigation warnings even with a request in flight", async () => {
+  let release = () => {};
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  let requests = 0;
+  const draft = emptyReviewDraft(1);
+  const saver = new ReviewDraftSaver(draft, 0, async () => { requests++; await gate; return 1; }, () => {});
+  saver.set({ ...draft, date: "2026-11-03" });
+  const pending = saver.flush();
+  saver.set({ ...draft, date: "2026-11-04" });
+  saver.abandon();
+  assert.equal(saver.unsaved, false);
+  release(); await pending; await saver.flush();
+  assert.equal(requests, 1);
 });

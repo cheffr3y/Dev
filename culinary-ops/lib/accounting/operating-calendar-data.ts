@@ -46,8 +46,9 @@ export async function saveOperatingRecord(db: PrismaClient, userId: string, inpu
         const amountCents = dollarsToCents(edit.amount, true);
         if (amountCents == null || amountCents === 0 && edit.invoiceLineRevision == null) return { ok: false, error: "Enter a nonzero food amount; use a negative amount for an invoice credit." };
         if (!current && edit.voided) return { ok: false, error: "Save a spending entry before voiding it." };
-        const document = edit.invoiceDocumentId ? await tx.invoiceDocument.findUnique({ where: { id: edit.invoiceDocumentId }, select: { id: true, vendorId: true, invoiceNumber: true, lineRevision: true, purchaseLines: { where: { voided: false }, select: { amountCents: true, countsAsFood: true, invoiceDate: true, venueId: true, vendorId: true } } } }) : null;
+        const document = edit.invoiceDocumentId ? await tx.invoiceDocument.findUnique({ where: { id: edit.invoiceDocumentId }, select: { id: true, reviewState: true, vendorId: true, invoiceNumber: true, lineRevision: true, purchaseLines: { where: { voided: false }, select: { amountCents: true, countsAsFood: true, invoiceDate: true, venueId: true, vendorId: true } } } }) : null;
         if (edit.invoiceDocumentId && !document) return { ok: false, error: "That invoice document is unavailable." };
+        if (document?.reviewState === "DISCARDED") return { ok: false, error: "This invoice was discarded. Upload it again to start over." };
         if (current?.invoiceDocumentId && edit.invoiceDocumentId !== current.invoiceDocumentId) return { ok: false, error: "Keep the original invoice link. Void an incorrect entry before replacing it." };
         if (edit.invoiceLineRevision != null) {
           if (!document || document.lineRevision !== edit.invoiceLineRevision || !document.purchaseLines.length) return { ok: false, conflict: true, error: "Invoice lines changed or no active lines exist. Reload and review the line total." };

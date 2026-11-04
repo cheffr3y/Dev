@@ -6,7 +6,7 @@ export const invoicePurchaseSchema = z.object({
   expectedMeasurementVersion: z.number().int().nonnegative().optional(),
   eachWeightOz: z.number().finite().positive().max(1e7).nullable().default(null),
   rawCode: z.string().trim().max(100).nullable().default(null), ocrLineKey: z.string().max(100).nullable().default(null), remember: z.boolean().default(false),
-  ocrReviewed: z.boolean().default(false), confirmedUsd: z.boolean().default(false),
+  ocrReviewed: z.boolean().default(false), confirmedUsd: z.boolean().default(true),
   billedUnitPrice: z.number().finite().nullable().default(null),
   id: z.string().min(1).max(150), invoiceDocumentId: z.string().min(1).max(150), revision: z.number().int().min(0).nullable(),
   itemId: z.string().min(1).max(150).nullable(), vendorId: z.string().min(1).max(150), venueId: z.string().min(1).max(150),
@@ -14,7 +14,7 @@ export const invoicePurchaseSchema = z.object({
   quantity: z.number().finite().positive().max(1e8), purchaseUnit: z.string().trim().min(1).max(40),
   packQty: z.number().finite().positive().max(1e8), packUnit: z.string().trim().min(1).max(40),
   countsAsFood: z.boolean(), voided: z.boolean().default(false), reason: z.string().trim().max(1000).default(""),
-}).refine(row=>!row.ocrLineKey || row.ocrReviewed && row.confirmedUsd, "Verify the OCR line against the invoice and confirm USD before approval.");
+}).refine(row=>!row.ocrLineKey || row.ocrReviewed, "Verify the OCR line against the invoice before approval.");
 export type InvoicePurchaseInput = z.input<typeof invoicePurchaseSchema>;
 export function normalizedInvoicePrice(amountCents: number, quantity: number, packQty: number, packUnit: string, catalogUnit: string, measure: IngredientMeasure = {}) {
   if (![amountCents, quantity, packQty].every(Number.isFinite) || quantity <= 0 || packQty <= 0 || !packUnit.trim() || !catalogUnit.trim()) throw new Error("Confirm the billed quantity and pack contents.");
