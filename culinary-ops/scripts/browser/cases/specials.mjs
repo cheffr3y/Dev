@@ -12,10 +12,11 @@ try{
  await page.getByRole("button",{name:"Add temporary sub-recipe",exact:true}).click();
  const sub=page.getByRole("region",{name:"Temporary sub-recipe Sub-recipe 1",exact:true});
  await sub.getByLabel("Batch yield",{exact:true}).fill("2");
- await sub.getByLabel("Ingredient or recipe",{exact:true}).selectOption(`i:${item.id}`);await sub.getByLabel("Unit",{exact:true}).fill("lb");await sub.getByRole("button",{name:"Add to sub-recipe",exact:true}).click();
+ await sub.getByRole("combobox",{name:"Ingredient or recipe",exact:true}).fill("QA carrot");await sub.locator(`[data-option-id="i:${item.id}"]`).click();await sub.getByLabel("Unit",{exact:true}).fill("lb");await sub.getByRole("button",{name:"Add to sub-recipe",exact:true}).click();
+ assert.equal(await sub.getByRole("combobox",{name:"Ingredient or recipe",exact:true}).inputValue(),"");
+ assert.equal(await sub.getByRole("button",{name:"Add to sub-recipe",exact:true}).isEnabled(),false);
  const main=page.getByRole("region",{name:"Special recipe",exact:true});
- const option=await main.getByLabel("Ingredient or recipe",{exact:true}).locator("option").filter({hasText:"Sub-recipe 1 (2 qt)"}).getAttribute("value");
- await main.getByLabel("Ingredient or recipe",{exact:true}).selectOption(option);await main.getByLabel("Unit",{exact:true}).fill("qt");await main.getByRole("button",{name:"Add to dish",exact:true}).click();
+ await main.getByRole("combobox",{name:"Ingredient or recipe",exact:true}).fill("Sub-recipe 1");await main.getByRole("option").filter({hasText:"Sub-recipe 1"}).click();await main.getByLabel("Unit",{exact:true}).fill("qt");await main.getByRole("button",{name:"Add to dish",exact:true}).click();
  await main.getByLabel("Batch yield",{exact:true}).fill("4");await page.getByLabel("Menu price per yield unit ($)",{exact:true}).fill("10");
  assert.match(await page.locator("body").innerText(),/EP: \$4\.00 \/ lb/);
  await page.getByRole("button",{name:"Save costing",exact:true}).click();await page.waitForURL(/specials\?id=/);const id=new URL(page.url()).searchParams.get("id");
