@@ -17,7 +17,7 @@ export default async function MonthlyTracker({ searchParams }: { searchParams: P
   const venues = await getVenues({ includeIds: [query.venue, active?.id] });
   const venue = query.venue ? venues.find(v => v.id === query.venue) : active;
   if (!venue) return <Card className="p-5"><p role="alert">Choose an existing venue to record daily figures.</p><Link className="text-gold underline" href="/operating-calendar">Reset venue selection</Link></Card>;
-  const [data, documents] = await Promise.all([loadOperatingMonth(venue.id, month), prisma.invoiceDocument.findMany({ orderBy: { createdAt: "desc" }, take: 100, select: { id: true, filename: true, vendor: { select: { name: true } }, invoiceNumber: true } })]);
+  const [data, documents] = await Promise.all([loadOperatingMonth(venue.id, month), prisma.invoiceDocument.findMany({ where: { reviewState: { not: "DISCARDED" } }, orderBy: { createdAt: "desc" }, take: 100, select: { id: true, filename: true, vendor: { select: { name: true } }, invoiceNumber: true } })]);
   const href = (next: string) => `/operating-calendar?${new URLSearchParams({ month: next, venue: venue.id })}`;
   return <div className="operating-page"><PageHeader title="Monthly labor, sales & food" subtitle={`${venue.name} · Gross sales · Food purchases by invoice date`} />
     <div className="mb-5 flex flex-wrap items-end justify-between gap-3">

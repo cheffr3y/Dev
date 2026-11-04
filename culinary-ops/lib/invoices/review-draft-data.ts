@@ -8,8 +8,8 @@ export async function saveInvoiceReviewDraft(db: PrismaClient, userId: string, d
       return await db.$transaction(async tx => {
         const actor = await tx.user.findUnique({ where: { id: userId }, select: { role: true } });
         if (!actor || actor.role === "STAFF") throw new Error("Manager access required.");
-        const document = await tx.invoiceDocument.findUnique({ where: { id: documentId }, select: { ocrRevision: true } });
-        if (!document) throw new Error("Invoice unavailable.");
+        const document = await tx.invoiceDocument.findUnique({ where: { id: documentId }, select: { ocrRevision: true, reviewState: true } });
+        if (!document || document.reviewState === "DISCARDED") throw new Error("This invoice is unavailable or was discarded. Upload it again to start over.");
         if (payload.sourceRevision > document.ocrRevision || (payload.sourceRevision < document.ocrRevision && payload.rows.length > 0)) return { ok: false as const, conflict: true, error: "Recognition changed. Reload before continuing this draft." };
         const where = { userId_documentId: { userId, documentId } };
         const current = await tx.invoiceReviewDraft.findUnique({ where });

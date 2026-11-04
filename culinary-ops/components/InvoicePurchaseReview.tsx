@@ -105,8 +105,7 @@ function PurchaseLineForm({ invoiceId, vendorId, vendors, venues, items, line, d
     <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="remember" defaultChecked={checked("remember",true)} /> Remember this ingredient mapping for future invoices</label>
     {line && <><label className="flex items-center gap-2 text-sm"><input name="voided" type="checkbox" defaultChecked={checked("voided",line.voided)} /> Void this line</label><label className="block text-sm">Correction reason<Input name="reason" maxLength={1000} defaultValue={value("reason","")} /></label></>}
     {preview && <p className="text-sm tabular-nums">{preview}</p>}
-    {draft.currency!=="USD"&&<p role="alert" className="text-sm text-amber-700">Convert this invoice to USD before saving its prices.</p>}
-    <div className="flex gap-3"><Button disabled={draft.currency!=="USD"}>{busy ? "Saving…" : "Save invoice line"}</Button><Button type="button" variant="secondary" onClick={()=>{updateDraft(previous=>({...previous,manual:null,editor:null}));dirty(false);cancel();}}>Cancel entry</Button></div>
+    <div className="flex gap-3"><Button>{busy ? "Saving…" : "Save invoice line"}</Button><Button type="button" variant="secondary" onClick={()=>{updateDraft(previous=>({...previous,manual:null,editor:null}));dirty(false);cancel();}}>Cancel entry</Button></div>
   </fieldset>{message && <p role="status" className="text-sm">{message}</p>}<OperatingHistory history={line?.history} /></form>;
 }
 export function InvoicePurchaseReview({ invoice, vendorId, lineRevision, lines, expense, vendors, venues, items }: {

@@ -16,7 +16,8 @@ export const reviewRowSchema = z.object({
 export const reviewDraftSchema = z.object({
   version: z.literal(1), sourceRevision: z.number().int().nonnegative(),
   supplier: id, date: z.string().max(40), venue: id, selectedKey: id.nullable(),
-  currency: z.enum(["USD", "OTHER"]).default("USD"),
+  // Normalize older drafts that stored a currency choice. All invoices use USD.
+  currency: z.unknown().transform(() => "USD" as const),
   editor: z.string().max(150).nullable(),
   manual: z.object({ key: z.string().max(200), id: z.string().max(150), lineRevision: z.number().int().nonnegative().nullable(), fields: z.record(z.string().max(60), z.string().max(1000)).refine(value => Object.keys(value).length <= 30) }).nullable(),
   showIgnored: z.boolean(), rows: z.array(reviewRowSchema).max(200),
@@ -44,6 +45,7 @@ export class ReviewDraftSaver {
   private saved: string;
   private running: Promise<void> | null = null;
   private blocked = false;
+  private abandoned = false;
   private retry: ReviewDraft | null = null;
   constructor(payload: ReviewDraft, private revision: number,
     private request: (payload: ReviewDraft, revision: number) => Promise<number>,
@@ -51,13 +53,16 @@ export class ReviewDraftSaver {
     this.latest = payload;
     this.saved = serializeReviewDraft(payload);
   }
+  abandon() { this.abandoned = true; this.retry = null; }
   set(payload: ReviewDraft) {
+    if (this.abandoned) return;
     this.latest = payload;
     if (!this.blocked) this.changed(this.saved === serializeReviewDraft(payload) ? "saved" : "unsaved");
   }
   get hasSaved() { return this.revision > 0; }
-  get unsaved() { return this.saved !== serializeReviewDraft(this.latest); }
+  get unsaved() { return !this.abandoned && this.saved !== serializeReviewDraft(this.latest); }
   flush(): Promise<void> {
+    if (this.abandoned) return Promise.resolve();
     if (this.blocked) return Promise.reject(new ReviewDraftConflict("This draft changed in another tab. Reload to use the saved draft."));
     if (this.running) return this.running;
     this.running = this.drain().finally(() => { this.running = null; });
@@ -65,7 +70,7 @@ export class ReviewDraftSaver {
   }
   private async drain() {
     try {
-      while (this.retry || this.unsaved) {
+      while (!this.abandoned && (this.retry || this.unsaved)) {
         this.changed("saving");
         const payload = this.retry ?? this.latest, serialized = serializeReviewDraft(payload);
         this.retry = payload;

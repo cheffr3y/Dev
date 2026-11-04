@@ -8,6 +8,7 @@ import { prisma } from "@/lib/db/prisma";
 import { Badge, PageHeader, Card } from "@/components/ui";
 import { InvoiceArchive } from "./InvoiceArchive";
 import { reviewDraftSchema } from "@/lib/invoices/review-draft";
+import { InvoiceDiscard } from "@/components/InvoiceDiscard";
 import { InvoiceDraftProvider } from "@/components/InvoiceDraftProvider";
 import { InvoiceWorkspace } from "@/components/InvoiceWorkspace";
 import { InvoiceCompletion, type InvoiceCompletionData } from "@/components/InvoiceCompletion";
@@ -16,11 +17,11 @@ import { affectedRecipes } from "@/lib/ingredients/measurement-impact";
 import { measurementSelect } from "@/lib/ingredients/measurements";
 import { money } from "@/lib/recipes/costing";
 
-export default async function InvoicePage({ searchParams }: { searchParams: Promise<{ id?: string; q?: string; vendor?: string; sort?: string; state?: string; page?: string }> }) {
+export default async function InvoicePage({ searchParams }: { searchParams: Promise<{ id?: string; q?: string; vendor?: string; sort?: string; state?: string; page?: string; discarded?: string }> }) {
   const user = await requirePrepUser("MANAGER");
-  const { id, q = "", vendor = "", sort = "newest", state = "ALL", page = "1" } = await searchParams;
+  const { id, discarded, q = "", vendor = "", sort = "newest", state = "ALL", page = "1" } = await searchParams;
   const filter = invoiceStates.includes(state as InvoiceState) ? state as InvoiceState : null;
-  const where = { ...(vendor ? { vendorId: vendor } : {}), ...(q ? { OR: [{ filename: { contains: q, mode: "insensitive" as const } }, { invoiceNumber: { contains: q, mode: "insensitive" as const } }, { vendor: { name: { contains: q, mode: "insensitive" as const } } }] } : {}) };
+  const where = { reviewState: { not: "DISCARDED" }, ...(vendor ? { vendorId: vendor } : {}), ...(q ? { OR: [{ filename: { contains: q, mode: "insensitive" as const } }, { invoiceNumber: { contains: q, mode: "insensitive" as const } }, { vendor: { name: { contains: q, mode: "insensitive" as const } } }] } : {}) };
   const counts = await prisma.invoiceDocument.groupBy({ by: ["reviewState"], where, _count: true });
   const total = counts.reduce((sum, row) => sum + (!filter || row.reviewState === filter ? row._count : 0), 0);
   const pages = Math.max(1, Math.ceil(total / 25)), currentPage = Math.min(pages, Math.max(1, Number.isSafeInteger(Number(page)) ? Number(page) : 1));
@@ -36,7 +37,7 @@ export default async function InvoicePage({ searchParams }: { searchParams: Prom
       select: { id: true, filename: true, vendor: { select: { name: true } }, invoiceNumber: true, reviewState: true, candidateLineCount: true, reviewedCandidateCount: true, lineRevision: true,
         foodExpense: { select: { voided: true, amountCents: true, invoiceLineRevision: true } }, _count: { select: { purchaseLines: { where: { voided: false, countsAsFood: true } } } } } }),
     prisma.vendor.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
-    id ? prisma.invoiceDocument.findUnique({ where: { id }, select: { id: true, filename: true, mime: true, pages: true, vendor: { select: { name: true } }, vendorId: true, lineRevision: true, ocrRevision: true, invoiceNumber: true, notes: true, reviewState: true } }) : null,
+    id ? prisma.invoiceDocument.findFirst({ where: { id, reviewState: { not: "DISCARDED" } }, select: { id: true, filename: true, mime: true, pages: true, vendor: { select: { name: true } }, vendorId: true, lineRevision: true, ocrRevision: true, invoiceNumber: true, notes: true, reviewState: true } }) : null,
   ]);
   const review = selected ? await Promise.all([
     loadInvoicePurchases(selected.id), getVenues({ includeLegacy: true }),
@@ -54,7 +55,7 @@ export default async function InvoicePage({ searchParams }: { searchParams: Prom
     const [changes, graph, next, ignored] = await Promise.all([
       prisma.invoicePriceChange.findMany({ where: { invoiceDocumentId: selected.id }, orderBy: [{ createdAt: "asc" }, { id: "asc" }] }),
       prisma.recipe.findMany({ select: { id: true, name: true, items: { select: { itemId: true } }, components: { select: { childId: true } } } }),
-      prisma.invoiceDocument.findFirst({ where: { ...where, id: { not: selected.id }, reviewState: { not: "COMPLETE" } }, orderBy: [{ createdAt: order }, { id: order }], select: { id: true } }),
+      prisma.invoiceDocument.findFirst({ where: { ...where, id: { not: selected.id }, reviewState: { notIn: ["COMPLETE", "DISCARDED"] } }, orderBy: [{ createdAt: order }, { id: order }], select: { id: true } }),
       prisma.invoiceOcrDecision.count({ where: { documentId: selected.id, lineKey:{notIn:review[0].flatMap(line=>line.ocrLineKey?[line.ocrLineKey]:[])} } }),
     ]);
     // Price history is grouped by its captured rate unit, never comparing unlike bases.
@@ -79,10 +80,12 @@ export default async function InvoicePage({ searchParams }: { searchParams: Prom
     {pages > 1 && <nav aria-label="Invoice pages" className="flex justify-between text-sm">{currentPage > 1 ? <Link href={href({ page: String(currentPage - 1) })}>← Previous page</Link> : <span />}{currentPage < pages && <Link href={href({ page: String(currentPage + 1) })}>Next page →</Link>}</nav>}
   </section>;
   return <div className="space-y-5"><PageHeader title="Invoices" subtitle="Review purchases, protect ingredient costs, and keep accounting clear." action={<Link href="#invoice-upload" className="text-sm text-blue-600 underline">Add invoices →</Link>} />
+    {discarded === "1" && !selected && <p role="status" className="text-sm">Invoice discarded. Upload an invoice below to start fresh.</p>}
     {!selected && inbox}
     <div id="invoice-upload"><InvoiceArchive vendors={vendors} compact={!!selected} /></div>
     {id && !selected && <p role="alert" className="text-sm">Invoice not found.</p>}
     {selected && review && <div id="invoice-review" className="scroll-mt-20"><InvoiceDraftProvider key={selected.id} documentId={selected.id} sourceRevision={selected.ocrRevision} initial={initialDraft}>
+      <InvoiceDiscard documentId={selected.id} filename={selected.filename} lineRevision={selected.lineRevision} ocrRevision={selected.ocrRevision} savedLines={review[0].filter(line => !line.voided).length} expense={spending ? { revision: spending.revision, active: !spending.voided, amountCents: spending.amountCents } : null} />
       {completion && <InvoiceCompletion data={completion} />}
       <InvoiceWorkspace document={selected}><InvoicePurchaseReview invoice={{ id: selected.id, filename: selected.filename, vendor: selected.vendor?.name ?? null, invoiceNumber: selected.invoiceNumber }} vendorId={selected.vendorId} lineRevision={selected.lineRevision} lines={review[0]} expense={expense} vendors={vendors} venues={review[1].map(venue => ({ id: venue.id, name: venue.name }))} items={review[2].map(item => {const learned=review[5].find(alias=>alias.itemId===item.id);return { ...item, label: item.name, meta: `${item.unit} · ${item.vendor?.name ?? "No catalog vendor"}`, keywords: [item.sku, item.gcode, item.vendor?.name].filter(Boolean).join(" "),invoiceDefaults:learned?{unit:learned.defaultUnit,packQty:learned.defaultPackQty,packUnit:learned.defaultPackUnit,rawCode:learned.rawCode}:null };})} /></InvoiceWorkspace>
     </InvoiceDraftProvider></div>}

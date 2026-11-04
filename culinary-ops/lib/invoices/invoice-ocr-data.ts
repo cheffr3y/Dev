@@ -20,7 +20,8 @@ export const ocrCommandSchema=z.discriminatedUnion("action",[
   z.object({action:z.literal("createItem"),operationId:z.string().uuid(),...lineFields,name:text,unit:z.string().trim().min(1).max(40),remember:z.boolean()}).strict(),
 ]);
 export async function loadLocalInvoice(id:string,vendorOverride?:string) {
-  const doc=await prisma.invoiceDocument.findUniqueOrThrow({where:{id},select:{id:true,vendorId:true,ocrDraft:true,ocrRevision:true,purchaseLines:{select:{ocrLineKey:true}},ocrDecisions:{select:{lineKey:true,facts:true}}}});
+  const doc=await prisma.invoiceDocument.findUniqueOrThrow({where:{id},select:{id:true,reviewState:true,vendorId:true,ocrDraft:true,ocrRevision:true,purchaseLines:{select:{ocrLineKey:true}},ocrDecisions:{select:{lineKey:true,facts:true}}}});
+  if(doc.reviewState==="DISCARDED")throw new Error("This invoice was discarded. Upload it again to start over.");
   const vendorId=doc.vendorId??vendorOverride??null;
   const [aliases,items]=await Promise.all([
     prisma.invoiceItemAlias.findMany({where:{OR:[{vendorId:null},...(vendorId?[{vendorId}]:[])]},orderBy:{hitCount:"desc"}}),
@@ -36,6 +37,7 @@ export async function mutateLocalInvoice(actorId:string,raw:unknown) {
     const actor=await tx.user.findUnique({where:{id:actorId},select:{role:true}});
     if(!actor || actor.role==="STAFF")throw new Error("Manager access required.");
     const doc=await tx.invoiceDocument.findUniqueOrThrow({where:{id:command.documentId}});
+    if(doc.reviewState==="DISCARDED")throw new Error("This invoice was discarded. Upload it again to start over.");
     if(command.action==="draft") {
       if(doc.ocrDraft)return {ok:true,id:doc.id}; // Reuse saved recognition; never reprocess approvals.
       if(doc.ocrRevision!==command.expectedRevision)throw new Error("Recognition draft changed. Reload the invoice.");

@@ -57,10 +57,10 @@ test("learned overrides, ignored memory and quick creation are durable and idemp
  await assert.rejects(mutateLocalInvoice(staff,command),/Manager/);
  assert.equal((await prisma.item.findUniqueOrThrow({where:{id:itemId}})).unitCost,.1875);
 });
-test("OCR approval requires USD/review and cannot approve the same recognized line twice",async()=>{
+test("OCR approval requires review and cannot approve the same recognized line twice",async()=>{
  const key=parseInvoiceText(pages).lines[0].key, data=line({ocrLineKey:key,rawCode:"77412",remember:true});
  assert.equal((await saveInvoicePurchase(prisma,admin,data)).ok,false);
- const approved={...data,ocrReviewed:true,confirmedUsd:true};await Promise.all([saveInvoicePurchase(prisma,admin,approved),saveInvoicePurchase(prisma,admin,approved)]);
+ const approved={...data,ocrReviewed:true};await Promise.all([saveInvoicePurchase(prisma,admin,approved),saveInvoicePurchase(prisma,admin,approved)]);
  assert.equal(await prisma.invoicePurchaseLine.count({where:{invoiceDocumentId:docId,ocrLineKey:key}}),1);
  assert.equal((await saveInvoicePurchase(prisma,admin,{...approved,id:randomUUID()})).ok,false);
  await assert.rejects(mutateLocalInvoice(admin,{action:"remove",operationId:randomUUID(),documentId:docId,key}),/approved/);

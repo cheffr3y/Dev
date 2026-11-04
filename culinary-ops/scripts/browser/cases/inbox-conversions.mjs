@@ -41,7 +41,7 @@ try {
   const bytes=Buffer.from(await pdf.save());
   await page.goto(`${base}/invoices`);await page.getByLabel("Invoice vendor",{exact:true}).selectOption(vendor.id);await page.getByLabel("Invoice PDF or photo",{exact:true}).setInputFiles({name:"soigne-ten-lines.pdf",mimeType:"application/pdf",buffer:bytes});await page.getByRole("button",{name:"Store invoice",exact:true}).click();await page.waitForURL(/\/invoices\?.*id=/);
   const documentId=new URL(page.url()).searchParams.get("id"),review=page.getByRole("region",{name:"Local invoice OCR review",exact:true});await review.getByRole("heading",{name:"Line 1 of 10",exact:true}).waitFor();
-  await review.getByLabel("OCR invoice date",{exact:true}).fill("2026-11-03");await review.getByLabel("OCR venue",{exact:true}).selectOption("clipboard-venue");await review.getByLabel("Invoice currency",{exact:true}).selectOption("USD");
+  await review.getByLabel("OCR invoice date",{exact:true}).fill("2026-11-03");await review.getByLabel("OCR venue",{exact:true}).selectOption("clipboard-venue");
   const settings={unit:"oz",eachLabel:"head",eachWeightOz:20,densityGPerMl:null,yieldFactor:.9,usableCosting:true,packQty:3,packUnit:"each"};
   async function applyWeight(weight){const settings2={...settings,eachWeightOz:weight};const response=await page.request.post(`${base}/api/ingredient-measurements`,{data:{action:"preview",id:celery.id,settings:settings2}});assert.equal(response.status(),200);const result=await response.json();const applied=await page.request.post(`${base}/api/ingredient-measurements`,{data:{action:"apply",id:celery.id,settings:settings2,token:result.token,operationId:randomUUID(),confirmedBasis:true}});assert.equal(applied.status(),200);}
   await applyWeight(22);await applyWeight(20);

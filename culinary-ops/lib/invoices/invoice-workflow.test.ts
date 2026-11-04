@@ -33,7 +33,7 @@ test("invoice metadata recognizes a unique invoice date and venue, excluding pay
   assert.equal(invoiceDetailsFromText([{text:"NET DUE DATE 11/16/2026"}],venues).date,"");
   assert.equal(invoiceDetailsFromText([{text:"INV DATE 2/31/2026"}],venues).date,"");
   assert.equal(invoiceDetailsFromText([{text:"11/02/2026\nInvoice No. 12345 INV DATE"}],venues).date,"2026-11-02");
-  assert.equal(invoiceDetailsFromText([{text:"TOTAL 100.00 CAD"}],venues).currency,"OTHER");
+  assert.equal(invoiceDetailsFromText([{text:"TOTAL 100.00 CAD"}],venues).currency,"USD");
 });
 
 test("pack defaults prefer explicit billed contents, then supplier memory, then the catalog",()=>{

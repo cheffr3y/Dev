@@ -64,11 +64,11 @@ try{
  await row.getByLabel("OCR pack quantity",{exact:true}).fill("31");
  await review.getByRole("button",{name:/Review line 1-4:/}).click();await row.getByLabel("OCR pack quantity",{exact:true}).fill("28");
  await page.getByLabel("Invoice source zoom",{exact:true}).selectOption("200");
- await review.getByLabel("Invoice currency",{exact:true}).selectOption("USD");
+
  await draftSaved();await page.reload();await review.getByText("Your invoice details and edits were restored.",{exact:true}).waitFor();
  assert.equal(await row.getByLabel("OCR pack quantity",{exact:true}).inputValue(),"28");
  assert.equal(await page.getByLabel("Invoice source zoom",{exact:true}).inputValue(),"200");
- assert.equal(await review.getByLabel("Invoice currency",{exact:true}).inputValue(),"USD");
+ assert.equal(await review.getByLabel("Invoice currency",{exact:true}).count(),0);
  assert.equal(await row.getByRole("button",{name:"Approve invoice price",exact:true}).isEnabled(),true);
  await row.getByLabel("OCR pack quantity",{exact:true}).fill("20");await review.getByRole("button",{name:/Review line 1-1:/}).click();
  assert.equal(await row.getByLabel("OCR pack quantity",{exact:true}).inputValue(),"31");await row.getByLabel("OCR pack quantity",{exact:true}).fill("20");await draftSaved();
@@ -87,7 +87,7 @@ try{
  assert.equal(await row.getByLabel("OCR pack quantity",{exact:true}).inputValue(),"22");
  assert.equal(await db.invoicePurchaseLine.count({where:{invoiceDocumentId:documentId}}),0);assert.equal((await db.item.findUniqueOrThrow({where:{id:item.id}})).unitCost,2);
  await row.getByLabel("OCR pack quantity",{exact:true}).fill("20");
- await review.getByLabel("Invoice currency",{exact:true}).selectOption("USD");
+
  await page.route("**/api/invoice-purchases",async route=>{await route.fetch();await route.abort();},{times:1});await row.getByRole("button",{name:"Approve invoice price",exact:true}).click();await row.getByRole("status").filter({hasText:"Connection interrupted"}).waitFor();
  await row.getByRole("button",{name:"Approve invoice price",exact:true}).click();await review.getByText(/1 approved/).waitFor();
  assert.equal((await db.item.findUniqueOrThrow({where:{id:item.id}})).unitCost,3);assert.equal(await db.invoicePriceChange.count({where:{itemId:item.id}}),1);
@@ -98,7 +98,7 @@ try{
  const spice=review.getByRole("form").filter({has:page.getByLabel("OCR raw code",{exact:true}).and(page.locator('input[value="90123"]'))});await spice.getByText("+ Quick-Create Ingredient",{exact:true}).click();await spice.getByLabel("New OCR ingredient name",{exact:true}).fill("Local Invoice New Spice");await spice.getByLabel("New OCR ingredient cost unit",{exact:true}).fill("lb");await page.route("**/api/invoice-ocr",async route=>{await route.fetch();await route.abort();},{times:1});await spice.getByRole("button",{name:"Create ingredient for this row",exact:true}).click();await spice.getByRole("status").waitFor();
  await draftSaved();await page.reload();await review.getByText(/Your invoice details and edits were restored/).waitFor();await spice.getByText("+ Quick-Create Ingredient",{exact:true}).click();
  await spice.getByRole("button",{name:"Create ingredient for this row",exact:true}).click();await spice.getByRole("status").filter({hasText:"Ingredient created"}).waitFor();
- assert.equal(await db.item.count({where:{name:"Local Invoice New Spice"}}),1);await review.getByLabel("Invoice currency",{exact:true}).selectOption("USD");
+ assert.equal(await db.item.count({where:{name:"Local Invoice New Spice"}}),1);
  assert.equal((await db.item.findFirstOrThrow({where:{name:"Local Invoice New Spice"}})).unitCost,0);
  await spice.getByLabel("OCR pack quantity",{exact:true}).fill("10");await spice.getByLabel("OCR pack unit",{exact:true}).fill("lb");await spice.getByRole("button",{name:"Approve invoice price",exact:true}).click();await review.getByText(/2 approved/).waitFor();
  await review.screenshot({path:`${output}/digital-review.png`});await page.reload();await review.getByText(/2 approved/).waitFor();assert.equal(await review.getByRole("form").count(),1);
@@ -142,8 +142,8 @@ try{
  await review.getByLabel("OCR invoice date",{exact:true}).fill("2026-11-03");await review.getByLabel("OCR venue",{exact:true}).selectOption("clipboard-venue");
  assert.equal(await nutmegRow.getByText("Amounts unreadable or missing. Enter manually or mark ignored.",{exact:true}).count(),0);
  assert.match(await nutmegRow.innerText(),/New unit cost: \$0.865 \/ oz/);
- await review.getByLabel("Invoice currency",{exact:true}).selectOption("OTHER");assert.match(await nutmegRow.getByLabel("Needed to confirm this line",{exact:true}).innerText(),/USD/);
- await review.getByLabel("Invoice currency",{exact:true}).selectOption("USD");
+ assert.equal(await review.getByLabel("Invoice currency",{exact:true}).count(),0);
+
  const confirmNutmeg=nutmegRow.getByRole("button",{name:"Approve invoice price",exact:true});assert.equal(await confirmNutmeg.isEnabled(),true);
  await quantityInput.fill("2");assert.equal(await totalInput.inputValue(),"27.68");assert.equal(await confirmNutmeg.isEnabled(),true);
  await priceInput.fill("12");assert.equal(await totalInput.inputValue(),"24");
@@ -157,7 +157,7 @@ try{
  await priceInput.fill("13.84");await nutmegRow.getByLabel("OCR pack unit",{exact:true}).fill("qt");
  assert.match(await nutmegRow.getByLabel("Needed to confirm this line",{exact:true}).innerText(),/qt do not convert.*oz/);
  await nutmegRow.getByLabel("OCR pack unit",{exact:true}).fill("oz");
- await review.getByLabel("Invoice currency",{exact:true}).selectOption("USD");
+
  assert.equal(await confirmNutmeg.isEnabled(),true);
  assert.equal(await db.invoicePurchaseLine.count({where:{invoiceDocumentId:nutmegDocumentId}}),0);
  await nutmegRow.evaluate(element=>window.scrollTo(0,window.scrollY+element.getBoundingClientRect().top-80));await page.screenshot({path:`${output}/calculated-total-desktop.png`});

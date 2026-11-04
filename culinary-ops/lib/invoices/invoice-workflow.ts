@@ -27,5 +27,5 @@ export function invoiceDetailsFromText(pages: { text: string }[], venues: { id: 
     return names.some(name => lines.some(line => line.includes(name)));
   });
   return { date: dates.size === 1 ? [...dates][0] : "", venueId: matches.length === 1 ? matches[0].id : "",
-    currency: /\b(?:CAD|EUR|GBP|CANADIAN DOLLARS)\b/i.test(text) ? "OTHER" as const : "USD" as const };
+    currency: "USD" as const };
 }
