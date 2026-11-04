@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { invoiceSourceRows,invoiceProductStart,normalizeInvoiceLine } from "./invoice-layout";
+import { invoiceSourceRows,invoiceProductStart,normalizeInvoiceLine,invoiceGarbage } from "./invoice-layout";
 import { convertQty } from "../recipes/units";
 
 export function invoiceFileType(bytes: Uint8Array) {
@@ -11,18 +11,21 @@ export function invoiceFileType(bytes: Uint8Array) {
   throw new Error("Choose a PDF, JPEG, PNG or WebP invoice.");
 }
 export const localInvoiceLineSchema = z.object({
+  ignored: z.boolean().optional(),
+  bbox: z.object({ x0:z.number(), y0:z.number(), x1:z.number(), y1:z.number() }).optional(),
   key: z.string().max(100), page: z.number().int().min(1).max(20), lineNumber: z.number().int().positive(),
   rawText: z.string().max(1500), rawCode: z.string().max(100).nullable(), rawDescription: z.string().min(1).max(500),
   quantity: z.number().finite().nullable(), unit: z.string().max(40), unitPrice: z.number().finite().nullable(), extendedPrice: z.number().finite().nullable(),
   packQty: z.number().finite().positive().nullable(), packUnit: z.string().max(40), warnings: z.array(z.string().max(200)).max(10),
 });
 export type LocalInvoiceLine = z.infer<typeof localInvoiceLineSchema>;
-export const localInvoiceDraftSchema = z.object({ version: z.literal(1), pages: z.array(z.object({ page: z.number().int().min(1).max(20), text: z.string().max(150000) })).min(1).max(20), lines: z.array(localInvoiceLineSchema).max(200) });
+const regionSchema = z.object({lineNumber:z.number().int().positive(),bbox:z.object({x0:z.number().min(0).max(1),y0:z.number().min(0).max(1),x1:z.number().min(0).max(1),y1:z.number().min(0).max(1)})});
+export const localInvoiceDraftSchema = z.object({ version: z.literal(1), pages: z.array(z.object({ page: z.number().int().min(1).max(20), text: z.string().max(150000), regions:z.array(regionSchema).max(10000).optional() })).min(1).max(20), lines: z.array(localInvoiceLineSchema).max(200) });
 export type LocalInvoiceDraft = z.infer<typeof localInvoiceDraftSchema>;
 const footer = /^(?:INVOICE\s+(?:TOTAL|NUMBER|NO|DATE)|SUB\s*TOTAL|GRAND\s+TOTAL|TOTAL\s+(?:DUE|AMOUNT)|TAX\b|SALES TAX|PAGE\s+\d|DELIVERY DATE|BILL TO|SHIP TO|TELEPHONE|PHONE|FAX|THANK YOU|PAYMENT TERMS|TERMS:|QTY\s+|ITEM\s+(?:CODE|NUMBER|DESCRIPTION))/i;
 // Legal notices can share an OCR line with a subtotal in the adjacent column.
 const legalFooter = /^(?:THE\s+)?PERISHABLE\s+AGRICULTUR(?:AL|E)\s+COMMODITIES\b/i;
-const totalFooter = /^(?:TOTAL|AMOUNT\s+DUE|BALANCE\s+DUE)\s*:?\s*\$?\s*[-(]?[\dOIlS][\dOIlS,]*\.[\dOIlS]{2}\)?$/i;
+const totalFooter = /^(?:TOTAL|AMOUNT\s+DUE|BALANCE\s+DUE)\s*:?\s*\$?\s*[-(]?[\dOIlS][\dOIlS,]*\.[\dOIlS]{2}\)?(?:\s*(?:USD|US\$))?$/i;
 function numeric(raw: string) {
   const source = raw.replace(/[, $]/g, "").replace(/^\((.*)\)$/, "-$1");
   const repaired = source.replace(/[Oo]/g, "0").replace(/[IiLl|]/g, "1").replace(/S/g, "5");
@@ -35,7 +38,7 @@ function hash(text: string) { let value = 2166136261; for (const char of text) v
 export function invoiceMathWarning(quantity: number | null, unitPrice: number | null, extendedPrice: number | null) {
   return quantity === null || unitPrice === null || extendedPrice === null || Math.abs(quantity * unitPrice - extendedPrice) > 0.020001;
 }
-export function parseInvoiceText(pages: { page: number; text: string }[]): LocalInvoiceDraft {
+export function parseInvoiceText(pages: z.infer<typeof localInvoiceDraftSchema>["pages"]): LocalInvoiceDraft {
   const lines: LocalInvoiceLine[] = [];
   for (const page of pages) for (const {rawText, lineNumber} of invoiceSourceRows(page.text)) {
     const index = lineNumber - 1;
@@ -97,7 +100,9 @@ export function parseInvoiceText(pages: { page: number; text: string }[]): Local
     }
     if (invoiceMathWarning(quantity, unitPrice, extendedPrice)) warnings.push("Quantity × unit price does not match the paid total, or a number is missing.");
     const cleanDescription = description.replace(/\b(?:\d+\s*[/xX]\s*)?\d+(?:[.]\d+)?\s*(?:LB|OZ|KG|GR|G|GAL|QT|EA|EACH)(?=\b|BC\b|PC\b|CS\b).*$/i, "").replace(/\b(?:BC|PC|CS)\s+P[Il]t#?:.*$/i, "").trim();
-    lines.push({ key: `p${page.page}-l${index + 1}-${hash(raw)}`, page: page.page, lineNumber: index + 1, rawText: rawText.slice(0,1500), rawCode, rawDescription: (cleanDescription || description || raw).slice(0,500), quantity, unit, unitPrice, extendedPrice, packQty, packUnit, warnings });
+    const regions=page.regions?.filter(region=>region.lineNumber>=lineNumber&&region.lineNumber<lineNumber+rawText.split("\n").length);
+    const bbox=regions?.length?{x0:Math.min(...regions.map(r=>r.bbox.x0)),y0:Math.min(...regions.map(r=>r.bbox.y0)),x1:Math.max(...regions.map(r=>r.bbox.x1)),y1:Math.max(...regions.map(r=>r.bbox.y1))}:undefined;
+    lines.push({ ...(bbox?{bbox}:{}), key: `p${page.page}-l${index + 1}-${hash(raw)}`, page: page.page, lineNumber: index + 1, rawText: rawText.slice(0,1500), rawCode, rawDescription: (cleanDescription || description || raw).slice(0,500), quantity, unit, unitPrice, extendedPrice, packQty, packUnit, warnings, ignored: invoiceGarbage.test(raw) });
   }
   return localInvoiceDraftSchema.parse({ version: 1, pages, lines });
 }

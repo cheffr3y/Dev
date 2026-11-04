@@ -16,13 +16,13 @@ function history(previous: unknown, userId: string, reason: string, before: unkn
 const dayFacts = (day: { grossSalesCents: number | null; laborCents: number | null; foodReviewed: boolean; notes: string }) => ({ grossSalesCents: day.grossSalesCents, laborCents: day.laborCents, foodReviewed: day.foodReviewed, notes: day.notes });
 const expenseFacts = (expense: { venueId: string; invoiceDate: Date; amountCents: number; description: string; invoiceDocumentId: string | null; voided: boolean }) => ({ venueId: expense.venueId, invoiceDate: expense.invoiceDate.toISOString().slice(0, 10), amountCents: expense.amountCents, description: expense.description, invoiceDocumentId: expense.invoiceDocumentId, voided: expense.voided });
 
-export async function saveOperatingRecord(db: PrismaClient, userId: string, input: unknown): Promise<OperatingSaveResult> {
+export async function saveOperatingRecord(db: PrismaClient, userId: string, input: unknown, transaction?: Prisma.TransactionClient): Promise<OperatingSaveResult> {
   const parsed = operatingEditSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message || "Check the entry." };
   const edit = parsed.data;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      return await db.$transaction(async tx => {
+      const execute = async (tx: Prisma.TransactionClient): Promise<OperatingSaveResult> => {
         const user = await tx.user.findUnique({ where: { id: userId }, select: { role: true, name: true } });
         if (!user || user.role === "STAFF") return { ok: false, error: "Manager access is required." };
         if (!await tx.venue.findUnique({ where: { id: edit.venueId }, select: { id: true } })) return { ok: false, error: "Choose an existing venue." };
@@ -81,7 +81,8 @@ export async function saveOperatingRecord(db: PrismaClient, userId: string, inpu
           await tx.operatingDay.update({ where: { id: day.id }, data: { foodReviewed: false, revision: { increment: 1 }, history: history(day.history, userId, "Food spending changed; review reopened", before, after, user.name) } });
         }
         return { ok: true, revision: saved.revision };
-      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+      };
+      return transaction ? await execute(transaction) : await db.$transaction(execute, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && ["P2034", "P2002"].includes(error.code)) {
         if (attempt < 2) continue;

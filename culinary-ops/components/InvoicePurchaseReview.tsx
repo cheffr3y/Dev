@@ -1,138 +1,220 @@
 "use client";
-import { measurementVersion, type IngredientMeasure } from "@/lib/ingredients/measurements";
-import { useInvoiceDraft } from "./InvoiceDraftProvider";
-import { InvoiceLocalReview } from "./InvoiceLocalReview";
-import { normalizedInvoicePrice, invoiceNormalizationMeasure } from "@/lib/invoices/invoice-purchases";
-import { invoiceLineAmounts } from "@/lib/invoices/invoice-review";
-import { invoicePackDefaults, type InvoicePack } from "@/lib/invoices/invoice-workflow";
-import { priceVariance } from "@/lib/invoices/price-trends";
-import { priceJump } from "@/lib/invoices/price-trends";
-import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Badge, Button, Card, Input, Select } from "./ui";
-import { ComboPicker, type ComboOption } from "./ComboPicker";
-import { FoodExpenseForm, OperatingHistory, type InvoiceChoice } from "./OperatingEntryForms";
-import { money, preciseNum } from "@/lib/recipes/costing";
+import { measurementVersion, type IngredientMeasure } from "@/lib/ingredients/measurements";
+import { invoiceLineAmounts, invoiceLineReview } from "@/lib/invoices/invoice-review";
+import { formatInvoicePack, invoiceDetailsFromText, invoicePackDefaults, parseInvoicePack, type InvoicePack } from "@/lib/invoices/invoice-workflow";
+import { invoiceGarbage } from "@/lib/invoices/invoice-layout";
+import { matchInvoiceLine } from "@/lib/invoices/invoice-learning";
+import { reviewRowSchema, type ReviewRowDraft } from "@/lib/invoices/review-draft";
+import { priceVariance } from "@/lib/invoices/price-trends";
+import { gridNavigation } from "@/lib/workspace/grid-navigation";
+import { money } from "@/lib/recipes/costing";
+import type { LocalInvoiceLine } from "@/lib/invoices/invoice-parser";
+import type { loadLocalInvoice } from "@/lib/invoices/invoice-ocr-data";
+import { invoiceNormalizationMeasure } from "@/lib/invoices/invoice-purchases";
 import type { InvoicePurchaseData, InvoicePurchaseInput } from "@/lib/invoices/invoice-purchases";
 import type { FoodExpenseData } from "@/lib/accounting/operating-calendar";
-import type { OperatingSaveResult } from "@/lib/accounting/operating-calendar-data";
+import type { InvoiceChoice } from "./OperatingEntryForms";
+import { Badge, Button, Input, Select } from "./ui";
+import { ComboPicker, type ComboOption } from "./ComboPicker";
+import { useInvoiceDraft } from "./InvoiceDraftProvider";
+import { useInvoiceSource } from "./InvoiceWorkspace";
 
-function PurchaseLineForm({ invoiceId, vendorId, vendors, venues, items, line, defaults, done, dirty, reset, cancel }: {
-  invoiceId: string; vendorId: string | null; vendors: { id: string; name: string }[]; venues: { id: string; name: string }[]; items: (ComboOption & IngredientMeasure & {unit?:string;unitCost?:number;sku?:string|null;vendorId?:string|null;invoiceDefaults?:InvoicePack|null})[];
-  line?: InvoicePurchaseData; defaults?: { date: string; venueId: string; vendorId?: string }; done: () => void; dirty: (value: boolean) => void; reset: () => void; cancel:()=>void;
+type Data = Awaited<ReturnType<typeof loadLocalInvoice>>;
+type Item = ComboOption & IngredientMeasure & { unit?:string; unitCost?:number; sku?:string|null; vendorId?:string|null; invoiceDefaults?:InvoicePack|null };
+type Row = ReviewRowDraft & { page:number; rawText:string; bbox?:LocalInvoiceLine["bbox"]; warnings:string[]; confidence:string };
+const numeric = (value:string) => value.trim() === "" ? null : Number(value);
+const cellClass = "w-full min-w-16 rounded border border-transparent bg-transparent px-2 py-1 text-sm hover:border-hairline focus:border-form-focus focus:outline-none focus:ring-1 focus:ring-form-focus";
+
+export function InvoicePurchaseReview({invoice,vendorId,lineRevision,lines,expense,vendors,venues,items,defaultVenueId}: {
+  invoice:InvoiceChoice; vendorId:string|null; lineRevision:number; lines:InvoicePurchaseData[]; expense:FoodExpenseData|null;
+  vendors:{id:string;name:string}[]; venues:{id:string;name:string}[]; items:Item[]; defaultVenueId?:string|null;
 }) {
-  const { draft, update: updateDraft, flush: saveDraft } = useInvoiceDraft();
-  const draftKey = line ? `${line.id}:${line.revision}` : "new";
-  const stored = draft.manual && (draft.manual.key === draftKey || line?.id === draft.manual.id) ? draft.manual : null;
-  const expectedRevision = stored ? stored.lineRevision : line?.revision ?? null;
-  const value = (name: string, fallback: string | number) => stored?.fields[name] ?? fallback;
-  const checked = (name: string, fallback: boolean) => stored ? stored.fields[name] === "on" : fallback;
-  const [id] = useState(() => line?.id ?? stored?.id ?? crypto.randomUUID()), [busy, setBusy] = useState(false), [message, setMessage] = useState("");
-  const router = useRouter();
-  const formRef=useRef<HTMLFormElement>(null);
-  const lastSuggested=useRef<Record<string,string>>({});
-  useEffect(() => {
-    const form=formRef.current;
-    if (!form || line) return;
-    for (const [name, next] of Object.entries({invoiceDate:draft.date,venueId:draft.venue,vendorId:vendorId||draft.supplier})) {
-      const field=form.elements.namedItem(name);
-      if ((field instanceof HTMLInputElement || field instanceof HTMLSelectElement) && !field.value && next) field.value=next;
-    }
-  }, [draft.date,draft.venue,draft.supplier,vendorId,line]);
-  const preview = (() => {
-    const fields=stored?.fields;if(!fields)return "";
-    if(fields.voided==="on")return "Voiding recomputes the ingredient from its next eligible purchase, while preserving later manual price corrections.";
-    if(fields.countsAsFood!=="on"||Number(fields.amount)<0)return "Credits and non-food lines do not establish a new catalog price.";
-    const item=items.find(item=>item.id===fields.itemId);if(!item?.unit)return "Choose an ingredient for a normalized price preview.";
-    try {const input={itemId:item.id,quantity:Number(fields.quantity),packQty:Number(fields.packQty),packUnit:fields.packUnit||"",eachWeightOz:Number(fields.eachWeightOz)||null};const {measure}=invoiceNormalizationMeasure({...item,unit:item.unit},line,input);const price=normalizedInvoicePrice(Math.round(Number(fields.amount)*100),input.quantity,input.packQty,input.packUnit,item.unit,measure);const delta=priceVariance(item.unitCost??null,price);return `New unit cost: ${money(price,5)} / ${item.unit}${delta==null?"":` (${delta>=0?"+":""}${delta.toFixed(1)}% vs current catalog)`}`;} catch {return "Confirm pack contents and paid amount for a unit-cost preview.";}
-  })();
-  function capture(form: HTMLFormElement, selected?: string, changed?: string) {
-    const fields: Record<string, string> = {};
-    for (const [key, entry] of new FormData(form)) if (typeof entry === "string") fields[key] = entry;
-    for (const field of Array.from(form.elements)) if (field instanceof HTMLInputElement && field.type === "checkbox" && field.name) fields[field.name] = field.checked ? "on" : "off";
-    if (selected !== undefined) fields.itemId = selected;
-    if (changed === "amount") fields.totalMode="entered";
-    if ((changed === "quantity" || changed === "unitPrice") && (fields.totalMode !== "entered" || !fields.amount.trim())) {
-      fields.totalMode="calculated";
-      const total=invoiceLineAmounts({quantity:fields.quantity.trim()?Number(fields.quantity):null,unitPrice:fields.unitPrice.trim()?Number(fields.unitPrice):null,extendedPrice:null}).total;
-      fields.amount=total===null?"":total.toFixed(2);
-    }
-    for (const name of ["amount","totalMode"]) { const input=form.elements.namedItem(name);if(input instanceof HTMLInputElement)input.value=fields[name]??""; }
-    updateDraft(previous => ({ ...previous, supplier:fields.vendorId||previous.supplier,date:fields.invoiceDate||previous.date,venue:fields.venueId||previous.venue,manual: { key: draftKey, id, lineRevision: expectedRevision, fields } }));
+  const {draft,update,flush,recovered} = useInvoiceDraft();
+  const recovery = useRef(draft), initialLines = useRef(lines);
+  const [data,setData] = useState<Data|null>(null), [rows,setRows] = useState<Row[]>([]), [loaded,setLoaded] = useState(false);
+  const [busy,setBusy] = useState(false), [recognizing,setRecognizing] = useState(false), [status,setStatus] = useState(""), [selected,setSelected] = useState<string|null>(draft.selectedKey);
+  const [revision,setRevision] = useState(lineRevision), [expenseRevision,setExpenseRevision] = useState(expense?.revision??null);
+  const source = useInvoiceSource(), router = useRouter(), grid = useRef<HTMLDivElement>(null), abort = useRef<AbortController|null>(null);
+  const supplier = draft.supplier || vendorId || lines[0]?.vendorId || "";
+  const date = draft.date, venue = draft.venue;
+  const catalog:Item[] = data ? data.items.map(item=>({...items.find(original=>original.id===item.id),...item,label:item.name})) : items;
+
+  useEffect(()=>{
+    const controller=new AbortController();
+    void fetch(`/api/invoice-ocr?id=${encodeURIComponent(invoice.id)}&vendor=${encodeURIComponent(supplier)}`,{signal:controller.signal}).then(async response=>{
+      const result:Data=await response.json(); if(!response.ok||!result.ok)throw new Error("Could not load invoice recognition.");
+      setData(result);
+      const suggestions=invoiceDetailsFromText(result.draft?.pages??[],venues);
+      update(previous=>({...previous,supplier:previous.supplier||vendorId||initialLines.current[0]?.vendorId||"",date:previous.date||initialLines.current[0]?.invoiceDate||expense?.invoiceDate||suggestions.date,venue:previous.venue||initialLines.current[0]?.venueId||expense?.venueId||suggestions.venueId||defaultVenueId||""}));
+      setRows(previous=>{
+        if(previous.length)return previous;
+        const savedDraft=recovery.current.sourceRevision===result.revision?recovery.current.rows:[];
+        const saved = initialLines.current.map(line=>{
+          const ocr=result.draft?.lines.find(source=>source.key===line.ocrLineKey);
+          return {...ocr,key:line.ocrLineKey||`saved-${line.id}`,purchaseId:line.id,savedRevision:line.revision,itemId:line.itemId||"",rawCode:line.rawCode,rawDescription:line.description,eachWeightOz:line.eachWeightOz??null,quantity:line.quantity,unit:line.purchaseUnit,unitPrice:line.billedUnitPrice,extendedPrice:line.amountCents/100,totalMode:"entered" as const,packQty:line.packQty,packUnit:line.packUnit,packText:formatInvoicePack({unit:line.purchaseUnit,packQty:line.packQty,packUnit:line.packUnit}),ignored:line.voided||!line.countsAsFood,remember:true,newName:line.description,newUnit:line.packUnit,page:ocr?.page??1,rawText:ocr?.rawText||line.description,warnings:[],confidence:"Saved",...savedDraft.find(row=>row.purchaseId===line.id)};
+        });
+        const extracted=(result.draft?.lines??[]).filter(line=>!initialLines.current.some(saved=>saved.ocrLineKey===line.key)).map(line=>{
+          const match=result.matches.find(match=>match.key===line.key)!;
+          const item=result.items.find(item=>item.id===match.itemId), original=items.find(item=>item.id===match.itemId);
+          const defaults=invoicePackDefaults(line.unit||match.defaultUnit||"",item,match.defaultPackQty?{unit:match.defaultUnit,packQty:match.defaultPackQty,packUnit:match.defaultPackUnit}:original?.invoiceDefaults?.packQty?original.invoiceDefaults:item?.invoiceDefaults);
+          const pack={unit:line.unit||defaults.unit,packQty:line.packQty??defaults.packQty,packUnit:line.packUnit||defaults.packUnit};
+          return {...line,...pack,purchaseId:crypto.randomUUID(),savedRevision:null,itemId:match.itemId||"",ignored:!!line.ignored||invoiceGarbage.test(line.rawText)||match.isIgnored||result.ignored.includes(line.key),remember:true,newName:line.rawDescription,newUnit:line.packUnit,confidence:match.confidence==="learned-exact"?"Alias":match.itemId?"Fuzzy":"Unmatched",packText:formatInvoicePack(pack),...savedDraft.find(row=>row.key===line.key)};
+        });
+        const known = new Set([...saved,...extracted].map(row=>row.key));
+        const manual=savedDraft.filter(row=>!known.has(row.key)&&row.key.startsWith("manual-")).map(row=>({...row,page:1,rawText:row.rawDescription,warnings:[],confidence:row.itemId?"Selected":"Unmatched"}));
+        return [...saved,...extracted,...manual];
+      });
+      setLoaded(true);
+    }).catch(error=>{if(!controller.signal.aborted)setStatus(error.message);});
+    return ()=>controller.abort();
+  },[invoice.id,supplier,vendorId,venues,defaultVenueId,expense?.invoiceDate,expense?.venueId,items,update]);
+
+  useEffect(()=>{
+    if(!loaded||!data)return;
+    update(previous=>({...previous,sourceRevision:data.revision,selectedKey:selected,rows:rows.map(row=>reviewRowSchema.parse(row))}));
+  },[rows,loaded,data,selected,update]);
+  useEffect(()=>()=>abort.current?.abort(),[]);
+  function patch(key:string,values:Partial<Row>) { setRows(previous=>previous.map(row=>row.key===key?{...row,...values}:row)); }
+  function focusRow(row:Row) { setSelected(row.key); source(row.page,row.bbox); }
+  function ingredient(row:Row,itemId:string) {
+    if(!itemId){patch(row.key,{itemId:"",confidence:"Unmatched"});return;}
+    const item=catalog.find(item=>item.id===itemId);
+    const alias=data?.aliases.find(alias=>alias.itemId===itemId&&alias.vendorId===supplier&&!alias.isIgnored);
+    const remembered=alias?.defaultPackQty?{unit:alias.defaultUnit,packQty:alias.defaultPackQty,packUnit:alias.defaultPackUnit}:item?.invoiceDefaults;
+    const pack=invoicePackDefaults(remembered?.unit||row.unit,item,remembered);
+    // A deliberate selection uses the ingredient's saved pack; keep OCR contents when no default exists.
+    const next={unit:pack.unit||row.unit,packQty:pack.packQty??row.packQty,packUnit:pack.packQty?pack.packUnit:row.packUnit};
+    patch(row.key,{itemId,ignored:false,manual:true,confidence:"Selected",...next,packText:formatInvoicePack(next)});
   }
-
-  function selectIngredient(selected: string) {
-    const form=formRef.current,item=items.find(item=>item.id===selected);
-    if (!form) return;
-    if (item) {
-      const field=(name:string)=>form.elements.namedItem(name) as HTMLInputElement;
-      const pack=invoicePackDefaults(field("purchaseUnit").value,item,item.invoiceDefaults);
-      const code=item.invoiceDefaults?.rawCode??(item.vendorId===field("vendorId").value?item.sku:null)??"";
-      for (const [name,next] of Object.entries({description:item.label,rawCode:code,purchaseUnit:pack.unit,packQty:pack.packQty,packUnit:pack.packUnit})) {
-        if ((!field(name).value || field(name).value===lastSuggested.current[name]) && next != null) {field(name).value=String(next);lastSuggested.current[name]=String(next);}
-      }
-    }
-    dirty(true);capture(form,selected);
+  function review(row:Row) {
+    const item=catalog.find(item=>item.id===row.itemId);
+    const saved=lines.find(line=>line.id===row.purchaseId);
+    const basis=item?.unit?invoiceNormalizationMeasure({...item,unit:item.unit},saved,{itemId:row.itemId,quantity:row.quantity??0,packQty:row.packQty??0,packUnit:row.packUnit,eachWeightOz:row.eachWeightOz}).measure:{};
+    const result=invoiceLineReview(row,item?.unit?{...item,...basis,unit:item.unit}:null);
+    return {...result,problems:[...result.problems,...(!supplier?["Choose supplier."]:[]),...(!date?["Enter invoice date."]:[]),...(!venue?["Choose venue."]:[]),...(!parseInvoicePack(row.packText||"")?["Use a pack such as 16 oz x 16 or case (5 lb)."]:[])]};
   }
+  const visible=rows.filter(row=>draft.showIgnored||!row.ignored);
+  const ready=rows.filter(row=>!row.ignored&&!review(row).problems.length);
+  const remaining=rows.filter(row=>!row.ignored&&review(row).problems.length);
+  const total=rows.filter(row=>!row.ignored).reduce((sum,row)=>sum+Math.round((invoiceLineAmounts(row).total??0)*100),0);
+  const comparison=draft.invoiceTotal?.trim()?Math.round(Number(draft.invoiceTotal)*100)-total:null;
+  const ignoredKeys=rows.filter(row=>row.ignored&&row.savedRevision==null&&!row.key.startsWith("manual-")).map(row=>row.key);
 
-
-  return <form id="invoice-line-entry" ref={formRef} aria-label="Invoice line entry" className="mt-4 scroll-mt-24 space-y-3 border-t border-hairline pt-4" onChange={event=>{dirty(true);capture(event.currentTarget,undefined,event.target instanceof HTMLInputElement||event.target instanceof HTMLSelectElement?event.target.name:undefined);}} onSubmit={async event => {
-    event.preventDefault(); const form = new FormData(event.currentTarget); setBusy(true); setMessage("");
-    const input: InvoicePurchaseInput = { expectedMeasurementVersion:measurementVersion(items.find(item=>item.id===form.get("itemId"))??{}), eachWeightOz:Number(form.get("eachWeightOz"))||null, id, invoiceDocumentId: invoiceId, revision: expectedRevision, itemId: String(form.get("itemId") || "") || null,
-      venueId: String(form.get("venueId")), vendorId: String(form.get("vendorId")), invoiceDate: String(form.get("invoiceDate")), description: String(form.get("description")),
-      amount: String(form.get("amount")), billedUnitPrice:String(form.get("unitPrice")??"").trim()?Number(form.get("unitPrice")):null,quantity: Number(form.get("quantity")), purchaseUnit: String(form.get("purchaseUnit")), packQty: Number(form.get("packQty")), packUnit: String(form.get("packUnit")), countsAsFood: form.get("countsAsFood") === "on", voided: form.get("voided") === "on", reason: String(form.get("reason") ?? ""), rawCode: String(form.get("rawCode") ?? "") || null, remember: form.get("remember") === "on" };
+  async function recognize() {
+    const controller=new AbortController();abort.current=controller;setBusy(true);setRecognizing(true);setStatus("Reading stored invoice locally…");
     try {
-      capture(event.currentTarget); await saveDraft();
-      const response = await fetch("/api/invoice-purchases", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) });
-      const result = await response.json() as OperatingSaveResult;
-      if (!response.ok || !result.ok) throw new Error(!result.ok ? result.error : "Could not save line.");
-      updateDraft(previous=>({...previous,manual:null,editor:null})); dirty(false); done(); router.refresh();
-    } catch (error) { setMessage((error as Error).message); } finally { setBusy(false); }
-  }}><fieldset disabled={busy} className="space-y-3">
-    {line && stored && expectedRevision !== line.revision && <div className="space-y-2 rounded border border-amber-300 bg-amber-50 p-3"><p role="alert" className="text-sm text-amber-700">This line was saved or changed after your draft began. Your entries are kept; load the latest saved line before making a correction.</p><Button type="button" variant="secondary" onClick={reset}>Use latest saved line</Button></div>}
-    <div className="grid gap-3 md:grid-cols-3"><label className="text-sm">Invoice date<Input name="invoiceDate" type="date" required defaultValue={value("invoiceDate", line?.invoiceDate || draft.date || defaults?.date || "")} /></label><label className="text-sm">Venue<Select aria-label="Venue" name="venueId" required defaultValue={value("venueId", line?.venueId || draft.venue || defaults?.venueId || "")}><option value="">Choose venue</option>{venues.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}</Select></label><label className="text-sm">Supplier<Select aria-label="Supplier" name="vendorId" required defaultValue={value("vendorId", vendorId || line?.vendorId || draft.supplier || defaults?.vendorId || "")}>{!vendorId && <option value="">Choose invoice supplier</option>}{vendors.filter(v => !vendorId || v.id === vendorId).map(v => <option key={v.id} value={v.id}>{v.name}</option>)}</Select></label></div>
-    <label className="block text-sm">Vendor item code<Input name="rawCode" maxLength={100} defaultValue={value("rawCode",line?.rawCode ?? "")} /></label>
-    <label className="block text-sm">Invoice line description<Input name="description" required maxLength={500} defaultValue={value("description",line?.description || "")} /></label>
-    <div className="text-sm">Match ingredient<ComboPicker ariaLabel="Match invoice ingredient" name="itemId" options={items} defaultId={String(value("itemId",line?.itemId ?? ""))} placeholder="Search ingredient name, vendor code or GCODE" onSelect={choice => selectIngredient(choice?.id??"")} /><p className="mt-1 text-xs text-zinc-500">Choose an ingredient to fill its remembered pack. Unmatched food lines can still be saved.</p></div>
-    <input type="hidden" name="totalMode" defaultValue={value("totalMode",line?"entered":"calculated")} />
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-3"><label className="text-sm">Quantity billed<Input name="quantity" required type="number" min="0.000001" step="any" defaultValue={value("quantity",line?.quantity ?? 1)} /></label><label className="text-sm">Unit price ($)<Input name="unitPrice" type="number" step="any" defaultValue={value("unitPrice",line?.billedUnitPrice??"")} /></label><label className="text-sm">Paid line total ($)<Input name="amount" required type="number" step="0.01" defaultValue={value("amount",line ? (line.amountCents / 100).toFixed(2) : "")} /></label><label className="text-sm">Billed unit<Input name="purchaseUnit" required maxLength={40} placeholder="case / bag / lb" defaultValue={value("purchaseUnit",line?.purchaseUnit || "")} /></label><label className="text-sm">Contents per billed unit<Input name="packQty" required type="number" min="0.000001" step="any" defaultValue={value("packQty",line?.packQty ?? "")} /></label><label className="text-sm">Content unit<Input name="packUnit" required maxLength={40} placeholder="lb / oz / each" defaultValue={value("packUnit",line?.packUnit || "")} /></label></div>
-    <p className="text-xs text-zinc-500">Quantity × unit price fills the total automatically. Enter a paid total to override it for discounts or credits.</p>
-    {stored?.fields.totalMode === "entered" && stored.fields.unitPrice && <button type="button" className="text-xs text-blue-600 underline" onClick={()=>{const form=formRef.current;if(form){(form.elements.namedItem("totalMode") as HTMLInputElement).value="calculated";capture(form,undefined,"unitPrice");}}}>Calculate total from quantity and unit price</button>}
-    <label className="block text-sm">Invoice-specific average purchased weight (oz / each), optional<Input aria-label="Manual invoice each weight" name="eachWeightOz" type="number" min="0.000001" step="any" defaultValue={value("eachWeightOz",line?.eachWeightOz??"")} placeholder="Uses the ingredient default when blank" /></label>
-    <p className="text-xs text-zinc-500">Example: 2 cases × 10 lb per case, paid $60 = $3/lb. For 12 lb billed by the pound, use quantity 12 and contents 1 lb. Use the actual paid amount after line discounts; negative amounts are credits.</p>
-    <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="countsAsFood" defaultChecked={checked("countsAsFood",line?.countsAsFood ?? true)} /> Include this line in food spending</label>
-    <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="remember" defaultChecked={checked("remember",true)} /> Remember this ingredient mapping for future invoices</label>
-    {line && <><label className="flex items-center gap-2 text-sm"><input name="voided" type="checkbox" defaultChecked={checked("voided",line.voided)} /> Void this line</label><label className="block text-sm">Correction reason<Input name="reason" maxLength={1000} defaultValue={value("reason","")} /></label></>}
-    {preview && <p className="text-sm tabular-nums">{preview}</p>}
-    <div className="flex gap-3"><Button>{busy ? "Saving…" : "Save invoice line"}</Button><Button type="button" variant="secondary" onClick={()=>{updateDraft(previous=>({...previous,manual:null,editor:null}));dirty(false);cancel();}}>Cancel entry</Button></div>
-  </fieldset>{message && <p role="status" className="text-sm">{message}</p>}<OperatingHistory history={line?.history} /></form>;
-}
-export function InvoicePurchaseReview({ invoice, vendorId, lineRevision, lines, expense, vendors, venues, items, defaultVenueId }: {
-  defaultVenueId?: string | null; invoice: InvoiceChoice; vendorId: string | null; lineRevision: number; lines: InvoicePurchaseData[]; expense: FoodExpenseData | null;
-  vendors: { id: string; name: string }[]; venues: { id: string; name: string }[]; items: (ComboOption & IngredientMeasure & {unit?:string;unitCost?:number;sku?:string|null;vendorId?:string|null;invoiceDefaults?:InvoicePack|null})[];
-}) {
-  const { draft, update: updateDraft } = useInvoiceDraft();
-  const recoveredLine = draft.editor === "new" ? lines.find(line=>line.id===draft.manual?.id) : null;
-  const [editing, setEditing] = useState<string | null>(recoveredLine?.id ?? (draft.editor && !["new","posting"].includes(draft.editor) ? draft.editor : null)), [adding, setAdding] = useState(draft.editor === "new" && !recoveredLine), [posting, setPosting] = useState(draft.editor === "posting"), [dirty, setDirty] = useState(!!draft.manual), [message, setMessage] = useState("");
-
-  const [formGeneration, setFormGeneration] = useState(0);
-  const active = lines.filter(line => !line.voided), total = active.filter(line => line.countsAsFood).reduce((sum, line) => sum + line.amountCents, 0);
-  const defaults = active[0] ? { date: active[0].invoiceDate, venueId: active[0].venueId, vendorId: active[0].vendorId } : expense ? { date: expense.invoiceDate, venueId: expense.venueId } : { date: "", venueId: defaultVenueId ?? "" };
-  const pending = expense?.invoiceLineRevision != null && expense.invoiceLineRevision !== lineRevision;
-  function switchEditor(edit: string | null, post = false) { if (dirty && !window.confirm("Discard the unsaved invoice entry?")) return; updateDraft(previous=>({...previous,editor:post ? "posting" : edit ?? "new",manual:null})); setFormGeneration(value=>value+1); setEditing(edit); setAdding(edit == null && !post); setPosting(post); setDirty(false); setMessage(""); }
-  return <Card className="overflow-hidden p-4"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-semibold">Review invoice</h2><Button type="button" variant="secondary" onClick={()=>{switchEditor(null);requestAnimationFrame(()=>document.getElementById("invoice-line-entry")?.scrollIntoView({block:"start",behavior:"smooth"}));}}>Enter a line manually</Button></div><p className="mt-1 text-sm text-zinc-500">Review ready matches together; correct the exceptions or enter a line manually.</p>
-    {recoveredLine && <p role="status" className="mt-3 text-sm text-emerald-700">This invoice line is already saved. Your draft is retained for review.</p>}
-    <InvoiceLocalReview key={invoice.id} invoiceId={invoice.id} vendorId={vendorId} vendors={vendors} venues={venues} defaults={defaults} />
-    {pending && <p role="alert" className="mb-3 text-sm text-amber-700">Invoice lines changed. The calendar still uses the last confirmed amount. Reconfirm the food total after reviewing all lines.</p>}
-    <details id="invoice-accounting" className="mt-4 border-t border-hairline pt-4" open={adding || !!editing || posting}><summary className="cursor-pointer text-sm font-medium">Saved lines &amp; food spending · {active.length} lines · {money(total / 100)}</summary><div className="mt-4 overflow-x-auto"><table className="atelier-table w-full text-left text-sm"><thead><tr><th>Invoice line</th><th>Ingredient</th><th>Quantity / pack</th><th>Paid total</th><th>Unit price</th><th>Food</th><th /></tr></thead><tbody>{lines.map(line => <tr key={line.id} className={line.voided ? "text-zinc-500 line-through" : ""}><td>{line.description}<span className="block text-xs">{line.invoiceDate}</span></td><td>{line.itemId ? <Link className="text-gold underline" href={`/items/${line.itemId}`}>{line.itemName}</Link> : "Unmatched"}</td><td>{preciseNum(line.quantity)} {line.purchaseUnit} × {preciseNum(line.packQty)} {line.packUnit}</td><td className="tabular-nums">{money(line.amountCents / 100)}</td><td className="tabular-nums">{line.normalizedUnitCost == null ? "Needs matching" : `${money(line.normalizedUnitCost, 5)} / ${line.normalizedUnit}`}{line.priceChange != null && priceJump(line.priceChange, line.varianceThreshold ?? 10) && <span className="mt-1 block" title={`Previous reviewed same-supplier price: ${money(line.previousUnitCost, 5)} / ${line.normalizedUnit}`}><Badge color="amber">Price +{line.priceChange.toFixed(1)}%</Badge></span>}</td><td>{line.voided ? "Voided" : line.countsAsFood ? "Included" : "Excluded"}</td><td><button type="button" className="text-gold underline" onClick={() => switchEditor(line.id)}>Edit line</button></td></tr>)}</tbody></table></div>
-    {!lines.length && <p className="my-3 text-sm">No line items entered yet.</p>}
-    <p className="my-3 font-semibold">Food-line total: {money(total / 100)}{active.some(line => !line.itemId) && <span className="ml-2 text-xs font-normal">Includes unmatched food lines.</span>}</p>
-    {expense && <p className="mb-3 text-sm">Calendar currently records {money(expense.amountCents / 100)} on {expense.invoiceDate}{expense.voided ? " (voided)" : ""}. <Link className="text-gold underline" href={`/operating-calendar?${new URLSearchParams({ venue: expense.venueId, month: expense.invoiceDate.slice(0, 7), day: expense.invoiceDate })}`}>Open calendar</Link></p>}
-    <div className="flex flex-wrap gap-3"><Button type="button" variant="secondary" onClick={() => switchEditor(null)}>Add invoice line</Button>{active.length > 0 && <Button type="button" onClick={() => switchEditor(null, true)}>Use reviewed food-line total</Button>}</div>
-    {(adding || editing) && <PurchaseLineForm key={`${editing || "new"}:${lines.find(line => line.id === editing)?.revision ?? lineRevision}:${formGeneration}`} invoiceId={invoice.id} vendorId={vendorId} vendors={vendors} venues={venues} items={items} line={lines.find(line => line.id === editing)} defaults={defaults} dirty={setDirty} reset={()=>{updateDraft(previous=>({...previous,manual:null,editor:editing}));setDirty(false);setFormGeneration(value=>value+1);}} cancel={()=>{setAdding(false);setEditing(null);}} done={() => { setAdding(false); setEditing(null); setMessage("Invoice line saved."); }} />}
-    {posting && <div className="mt-4 border-t border-hairline pt-4"><p className="mb-3 text-sm">Confirm after all food and credit lines are entered. Every active line must use the same invoice date and venue.</p><FoodExpenseForm key={`${lineRevision}:${expense?.revision ?? "new"}`} expense={expense} invoice={invoice} venues={venues} initialVenueId={defaults?.venueId} initialDate={defaults?.date} initialAmount={total} invoiceLineRevision={lineRevision} onDirty={setDirty} onSaved={() => { updateDraft(previous=>({...previous,editor:null})); setPosting(false); setDirty(false); setMessage("Reviewed invoice food total saved to calendar."); }} /></div>}
-    </details>
-    {message && <p role="status" className="mt-3 text-sm">{message}</p>}
-  </Card>;
+      await flush();
+      const response=await fetch(`/api/invoices/file?id=${encodeURIComponent(invoice.id)}`,{signal:controller.signal});
+      if(!response.ok)throw new Error("Stored invoice unavailable.");
+      const {recognizeInvoice}=await import("@/lib/invoices/invoice-ocr-browser");
+      const recognized=await recognizeInvoice(await response.blob(),(message,fraction)=>setStatus(`${message}${fraction==null?"":` ${Math.round(fraction*100)}%`}`),controller.signal);
+      const saved=await fetch("/api/invoice-ocr",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"draft",documentId:invoice.id,expectedRevision:data?.revision??0,pages:recognized.pages})});
+      const result=await saved.json();if(!saved.ok||!result.ok)throw new Error(result.error||"Could not save recognition.");
+      // Reload only after recognition is durably stored; draft recovery retains manual entries.
+      const refreshed=await fetch(`/api/invoice-ocr?id=${encodeURIComponent(invoice.id)}&vendor=${encodeURIComponent(supplier)}`).then(response=>response.json()) as Data;
+      if(!refreshed.ok)throw new Error("Could not reload recognition.");
+      setData(refreshed);
+      update(previous=>({...previous,sourceRevision:refreshed.revision}));
+      await flush();
+      window.location.reload();
+    } catch(error) {setStatus(controller.signal.aborted?"Recognition cancelled.":error instanceof Error?error.message:"Recognition failed.");}
+    finally {setBusy(false);setRecognizing(false);}
+  }
+  async function approve() {
+    setBusy(true);setStatus("");
+    try {
+      const inputs:InvoicePurchaseInput[]=rows.filter(row=>ready.includes(row)||row.savedRevision!=null&&row.ignored).map(row=>({
+        id:row.purchaseId,invoiceDocumentId:invoice.id,revision:row.savedRevision??null,itemId:row.itemId||null,vendorId:supplier,venueId:venue,invoiceDate:date,
+        description:row.rawDescription,rawCode:row.rawCode,ocrLineKey:data?.draft?.lines.some(line=>line.key===row.key)?row.key:null,ocrReviewed:true,confirmedUsd:true,remember:row.remember,
+        quantity:row.quantity!,purchaseUnit:row.unit,packQty:row.packQty!,packUnit:row.packUnit,amount:invoiceLineAmounts(row).total!.toFixed(2),billedUnitPrice:row.unitPrice,
+        expectedMeasurementVersion:measurementVersion(catalog.find(item=>item.id===row.itemId)??{}),eachWeightOz:row.eachWeightOz??null,countsAsFood:!row.ignored,
+        voided:!!lines.find(line=>line.id===row.purchaseId)?.voided&&row.ignored,reason:"Reviewed inline invoice grid correction"
+      }));
+      const body={documentId:invoice.id,expectedLineRevision:revision,lines:inputs,ignoredKeys,commit:remaining.length===0,expenseId:expense?.id||`invoice:${invoice.id}`,expenseRevision};
+      const hash=JSON.stringify(body),previous=draft.pending.find(entry=>entry.key==="grid-batch");
+      const operationId=previous?.hash===hash?previous.operationId:crypto.randomUUID();
+      // Keep the full request identity for lost-response retries without exceeding draft limits.
+      const signature=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(hash));
+      const digest=Array.from(new Uint8Array(signature),n=>n.toString(16).padStart(2,"0")).join("");
+      const stableId=previous?.hash===digest?previous.operationId:operationId;
+      update(previous=>({...previous,pending:[{key:"grid-batch",hash:digest,operationId:stableId}]}));
+      await flush();
+      const response=await fetch("/api/invoice-purchases/batch",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...body,operationId:stableId})});
+      const result=await response.json();if(!response.ok||!result.ok)throw new Error(result.error||"Approval failed. Your edits are kept; retry this batch.");
+      setRevision(result.lineRevision);if(result.expenseRevision!=null)setExpenseRevision(result.expenseRevision);
+      setRows(previous=>previous.map(row=>result.revisions[row.purchaseId]!=null?{...row,savedRevision:result.revisions[row.purchaseId],confidence:"Saved"}:row));
+      update(previous=>({...previous,pending:[]}));
+      setStatus(result.committed?"Invoice approved. Food spending and ingredient prices updated.":`${inputs.length} lines saved. ${remaining.length} lines still need review before committing food spending.`);
+      router.refresh();
+    } catch(error) {setStatus(error instanceof Error?error.message:"Approval failed. Your edits are kept.");}
+    finally {setBusy(false);}
+  }
+  function addLine() {
+    const id=crypto.randomUUID(),key=`manual-${id}`;
+    setRows(previous=>[...previous,{key,purchaseId:id,savedRevision:null,itemId:"",rawCode:null,rawDescription:"",quantity:1,unit:"case",unitPrice:null,extendedPrice:null,packQty:null,packUnit:"",packText:"",ignored:false,remember:true,newName:"",newUnit:"",page:1,rawText:"",warnings:[],confidence:"Unmatched"}]);
+    setSelected(key);
+    requestAnimationFrame(()=>grid.current?.querySelector<HTMLInputElement>(`[data-row-key="${key}"] input[data-grid-column="description"]`)?.focus());
+  }
+  function navigate(event:KeyboardEvent<HTMLDivElement>) {
+    if(event.defaultPrevented)return;
+    const target=event.target;
+    if(target instanceof HTMLTableRowElement&&(event.key==="Delete"||event.key==="Backspace")) {
+      event.preventDefault();patch(target.dataset.rowKey!,{ignored:true});return;
+    }
+    if(!(target instanceof HTMLInputElement))return;
+    // The combo owns its open list. Alt+Up/Down moves between ingredient rows.
+    if(target.getAttribute("role")==="combobox"&&target.getAttribute("aria-expanded")==="true"&&!event.altKey&&["ArrowUp","ArrowDown","Enter","Escape"].includes(event.key))return;
+    const navigation=gridNavigation(event.currentTarget,target,{...event,key:event.key,shiftKey:event.shiftKey,altKey:target.getAttribute("role")==="combobox"?false:event.altKey,ctrlKey:event.ctrlKey,metaKey:event.metaKey});
+    if(navigation?.preventDefault)event.preventDefault();navigation?.target?.focus();
+  }
+  const gridCell=(column:string,label:string)=>({"data-grid-cell":true,"data-grid-column":column,"aria-label":label,className:cellClass,onFocus:(event:React.FocusEvent<HTMLInputElement>)=>event.currentTarget.select()});
+  return <section id="invoice-accounting" aria-label="Invoice purchase review" className="min-w-0 rounded-lg border border-hairline bg-canvas">
+    <div className="sticky top-14 z-30 flex items-end gap-2 overflow-x-auto border-b border-hairline bg-canvas p-3 shadow-sm lg:top-16">
+      <label className="min-w-32 flex-1 text-xs">Supplier<Select aria-label="Invoice supplier" value={supplier} disabled={busy||!!vendorId} onChange={event=>{update(previous=>({...previous,supplier:event.target.value}));setRows(previous=>previous.map(row=>{
+        if(row.savedRevision!=null||row.manual)return row;
+        const match=matchInvoiceLine(row.rawCode,row.rawDescription,event.target.value,data?.aliases??[],data?.items??[]);
+        return {...row,itemId:match.itemId??"",confidence:match.confidence==="learned-exact"?"Alias":match.itemId?"Fuzzy":"Unmatched"};
+      }));}}><option value="">Choose supplier</option>{vendors.map(v=><option key={v.id} value={v.id}>{v.name}</option>)}</Select></label>
+      <label className="min-w-28 flex-1 text-xs">Venue<Select aria-label="Invoice venue" value={venue} disabled={busy} onChange={event=>update(previous=>({...previous,venue:event.target.value}))}><option value="">Choose venue</option>{venues.map(v=><option key={v.id} value={v.id}>{v.name}</option>)}</Select></label>
+      <label className="min-w-32 text-xs">Invoice date<Input aria-label="Invoice date" type="date" value={date} disabled={busy} onChange={event=>update(previous=>({...previous,date:event.target.value}))}/></label>
+      <label className="w-28 shrink-0 text-xs">Invoice total ($)<Input aria-label="Invoice total ($)" type="number" step="0.01" value={draft.invoiceTotal??""} disabled={busy} onChange={event=>update(previous=>({...previous,invoiceTotal:event.target.value}))}/></label>
+      <div className="min-w-32 pb-1 text-xs tabular-nums" aria-live="polite">Food-line total ($)<strong className="block text-sm">{money(total/100)}</strong>{comparison!==null&&<span className={comparison===0?"text-emerald-700":"text-amber-700"}>{comparison===0?"Matches invoice":`${money(comparison/100)} difference`}</span>}</div>
+    </div>
+    <div className="flex flex-wrap items-center gap-3 p-3" aria-label="Bulk actions">
+      <Button type="button" disabled={busy||!loaded||!supplier||!date||!venue||(!ready.length&&!ignoredKeys.length&&!rows.some(row=>row.savedRevision!=null))} onClick={()=>void approve()}>{busy?"Working…":`Approve All Matched Lines (${ready.length})`}</Button>
+      <Button type="button" variant="secondary" disabled={busy||!loaded||rows.length>=200} onClick={addLine}>+ Add Line</Button>
+      <label className="ml-auto text-xs"><input type="checkbox" checked={draft.showIgnored} onChange={event=>update(previous=>({...previous,showIgnored:event.target.checked}))}/> Show ignored rows ({rows.filter(row=>row.ignored).length})</label>
+    </div>
+    <p className="px-3 pb-3 text-xs text-zinc-500">Tab across · Enter / ↑ ↓ down a column · Alt+↑ ↓ between ingredient rows · Delete a focused row to ignore. USD. Packs and ingredient mappings are remembered by default.</p>
+    {recovered&&<p className="px-3 pb-2 text-xs text-zinc-500">Your invoice edits were restored.</p>}
+    {!loaded&&<p role="status" className="p-3 text-sm">Loading invoice lines…</p>}
+    {loaded&&!data?.draft&&<div className="p-3"><Button type="button" variant="secondary" disabled={busy} onClick={()=>void recognize()}>Run local invoice OCR</Button></div>}
+    {recognizing&&<Button type="button" variant="secondary" onClick={()=>abort.current?.abort()}>Cancel OCR</Button>}
+    <div ref={grid} data-edit-grid onKeyDown={navigate} className="overflow-x-auto">
+      <fieldset disabled={busy} className="min-w-[880px]">
+        <table className="w-full table-fixed text-left text-sm" aria-label="Editable invoice lines"><thead className="border-y border-hairline bg-stone text-xs"><tr>
+          <th className="w-8 p-2">Include</th><th className="w-44 p-2">Vendor SKU / OCR description</th><th className="w-48 p-2">Matched ingredient</th><th className="w-12 p-2">Qty</th><th className="w-28 p-2">Pack / unit size</th><th className="w-24 p-2">Line total ($)</th><th className="w-24 p-2">Computed unit cost</th><th className="w-8" aria-label="Ignore"/>
+        </tr></thead><tbody>{visible.map(row=>{
+          const result=review(row),item=catalog.find(item=>item.id===row.itemId),saved=lines.find(line=>line.id===row.purchaseId);
+          const delta=priceVariance(saved?.previousUnitCost??item?.unitCost??null,result.newPrice);
+          return <tr key={row.key} data-row-key={row.key} tabIndex={0} onFocus={()=>focusRow(row)} onClick={()=>focusRow(row)} className={`border-b border-hairline align-top ${selected===row.key?"bg-blue-500/5":""} ${row.ignored?"opacity-50":""}`}>
+            <td className="p-3"><input aria-label={`Include ${row.rawDescription||"new line"}`} type="checkbox" checked={!row.ignored} onChange={event=>patch(row.key,{ignored:!event.target.checked})}/></td>
+            <td className="p-1"><textarea aria-label="OCR description" data-grid-column="description" rows={2} title={row.rawDescription} className={`${cellClass} resize-none whitespace-normal font-semibold leading-tight`} maxLength={500} value={row.rawDescription} placeholder="Description" onChange={event=>patch(row.key,{rawDescription:event.target.value})}/><div className="flex items-center gap-1 px-2 text-xs text-zinc-500"><input {...gridCell("code","Vendor SKU")} className="w-20 min-w-0 bg-transparent outline-none focus:ring-1 focus:ring-form-focus" maxLength={100} placeholder="SKU" value={row.rawCode??""} onChange={event=>patch(row.key,{rawCode:event.target.value||null})}/><span className="truncate" title={row.rawText}>{row.rawText.match(/\d+(?:\.\d+)?\s*[/x]\s*\d+(?:\.\d+)?\s*(?:OZ|LB|KG|GR|G|EA)\b/i)?.[0]||""}</span></div></td>
+            <td className="p-1"><ComboPicker name={`ingredient-${row.key}`} ariaLabel={`Ingredient for ${row.rawDescription||"new line"}`} options={catalog.map(item=>({id:item.id,label:item.label,keywords:`${item.sku??""} ${item.keywords??""}`,meta:`${money(item.unitCost??0,3)} / ${item.unit||""}`}))} valueId={row.itemId} defaultId={row.itemId} selectOnTab gridColumn="ingredient" onSelect={choice=>ingredient(row,choice?.id||"")}/><span className="mt-1 inline-block text-[10px]"><Badge color={row.itemId?"green":"amber"}>{row.confidence}</Badge></span><label className="ml-2 text-[10px] text-zinc-500"><input type="checkbox" checked={row.remember} onChange={event=>patch(row.key,{remember:event.target.checked})}/> Remember</label></td>
+            <td className="p-1"><input {...gridCell("quantity","Billed quantity")} type="number" step="any" min="0.000001" value={row.quantity??""} onChange={event=>patch(row.key,{quantity:numeric(event.target.value)})}/></td>
+            <td className="p-1"><input {...gridCell("pack","Pack / unit size")} aria-invalid={!parseInvoicePack(row.packText||"")} maxLength={100} placeholder="16 oz x 16" value={row.packText??""} onChange={event=>{const pack=parseInvoicePack(event.target.value);patch(row.key,{packText:event.target.value,...(pack??{packQty:null,packUnit:""})});}}/>{item?.eachWeightOz!=null&&<label className="block px-2 text-[10px] text-zinc-500">oz / each override<input {...gridCell("weight","Received weight oz per each")} type="number" min="0.000001" step="any" placeholder={String(item.eachWeightOz)} value={row.eachWeightOz??""} onChange={event=>patch(row.key,{eachWeightOz:numeric(event.target.value)})}/></label>}</td>
+            <td className="p-1"><input {...gridCell("amount","Line total ($)")} type="number" step="0.01" value={invoiceLineAmounts(row).total??""} onChange={event=>patch(row.key,{extendedPrice:numeric(event.target.value),totalMode:"entered"})}/></td>
+            <td className="p-2 text-xs tabular-nums">{result.newPrice!=null?<><strong>{money(result.newPrice,3)} / {item?.unit}</strong>{delta!==null&&!row.ignored&&<span className={`block ${delta>0?"text-amber-700":"text-emerald-700"}`}>{delta>=0?"+":""}{delta.toFixed(1)}% vs last price</span>}</>:<span className="text-zinc-500">Needs pack / match</span>}{!row.ignored&&result.problems.length>0&&<p className="mt-1 text-[10px] text-amber-700">{result.problems.join(" ")}</p>}{result.warnings.length>0&&<details className="mt-1 text-[10px] text-amber-700"><summary>Check OCR</summary>{result.warnings.join(" ")}</details>}</td>
+            <td className="py-2"><button type="button" aria-label={`${row.ignored?"Restore":"Ignore"} ${row.rawDescription||"new line"}`} className="rounded px-2 py-1 text-zinc-500 hover:bg-stone focus:ring-1" onClick={()=>patch(row.key,{ignored:!row.ignored})}>{row.ignored?"↶":"×"}</button></td>
+          </tr>;
+        })}</tbody></table>
+      </fieldset>
+      {loaded&&!visible.length&&<p className="p-4 text-sm">No active lines. Add a line or show ignored rows to restore one.</p>}
+    </div>
+    {remaining.length>0&&<p className="px-3 pb-3 text-xs text-amber-700">{remaining.length} included lines need a match, pack or amount. Ready lines can be saved now; food spending commits when all included lines are ready.</p>}
+    {status&&<p role="status" className="border-t border-hairline p-3 text-sm">{status}</p>}
+  </section>;
 }

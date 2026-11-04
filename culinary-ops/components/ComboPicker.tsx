@@ -1,6 +1,7 @@
 "use client";
 
-import { useId, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 // One selectable row. `label` is the primary text; `meta` is muted secondary
 // text shown to the right (e.g. "yields 12 each", "$2.50 / lb"); `keywords`
@@ -31,6 +32,7 @@ export function ComboPicker({
   onSelect,
   selectOnTab = false,
   ariaLabel,
+  gridColumn,
 }: {
   options: ComboOption[];
   name: string;
@@ -41,8 +43,11 @@ export function ComboPicker({
   onSelect?: (option: ComboOption | null) => void;
   selectOnTab?: boolean;
   ariaLabel?: string;
+  gridColumn?: string;
 }) {
   const listId = useId();
+  const root = useRef<HTMLDivElement>(null);
+  const [position,setPosition]=useState({left:0,top:0,width:240,maxHeight:256});
   const initial = options.find((o) => o.id === defaultId) ?? null;
   const [query, setQuery] = useState(initial?.label ?? "");
   const [selectedId, setSelectedId] = useState(initial?.id ?? "");
@@ -54,6 +59,20 @@ export function ComboPicker({
     // A typed search already cleared the internal selection. Preserve its text.
     if (selectedId !== valueId) { setSelectedId(valueId); setQuery(options.find(option => option.id === valueId)?.label ?? ""); setOpen(false); }
   }
+  useEffect(()=>{
+    if(!open||!gridColumn)return;
+    const place=()=>{
+      const rect=root.current?.getBoundingClientRect();if(!rect)return;
+      const width=Math.min(Math.max(240,rect.width),window.innerWidth-16);
+      const below=window.innerHeight-rect.bottom-8,above=rect.top-8;
+      const height=Math.min(256,Math.max(below,above));
+      setPosition({left:Math.max(8,Math.min(rect.left,window.innerWidth-width-8)),top:below>=Math.min(180,height)?rect.bottom+4:Math.max(8,rect.top-height-4),width,maxHeight:height});
+    };
+    place();window.addEventListener("scroll",place,true);window.addEventListener("resize",place);
+
+
+  return ()=>{window.removeEventListener("scroll",place,true);window.removeEventListener("resize",place);};
+  },[open,gridColumn]);
   const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const results = useMemo(() => {
@@ -75,6 +94,7 @@ export function ComboPicker({
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Tab" && !e.shiftKey && selectOnTab && open && !selectedId && results[active]) { select(results[active]); return; }
+    if (gridColumn && e.altKey && ["ArrowUp","ArrowDown"].includes(e.key)) return;
     if (!open && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
       setOpen(true);
       return;
@@ -93,8 +113,37 @@ export function ComboPicker({
     }
   };
 
+    const menu = open && results.length > 0 ? (
+        <ul id={listId} role="listbox"
+          className={`${gridColumn?"fixed z-50":"absolute z-20 mt-1 w-full"} max-h-64 overflow-y-auto rounded-md border border-hairline bg-canvas py-1 shadow-lg`}
+          style={gridColumn?position:undefined}
+          onMouseDown={() => {
+            if (blurTimer.current) clearTimeout(blurTimer.current);
+          }}
+        >
+          {results.map((o, i) => (
+            <li key={o.id} data-option-id={o.id} id={`${listId}-${i}`} role="option" aria-selected={i === active}>
+              <button
+                type="button" tabIndex={-1}
+                onMouseEnter={() => setActive(i)}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  select(o);
+                }}
+                className={
+                  "flex w-full items-baseline justify-between gap-3 px-3 py-2 text-left text-sm transition-colors " +
+                  (i === active ? "bg-stone" : "hover:bg-cream")
+                }
+              >
+                <span className="font-medium text-ink">{o.label}</span>
+                {o.meta && <span className="shrink-0 text-[11px] text-zinc-400">{o.meta}</span>}
+              </button>
+            </li>
+          ))}
+        </ul>
+  ) : null;
   return (
-    <div className="relative">
+    <div ref={root} className="relative">
       <input type="hidden" name={name} value={selectedId} />
       <div
         className={
@@ -107,6 +156,7 @@ export function ComboPicker({
           <path d="m20 20-3.5-3.5" strokeLinecap="round" />
         </svg>
         <input
+          data-grid-cell={gridColumn ? true : undefined} data-grid-column={gridColumn}
           role="combobox" aria-label={ariaLabel ?? placeholder} aria-expanded={open} aria-controls={listId} aria-autocomplete="list" aria-activedescendant={open && results[active] ? `${listId}-${active}` : undefined}
           value={query}
           disabled={disabled}
@@ -131,34 +181,7 @@ export function ComboPicker({
         />
       </div>
 
-      {open && results.length > 0 && (
-        <ul id={listId} role="listbox"
-          className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-md border border-hairline bg-canvas py-1 shadow-lg"
-          onMouseDown={() => {
-            if (blurTimer.current) clearTimeout(blurTimer.current);
-          }}
-        >
-          {results.map((o, i) => (
-            <li key={o.id} id={`${listId}-${i}`} role="option" aria-selected={i === active}>
-              <button
-                type="button" tabIndex={-1}
-                onMouseEnter={() => setActive(i)}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  select(o);
-                }}
-                className={
-                  "flex w-full items-baseline justify-between gap-3 px-3 py-2 text-left text-sm transition-colors " +
-                  (i === active ? "bg-stone" : "hover:bg-cream")
-                }
-              >
-                <span className="font-medium text-ink">{o.label}</span>
-                {o.meta && <span className="shrink-0 text-[11px] text-zinc-400">{o.meta}</span>}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+      {gridColumn && menu ? createPortal(menu,document.body) : menu}
     </div>
   );
 }

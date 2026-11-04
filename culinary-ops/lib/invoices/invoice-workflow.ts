@@ -29,3 +29,25 @@ export function invoiceDetailsFromText(pages: { text: string }[], venues: { id: 
   return { date: dates.size === 1 ? [...dates][0] : "", venueId: matches.length === 1 ? matches[0].id : "",
     currency: "USD" as const };
 }
+
+/** Contents per billed unit. Qty lives in its own grid column. */
+export function parseInvoicePack(text: string) {
+  const value=text.trim().toLowerCase().replace(/\b(?:lbs|pounds?)\b/g,"lb").replace(/\bounces?\b/g,"oz");
+  const unit="(oz|lb|kg|g|gr|gal|qt|pt|ml|l|each|ea|pc)";
+  const number="(\\d+(?:\\.\\d+)?)";
+  const counted=value.match(new RegExp(`^${number}\\s*[/x]\\s*${number}\\s*${unit}(?:\\s+(?:pk|cs|case|pack))?$`));
+  const sized=value.match(new RegExp(`^${number}\\s*${unit}\\s*[x×]\\s*${number}$`));
+  const billed=value.match(new RegExp(`^(?:1\\s*)?([a-z]+)\\s*(?:\\(|of\\s+)${number}\\s*${unit}\\)?$`));
+  const simple=value.match(new RegExp(`^${number}\\s*${unit}(?:\\s+(cs|case|bag|box|pk|pack|pc))?$`));
+  let packQty:number, packUnit:string, purchaseUnit:string;
+  if(counted){packQty=Number(counted[1])*Number(counted[2]);packUnit=counted[3];purchaseUnit="case";}
+  else if(sized){packQty=Number(sized[1])*Number(sized[3]);packUnit=sized[2];purchaseUnit="case";}
+  else if(billed){purchaseUnit=billed[1];packQty=Number(billed[2]);packUnit=billed[3];}
+  else if(simple){packQty=Number(simple[1]);packUnit=simple[2];purchaseUnit=simple[3]|| (packQty===1?packUnit:"case");}
+  else return null;
+  if(!Number.isFinite(packQty)||packQty<=0||packQty>1e8)return null;
+  return {unit:purchaseUnit,packQty,packUnit:packUnit.replace(/^(ea|pc)$/,"each").replace(/^gr$/,"g")};
+}
+export function formatInvoicePack(pack: InvoicePack) {
+  return pack.packQty && pack.packUnit ? `${pack.unit||"case"} (${pack.packQty} ${pack.packUnit})` : "";
+}

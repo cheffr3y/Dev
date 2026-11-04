@@ -4,12 +4,13 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { useInvoiceDraft } from "./InvoiceDraftProvider";
 import { Button } from "./ui";
 
-const SourceContext = createContext<(page: number) => void>(() => {});
+type SourceBox = {x0:number;y0:number;x1:number;y1:number};
+const SourceContext = createContext<(page: number, bbox?:SourceBox) => void>(() => {});
 export const useInvoiceSource = () => useContext(SourceContext);
 
 type Document = { id: string; filename: string; mime: string; pages: number; invoiceNumber?: string | null; notes?: string | null };
 
-function DocumentCanvas({ document, page, zoom }: { document: Document; page: number; zoom: number }) {
+function DocumentCanvas({ document, page, zoom, onReady }: { document: Document; page: number; zoom: number; onReady:()=>void }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [message, setMessage] = useState("Loading document…");
   useEffect(() => {
@@ -39,29 +40,33 @@ function DocumentCanvas({ document, page, zoom }: { document: Document; page: nu
         const rendering = sheet.render({ canvas: target, canvasContext: context, viewport, background: "white" });
         dispose = () => { rendering.cancel(); void task.destroy(); };
         await rendering.promise;
-        if (!abort.signal.aborted) setMessage("");
+        if (!abort.signal.aborted) {setMessage("");onReady();}
       } catch (error) {
         if (!abort.signal.aborted) setMessage(error instanceof Error ? error.message : "Unable to preview this page.");
       }
     }
     void render();
     return () => { abort.abort(); dispose?.(); };
-  }, [document.id, page]);
-  return <>{message && <p role="status" className="p-4 text-sm text-zinc-500">{message}</p>}<canvas ref={canvas} role="img" aria-label={`${document.filename}, page ${page}`} className="block h-auto max-w-none bg-white" style={{ width: `${zoom}%` }} /></>;
+  }, [document.id, page, onReady]);
+  return <>{message && <p role="status" className="absolute inset-x-0 top-0 z-10 bg-canvas/90 p-4 text-sm text-zinc-500">{message}</p>}<canvas ref={canvas} role="img" aria-label={`${document.filename}, page ${page}`} className="block h-auto max-w-none bg-white" style={{ width: `${zoom}%` }} /></>;
 }
 
 export function InvoiceWorkspace({ document, children }: { document: Document; children: ReactNode }) {
   const { draft, update } = useInvoiceDraft();
   const [page, setPage] = useState(Math.min(document.pages, draft.view.page)), [zoom, setZoom] = useState<number>(draft.view.zoom), [mobileSource, setMobileSource] = useState(draft.view.mobileSource);
   useEffect(() => { update(previous => ({ ...previous, view: { page, zoom: zoom as 100 | 150 | 200, mobileSource } })); }, [page, zoom, mobileSource, update]);
+  const [highlight,setHighlight]=useState<SourceBox|undefined>();
+  const preview=useRef<HTMLDivElement>(null), region=useRef<HTMLDivElement>(null);
+  const scrollRegion=useCallback(()=>{requestAnimationFrame(()=>{if(preview.current&&region.current)preview.current.scrollTo({top:Math.max(0,region.current.offsetTop-60),behavior:"smooth"});});},[]);
+  useEffect(()=>{scrollRegion();},[highlight,page,zoom,scrollRegion]);
   const file = `/api/invoices/file?id=${encodeURIComponent(document.id)}`;
-  const selectPage = useCallback((value: number) => { setPage(Math.max(1, Math.min(document.pages, value))); }, [document.pages]);
+  const selectPage = useCallback((value: number, bbox?:SourceBox) => { setHighlight(bbox);setPage(Math.max(1, Math.min(document.pages, value))); }, [document.pages]);
   return <SourceContext.Provider value={selectPage}>
     <div className="sticky top-14 z-20 mb-3 flex gap-2 bg-cream py-2 lg:hidden" aria-label="Invoice workspace view">
       <Button type="button" variant={mobileSource ? "secondary" : "primary"} aria-pressed={!mobileSource} onClick={() => setMobileSource(false)}>Review lines</Button>
       <Button type="button" variant={mobileSource ? "primary" : "secondary"} aria-pressed={mobileSource} onClick={() => setMobileSource(true)}>View invoice · p{page}</Button>
     </div>
-    <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+    <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[minmax(0,0.6fr)_minmax(0,1.4fr)]">
       <section aria-label="Invoice source document" className={`${mobileSource ? "block" : "hidden"} min-w-0 overflow-hidden rounded-lg border border-hairline bg-canvas lg:sticky lg:top-20 lg:block`}>
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-hairline p-3">
           <div className="min-w-0"><p className="text-xs font-medium uppercase tracking-wider text-zinc-500">Source document</p><p className="mt-1 break-words text-sm font-medium">{document.filename}</p></div>
@@ -72,11 +77,14 @@ export function InvoiceWorkspace({ document, children }: { document: Document; c
           <div className="flex items-center gap-2"><Button type="button" variant="secondary" aria-label="Previous invoice page" disabled={page === 1} onClick={() => selectPage(page - 1)}>←</Button><label className="text-sm">Page <select aria-label="Invoice source page" className="rounded border border-hairline bg-canvas p-1" value={page} onChange={event => selectPage(Number(event.target.value))}>{Array.from({ length: document.pages }, (_, index) => <option key={index + 1}>{index + 1}</option>)}</select> of {document.pages}</label><Button type="button" variant="secondary" aria-label="Next invoice page" disabled={page === document.pages} onClick={() => selectPage(page + 1)}>→</Button></div>
           <label className="text-sm">Zoom <select aria-label="Invoice source zoom" className="rounded border border-hairline bg-canvas p-1" value={zoom} onChange={event => setZoom(Number(event.target.value))}><option value={100}>Fit width</option><option value={150}>150%</option><option value={200}>200%</option></select></label>
         </div>
-        <div className="max-h-[65dvh] overflow-auto bg-stone p-3" tabIndex={0} role="region" aria-label="Scrollable invoice preview">
-          {document.mime === "application/pdf" ? <DocumentCanvas key={`${document.id}:${page}`} document={document} page={page} zoom={zoom} /> :
+        <div ref={preview} className="relative max-h-[75dvh] overflow-auto bg-stone p-3" tabIndex={0} role="region" aria-label="Scrollable invoice preview">
+          <div className="relative" style={{width:`${zoom}%`}}>
+          {document.mime === "application/pdf" ? <DocumentCanvas key={`${document.id}:${page}`} document={document} page={page} zoom={100} onReady={scrollRegion} /> :
             /* Authenticated document URL; native image retains original resolution for zoom. */
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={file} alt={document.filename} className="block h-auto max-w-none" style={{ width: `${zoom}%` }} />}
+            <img onLoad={scrollRegion} src={file} alt={document.filename} className="block h-auto max-w-none" style={{ width: "100%" }} />}
+          {highlight&&<div ref={region} aria-label="Selected invoice line region" className="pointer-events-none absolute border-2 border-amber-500 bg-amber-300/25" style={{left:`${highlight.x0*100}%`,top:`${highlight.y0*100}%`,width:`${(highlight.x1-highlight.x0)*100}%`,height:`${(highlight.y1-highlight.y0)*100}%`}}/>}
+          </div>
         </div>
       </section>
       <div className={`${mobileSource ? "hidden" : "block"} min-w-0 lg:block`}>{children}</div>
