@@ -25,7 +25,7 @@ export async function loadLocalInvoice(id:string,vendorOverride?:string) {
   const vendorId=doc.vendorId??vendorOverride??null;
   const [aliases,items]=await Promise.all([
     prisma.invoiceItemAlias.findMany({where:{OR:[{vendorId:null},...(vendorId?[{vendorId}]:[])]},orderBy:{hitCount:"desc"}}),
-    prisma.item.findMany({select:{id:true,name:true,unit:true,...measurementSelect,unitCost:true,sku:true,vendorId:true},orderBy:{name:"asc"}}),
+    prisma.item.findMany({select:{id:true,name:true,unit:true,...measurementSelect,unitCost:true,sku:true,vendorId:true,purchaseLines:{where:{voided:false,countsAsFood:true,...(vendorId?{vendorId}:{})},orderBy:[{invoiceDate:"desc"},{createdAt:"desc"},{id:"desc"}],take:1,select:{purchaseUnit:true,packQty:true,packUnit:true,rawCode:true}}},orderBy:{name:"asc"}}).then(items=>items.map(({purchaseLines,...item})=>({...item,invoiceDefaults:purchaseLines[0]?{unit:purchaseLines[0].purchaseUnit,packQty:purchaseLines[0].packQty,packUnit:purchaseLines[0].packUnit,rawCode:purchaseLines[0].rawCode}:null}))),
   ]);
   const draft=doc.ocrDraft?localInvoiceDraftSchema.parse(doc.ocrDraft):null;
   const decisions=doc.ocrDecisions.filter(row=>!doc.purchaseLines.some(line=>line.ocrLineKey===row.lineKey));

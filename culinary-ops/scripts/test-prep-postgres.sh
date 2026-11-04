@@ -25,6 +25,7 @@ node --import tsx --test lib/production/event-planning.integration.test.ts
 node --import tsx --test lib/production/preservation.integration.test.ts
 node --import tsx --test lib/accounting/operating-calendar.integration.test.ts
 node --import tsx --test lib/invoices/local-invoice.integration.test.ts
+node --import tsx --test lib/invoices/invoice-batch.integration.test.ts
 node --import tsx --test lib/invoices/review-draft.integration.test.ts
 node --import tsx --test lib/invoices/discard-invoice.integration.test.ts
 node --import tsx --test lib/ingredients/measurements.integration.test.ts

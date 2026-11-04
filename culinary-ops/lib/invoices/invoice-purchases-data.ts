@@ -22,13 +22,13 @@ async function learnPurchase(tx: Prisma.TransactionClient, userId: string, lineI
   await rememberInvoiceAlias(tx, { vendorId: edit.vendorId, rawCode: edit.rawCode, description: edit.description, itemId: edit.itemId, isIgnored: false, defaultUnit: edit.purchaseUnit, defaultPackQty: edit.packQty, defaultPackUnit: edit.packUnit });
   await tx.invoiceLearningEvent.create({ data: { id, actorId: userId, requestHash: id, result: json({ lineId, revision, learned: true }) } });
 }
-export async function saveInvoicePurchase(db: PrismaClient, userId: string, input: unknown): Promise<OperatingSaveResult> {
+export async function saveInvoicePurchase(db: PrismaClient, userId: string, input: unknown, transaction?: Prisma.TransactionClient): Promise<OperatingSaveResult> {
   const parsed = invoicePurchaseSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message || "Check the invoice line." };
   const edit = parsed.data;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      return await db.$transaction(async tx => {
+      const execute = async (tx: Prisma.TransactionClient): Promise<OperatingSaveResult> => {
         const user = await tx.user.findUnique({ where: { id: userId }, select: { role: true, name: true } });
         if (!user || user.role === "STAFF") return { ok: false, error: "Manager access required." };
         const [doc, current, item, vendor, venue] = await Promise.all([
@@ -82,7 +82,8 @@ export async function saveInvoicePurchase(db: PrismaClient, userId: string, inpu
         }
         await refreshInvoiceReview(tx,doc.id);
         return { ok: true, revision: saved.revision };
-      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+      };
+      return transaction ? await execute(transaction) : await db.$transaction(execute, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && ["P2034", "P2002"].includes(error.code) && attempt < 2) continue;
       return { ok: false, error: error instanceof Prisma.PrismaClientKnownRequestError ? "Another edit arrived or the line could not be saved. Reload and retry." : error instanceof Error ? error.message : "Unable to save invoice line." };
