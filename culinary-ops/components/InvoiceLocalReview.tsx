@@ -39,7 +39,7 @@ export function InvoiceLocalReview({invoiceId,vendorId,vendors,venues,defaults}:
   useEffect(()=>{const stop=new AbortController();void fetch(`/api/invoice-ocr?id=${encodeURIComponent(invoiceId)}&vendor=${encodeURIComponent(supplier)}`,{signal:stop.signal}).then(response=>response.json()).then((result:Data)=>{
     if(!result.ok)throw new Error("Could not load local recognition.");setData(result);
     const suggested=invoiceDetailsFromText(result.draft?.pages??[],venues);
-    updateDraft(previous=>({...previous,date:previous.date||defaults?.date||suggested.date,venue:previous.venue||defaults?.venueId||suggested.venueId}));
+    updateDraft(previous=>({...previous,date:previous.date||defaults?.date||suggested.date,venue:previous.venue||suggested.venueId||defaults?.venueId||""}));
     setRows(previous=>previous.length?previous:(result.draft?.lines??[]).map(line=>initialRow(line,result.matches.find(match=>match.key===line.key)!,result,recovery.current.sourceRevision===result.revision?recovery.current.rows.find(saved=>saved.key===line.key):undefined)));
   }).catch(error=>{if(!stop.signal.aborted)setStatus(error.message);});return()=>stop.abort();},[invoiceId,supplier,venues,defaults?.date,defaults?.venueId,updateDraft]);
   useEffect(() => {
