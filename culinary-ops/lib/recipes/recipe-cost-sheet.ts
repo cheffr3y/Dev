@@ -1,4 +1,4 @@
-import { recipePurchaseQuantity } from "../ingredients/measurements";
+import { recipePurchaseQuantity, convertIngredientQty } from "../ingredients/measurements";
 import {
   buildCostMap, componentBatchFactor, componentLineCost, costPerYieldUnit,
   costUnitLabel, foodCostPct, lineCost, type RecipeCostNode, type RecipeItemWithCost,
@@ -19,6 +19,9 @@ export function recipeCostSheet(recipe: CostSheetRecipe, recipes: RecipeCostNode
     return {
       id: line.id, name: line.item.name, quantity: line.quantity * scale, unit: line.unit,
       unitCost: line.item.unitCost, costUnit: costUnitLabel(line.item.unit),
+      yieldPercent: line.item.measurementReviewedAt ? (line.item.yieldFactor ?? 1) * 100 : null,
+      edibleUnitCost: line.item.measurementReviewedAt && line.item.usableCosting ? (() => { const quantity = recipePurchaseQuantity(1, line.item.unit, line.item); return quantity == null ? null : quantity * line.item.unitCost; })() : null,
+      yieldApplied: !!line.item.measurementReviewedAt && !!line.item.usableCosting && recipePurchaseQuantity(line.quantity,line.unit,line.item) !== convertIngredientQty(line.quantity,line.unit,line.item.unit,line.item),
       cost: cost * scale, converted, purchasedQuantity: line.item.measurementReviewedAt ? recipePurchaseQuantity(line.quantity*scale,line.unit,line.item) : null, purchasedUnit:line.item.unit,
     };
   });
@@ -28,6 +31,7 @@ export function recipeCostSheet(recipe: CostSheetRecipe, recipes: RecipeCostNode
       id: line.id, name: line.child.name, quantity: line.quantity * scale, unit: line.unit,
       unitCost: child ? costPerYieldUnit(costMap.get(child.id) ?? 0, child.yieldQty) : null,
       costUnit: child ? costUnitLabel(child.yieldUnit) : "unit",
+      yieldPercent: null, edibleUnitCost: null, yieldApplied: false,
       cost: componentLineCost(line, costMap, catalog) * scale, purchasedQuantity:null, purchasedUnit:null,
       converted: child ? componentBatchFactor(line.quantity, line.unit, child.yieldQty, child.yieldUnit).converted : false,
     };

@@ -74,6 +74,7 @@ enum StockAdjustmentType {
 }
 
 model User {
+  specialCostings SpecialCosting[]
   invoiceReviewDrafts InvoiceReviewDraft[]
   preservationBatches PreservationBatch[]
   preservationAudits PreservationAudit[]
@@ -1544,4 +1545,16 @@ model IngredientMeasurementChange {
   impact Json
   createdAt DateTime @default(now())
   @@index([itemId, createdAt])
+}
+
+// Private working costings; ingredients and recipes remain in the shared catalog.
+model SpecialCosting {
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id String @id
+  userId String
+  name String
+  payload Json
+  revision Int @default(0)
+  updatedAt DateTime @updatedAt
+  @@index([userId, updatedAt])
 }

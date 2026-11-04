@@ -108,8 +108,8 @@ function PurchaseLineForm({ invoiceId, vendorId, vendors, venues, items, line, d
     <div className="flex gap-3"><Button>{busy ? "Saving…" : "Save invoice line"}</Button><Button type="button" variant="secondary" onClick={()=>{updateDraft(previous=>({...previous,manual:null,editor:null}));dirty(false);cancel();}}>Cancel entry</Button></div>
   </fieldset>{message && <p role="status" className="text-sm">{message}</p>}<OperatingHistory history={line?.history} /></form>;
 }
-export function InvoicePurchaseReview({ invoice, vendorId, lineRevision, lines, expense, vendors, venues, items }: {
-  invoice: InvoiceChoice; vendorId: string | null; lineRevision: number; lines: InvoicePurchaseData[]; expense: FoodExpenseData | null;
+export function InvoicePurchaseReview({ invoice, vendorId, lineRevision, lines, expense, vendors, venues, items, defaultVenueId }: {
+  defaultVenueId?: string | null; invoice: InvoiceChoice; vendorId: string | null; lineRevision: number; lines: InvoicePurchaseData[]; expense: FoodExpenseData | null;
   vendors: { id: string; name: string }[]; venues: { id: string; name: string }[]; items: (ComboOption & IngredientMeasure & {unit?:string;unitCost?:number;sku?:string|null;vendorId?:string|null;invoiceDefaults?:InvoicePack|null})[];
 }) {
   const { draft, update: updateDraft } = useInvoiceDraft();
@@ -118,7 +118,7 @@ export function InvoicePurchaseReview({ invoice, vendorId, lineRevision, lines, 
 
   const [formGeneration, setFormGeneration] = useState(0);
   const active = lines.filter(line => !line.voided), total = active.filter(line => line.countsAsFood).reduce((sum, line) => sum + line.amountCents, 0);
-  const defaults = active[0] ? { date: active[0].invoiceDate, venueId: active[0].venueId, vendorId: active[0].vendorId } : expense ? { date: expense.invoiceDate, venueId: expense.venueId } : undefined;
+  const defaults = active[0] ? { date: active[0].invoiceDate, venueId: active[0].venueId, vendorId: active[0].vendorId } : expense ? { date: expense.invoiceDate, venueId: expense.venueId } : { date: "", venueId: defaultVenueId ?? "" };
   const pending = expense?.invoiceLineRevision != null && expense.invoiceLineRevision !== lineRevision;
   function switchEditor(edit: string | null, post = false) { if (dirty && !window.confirm("Discard the unsaved invoice entry?")) return; updateDraft(previous=>({...previous,editor:post ? "posting" : edit ?? "new",manual:null})); setFormGeneration(value=>value+1); setEditing(edit); setAdding(edit == null && !post); setPosting(post); setDirty(false); setMessage(""); }
   return <Card className="overflow-hidden p-4"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-semibold">Review invoice</h2><Button type="button" variant="secondary" onClick={()=>{switchEditor(null);requestAnimationFrame(()=>document.getElementById("invoice-line-entry")?.scrollIntoView({block:"start",behavior:"smooth"}));}}>Enter a line manually</Button></div><p className="mt-1 text-sm text-zinc-500">Review ready matches together; correct the exceptions or enter a line manually.</p>

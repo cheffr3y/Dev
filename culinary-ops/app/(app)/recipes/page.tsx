@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { WorkspaceInspector } from "@/components/WorkspaceInspector";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser, hasRole } from "@/lib/auth/session";
@@ -59,6 +60,7 @@ export default async function RecipesPage({ searchParams }: { searchParams: Prom
       <PageHeader
         title="Recipes & Builds"
         subtitle="Standardized recipes with ingredient costing and margins."
+        action={<Link href="/specials" className="text-blue-600 underline">Cost a special →</Link>}
       />
 
       {canEdit && (

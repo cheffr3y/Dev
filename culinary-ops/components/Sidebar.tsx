@@ -38,6 +38,7 @@ const SECTIONS: NavSection[] = [
     heading: "Culinary & Events",
     items: [
       { href: "/recipes", label: "Recipes", icon: "recipes" },
+      { href: "/specials", label: "Specials costing", icon: "recipes" },
       { href: "/menus", label: "Menus", icon: "recipes" },
       { href: "/banquets", label: "Banquets", icon: "events" },
       { href: "/events", label: "Events", icon: "events" },

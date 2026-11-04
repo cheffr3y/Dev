@@ -1,4 +1,5 @@
 export const suites = {
+  specials: "prep_workflow_test",
   "inbox-conversions": "prep_workflow_test",
   "local-invoices": "prep_workflow_test",
   "invoice-workflow": "prep_workflow_test",
