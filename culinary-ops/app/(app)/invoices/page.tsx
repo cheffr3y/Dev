@@ -40,9 +40,10 @@ export default async function InvoicePage({ searchParams }: { searchParams: Prom
   ]);
   const review = selected ? await Promise.all([
     loadInvoicePurchases(selected.id), getVenues({ includeLegacy: true }),
-    prisma.item.findMany({ select: { id: true, name: true, unit: true, unitCost: true, ...measurementSelect, sku: true, gcode: true, vendor: { select: { name: true } } }, orderBy: { name: "asc" } }),
+    prisma.item.findMany({ select: { id: true, name: true, unit: true, unitCost: true, ...measurementSelect, sku: true, gcode: true, vendorId:true,vendor: { select: { name: true } } }, orderBy: { name: "asc" } }),
     prisma.operatingFoodExpense.findUnique({ where: { invoiceDocumentId: selected.id } }),
     prisma.invoiceReviewDraft.findUnique({ where: { userId_documentId: { userId: user.id, documentId: selected.id } } }),
+    prisma.invoiceItemAlias.findMany({where:{vendorId:selected.vendorId,isIgnored:false,itemId:{not:null}},orderBy:[{hitCount:"desc"},{updatedAt:"desc"}],select:{itemId:true,rawCode:true,defaultUnit:true,defaultPackQty:true,defaultPackUnit:true}}),
   ]) : null;
   const parsedDraft = reviewDraftSchema.safeParse(review?.[4]?.payload);
   const initialDraft = review?.[4] && parsedDraft.success ? { revision: review[4].revision, payload: parsedDraft.data } : null;
@@ -83,7 +84,7 @@ export default async function InvoicePage({ searchParams }: { searchParams: Prom
     {id && !selected && <p role="alert" className="text-sm">Invoice not found.</p>}
     {selected && review && <div id="invoice-review" className="scroll-mt-20"><InvoiceDraftProvider key={selected.id} documentId={selected.id} sourceRevision={selected.ocrRevision} initial={initialDraft}>
       {completion && <InvoiceCompletion data={completion} />}
-      <InvoiceWorkspace document={selected}><InvoicePurchaseReview invoice={{ id: selected.id, filename: selected.filename, vendor: selected.vendor?.name ?? null, invoiceNumber: selected.invoiceNumber }} vendorId={selected.vendorId} lineRevision={selected.lineRevision} lines={review[0]} expense={expense} vendors={vendors} venues={review[1].map(venue => ({ id: venue.id, name: venue.name }))} items={review[2].map(item => ({ ...item, label: item.name, meta: `${item.unit} · ${item.vendor?.name ?? "No catalog vendor"}`, keywords: [item.sku, item.gcode, item.vendor?.name].filter(Boolean).join(" ") }))} /></InvoiceWorkspace>
+      <InvoiceWorkspace document={selected}><InvoicePurchaseReview invoice={{ id: selected.id, filename: selected.filename, vendor: selected.vendor?.name ?? null, invoiceNumber: selected.invoiceNumber }} vendorId={selected.vendorId} lineRevision={selected.lineRevision} lines={review[0]} expense={expense} vendors={vendors} venues={review[1].map(venue => ({ id: venue.id, name: venue.name }))} items={review[2].map(item => {const learned=review[5].find(alias=>alias.itemId===item.id);return { ...item, label: item.name, meta: `${item.unit} · ${item.vendor?.name ?? "No catalog vendor"}`, keywords: [item.sku, item.gcode, item.vendor?.name].filter(Boolean).join(" "),invoiceDefaults:learned?{unit:learned.defaultUnit,packQty:learned.defaultPackQty,packUnit:learned.defaultPackUnit,rawCode:learned.rawCode}:null };})} /></InvoiceWorkspace>
     </InvoiceDraftProvider></div>}
     {selected && inbox}
   </div>;

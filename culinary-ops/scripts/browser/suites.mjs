@@ -1,6 +1,7 @@
 export const suites = {
   "inbox-conversions": "prep_workflow_test",
   "local-invoices": "prep_workflow_test",
+  "invoice-workflow": "prep_workflow_test",
   "recipe-dependencies": "prep_workflow_test",
   "price-trends": "prep_workflow_test",
   "url-state": "prep_workflow_test",
