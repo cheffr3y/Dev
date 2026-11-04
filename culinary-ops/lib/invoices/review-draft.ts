@@ -16,6 +16,7 @@ export const reviewRowSchema = z.object({
 export const reviewDraftSchema = z.object({
   version: z.literal(1), sourceRevision: z.number().int().nonnegative(),
   supplier: id, date: z.string().max(40), venue: id, selectedKey: id.nullable(),
+  currency: z.enum(["USD", "OTHER"]).default("USD"),
   editor: z.string().max(150).nullable(),
   manual: z.object({ key: z.string().max(200), id: z.string().max(150), lineRevision: z.number().int().nonnegative().nullable(), fields: z.record(z.string().max(60), z.string().max(1000)).refine(value => Object.keys(value).length <= 30) }).nullable(),
   showIgnored: z.boolean(), rows: z.array(reviewRowSchema).max(200),
@@ -26,7 +27,7 @@ export type ReviewDraft = z.infer<typeof reviewDraftSchema>;
 export type ReviewRowDraft = z.infer<typeof reviewRowSchema>;
 export type SavedReviewDraft = { revision: number; payload: ReviewDraft } | null;
 export function emptyReviewDraft(sourceRevision: number): ReviewDraft {
-  return { version: 1, sourceRevision, supplier: "", date: "", venue: "", selectedKey: null, editor: null, manual: null, showIgnored: false, rows: [], pending: [], view: { page: 1, zoom: 100, mobileSource: false } };
+  return { version: 1, sourceRevision, supplier: "", date: "", venue: "", currency: "USD", selectedKey: null, editor: null, manual: null, showIgnored: false, rows: [], pending: [], view: { page: 1, zoom: 100, mobileSource: false } };
 }
 
 export function serializeReviewDraft(payload: ReviewDraft): string {

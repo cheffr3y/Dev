@@ -1,4 +1,5 @@
 import type { Worker } from "tesseract.js";
+import { textFromPositionedWords } from "./text-layout";
 export async function recognizeLocalCanvas(canvas: HTMLCanvasElement, mode: "sparse" | "invoice", progress: (message: string, fraction?: number) => void, signal: AbortSignal) {
   let worker: Worker | undefined, stopped = false;
   let rejectStopped: (error: Error) => void = () => {};
@@ -18,9 +19,9 @@ export async function recognizeLocalCanvas(canvas: HTMLCanvasElement, mode: "spa
     }).then(created => { if (stopped) void created.terminate(); return created; }));
     worker=ready;
     if (signal.aborted) throw new DOMException("Cancelled", "AbortError");
-    await wait(ready.setParameters({ tessedit_pageseg_mode: mode === "invoice" ? PSM.SINGLE_BLOCK : PSM.SPARSE_TEXT, ...(mode === "invoice" ? { preserve_interword_spaces: "1" } : {}) }));
-    const result = await wait(ready.recognize(canvas, {}, { blocks: true }));
+    await wait(ready.setParameters({ tessedit_pageseg_mode: PSM.SPARSE_TEXT, ...(mode === "invoice" ? { preserve_interword_spaces: "1" } : {}) }));
+    const result = await wait(ready.recognize(canvas, mode === "invoice" ? { rotateAuto: true } : {}, { blocks: true }));
     if (signal.aborted) throw new DOMException("Cancelled", "AbortError");
-    return result.data;
+    return mode === "invoice" ? { ...result.data, text: textFromPositionedWords(result.data.blocks,result.data.text) } : result.data;
   } finally { clearTimeout(timer); signal.removeEventListener("abort", cancel); if (worker) await worker.terminate().catch(() => {}); }
 }

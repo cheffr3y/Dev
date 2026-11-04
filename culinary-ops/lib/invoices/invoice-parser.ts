@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { invoiceSourceRows,invoiceProductStart,normalizeInvoiceLine } from "./invoice-layout";
+import { convertQty } from "../recipes/units";
 
 export function invoiceFileType(bytes: Uint8Array) {
   const text = (start: number, end: number) => String.fromCharCode(...bytes.slice(start, end));
@@ -23,7 +25,7 @@ const legalFooter = /^(?:THE\s+)?PERISHABLE\s+AGRICULTUR(?:AL|E)\s+COMMODITIES\b
 const totalFooter = /^(?:TOTAL|AMOUNT\s+DUE|BALANCE\s+DUE)\s*:?\s*\$?\s*[-(]?[\dOIlS][\dOIlS,]*\.[\dOIlS]{2}\)?$/i;
 function numeric(raw: string) {
   const source = raw.replace(/[, $]/g, "").replace(/^\((.*)\)$/, "-$1");
-  const repaired = source.replace(/[Oo]/g, "0").replace(/[Il|]/g, "1").replace(/S/g, "5");
+  const repaired = source.replace(/[Oo]/g, "0").replace(/[IiLl|]/g, "1").replace(/S/g, "5");
   const base = Number(repaired);
   const options = [base];
   if (/^[S8]\d+[.]\d{2}$/.test(source)) options.push(Number(source.slice(1)));
@@ -35,54 +37,67 @@ export function invoiceMathWarning(quantity: number | null, unitPrice: number | 
 }
 export function parseInvoiceText(pages: { page: number; text: string }[]): LocalInvoiceDraft {
   const lines: LocalInvoiceLine[] = [];
-  for (const page of pages) for (const [index, source] of page.text.split(/\r?\n/).entries()) {
-    const raw = source.trim().replace(/\s+/g, " ");
+  for (const page of pages) for (const {rawText, lineNumber} of invoiceSourceRows(page.text)) {
+    const index = lineNumber - 1;
+    const raw = normalizeInvoiceLine(rawText);
     if (!raw || footer.test(raw) || legalFooter.test(raw) || totalFooter.test(raw) || /^(?:\+?1[- .])?\(?\d{3}\)?[- .]\d{3}[- .]\d{4}$/.test(raw) || /^\d+\s+.*\b(?:STREET|ST|AVENUE|AVE|ROAD|RD|DRIVE|DR)\.?$/i.test(raw)) continue;
     const money = [...raw.matchAll(/(?:^|\s)([-(]?[\dOIlS$8][\dOIlS,$.]*[.][\dOIlS]{2}\)?)(?=\s|$)/g)];
     if (!money.length) {
       const unknown=raw.match(/^([A-Z0-9-]{3,30})\s+(.+)$/i);
-      if(unknown && /\d/.test(unknown[1]) || /^(FUEL SURCHARGE|LINEN BAG)\b/i.test(raw)) {
-        if(lines.length>=200)throw new Error("More than 200 candidate lines. Split this invoice.");
-        lines.push({key:`p${page.page}-l${index+1}-${hash(raw)}`,page:page.page,lineNumber:index+1,rawText:raw.slice(0,1500),rawCode:unknown&&/\d/.test(unknown[1])?unknown[1]:null,rawDescription:(unknown&&/\d/.test(unknown[1])?unknown[2]:raw).slice(0,500),quantity:null,unit:"",unitPrice:null,extendedPrice:null,packQty:null,packUnit:"",warnings:["Amounts unreadable or missing. Enter manually or mark ignored."]});
-      }
-      continue;
+      if(!invoiceProductStart.test(raw)&&!(unknown&&/\d/.test(unknown[1]))&&!/^(FUEL SURCHARGE|LINEN BAG)\b/i.test(raw))continue;
     }
     if (lines.length >= 200) throw new Error("More than 200 candidate lines. Split this invoice before recognition.");
-    const last = money.at(-1)!, prior = money.length > 1 ? money.at(-2)! : null;
-    let description = raw.slice(0, prior?.index ?? last.index).trim();
+    const last = money.at(-1)??null, prior = money.length > 1 ? money.at(-2)! : null;
+    let description = raw.slice(0, prior?.index ?? last?.index ?? raw.length).trim();
     const warnings: string[] = [];
+    if(!money.length)warnings.push("Amounts unreadable or missing. Enter manually or mark ignored.");
+    const leading = description.match(/^(?:(\d+(?:[.]\d+)?|[Il])\s*(CS|CASE|PC|EA|EACH|LB|LBS|OZ|KG|BAG|BOX|PK|PACK)\s+)(?:(\d+(?:[.]\d+)?|[Il])\s*(CS|CASE|PC|EA|EACH|LB|LBS|OZ|KG|BAG|BOX|PK|PACK)\s+)?(?=[A-Z0-9-]{3,30}\s+[A-Z])/i);
+    if (leading) description = description.slice(leading[0].length);
     const codeMatch = description.match(/^([A-Z0-9-]{3,30})\s+/i);
     let rawCode = codeMatch && /\d/.test(codeMatch[1]) ? codeMatch[1] : null;
     if (rawCode) description = description.slice(codeMatch![0].length);
-    const pack = description.match(/\b(\d+(?:[.]\d+)?)\s*[/xX]\s*(\d+(?:[.]\d+)?)\s*(LB|OZ|KG|G|GAL|QT|EA|EACH)\b/i);
-    const simplePack = !pack ? description.match(/\b(\d+(?:[.]\d+)?)\s*(LB|OZ|KG|GAL|QT)\b/i) : null;
+    const packText=raw.slice(leading?.[0].length??0);
+    const pack = packText.match(/\b(\d+(?:[.]\d+)?)\s*[/xX]\s*(\d+(?:[.]\d+)?)\s*(LB|OZ|KG|GR|G|GAL|QT|EA|EACH)(?=\b|BC\b|PC\b|CS\b)/i);
+    const simplePack = !pack ? packText.match(/\b(\d+(?:[.]\d+)?)\s*(LB|OZ|KG|GR|G|GAL|QT)(?=\b|BC\b|PC\b|CS\b)/i) : null;
     const unitPattern = /(?:^|\s)([-\dOIlS.,]+)\s+(CS|CASE|CASES|LB|LBS|OZ|KG|EA|EACH|BAG|BOX|PK|PACK|GAL|QT)(?=\s*$)/i;
     const quantityMatch = description.match(unitPattern) ?? description.match(/(?:^|\s)([-\dOIlS.,]+)\s+(CS|CASE|CASES|LB|LBS|OZ|KG|EA|EACH|BAG|BOX|PK|PACK|GAL|QT)\b/i);
-    let quantity = quantityMatch ? numeric(quantityMatch[1]).options[0] ?? null : null;
-    const unit = quantityMatch?.[2]?.toLowerCase() ?? "";
-    if (quantityMatch) { description = description.replace(quantityMatch[0], " ").trim(); if (numeric(quantityMatch[1]).changed) warnings.push("OCR quantity characters corrected; verify against the invoice."); }
+    let quantity = leading ? numeric(leading[3] ?? leading[1]).options[0] ?? null : quantityMatch ? numeric(quantityMatch[1]).options[0] ?? null : null;
+    const unit = (leading?.[4] ?? leading?.[2] ?? quantityMatch?.[2])?.toLowerCase() ?? "";
+    if (quantityMatch && !leading) { description = description.replace(quantityMatch[0], " ").trim(); if (numeric(quantityMatch[1]).changed) warnings.push("OCR quantity characters corrected; verify against the invoice."); }
     if (!rawCode) {
       const afterQuantity = description.match(/^([A-Z0-9-]{3,30})\s+/i);
       if (afterQuantity && /\d/.test(afterQuantity[1])) { rawCode = afterQuantity[1]; description = description.slice(afterQuantity[0].length); }
     }
-    const prices = prior ? numeric(prior[1]) : null, totals = numeric(last[1]);
-    let unitPrice = prices?.options[0] ?? null, extendedPrice = totals.options[0] ?? null;
-    if (!quantityMatch) {
+    const prices = prior ? numeric(prior[1]) : null, totals = last?numeric(last[1]):null;
+    let unitPrice = prices?.options[0] ?? null, extendedPrice = totals?.options[0] ?? null;
+    if (!quantityMatch && !leading) {
       const tail = description.match(/\s+(-?\d+(?:[.]\d+)?)$/);
       if (tail && !/[\d]\s*[/x]\s*\d/.test(tail[0])) { quantity = Number(tail[1]); description = description.slice(0, tail.index); }
       warnings.push("Confirm billed quantity and unit.");
     }
-    if (quantity !== null && prices) {
+    if (quantity !== null && prices && totals) {
       const matches = prices.options.flatMap(price => totals.options.filter(total => !invoiceMathWarning(quantity, price, total)).map(total => ({ price, total })));
       if (matches.length === 1) { if (unitPrice !== matches[0].price || extendedPrice !== matches[0].total) warnings.push("Ambiguous OCR currency prefix corrected using line math; verify."); unitPrice = matches[0].price; extendedPrice = matches[0].total; }
     }
-    if (prices?.changed || totals.changed) warnings.push("OCR price characters corrected; verify against the invoice.");
-    if (invoiceMathWarning(quantity, unitPrice, extendedPrice)) warnings.push("Quantity × unit price does not match the paid total, or a number is missing.");
-    const simpleContent = simplePack && (!quantityMatch || !quantityMatch[0].includes(simplePack[0])) ? simplePack : null;
+    if (prices?.changed || totals?.changed) warnings.push("OCR price characters corrected; verify against the invoice.");
+    const simpleContent = simplePack && (leading || !quantityMatch || !quantityMatch[0].includes(simplePack[0])) ? simplePack : null;
     const measured = ["lb","lbs","oz","kg","ea","each","gal","qt"].includes(unit);
-    const packQty = pack ? Number(pack[1]) * Number(pack[2]) : simpleContent ? Number(simpleContent[1]) : measured ? 1 : null;
-    const packUnit = pack?.[3]?.toLowerCase() ?? simpleContent?.[2]?.toLowerCase() ?? (measured ? unit : "");
-    lines.push({ key: `p${page.page}-l${index + 1}-${hash(raw)}`, page: page.page, lineNumber: index + 1, rawText: raw.slice(0,1500), rawCode, rawDescription: (description || raw).slice(0,500), quantity, unit, unitPrice, extendedPrice, packQty, packUnit, warnings });
+    const brokenCase = /^(?:pc|ea|each)$/.test(unit) && /(?:\b|LB|OZ|KG|G)BC\b/i.test(raw);
+    const ambiguousPack = !pack && simpleContent && /^(?:pc|ea|each)$/.test(unit) && /^1\d{2,}$/.test(simpleContent[1]);
+    if(ambiguousPack)warnings.push("Pack text may be missing a separator. Confirm the contents per billed unit.");
+    const packQty = ambiguousPack ? null : pack ? (brokenCase ? 1 : Number(pack[1])) * Number(pack[2]) : simpleContent ? Number(simpleContent[1]) : measured ? 1 : null;
+    const packUnit = (pack?.[3]?.toLowerCase() ?? simpleContent?.[2]?.toLowerCase() ?? (measured ? unit : "")).replace(/^gr$/,"g");
+    const quotedUnit=prior&&last?raw.slice(prior.index!+prior[0].length,last.index).match(/\b(CS|CASE|PC|EA|EACH|LB|LBS|OZ|KG)\b/i)?.[1].toLowerCase():null;
+    if(quotedUnit&&quotedUnit!==unit&&unitPrice!==null&&quantity!==null&&extendedPrice!==null) {
+      const piece=/^(?:pc|ea|each)$/.test(unit),cases=/^(?:cs|case)$/.test(unit),quotedCase=/^(?:cs|case)$/.test(quotedUnit);
+      const factor=piece&&quotedCase&&pack?1/Number(pack[1]):cases&&/^(?:pc|ea|each)$/.test(quotedUnit)&&pack?Number(pack[1]):cases&&packQty?convertQty(packQty,packUnit,quotedUnit):null;
+      if(factor!==null&&!invoiceMathWarning(quantity,unitPrice*factor,extendedPrice)) {
+        unitPrice=Number((unitPrice*factor).toFixed(10));warnings.push(`Supplier price per ${quotedUnit.toUpperCase()} converted to the billed ${unit.toUpperCase()} unit using the pack.`);
+      }
+    }
+    if (invoiceMathWarning(quantity, unitPrice, extendedPrice)) warnings.push("Quantity × unit price does not match the paid total, or a number is missing.");
+    const cleanDescription = description.replace(/\b(?:\d+\s*[/xX]\s*)?\d+(?:[.]\d+)?\s*(?:LB|OZ|KG|GR|G|GAL|QT|EA|EACH)(?=\b|BC\b|PC\b|CS\b).*$/i, "").replace(/\b(?:BC|PC|CS)\s+P[Il]t#?:.*$/i, "").trim();
+    lines.push({ key: `p${page.page}-l${index + 1}-${hash(raw)}`, page: page.page, lineNumber: index + 1, rawText: rawText.slice(0,1500), rawCode, rawDescription: (cleanDescription || description || raw).slice(0,500), quantity, unit, unitPrice, extendedPrice, packQty, packUnit, warnings });
   }
   return localInvoiceDraftSchema.parse({ version: 1, pages, lines });
 }
