@@ -10,11 +10,17 @@ The visual overhaul should be substantial: application shell, navigation, page c
 
 The user confirmed that this is primarily for their own multi-venue team. Subscription billing, customer onboarding, marketplace integrations, and multi-tenant SaaS architecture are outside the first roadmap.
 
+### Current scope: personal use first; Cook view deferred
+
+November 4, 2026: the chef explicitly deferred the Cook view. Rollout to cooks and other chefs is still a while away. Prioritize the chef’s own planning, costing, prep management, invoice review and closeout experience. A dedicated Cook view, cook assignments, cook onboarding and team-rollout validation are deferred until rollout is explicitly revisited. Existing kitchen and print capabilities remain available. References below to future cook workflows describe the longer-term vision, not the active implementation scope.
+
+The active UI sequence is **Today → Daily Prep management → Closeout**, followed by recipe costing/editing, ingredients, invoices and planning. Cook-facing work is not a dependency for these improvements.
+
 ### Execution decision: UI/UX first
 
 The chef approved starting with UI/UX on November 4, 2026. The review is retained in Git; delivery now starts with the interface while the correctness findings remain on the backlog.
 
-The first implementation slice on `codex/ui-workday-foundation` introduces a shared header treatment, refined wordmark and restrained green primary accent; context-aware collapsed navigation groups with clearer labels; a Today entry that prioritizes prep/closeout over catalog maintenance; and a compact Daily Prep date/action toolbar with project/history tools below the work list. Daily Prep explicitly labels its shared, company-wide destination scope. This is the foundation for the broader redesign; the six-destination architecture and focused cook/closeout workspaces remain planned.
+The first implementation slice on `codex/ui-workday-foundation` introduces a shared header treatment, refined wordmark and restrained green primary accent; context-aware collapsed navigation groups with clearer labels; a Today entry that prioritizes prep/closeout over catalog maintenance; and a compact Daily Prep date/action toolbar with project/history tools below the work list. Daily Prep explicitly labels its shared, company-wide destination scope. This is the foundation for the broader redesign; the six-destination architecture and compact closeout remain planned. The focused Cook view is deferred.
 
 ## Scope and confidence
 
@@ -124,9 +130,9 @@ Effort classes indicate relative scope, not calendar commitments: S = contained 
 | Phase | Deliverables | Scope | Exit gate |
 | --- | --- | --- | --- |
 | 0 · Stabilize and observe | Current authorization checks; event-date/planning correctness; clean repeatable validation; baseline five real chef tasks | M | Known correctness issues have regression coverage; existing checks repeat on a clean checkout; chef task observations recorded. |
-| 1 · Define and prove the new experience | Navigation/context model; semantic design tokens; desktop, tablet and phone patterns; complete Today → Daily Prep → cook detail prototype | M | Chef and cook can identify venue, next job, quantity and next action without explanation; primary work is visible in the first phone viewport. |
-| 2 · Ship daily execution | New shell, Today, Daily Prep, focused cook workspace, compact closeout, consistent recovery and saves | L | A complete prep day works across venues and devices; lost responses/reloads do not lose saved work; accounting and frozen packets remain unchanged. |
-| 3 · Bring culinary and purchasing to the standard | Recipe Cook/Cost/Edit views; ingredient catalog; invoice refinement; shared filters/inspectors; targeted performance work | L | Find/scale a recipe, resolve a cost exception, and review a ten-line invoice with less navigation and no loss of context. |
+| 1 · Define and prove the new experience | Navigation/context model; semantic design tokens; desktop, tablet and phone patterns; complete Today → Daily Prep management → Closeout prototype | M | The chef can identify venue, pending work, quantities and next action without explanation; primary work is visible in the first phone viewport. |
+| 2 · Ship daily execution | New shell, Today, Daily Prep management, compact closeout, consistent recovery and saves | L | A complete prep day works across venues and devices; lost responses/reloads do not lose saved work; accounting and frozen packets remain unchanged. |
+| 3 · Bring culinary and purchasing to the standard | Recipe costing/editing views (Cook view deferred); ingredient catalog; invoice refinement; shared filters/inspectors; targeted performance work | L | Find/scale a recipe, resolve a cost exception, and review a ten-line invoice with less navigation and no loss of context. |
 | 4 · Connect planning and handoffs | Unified planning entry, linked source demand, Projects & Pop-ups, changed-plan acknowledgement, assignment/deadline model | L | One plan reaches production and purchasing without duplicate demand; destination/quantity changes remain visible and attributable. |
 | 5 · Add selected operational depth | Receiving against plan, waste/yield trends, recipe approval/photos, mobile resilience, relevant integrations | L, selected modules only | Each feature demonstrates a measurable operational benefit in a pilot kitchen before broad rollout. |
 
@@ -138,7 +144,7 @@ Phases 0 and 1 can overlap. The UI implementation should proceed as complete wor
 2. **Business-date and production coverage fixes (S–M):** today remains today; supported plans appear in production; expose overlap clearly until explicit linking is shipped.
 3. **New shell and context bar (M):** six main destinations, persistent working venue and local navigation; preserve old URLs and permissions.
 4. **Today and Daily Prep (M):** task-first composition, concise actions, quantities/destinations visible, meaningful empty state.
-5. **Cook view (M):** batch scale, ingredients/method, allergens, nested recipe access, QR handoff and readable touch controls.
+5. **Cook view (M) — deferred:** revisit dedicated cooking, assignment and QR execution interfaces when rollout to cooks and other chefs becomes a priority. This does not block the active UI work.
 6. **Closeout redesign (M):** compact summaries, one active editor, outstanding exceptions and final review.
 7. **Shared interaction states (M):** draft/save/retry/conflict conventions applied to those workflows.
 8. **Automated release and visual checks (M):** run alongside the slices; add stable demo fixtures and browser-error detection.
@@ -161,7 +167,7 @@ Keep speculative AI features behind these priorities. Assisted matching, documen
 
 ## How to measure improvement
 
-Observe an executive chef, venue chef, cook and closeout user doing the same representative tasks before and after each slice. Include interruptions, a phone, keyboard-only use and a second editor changing the same record.
+For the current phase, observe the chef doing their own representative tasks before and after each slice. Broaden validation to other chefs and cooks when rollout is revisited. Include interruptions, a phone, keyboard-only use and a second editor changing the same record.
 
 Measure time to find/scale a recipe, submit a multi-line prep request, resume an invoice review, identify a production shortfall, and finish a day. Count navigation transitions, repeated entry, uncorrected errors and help required. A suggested target is 25–30% less task time on the same scenarios; this is a proposal, not a result.
 
@@ -181,4 +187,4 @@ Record desktop/phone visual checks at 390, 768, 1024 and 1440px. Require the act
 
 Use this review as a current experience-focused proposal alongside `docs/soigne-roadmap.md`, `docs/app-improvements-roadmap.md` and the execution evidence. Before scheduling work, consolidate them into one active backlog with statuses **verified complete**, **in progress**, **proposed** and **deferred**. Several old checklists and README ideas now describe implemented work. Preserve the prior product decisions and history, but remove stale assumptions from the next implementation plan.
 
-The recommended first design slice is **Today → Daily Prep → Cook view → Closeout**. It tests whether Mise can feel like one deliberately designed operational tool across the entire kitchen day.
+The active first design slice is **Today → Daily Prep management → Closeout**. It tests whether Mise feels coherent for the chef’s own work. The dedicated Cook view and broader team rollout are deferred.
