@@ -3,8 +3,16 @@ import { PRICE_STALE_DAYS } from "@/lib/recipes/costing";
 import { LocalTime } from "./LocalTime";
 import { Badge } from "./ui";
 
-export function CostIntegrityBanner({ unpriced, stale, subRecipes = [] }: { unpriced: string[]; stale: string[]; subRecipes?: string[] }) {
+export function CostIntegrityBanner({ unpriced, stale, subRecipes = [], compact = false }: { unpriced: string[]; stale: string[]; subRecipes?: string[]; compact?: boolean }) {
   if (!unpriced.length && !stale.length) return null;
+  const details = <>
+    <div className="mt-2 space-y-1 text-xs">
+      {unpriced.length > 0 && <p><strong>No price:</strong> {unpriced.join(", ")}</p>}
+      {stale.length > 0 && <p><strong>Stale price:</strong> {stale.join(", ")}</p>}
+    </div>
+    {subRecipes.length > 0 && <p className="mt-2 text-xs"><strong>Affected sub-recipes:</strong> {subRecipes.join(", ")}</p>}
+    <Link href={unpriced.length ? "/items?flag=missing" : "/items?flag=stale"} className="mt-2 inline-block text-xs font-medium underline">Update ingredient prices →</Link>
+  </>;
   return <aside role="status" className="no-print mb-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-900">
     <div className="flex flex-wrap items-center gap-2">
       <h2 className="text-sm font-semibold">Cost Integrity &amp; Price Audit</h2>
@@ -12,9 +20,7 @@ export function CostIntegrityBanner({ unpriced, stale, subRecipes = [] }: { unpr
       {stale.length > 0 && <Badge color="amber">{stale.length} stale</Badge>}
     </div>
     <p className="mt-1 text-xs tabular-nums">{unpriced.length > 0 && `⚠ ${unpriced.length} unpriced ingredients · cost understated. `}{stale.length > 0 && `⌛ ${stale.length} prices at least ${PRICE_STALE_DAYS} days old.`}</p>
-    <div className="mt-2 space-y-1 text-xs">{unpriced.length > 0 && <p><strong>No price:</strong> {unpriced.join(", ")}</p>}{stale.length > 0 && <p><strong>Stale price:</strong> {stale.join(", ")}</p>}</div>
-    {subRecipes.length > 0 && <p className="mt-2 text-xs"><strong>Affected sub-recipes:</strong> {subRecipes.join(", ")}</p>}
-    <Link href={unpriced.length ? "/items?flag=missing" : "/items?flag=stale"} className="mt-2 inline-block text-xs font-medium underline">Update prices in Items →</Link>
+    {compact ? <details className="mt-2 text-xs"><summary className="cursor-pointer">Review ingredient price details</summary>{details}</details> : details}
   </aside>;
 }
 

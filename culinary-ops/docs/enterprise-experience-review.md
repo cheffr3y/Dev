@@ -26,6 +26,18 @@ The next slice, `codex/closeout-workspace`, refines the existing admin Closeout:
 
 Closeout validation: lint, source-focused TypeScript, 70 disposable-database integration checks and the existing prep browser workflow pass. The browser workflow covers keyboard restoration/navigation, supplied-ingredient deductions, charge previews, permissions, unsaved sibling entries, finalization and CSV/Excel downloads. Desktop (1440px) and phone (390px) screenshots were reviewed; the phone has no page-level horizontal overflow, and the visual check reports no browser errors. Production build validation remains separate from this local development-server check.
 
+The following slice, `codex/recipe-catalog-workspace`, begins Phase 3 with recipe-catalog usability: a unified search/price-status/sort toolbar, URL-backed missing/stale/current-price filters, visible result counts and reset, expandable price-audit details with warnings still visible, more readable desktop rows, and phone summaries containing batch/unit cost, menu price and food-cost percentage. Phone summaries use the existing recipe inspector and preserve filter context. This concerns the chef's catalog/costing workflow; the Cook view remains deferred. Recipe-detail editing, ingredient-catalog improvements and invoice refinement remain on the UI backlog.
+
+Catalog validation: lint, source-focused TypeScript, 277 unit tests, 70 disposable-database checks, targeted desktop/phone catalog checks, and the URL-state browser suite pass. The checks cover price filtering/reload/reset, empty results, phone inspector recovery, recipe/ingredient/invoice history, desktop/collapsed/mobile navigation and role restrictions. Screenshots were reviewed at 1440px and 390px; targeted browser checks report no page errors or phone overflow. The Next.js development badge is disabled because it covered the collapsed-sidebar button. Browser tests now account for grouped navigation and wait for restored inputs to render after history changes. Production build certification remains outside these local checks.
+
+Active UI backlog after these slices:
+
+- Delivered to main: Today/shared shell foundation, Daily Prep management cleanup, compact Closeout.
+- Current slice: recipe catalog filters, desktop readability and phone costing summaries.
+- Next: ingredient catalog usability and clearer shared editing patterns.
+- Remaining: recipe-detail costing/editing, invoice refinement, persistent venue context, fuller navigation consolidation, and planning workspace consistency.
+- Deferred: Cook view, cook assignments/onboarding, and broader team rollout.
+
 ## Scope and confidence
 
 Reviewed the current working tree, existing roadmap decisions, data model, authentication helpers, representative mutations, shared UI, and core kitchen workflows. Inspected a locally running application backed by a disposable PostgreSQL database at 1440px desktop and 390px phone widths. The fixtures are test data, not representative production volumes or live kitchen records.

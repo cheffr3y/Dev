@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { InspectorLink } from "@/components/InspectorLink";
 import { useWorkspaceUrl } from "@/components/useWorkspaceUrl";
-import { Badge, Card, TableScroll, cn } from "@/components/ui";
+import { Badge, Button, Card, Select, TableScroll, cn } from "@/components/ui";
 import { CostIntegrityBanner } from "@/components/CostAudit";
 import { money, pct } from "@/lib/recipes/costing";
 
@@ -30,6 +30,8 @@ export function RecipesTable({ rows }: { rows: RecipeRow[] }) {
   const query = params.get("q") ?? "";
   const category = params.get("category");
   const sort = params.get("sort") ?? "category";
+  const requestedPrice = params.get("price") ?? "all";
+  const price = ["missing", "stale", "current"].includes(requestedPrice) ? requestedPrice : "all";
   const setQuery = (value: string) => update({ q: value || null });
   const setCategory = (value: string | null) => update({ category: value });
 
@@ -44,6 +46,9 @@ export function RecipesTable({ rows }: { rows: RecipeRow[] }) {
     const q = query.trim().toLowerCase();
     return rows.filter((r) => {
       if (category && r.category !== category) return false;
+      if (price === "missing" && r.unpriced === 0) return false;
+      if (price === "stale" && r.stale === 0) return false;
+      if (price === "current" && (r.unpriced > 0 || r.stale > 0)) return false;
       if (!q) return true;
       return (
         r.name.toLowerCase().includes(q) ||
@@ -51,19 +56,15 @@ export function RecipesTable({ rows }: { rows: RecipeRow[] }) {
         (r.station ?? "").toLowerCase().includes(q)
       );
     }).sort((a, b) => sort === "name" ? a.name.localeCompare(b.name) : sort === "cost" ? b.cost - a.cost || a.name.localeCompare(b.name) : a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
-  }, [rows, query, category, sort]);
+  }, [rows, query, category, sort, price]);
 
   return (
-    <div>
-      <CostIntegrityBanner unpriced={[...new Set(rows.flatMap(row => row.unpricedNames ?? []))].sort()} stale={[...new Set(rows.flatMap(row => row.staleNames ?? []))].sort()} />
-      <label className="mb-3 block text-sm">Sort recipes
-        <select aria-label="Sort recipes" className="ml-2 rounded border border-hairline bg-canvas p-2" value={sort} onChange={event => update({ sort: event.target.value === "category" ? null : event.target.value })}>
-          <option value="category">Category</option><option value="name">Name</option><option value="cost">Highest batch cost</option>
-        </select>
-      </label>
+    <div className="recipe-catalog">
+      <CostIntegrityBanner compact unpriced={[...new Set(rows.flatMap(row => row.unpricedNames ?? []))].sort()} stale={[...new Set(rows.flatMap(row => row.staleNames ?? []))].sort()} />
       {/* Filter controls */}
       <div className="mb-4 space-y-3">
-        <div className="relative max-w-sm">
+        <div className="recipe-catalog-toolbar flex flex-wrap items-end gap-3">
+        <div className="relative min-w-0 flex-1 basis-64">
           <svg
             viewBox="0 0 24 24"
             fill="none"
@@ -96,6 +97,18 @@ export function RecipesTable({ rows }: { rows: RecipeRow[] }) {
           )}
         </div>
 
+        <label className="grid gap-1 text-xs text-zinc-500">Price status
+          <Select aria-label="Filter by price status" value={price} onChange={event => update({ price: event.target.value === "all" ? null : event.target.value })}>
+            <option value="all">All prices</option><option value="missing">Missing prices</option><option value="stale">Stale prices</option><option value="current">Current prices</option>
+          </Select>
+        </label>
+      <label className="grid gap-1 text-xs text-zinc-500">Sort recipes
+        <select aria-label="Sort recipes" className="rounded-sm border border-zinc-300 bg-canvas px-3 py-2 text-sm text-ink" value={sort} onChange={event => update({ sort: event.target.value === "category" ? null : event.target.value })}>
+          <option value="category">Category</option><option value="name">Name</option><option value="cost">Highest batch cost</option>
+        </select>
+      </label>
+        </div>
+
         <div className="flex flex-wrap gap-2 text-sm">
           <Chip active={!category} onClick={() => setCategory(null)}>
             All
@@ -108,9 +121,13 @@ export function RecipesTable({ rows }: { rows: RecipeRow[] }) {
         </div>
       </div>
 
-      <Card className="overflow-hidden">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <p role="status" className="text-sm text-zinc-500">{filtered.length} of {rows.length} recipes</p>
+        {(query || category || price !== "all") && <Button variant="secondary" onClick={() => update({ q: null, category: null, price: null })}>Reset filters</Button>}
+      </div>
+      <Card className="hidden overflow-hidden md:block">
         <TableScroll aria-label="Recipe costs">
-          <table className="w-full text-xs">
+          <table className="w-full text-sm">
             <thead className="bg-zinc-50 text-left font-mono text-[11px] uppercase tracking-[0.02em] text-zinc-600">
               <tr>
                 <th className="px-3 py-1 font-medium">Recipe</th>
@@ -141,24 +158,7 @@ export function RecipesTable({ rows }: { rows: RecipeRow[] }) {
                   <td className="px-3 py-1">
                     <Badge>{r.category}</Badge>
                   </td>
-                  <td className="whitespace-nowrap px-3 py-1">
-                    {r.unpriced > 0 && (
-                      <span
-                        title={`${r.unpriced} ingredient${r.unpriced === 1 ? "" : "s"} with no price — cost understated`}
-                      >
-                        <Badge color="amber">Missing {r.unpriced}</Badge>
-                      </span>
-                    )}
-                    {r.stale > 0 && (
-                      <span
-                        className={r.unpriced > 0 ? "ml-1" : undefined}
-                        title={`${r.stale} ingredient${r.stale === 1 ? "" : "s"} not re-costed recently`}
-                      >
-                        <Badge color="amber">Stale {r.stale}</Badge>
-                      </span>
-                    )}
-                    {r.unpriced === 0 && r.stale === 0 && <Badge color="green">Current</Badge>}
-                  </td>
+                  <td className="whitespace-nowrap px-3 py-1"><RecipePriceStatus row={r} /></td>
                   <td className="whitespace-nowrap px-3 py-1 text-right tabular-nums text-zinc-600">{money(r.cost)}</td>
                   <td className="px-3 py-1 text-right tabular-nums text-zinc-600">{money(r.perUnit, 5)} / {r.costUnit}</td>
                   <td className="px-3 py-1 text-right tabular-nums text-zinc-600">{r.menuPrice ? money(r.menuPrice, 5) : "—"}</td>
@@ -176,11 +176,21 @@ export function RecipesTable({ rows }: { rows: RecipeRow[] }) {
         </TableScroll>
       </Card>
 
-      <p className="mt-2 text-xs text-zinc-400">
-        {filtered.length === rows.length
-          ? `${rows.length} recipe${rows.length === 1 ? "" : "s"}`
-          : `${filtered.length} of ${rows.length} recipes`}
-      </p>
+      <ul className="divide-y divide-hairline md:hidden" aria-label="Recipe summaries">
+        {filtered.map(r => <li key={r.id} className="py-4">
+          <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
+            <div><InspectorLink kind="recipe" id={r.id} className="block py-1 text-base font-medium text-ink underline decoration-hairline underline-offset-4">{r.name}</InspectorLink><p className="text-sm text-zinc-500">{r.category}{r.station ? ` · ${r.station}` : ""}</p></div>
+            <RecipePriceStatus row={r} />
+          </div>
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+            <div><dt className="text-zinc-500">Batch cost</dt><dd className="tabular-nums">{money(r.cost)}</dd></div>
+            <div><dt className="text-zinc-500">Cost / {r.costUnit}</dt><dd className="tabular-nums">{money(r.perUnit, 5)}</dd></div>
+            <div><dt className="text-zinc-500">Menu price</dt><dd className="tabular-nums">{r.menuPrice ? money(r.menuPrice, 5) : "—"}</dd></div>
+            <div><dt className="text-zinc-500">Food cost</dt><dd className="tabular-nums">{r.fcp == null ? "—" : pct(r.fcp)}</dd></div>
+          </dl>
+        </li>)}
+        {!filtered.length && <li className="py-8 text-center text-sm text-zinc-500">{rows.length ? "No recipes match your filters." : "No recipes yet."}</li>}
+      </ul>
     </div>
   );
 }
@@ -197,6 +207,7 @@ function Chip({
   return (
     <button
       type="button"
+      aria-pressed={active}
       onClick={onClick}
       className={cn(
         "rounded-full px-3 py-1 transition-colors",
@@ -208,4 +219,12 @@ function Chip({
       {children}
     </button>
   );
+}
+
+function RecipePriceStatus({ row }: { row: RecipeRow }) {
+  return <span className="inline-flex flex-wrap gap-1">
+    {row.unpriced > 0 && <Badge color="amber">Missing {row.unpriced}</Badge>}
+    {row.stale > 0 && <Badge color="amber">Stale {row.stale}</Badge>}
+    {row.unpriced === 0 && row.stale === 0 && <Badge color="green">Current prices</Badge>}
+  </span>;
 }

@@ -21,6 +21,8 @@
     .closeout-item summary { color: var(--color-zinc-500); }
     .closeout-keyboard { margin-top: -0.5rem; }
     .closeout-destination-fields label { max-width: 10rem; }
+    .ops-theme .recipe-catalog table :is(th, td) { padding-block: 0.65rem; }
+    .recipe-catalog-toolbar label { min-width: 10rem; }
     @media (max-width: 639px) {
       .workday-prep-toolbar { gap: 0.75rem; padding: 0; }
       .workday-prep-toolbar form:first-child { width: 100%; }
@@ -30,6 +32,9 @@
       .closeout-workspace input, .closeout-workspace textarea, .closeout-workspace select { font-size: 16px; }
       .closeout-workspace button, .closeout-workspace summary { min-height: 44px; }
       .closeout-destination-fields { grid-template-columns: minmax(0, 1fr) 7rem; }
+      .recipe-catalog-toolbar label { flex: 1; min-width: 9rem; }
+      .recipe-catalog-toolbar input, .recipe-catalog-toolbar select { min-height: 44px; font-size: 16px; }
+      .recipe-catalog button { min-height: 44px; }
     }
   }
 }
