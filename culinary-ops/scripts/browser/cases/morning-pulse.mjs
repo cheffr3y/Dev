@@ -17,7 +17,7 @@ async function login(role, viewport = { width: 1440, height: 1000 }) {
   await page.getByLabel("Password").fill("local-smoke-only");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.waitForURL(`${base}/`);
-  await page.getByRole("heading", { name: "Morning Pulse", exact: true }).waitFor();
+  await page.getByRole("heading", { name: "Today", exact: true }).waitFor();
   return page;
 }
 async function open(page, query = "") {

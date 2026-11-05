@@ -10,6 +10,12 @@ The visual overhaul should be substantial: application shell, navigation, page c
 
 The user confirmed that this is primarily for their own multi-venue team. Subscription billing, customer onboarding, marketplace integrations, and multi-tenant SaaS architecture are outside the first roadmap.
 
+### Execution decision: UI/UX first
+
+The chef approved starting with UI/UX on November 4, 2026. The review is retained in Git; delivery now starts with the interface while the correctness findings remain on the backlog.
+
+The first implementation slice on `codex/ui-workday-foundation` introduces a shared header treatment, refined wordmark and restrained green primary accent; context-aware collapsed navigation groups with clearer labels; a Today entry that prioritizes prep/closeout over catalog maintenance; and a compact Daily Prep date/action toolbar with project/history tools below the work list. Daily Prep explicitly labels its shared, company-wide destination scope. This is the foundation for the broader redesign; the six-destination architecture and focused cook/closeout workspaces remain planned.
+
 ## Scope and confidence
 
 Reviewed the current working tree, existing roadmap decisions, data model, authentication helpers, representative mutations, shared UI, and core kitchen workflows. Inspected a locally running application backed by a disposable PostgreSQL database at 1440px desktop and 390px phone widths. The fixtures are test data, not representative production volumes or live kitchen records.

@@ -29,7 +29,7 @@ try {
     await page.getByRole("heading", { name: "Trivia", exact: true }).waitFor();
     assert.equal(await page.locator(".ops-theme").count(), 0);
     await page.getByRole("link", { name: "Back to kitchen", exact: true }).click();
-    await page.getByRole("heading", { name: "Morning Pulse", exact: true }).waitFor();
+    await page.getByRole("heading", { name: "Today", exact: true }).waitFor();
     assert.ok(await page.locator(".ops-theme").count() >= 1);
     assert.equal(await page.locator(".games-shell").count(), 0);
     await context.close();

@@ -23,26 +23,31 @@ export default async function DashboardPage() {
 
   return (
     <div>
-      <PageHeader title="Morning Pulse"
+      <PageHeader title="Today"
         subtitle={`${fmtShortDate(dates.start)} · ${active?.name ?? "All venues"} · Welcome, ${user.name.split(" ")[0]}`}
-        action={<LinkButton href={`/banquets/week/${dates.week}`} variant="secondary">This week’s banquet prep</LinkButton>} />
-      <p className="mb-5 text-sm text-zinc-500">Your next seven days, cost exceptions, and work awaiting closeout. Use ⌘K / Ctrl+K for quick actions.</p>
+        action={<LinkButton href={`/prep-orders?date=${dates.day}`}>Open daily prep</LinkButton>} />
+      <p className="mb-5 text-sm text-zinc-500">Upcoming service, shared production, and the decisions that need your attention.</p>
 
       <div className="grid items-start gap-5 xl:grid-cols-2">
         <Card>
-          <CardHeader><h2>Costing & price integrity</h2></CardHeader>
-          <div className="space-y-4 p-4">
-            <div className="flex items-center justify-between gap-3">
-              <p><strong className="text-3xl tabular-nums text-ink">{integrity.total}</strong><span className="ml-2 text-sm text-zinc-500">ingredients need attention</span></p>
-              <Badge color={integrity.total ? "amber" : "green"}>{integrity.total ? "Review needed" : "Complete"}</Badge>
-            </div>
-            <dl className="grid grid-cols-3 gap-3 text-xs text-zinc-500">
-              <div><dt>Missing cost</dt><dd className="mt-1 text-lg tabular-nums text-ink">{integrity.missingCost}</dd></div>
-              <div><dt>Missing unit</dt><dd className="mt-1 text-lg tabular-nums text-ink">{integrity.missingUnit}</dd></div>
-              <div><dt>No vendor</dt><dd className="mt-1 text-lg tabular-nums text-ink">{integrity.missingVendor}</dd></div>
-            </dl>
-            <p className="text-xs text-zinc-500">Company-wide · {integrity.inUse} ingredients used in recipes, inventory, order guides, or festival counts. Each ingredient counts once in the total.</p>
-            <LinkButton href={hasRole(user, "MANAGER") ? "/items/cleanup#price-integrity" : "/items?flag=integrity"} variant="secondary">Review ingredient integrity →</LinkButton>
+          <CardHeader><h2>Prep & closeout queue</h2></CardHeader>
+          <div className="p-4">
+            {queue ? <>
+              <p className="text-3xl font-semibold tabular-nums text-ink">{queue.length}<span className="ml-2 text-sm font-normal text-zinc-500">open days · {queue.reduce((sum, row) => sum + row.transfers, 0)} transfers awaiting closeout</span></p>
+              <p className="mt-2 text-xs text-zinc-500">Company-wide · Today and earlier · Oldest unfinished day first</p>
+              {queue.length === 0 && <p className="mt-3 text-sm text-zinc-500">No unfinished prep days or transfers.</p>}
+            </> : <p className="text-sm text-zinc-500">Daily closeout and transfer accounting are managed by admins. View today’s shared prep list for production work.</p>}
+          </div>
+          {queue && queue.length > 0 && <ul className="divide-y divide-hairline">{queue.slice(0, 5).map(row => <li key={row.day}>
+            <Link href={`/prep-orders/closeout?date=${row.day}`} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm hover:bg-stone">
+              <span className="tabular-nums text-ink">{businessDate(row.day).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}</span>
+              <span className="text-xs tabular-nums text-zinc-500">{row.requests} {row.requests === 1 ? "order" : "orders"} · {row.batches} {row.batches === 1 ? "batch" : "batches"} · {row.transfers} {row.transfers === 1 ? "transfer" : "transfers"}</span>
+            </Link>
+          </li>)}</ul>}
+          {queue && queue.length > 5 && <details className="px-4 pt-3"><summary className="cursor-pointer text-xs text-zinc-500">Show {queue.length - 5} more open days</summary><ul className="mt-2 space-y-2">{queue.slice(5).map(row => <li key={row.day}><Link href={`/prep-orders/closeout?date=${row.day}`} className="text-sm underline">{row.day}</Link></li>)}</ul></details>}
+          <div className="flex flex-wrap gap-2 p-4">
+            <LinkButton href={`/prep-orders?date=${dates.day}`} variant="secondary">Daily prep</LinkButton>
+            {admin && <LinkButton href={`/prep-orders/closeout?date=${dates.day}`} variant="secondary">Open today’s closeout →</LinkButton>}
           </div>
         </Card>
 
@@ -64,24 +69,19 @@ export default async function DashboardPage() {
         </Card>
 
         <Card>
-          <CardHeader><h2>Prep & closeout queue</h2></CardHeader>
-          <div className="p-4">
-            {queue ? <>
-              <p className="text-3xl font-semibold tabular-nums text-ink">{queue.length}<span className="ml-2 text-sm font-normal text-zinc-500">open days · {queue.reduce((sum, row) => sum + row.transfers, 0)} transfers awaiting closeout</span></p>
-              <p className="mt-2 text-xs text-zinc-500">Company-wide · Today and earlier · Oldest unfinished day first</p>
-              {queue.length === 0 && <p className="mt-3 text-sm text-zinc-500">No unfinished prep days or transfers.</p>}
-            </> : <p className="text-sm text-zinc-500">Daily closeout and transfer accounting are managed by admins. View today’s shared prep list for production work.</p>}
-          </div>
-          {queue && queue.length > 0 && <ul className="divide-y divide-hairline">{queue.slice(0, 5).map(row => <li key={row.day}>
-            <Link href={`/prep-orders/closeout?date=${row.day}`} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm hover:bg-stone">
-              <span className="tabular-nums text-ink">{businessDate(row.day).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}</span>
-              <span className="text-xs tabular-nums text-zinc-500">{row.requests} {row.requests === 1 ? "order" : "orders"} · {row.batches} {row.batches === 1 ? "batch" : "batches"} · {row.transfers} {row.transfers === 1 ? "transfer" : "transfers"}</span>
-            </Link>
-          </li>)}</ul>}
-          {queue && queue.length > 5 && <details className="px-4 pt-3"><summary className="cursor-pointer text-xs text-zinc-500">Show {queue.length - 5} more open days</summary><ul className="mt-2 space-y-2">{queue.slice(5).map(row => <li key={row.day}><Link href={`/prep-orders/closeout?date=${row.day}`} className="text-sm underline">{row.day}</Link></li>)}</ul></details>}
-          <div className="flex flex-wrap gap-2 p-4">
-            <LinkButton href={`/prep-orders?date=${dates.day}`} variant="secondary">Daily prep</LinkButton>
-            {admin && <LinkButton href={`/prep-orders/closeout?date=${dates.day}`} variant="secondary">Open today’s closeout →</LinkButton>}
+          <CardHeader><h2>Costing & price integrity</h2></CardHeader>
+          <div className="space-y-4 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <p><strong className="text-3xl tabular-nums text-ink">{integrity.total}</strong><span className="ml-2 text-sm text-zinc-500">ingredients need attention</span></p>
+              <Badge color={integrity.total ? "amber" : "green"}>{integrity.total ? "Review needed" : "Complete"}</Badge>
+            </div>
+            <dl className="grid grid-cols-3 gap-3 text-xs text-zinc-500">
+              <div><dt>Missing cost</dt><dd className="mt-1 text-lg tabular-nums text-ink">{integrity.missingCost}</dd></div>
+              <div><dt>Missing unit</dt><dd className="mt-1 text-lg tabular-nums text-ink">{integrity.missingUnit}</dd></div>
+              <div><dt>No vendor</dt><dd className="mt-1 text-lg tabular-nums text-ink">{integrity.missingVendor}</dd></div>
+            </dl>
+            <p className="text-xs text-zinc-500">Company-wide · {integrity.inUse} ingredients used in recipes, inventory, order guides, or festival counts. Each ingredient counts once in the total.</p>
+            <LinkButton href={hasRole(user, "MANAGER") ? "/items/cleanup#price-integrity" : "/items?flag=integrity"} variant="secondary">Review ingredient integrity →</LinkButton>
           </div>
         </Card>
 

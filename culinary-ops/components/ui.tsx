@@ -15,9 +15,9 @@ export function PageHeader({
   action?: ReactNode;
 }) {
   return (
-    <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+    <div className="workday-page-header mb-6 flex flex-wrap items-center justify-between gap-4">
       <div>
-        <h1 className="font-sans text-2xl font-semibold leading-tight tracking-tight text-ink">
+        <h1 className="font-sans text-[28px] font-medium leading-tight tracking-tight text-ink">
           {title}
         </h1>
         {subtitle && (

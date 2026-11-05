@@ -27,8 +27,8 @@ const SECTIONS: NavSection[] = [
   {
     heading: "Operations",
     items: [
-      { href: "/", label: "Dashboard", icon: "dashboard" },
-      { href: "/prep-orders", label: "Prep Orders", icon: "prep" },
+      { href: "/", label: "Today", icon: "dashboard" },
+      { href: "/prep-orders", label: "Daily prep", icon: "prep" },
       { href: "/production", label: "Production", icon: "production" },
       { href: "/smoking", label: "Smoking", icon: "production" },
       { href: "/schedule", label: "Schedule", icon: "schedule" },
@@ -38,7 +38,7 @@ const SECTIONS: NavSection[] = [
     heading: "Culinary & Events",
     items: [
       { href: "/recipes", label: "Recipes", icon: "recipes" },
-      { href: "/specials", label: "Specials costing", icon: "recipes" },
+      { href: "/specials", label: "Specials", icon: "recipes" },
       { href: "/menus", label: "Menus", icon: "recipes" },
       { href: "/banquets", label: "Banquets", icon: "events" },
       { href: "/events", label: "Events", icon: "events" },
@@ -51,7 +51,7 @@ const SECTIONS: NavSection[] = [
     items: [
       { href: "/operating-calendar", label: "Monthly Tracker", icon: "reports", managerOnly: true },
       { href: "/invoices", label: "Invoices", icon: "invoice", managerOnly: true },
-      { href: "/items", label: "Items", icon: "catalog" },
+      { href: "/items", label: "Ingredients", icon: "catalog" },
       { href: "/vendors", label: "Vendors", icon: "vendors" },
       { href: "/prep-orders/report", label: "Prep Reports", icon: "reports", adminOnly: true },
     ],
@@ -198,7 +198,7 @@ export function Sidebar({ role, collapsed = false, onNavigate }: { role: string;
 function SidebarSection({ section, collapsed, activeHref, onNavigate }: {
   section: NavSection; collapsed: boolean; activeHref?: string; onNavigate?: () => void;
 }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(section.items.some(item => item.href === activeHref) || section.heading === "Operations");
   const listId = useId();
   return (
     <section aria-label={section.heading} className="border-t border-white/10 pt-2 first:border-0 first:pt-0">

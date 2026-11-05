@@ -50,19 +50,20 @@ export default async function DailyPrep({
     })),
   );
   return (
-    <div>
+    <div className="workday-prep">
       <PageHeader
         title="Daily Prep"
-        subtitle="Order what you need. Make from the shared prep sheet."
+        subtitle="Shared production · All destination venues"
         action={
           <LinkButton href={`/prep-orders/requests?date=${day}`}>
             Place order
           </LinkButton>
         }
       />
-      <div className="no-print mb-6 flex flex-wrap items-center gap-3">
-        <form className="flex flex-wrap gap-2">
+      <div className="workday-prep-toolbar no-print mb-5 flex flex-wrap items-center gap-3">
+        <form className="flex items-center gap-2">
           <Input
+            className="w-auto min-w-0"
             aria-label="Prep date"
             name="date"
             type="date"
@@ -76,7 +77,7 @@ export default async function DailyPrep({
             <form action={generateDailyPacket}>
               <input type="hidden" name="date" value={day} />
               <input type="hidden" name="operationKey" value={randomUUID()} />
-              <Button>Print prep sheet</Button>
+              <Button variant="secondary">Print prep sheet</Button>
             </form>
           )}
         {packets[0] && (
@@ -96,12 +97,6 @@ export default async function DailyPrep({
           </Link>
         )}
       </div>
-      <div className="no-print mb-4 flex flex-wrap gap-4 text-sm"><Link href={`/prep-orders/closeout/scan?date=${day}`} className="text-blue-600 underline">Start / finish a production project</Link>{user.role === "ADMIN" && <Link href={`/prep-orders/jobs?date=${day}`} className="text-blue-600 underline">Review project logs</Link>}</div>
-      <p className="no-print mb-4 text-sm">
-        <Link href="/prep-orders/history" className="text-blue-700">
-          Past orders
-        </Link>
-      </p>
       <h2 className="mb-4 text-lg font-semibold">
         {date.toLocaleDateString("en-US", {
           weekday: "long",
@@ -127,7 +122,7 @@ export default async function DailyPrep({
                   : `${Number(group.requested.toFixed(3))} ${group.unit} total requested`}
               </p>
             </div>
-            <div className="divide-y">
+            <div className="divide-y divide-hairline">
               {group.rows.map((row) => (
                 <div key={row.id} className="py-3">
                   <div className="flex flex-wrap justify-between gap-2">
@@ -155,6 +150,14 @@ export default async function DailyPrep({
           </Card>
         ))}
       </div>
+      <details className="workday-prep-tools no-print mt-6">
+        <summary className="cursor-pointer text-sm text-zinc-500">Project logs & history</summary>
+        <div className="mt-3 flex flex-wrap gap-x-5 gap-y-3 text-sm">
+          <Link href={`/prep-orders/closeout/scan?date=${day}`} className="text-blue-600 underline">Start / finish a production project</Link>
+          {user.role === "ADMIN" && <Link href={`/prep-orders/jobs?date=${day}`} className="text-blue-600 underline">Review project logs</Link>}
+          <Link href="/prep-orders/history" className="text-blue-600 underline">Past orders</Link>
+        </div>
+      </details>
       {packets.length > 1 && (
         <details className="no-print mt-6">
           <summary>Earlier prep sheets</summary>

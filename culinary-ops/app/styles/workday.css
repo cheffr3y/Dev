@@ -1,0 +1,25 @@
+/* The first workday slice: shared screen chrome and focused prep controls.
+   Paper documents retain their own palette and layout. */
+@layer components {
+  @media screen {
+    .ops-theme {
+      --color-primary: #356f59;
+      --color-gold: #a8d8c0;
+      --color-gold-soft: #c0e2ce;
+      --color-focus: #a8d8c0;
+      --color-form-focus: #a8d8c0;
+    }
+    .workday-page-header { padding-bottom: 1rem; border-bottom: 1px solid var(--color-hairline); }
+    .workday-prep-toolbar { padding: 0.75rem 0; }
+    .workday-prep-toolbar input[type="date"] { width: 10rem; }
+    .workday-prep-tools { border-bottom: 1px solid var(--color-hairline); padding-bottom: 0.75rem; }
+    .workday-prep-tools summary { width: fit-content; min-height: 2rem; display: list-item; }
+    @media (max-width: 639px) {
+      .workday-prep-toolbar { gap: 0.75rem; padding: 0; }
+      .workday-prep-toolbar form:first-child { width: 100%; }
+      .workday-prep-toolbar button, .workday-prep-toolbar a { min-height: 44px; display: inline-flex; align-items: center; }
+      .workday-prep-toolbar input[type="date"] { font-size: 16px; min-height: 44px; }
+      .workday-prep-tools summary { min-height: 44px; padding-block: 0.5rem; }
+    }
+  }
+}
