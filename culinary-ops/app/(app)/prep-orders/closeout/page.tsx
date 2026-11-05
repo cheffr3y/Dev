@@ -123,7 +123,7 @@ export default async function CloseoutPage({
     }),
   );
   return (
-    <div>
+    <div className="closeout-workspace">
       <PageHeader
         title="Daily closeout"
         subtitle={date.toLocaleDateString("en-US", {
@@ -138,18 +138,19 @@ export default async function CloseoutPage({
           </LinkButton>
         }
       />
-      <form className="mb-5 flex gap-3">
+      <form className="closeout-date no-print mb-5 flex flex-wrap items-center gap-2">
         <Input
+          className="w-auto"
           aria-label="Business date"
           name="date"
           type="date"
           defaultValue={day}
         />
-        <Button>View day</Button>
+        <Button variant="secondary">View day</Button>
       </form>
-      <p className="mb-5 text-zinc-600">
+      <p className="mb-5 text-sm text-zinc-500">
         Fill in what was made and sent. Add ingredient deductions where needed,
-        then finish the day.
+        Preview charges, save each item, then finish the day.
       </p>
       {jobLogs.length > 0 && <Card className="mb-5 p-4"><h2 className="mb-2 font-semibold">Cook project logs</h2><p className="mb-3 text-sm text-zinc-500">Review submitted yields and notes before entering item results. Elapsed time includes cooking and waiting; labor still needs your review.</p>{jobLogs.map(job => <p key={job.id} className="border-t border-hairline py-2 text-sm"><Link className="text-blue-600 underline" href={`/prep-orders/closeout/scan?job=${job.id}`}>{job.recipeName} · {job.cookName} · {job.reviewedAt ? "Reviewed" : job.finishedAt ? "Awaiting review" : "In progress"}</Link>{job.finishedAt && <> · {job.actualQty} {job.actualUnit} · {durationLabel(elapsedMinutes(job.startedAt, job.finishedAt))}</>}</p>)}</Card>}
       {closed ? (
@@ -171,7 +172,8 @@ export default async function CloseoutPage({
         />
       )}
       <Card className="mb-5 p-4">
-        <h2 className="mb-3 text-lg font-semibold">Saved results</h2>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><h2 className="text-lg font-semibold">Saved results</h2><span className="text-sm text-zinc-500">{batches.length} production {batches.length === 1 ? "batch" : "batches"}</span></div>
+        {!batches.length && !transfers.some(t => !t.batchId) && <p className="text-sm text-zinc-500">Saved production and pickups will appear here.</p>}
         {batches.map((b) => (
           <div key={b.id} className="border-t py-3">
             <p className="font-medium">
@@ -225,7 +227,8 @@ export default async function CloseoutPage({
         </>
       )}
       <Card className="mb-5 p-5">
-        <h2 className="mb-3 text-lg font-semibold">Finish & export</h2>
+        <h2 className="mb-3 text-lg font-semibold">Finish the day</h2>
+        {!closed && (groups.length > 0 || jobLogs.some(job => !job.reviewedAt)) && <p className="mb-4 text-sm text-amber-700">Before finishing: {groups.length > 0 ? `${groups.length} production ${groups.length === 1 ? "item needs" : "items need"} results. ` : ""}{jobLogs.some(job => !job.reviewedAt) ? "Review outstanding project logs." : ""}</p>}
         <details className="mb-4">
           <summary>Saved deliveries, deductions & cost review</summary>
           {requests

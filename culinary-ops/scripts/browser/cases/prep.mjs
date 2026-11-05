@@ -82,6 +82,7 @@ try {
   );
   const admin = await login("admin");
   await admin.goto(`${base}/prep-orders/closeout?date=2026-12-01`);
+  await admin.waitForLoadState("networkidle");
   const beans = admin
     .locator("form[data-worksheet-row]")
     .filter({
@@ -115,14 +116,16 @@ try {
   assert.equal(await admin.getByRole("button", { name: "Save item results", exact: true }).count(), 0);
   await sauce.getByLabel("Made (qt)", { exact: true }).fill("9");
   await sauce.getByLabel("Cook", { exact: true }).fill("Keep my edit");
+  await sauce.getByText("Notes & production details", { exact: false }).click();
   await sauce.getByLabel("Production notes").fill("Do not lose this note");
   await beans.getByRole("button", { name: "Use ordered quantities" }).click();
   await beans.getByLabel("Cook", { exact: true }).fill("Jeff");
+  await beans.getByText("Notes & production details", { exact: false }).click();
   await beans
     .getByLabel("Production notes")
     .fill("Brewpub supplied the bacon.");
   const destination = beans
-    .locator("div.rounded-lg")
+    .locator("[data-closeout-destination]")
     .filter({
       has: admin.getByRole("heading", { name: "Foxtown Brewing", exact: true }),
     });

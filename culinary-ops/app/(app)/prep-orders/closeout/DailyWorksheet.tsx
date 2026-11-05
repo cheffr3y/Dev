@@ -25,13 +25,13 @@ export function DailyWorksheet({
       if (navigation.preventDefault) event.preventDefault();
       navigation.target?.focus();
     }}>
-      <p className="text-sm text-zinc-500">
+      <p role="status" className="text-sm text-zinc-500">
         {groups.length
           ? `${groups.length} items to fill in · Save each item when ready`
           : "All ordered items have results, or no prep was ordered for this day."}
         {dirty ? " · Unsaved changes" : ""}
       </p>
-      {groups.length > 0 && <p className="text-xs text-zinc-500">Arrows move between production fields · Enter / Shift+Enter moves down/up matching fields · Tab follows the form · Escape restores the field’s entry value. Preview charges and save each item when ready.</p>}
+      {groups.length > 0 && <details className="closeout-keyboard text-xs text-zinc-500"><summary className="cursor-pointer">Keyboard shortcuts</summary><p className="mt-2">Arrows move between production fields · Enter / Shift+Enter moves down/up matching fields · Tab follows the form · Escape restores the field’s entry value.</p></details>}
       {groups.map((group) => (
         <WorksheetRow
           key={group.recipeId}

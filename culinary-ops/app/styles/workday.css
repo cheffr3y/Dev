@@ -14,12 +14,22 @@
     .workday-prep-toolbar input[type="date"] { width: 10rem; }
     .workday-prep-tools { border-bottom: 1px solid var(--color-hairline); padding-bottom: 0.75rem; }
     .workday-prep-tools summary { width: fit-content; min-height: 2rem; display: list-item; }
+    .closeout-date input[type="date"] { width: 10rem; }
+    .closeout-primary-fields { max-width: 42rem; }
+    .closeout-item textarea { min-height: 4rem; }
+    .closeout-item fieldset > details { border-top: 1px solid var(--color-hairline); padding-top: 0.75rem; }
+    .closeout-item summary { color: var(--color-zinc-500); }
+    .closeout-keyboard { margin-top: -0.5rem; }
+    .closeout-destination-fields label { max-width: 10rem; }
     @media (max-width: 639px) {
       .workday-prep-toolbar { gap: 0.75rem; padding: 0; }
       .workday-prep-toolbar form:first-child { width: 100%; }
       .workday-prep-toolbar button, .workday-prep-toolbar a { min-height: 44px; display: inline-flex; align-items: center; }
       .workday-prep-toolbar input[type="date"] { font-size: 16px; min-height: 44px; }
       .workday-prep-tools summary { min-height: 44px; padding-block: 0.5rem; }
+      .closeout-workspace input, .closeout-workspace textarea, .closeout-workspace select { font-size: 16px; }
+      .closeout-workspace button, .closeout-workspace summary { min-height: 44px; }
+      .closeout-destination-fields { grid-template-columns: minmax(0, 1fr) 7rem; }
     }
   }
 }

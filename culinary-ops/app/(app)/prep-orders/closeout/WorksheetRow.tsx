@@ -2,7 +2,7 @@
 
 import { useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Card, Field, Input, Textarea } from "@/components/ui";
+import { Badge, Button, Card, Field, Input, Textarea } from "@/components/ui";
 import { convertQty } from "@/lib/recipes/units";
 import type { PrepGroup } from "@/lib/prep/prep-worksheet";
 import type { Charge, Supply } from "@/lib/prep/prep-costing";
@@ -97,11 +97,14 @@ export function WorksheetRow({
       </Card>
     );
   return (
-    <Card className="p-4 sm:p-6">
+    <Card className="closeout-item p-4 sm:p-5">
       <form
         onInvalidCapture={(e) => {
-          const details = (e.target as HTMLElement).closest("details");
-          if (details) details.open = true;
+          let ancestor = (e.target as HTMLElement).parentElement;
+          while (ancestor && ancestor !== e.currentTarget) {
+            if (ancestor instanceof HTMLDetailsElement) ancestor.open = true;
+            ancestor = ancestor.parentElement;
+          }
         }}
         data-worksheet-row="true"
         onChange={changed}
@@ -183,9 +186,8 @@ export function WorksheetRow({
       >
         <fieldset disabled={busy || uncertain} className="min-w-0 space-y-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
-            {projectCode}
             <div>
-              <h2 className="text-xl font-semibold">{group.name}</h2>
+              <div className="flex flex-wrap items-center gap-3"><h2 className="text-lg font-semibold">{group.name}</h2><Badge color={validPreview ? "green" : "gray"}>{validPreview ? "Charges previewed" : "Not saved"}</Badge></div>
               <p className="mt-1 text-sm text-zinc-500">
                 {group.requested == null
                   ? "Check request units"
@@ -213,7 +215,7 @@ export function WorksheetRow({
             </Button>
           </div>
           {reviewedResult && <div className="rounded-lg border border-hairline p-3 text-sm"><p>Reviewed cook result: {reviewedResult.quantity} {reviewedResult.unit} · {reviewedResult.cookName} · {reviewedResult.elapsed} elapsed</p><Button className="mt-2" type="button" variant="secondary" disabled={convertQty(reviewedResult.quantity, reviewedResult.unit, group.unit) == null} onClick={() => { setMade(number(convertQty(reviewedResult.quantity, reviewedResult.unit, group.unit)!)); setCookName(reviewedResult.cookName); setNotes(reviewedResult.notes); changed(); }}>Use reviewed cook result</Button><p className="mt-2 text-xs text-zinc-500">Copies yield, cook, and notes. Confirm destination quantities and labor before saving.</p></div>}
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="closeout-primary-fields grid gap-3 sm:grid-cols-2">
             <Field label={`Made (${group.unit})`}>
               <Input
                 {...keyboardField("made", setMade)}
@@ -230,7 +232,7 @@ export function WorksheetRow({
               <Input {...keyboardField("cook", setCookName)} aria-label="Cook" name="cookName" required value={cookName} onChange={event => setCookName(event.target.value)} />
             </Field>
           </div>
-          <div className="space-y-3">
+          <div className="closeout-destinations divide-y divide-hairline">
             {group.rows.map((row) => {
               const requested = convertQty(row.quantity, row.unit, group.unit);
               const short =
@@ -241,9 +243,10 @@ export function WorksheetRow({
               return (
                 <div
                   key={row.id}
-                  className="rounded-lg border border-hairline p-3 sm:p-4"
+                  data-closeout-destination
+                  className="closeout-destination py-3"
                 >
-                  <div className="grid items-end gap-3 sm:grid-cols-2">
+                  <div className="closeout-destination-fields grid items-center gap-3 sm:grid-cols-[minmax(0,1fr)_10rem]">
                     <div>
                       <h3 className="font-medium">{row.venueName}</h3>
                       <p className="text-sm text-zinc-500">
@@ -306,6 +309,21 @@ export function WorksheetRow({
               );
             })}
           </div>
+          <p
+            aria-live="polite"
+            className={kept < 0 ? "font-medium text-red-700" : "font-medium"}
+          >
+            Kept:{" "}
+            {made === "" || group.rows.some((r) => !sent[r.id])
+              ? "—"
+              : `${number(kept)} ${group.unit}`}
+            {made !== "" && kept < 0
+              ? " — sent plus waste exceeds what was made"
+              : ""}
+          </p>
+          <details className="closeout-additional">
+            <summary className="cursor-pointer text-sm">Notes & production details{standard == null ? " · Production time needs review" : ""}</summary>
+            <div className="mt-4 space-y-4">
           <Field
             label="Notes"
             hint="What happened with this item? Notes alone do not change the charge."
@@ -319,18 +337,6 @@ export function WorksheetRow({
               placeholder="For example: Brewpub supplied the bacon."
             />
           </Field>
-          <p
-            aria-live="polite"
-            className={kept < 0 ? "font-medium text-red-700" : "font-medium"}
-          >
-            Kept:{" "}
-            {made === "" || group.rows.some((r) => !sent[r.id])
-              ? "—"
-              : `${number(kept)} ${group.unit}`}
-            {made !== "" && kept < 0
-              ? " — sent plus waste exceeds what was made"
-              : ""}
-          </p>
           <details>
             <summary className="cursor-pointer text-sm">Waste, if any</summary>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -456,6 +462,9 @@ export function WorksheetRow({
                   required={multipleLots && Number(made) > 0}
                 />
               </Field>
+            </div>
+          </details>
+          {projectCode && <details className="closeout-project-code"><summary className="cursor-pointer text-sm">Project QR code</summary><div className="mt-3">{projectCode}</div></details>}
             </div>
           </details>
           <Button type="submit" value="preview" variant="secondary">
