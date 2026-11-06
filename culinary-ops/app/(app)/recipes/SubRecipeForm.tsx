@@ -8,18 +8,20 @@ import { money, num } from "@/lib/recipes/costing";
 import { addSubRecipe } from "./actions";
 
 type Option = { id: string; name: string; yieldQty: number; yieldUnit: string; cost: number };
+type LinkedComponent = { childId: string; quantity: number; unit: string };
 
 // Add-sub-recipe form. Unlike a plain text field, the quantity unit is tied to
 // the chosen recipe's yield unit: pick "Texas BBQ Sauce" (yields in gallons)
 // and the unit snaps to gallons, so you enter "2.5 gal", not a free-form value
 // the costing/scaling math can't interpret. Other convertible units are still
 // selectable (e.g. enter quarts of a gallon-yield sauce) and get converted.
-export function SubRecipeForm({ parentId, options }: { parentId: string; options: Option[] }) {
+export function SubRecipeForm({ parentId, options, linked }: { parentId: string; options: Option[]; linked: LinkedComponent[] }) {
   const [childId, setChildId] = useState("");
   const [unit, setUnit] = useState("serving");
 
   const byId = useMemo(() => new Map(options.map((o) => [o.id, o])), [options]);
   const selected = byId.get(childId);
+  const existing = linked.find(component => component.childId === childId);
 
   const comboOptions: ComboOption[] = useMemo(
     () => options.map((o) => ({ id: o.id, label: o.name, meta: `${money(o.cost)} / ${num(o.yieldQty)} ${o.yieldUnit}` })),
@@ -30,12 +32,13 @@ export function SubRecipeForm({ parentId, options }: { parentId: string; options
   // always available even if it's a free-text unit like "servings"), then the
   // standard kitchen units.
   const unitGroups = useMemo(() => {
-    const yieldUnit = selected?.yieldUnit;
-    const groups = yieldUnit && !UNIT_OPTIONS.some((g) => g.units.includes(yieldUnit))
-      ? [{ group: "Recipe yield", units: [yieldUnit] }, ...UNIT_OPTIONS]
+    const customUnits = [...new Set([selected?.yieldUnit, existing?.unit])]
+      .filter((unit): unit is string => !!unit && !UNIT_OPTIONS.some(group => group.units.includes(unit)));
+    const groups = customUnits.length
+      ? [{ group: "Recipe units", units: customUnits }, ...UNIT_OPTIONS]
       : UNIT_OPTIONS;
     return groups;
-  }, [selected?.yieldUnit]);
+  }, [selected?.yieldUnit, existing?.unit]);
 
   return (
     <div className="border-t border-zinc-100 p-4">
@@ -50,14 +53,14 @@ export function SubRecipeForm({ parentId, options }: { parentId: string; options
               onSelect={(o) => {
                 setChildId(o?.id ?? "");
                 const opt = o ? byId.get(o.id) : undefined;
-                if (opt) setUnit(opt.yieldUnit);
+                if (opt) setUnit(linked.find(component => component.childId === opt.id)?.unit ?? opt.yieldUnit);
               }}
             />
           </Field>
         </div>
         <div className="w-24">
           <Field label="Qty">
-            <Input name="quantity" type="number" step="0.01" min="0.01" defaultValue={1} required disabled={!selected} />
+            <Input key={childId} name="quantity" type="number" step="any" min="0.01" defaultValue={existing?.quantity ?? 1} required disabled={!selected} />
           </Field>
         </div>
         <div className="w-32">
@@ -76,13 +79,13 @@ export function SubRecipeForm({ parentId, options }: { parentId: string; options
           </Field>
         </div>
         <Button type="submit" disabled={!selected}>
-          Add
+          {existing ? "Update sub-recipe" : "Add"}
         </Button>
       </form>
       <p className="mt-2 text-xs text-zinc-400">
         {selected
           ? `Quantity is measured in ${selected.name}'s yield (${num(selected.yieldQty)} ${selected.yieldUnit} per batch). Cost is its full cost ÷ yield, times the amount above.`
-          : "Quantity is measured in the chosen recipe's yield unit. Circular references are blocked."}
+          : "Choose a recipe to add it or update an existing quantity."}
       </p>
     </div>
   );

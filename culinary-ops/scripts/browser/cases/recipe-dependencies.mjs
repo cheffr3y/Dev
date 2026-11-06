@@ -22,6 +22,9 @@ try {
   const before = JSON.stringify({ recipes: await db.recipe.findMany({ where: { id: { in: [dish.id, sauce.id, stock.id] } }, include: { items: true, components: true } }), banquet: await db.banquet.findUnique({ where: { id: banquet.id }, include: { menuItems: true } }), snapshots: await db.prepPacketSnapshot.findMany(), batches: await db.productionBatch.findMany(), transfers: await db.stockTransfer.findMany() });
   page = await login("admin"); await page.goto(`${base}/recipes/${dish.id}`);
   const explorer = page.getByRole("region", { name: "Recipe dependency and rollup explorer", exact: true });
+  const costOverview = page.getByRole("region", { name: "Recipe cost overview" });
+  await costOverview.getByText("All inputs costed", { exact: true }).waitFor();
+  assert.match(await costOverview.innerText(), /\$4\.00/);
   assert.equal(await explorer.getByTestId("dependency-total-cost").innerText(), "$4.00");
   await explorer.getByRole("button", { name: "Expand all branches", exact: true }).click();
   await explorer.getByLabel("Dependency preview quantity", { exact: true }).fill("250");
@@ -59,12 +62,15 @@ try {
   await db.recipeComponent.updateMany({ where: { parentId: dish.id, childId: stock.id }, data: { unit: "lb" } });
   await page.goto(`${base}/recipes/${dish.id}`); await explorer.getByRole("button", { name: "Expand all branches", exact: true }).click();
   assert.equal(await explorer.getByTestId("dependency-total-cost").innerText(), "—"); assert.match(await explorer.innerText(), /Unit mismatch/);
+  await costOverview.getByText("Cost needs review", { exact: true }).waitFor();
+  await costOverview.getByText("Review inputs for a batch total", { exact: true }).waitFor();
   await db.recipeComponent.updateMany({ where: { parentId: dish.id, childId: stock.id }, data: { unit: "fl oz" } });
   await page.goto(`${base}/recipes/${stock.id}`);
   await db.item.update({ where: { id: butter.id }, data: { unitCost: 0 } }); await page.reload();
   assert.equal(await explorer.getByTestId("dependency-total-cost").innerText(), "—"); assert.match(await explorer.innerText(), /Missing or invalid ingredient price/);
   await db.item.update({ where: { id: butter.id }, data: { unitCost: 8, priceUpdatedAt: new Date("2020-01-01") } }); await page.reload();
   assert.match(await explorer.innerText(), /Stale source prices/);
+  await costOverview.getByText("Estimate uses stale prices", { exact: true }).waitFor();
   await db.recipeComponent.create({ data: { parentId: stock.id, childId: dish.id, quantity: 1, unit: "each" } }); await page.reload();
   await explorer.getByRole("button", { name: "Expand all branches", exact: true }).click();
   assert.match(await explorer.innerText(), /Recipe cycle/); assert.equal(await explorer.getByTestId("dependency-total-cost").innerText(), "—");
