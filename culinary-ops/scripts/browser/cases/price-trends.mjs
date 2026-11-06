@@ -33,10 +33,11 @@ try {
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.waitForURL(`${base}/`);
   await page.goto(`${base}/items?q=Clipboard+Butter`);
-  await page.getByText("Paid price +50.0%", { exact: true }).waitFor();
+  await page.getByRole("table").getByText("Paid price +50.0%", { exact: true }).waitFor();
   await mkdir("/tmp/price-trends-review", { recursive: true });
   await page.screenshot({ path: "/tmp/price-trends-review/catalog-desktop.png", fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("list", { name: "Ingredient results" }).getByText("Paid price +50.0%", { exact: true }).waitFor();
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
   await page.screenshot({ path: "/tmp/price-trends-review/catalog-mobile.png", fullPage: true });
   await page.setViewportSize({ width: 1440, height: 1000 });

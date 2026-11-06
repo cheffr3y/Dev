@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
+import { PrismaClient } from "@prisma/client";
 import { launchBrowser, browserBaseUrl } from "../harness.mjs";
 const browser = await launchBrowser();
+const db = new PrismaClient();
+const fixturePrefix = "Catalog paging fixture";
 const base = browserBaseUrl();
 const output = "/tmp/app-navigation-review";
 await mkdir(output, { recursive: true });
@@ -79,6 +82,44 @@ try {
   await page.waitForFunction(() => document.querySelector('input[aria-label="Search ingredients"]')?.value === "Clipboard");
   assert.equal(await page.getByLabel("Search ingredients").inputValue(), "Clipboard");
   assert.equal(await page.evaluate(() => window.urlStateMarker), "ingredient-navigation");
+
+  await db.item.createMany({ data: Array.from({ length: 42 }, (_, i) => ({
+    name: `${fixturePrefix} ${String(i + 1).padStart(2, "0")}`,
+    category: "Dairy",
+    unit: "lb",
+  })) });
+  await page.getByLabel("Search ingredients").fill(fixturePrefix);
+  await page.getByLabel("Review filter").selectOption("missing");
+  await page.getByRole("button", { name: "Search", exact: true }).click();
+  await page.getByText("Showing 1–40 of 42 ingredients", { exact: true }).waitFor();
+  await page.getByRole("link", { name: "Next page", exact: true }).click();
+  await page.getByText("Showing 41–42 of 42 ingredients", { exact: true }).waitFor();
+  const ingredientUrl = new URL(page.url());
+  assert.equal(ingredientUrl.searchParams.get("category"), "Dairy");
+  assert.equal(ingredientUrl.searchParams.get("flag"), "missing");
+  assert.equal(ingredientUrl.searchParams.get("page"), "2");
+  await page.screenshot({ path: `${output}/desktop-ingredients.png`, caret: "initial" });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  const results = page.getByRole("list", { name: "Ingredient results" });
+  assert.equal(await results.getByRole("listitem").count(), 2);
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await page.screenshot({ path: `${output}/mobile-ingredients.png`, caret: "initial" });
+  const ingredientLink = results.getByRole("link", { name: `${fixturePrefix} 41`, exact: true });
+  await ingredientLink.click();
+  await inspector.getByRole("heading", { name: `${fixturePrefix} 41`, exact: true }).waitFor();
+  await inspector.getByRole("button", { name: "Close inspector", exact: true }).click();
+  await inspector.waitFor({ state: "detached" });
+  assert.equal(page.url(), ingredientUrl.href);
+  assert.ok(await ingredientLink.evaluate(link => document.activeElement === link));
+  await page.getByLabel("Review filter").selectOption("current");
+  await page.getByRole("button", { name: "Search", exact: true }).click();
+  await page.getByText("No ingredients match your filters.", { exact: true }).waitFor();
+  assert.equal(new URL(page.url()).searchParams.has("page"), false);
+  await page.getByRole("link", { name: "Reset filters", exact: true }).click();
+  await page.waitForURL(`${base}/items`);
+  await page.setViewportSize({ width: 1280, height: 720 });
+
   await page.goto(`${base}/vendors/invoices?q=nonexistent&vendor=unknown&sort=oldest&id=missing`);
   await page.waitForLoadState("networkidle");
   await page.waitForURL(url => url.pathname === "/invoices");
@@ -136,4 +177,11 @@ try {
     await roleContext.close();
   }
   console.log("URL filters, inspector history, invoice legacy redirects/filter history, desktop/collapsed/mobile navigation, HMR naming, and role restrictions passed.");
-} finally { await browser.close(); }
+} finally {
+  await browser.close();
+  try {
+    await db.item.deleteMany({ where: { name: { startsWith: fixturePrefix } } });
+  } finally {
+    await db.$disconnect();
+  }
+}

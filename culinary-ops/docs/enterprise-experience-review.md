@@ -33,9 +33,9 @@ Catalog validation: lint, source-focused TypeScript, 277 unit tests, 70 disposab
 Active UI backlog after these slices:
 
 - Delivered to main: Today/shared shell foundation, Daily Prep management cleanup, compact Closeout.
-- Current slice: recipe catalog filters, desktop readability and phone costing summaries.
-- Next: ingredient catalog usability and clearer shared editing patterns.
-- Remaining: recipe-detail costing/editing, invoice refinement, persistent venue context, fuller navigation consolidation, and planning workspace consistency.
+- Recipe catalog filters, desktop readability, and phone costing summaries are complete on `codex/recipe-catalog-workspace` and awaiting merge.
+- Ingredient catalog improvements build on that branch in `codex/ingredient-catalog-workspace`. Search, category, and review filters share one toolbar with result counts and 40 results per page. Desktop brings costs and price warnings forward and keeps keyboard editing. Phone summaries open the existing inspector and return to the same result.
+- Next: recipe-detail costing and editing. Invoice refinement, persistent venue context, fuller navigation consolidation, and planning workspace consistency follow.
 - Deferred: Cook view, cook assignments/onboarding, and broader team rollout.
 
 ## Scope and confidence

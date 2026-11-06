@@ -1,10 +1,11 @@
 import { loadPriceTrends } from "@/lib/invoices/price-trends-data";
 import { PriceTrend } from "@/components/PriceTrend";
 import { WorkspaceInspector } from "@/components/WorkspaceInspector";
+import { InspectorLink } from "@/components/InspectorLink";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser, hasRole } from "@/lib/auth/session";
 import { money, priceFreshness, PRICE_STALE_DAYS } from "@/lib/recipes/costing";
-import { Badge, Button, Card, Input, PageHeader, LinkButton } from "@/components/ui";
+import { Badge, Button, Card, Input, PageHeader, LinkButton, Select } from "@/components/ui";
 import { createItem, deleteItem } from "./actions";
 import { AllergenBadges } from "@/components/AllergenBadges";
 import Link from "next/link";
@@ -17,19 +18,34 @@ import { EditGrid } from "@/components/EditGrid";
 import { CatalogCell } from "@/components/CatalogCells";
 import { ingredientIntegrity } from "@/lib/dashboard/morning-pulse";
 
+const PAGE_SIZE = 40;
+
+function DeleteIngredient({ id, disabled = false }: { id: string; disabled?: boolean }) {
+  return (
+    <form action={deleteItem}>
+      <input type="hidden" name="id" value={id} />
+      <button disabled={disabled} className="text-xs text-red-500 hover:underline disabled:cursor-not-allowed disabled:text-zinc-300" title="Only ingredients with no usage can be deleted">Delete</button>
+    </form>
+  );
+}
+
 export default async function ItemsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string; flag?: string; q?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const user = await requireUser();
   const canEdit = hasRole(user, "MANAGER");
-  const { category, flag, q = "" } = await searchParams;
+  const params = await searchParams;
+  const category = typeof params.category === "string" ? params.category : "";
+  const flag = typeof params.flag === "string" ? params.flag : "";
+  const q = typeof params.q === "string" ? params.q : "";
+  const requestedPage = typeof params.page === "string" && /^[1-9]\d*$/.test(params.page) ? Number(params.page) : 1;
 
   const [items, vendors] = await Promise.all([
     // Load the whole catalog so price-coverage counts are global, then filter
     // in memory — the master list is small and this keeps the counts honest.
-    prisma.item.findMany({ include: { vendor: true, _count: { select: { ...ingredientUsageSelect, quotes: true } } }, orderBy: [{ category: "asc" }, { name: "asc" }] }),
+    prisma.item.findMany({ include: { vendor: true, _count: { select: { ...ingredientUsageSelect, quotes: true } } }, orderBy: [{ category: "asc" }, { name: "asc" }, { id: "asc" }] }),
     prisma.vendor.findMany({ orderBy: { name: "asc" } }),
   ]);
 
@@ -40,8 +56,8 @@ export default async function ItemsPage({
 
   const groups = duplicateIngredientGroups(items);
   const duplicateIds = new Set(groups.flatMap(group => group.map(item => item.id)));
-  const unused = items.filter(item => Object.values(item._count).every(count => count === 0)).length;
-  const categories = [...new Set([...INGREDIENT_CATEGORIES, ...items.map(item => item.category)])];
+  const categories = [...new Set([...INGREDIENT_CATEGORIES, ...items.map(item => item.category), ...(category ? [category] : [])])].sort((a, b) => a.localeCompare(b));
+  const searchTokens = ingredientNameKey(q).split(" ").filter(Boolean);
 
   const visible = withFreshness.filter(({ item, freshness }) => {
     if (flag === "integrity") {
@@ -51,23 +67,28 @@ export default async function ItemsPage({
     if (category && item.category !== category) return false;
     if (flag === "duplicates" && !duplicateIds.has(item.id)) return false;
     if (flag === "unused" && Object.values(item._count).some(count => count > 0)) return false;
-    const search = ingredientNameKey([item.name, item.vendor?.name, item.sku, item.gcode].filter(Boolean).join(" "));
-    if (q && !ingredientNameKey(q).split(" ").every(token => search.includes(token))) return false;
+    if (searchTokens.length) {
+      const search = ingredientNameKey([item.name, item.vendor?.name, item.sku, item.gcode].filter(Boolean).join(" "));
+      if (!searchTokens.every(token => search.includes(token))) return false;
+    }
     if (flag === "missing" && !freshness.unpriced) return false;
     if (flag === "stale" && !freshness.stale) return false;
+    if (flag === "current" && (freshness.unpriced || freshness.stale)) return false;
     return true;
   });
 
-  const trends = await loadPriceTrends(visible.map(({ item }) => item));
+  const pageCount = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
+  const page = Math.min(requestedPage, pageCount);
+  const start = (page - 1) * PAGE_SIZE;
+  const rows = visible.slice(start, start + PAGE_SIZE);
+  const trends = await loadPriceTrends(rows.map(({ item }) => item));
 
-  // Build a catalog href preserving the other active filter.
-  const hrefWith = (next: { category?: string | null; flag?: string | null }) => {
+  const pageHref = (target: number) => {
     const params = new URLSearchParams();
-    const cat = next.category === undefined ? category : next.category;
-    const fl = next.flag === undefined ? flag : next.flag;
     if (q) params.set("q", q);
-    if (cat) params.set("category", cat);
-    if (fl) params.set("flag", fl);
+    if (category) params.set("category", category);
+    if (flag) params.set("flag", flag);
+    if (target > 1) params.set("page", String(target));
     const qs = params.toString();
     return qs ? `/items?${qs}` : "/items";
   };
@@ -80,58 +101,45 @@ export default async function ItemsPage({
         action={canEdit ? <LinkButton href="/items/cleanup">Review duplicates ({groups.length})</LinkButton> : undefined}
       />
 
-      {canEdit && <Link href="/invoices" className="mb-4 inline-block text-sm text-blue-600 underline">Invoices</Link>}
-      {flag === "integrity" && <p className="mb-4 text-sm text-amber-700">Showing in-use ingredients with missing costs, units, or vendors. <Link href="/items" className="underline">View all ingredients</Link></p>}
-
-      {/* Price coverage — theo food cost is only as honest as these prices. */}
-      {(missingCount > 0 || staleCount > 0) && (
-        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
-          <span className="font-medium">Price coverage</span>
-          {missingCount > 0 && (
-            <Link href={hrefWith({ flag: flag === "missing" ? null : "missing" })} className="rounded-full bg-white/70 px-2.5 py-0.5 text-xs font-medium text-red-700 ring-1 ring-red-200 hover:bg-white">
-              {missingCount} missing a price →
-            </Link>
-          )}
-          {staleCount > 0 && (
-            <Link href={hrefWith({ flag: flag === "stale" ? null : "stale" })} className="rounded-full bg-white/70 px-2.5 py-0.5 text-xs font-medium text-amber-800 ring-1 ring-amber-200 hover:bg-white">
-              {staleCount} stale (&gt;{PRICE_STALE_DAYS}d) →
-            </Link>
-          )}
-          {flag && (
-            <Link href={hrefWith({ flag: null })} className="text-xs text-amber-700 underline">
-              clear filter
-            </Link>
-          )}
+      <Card className="mb-4 space-y-3 p-4">
+        <Form action="/items" className="grid grid-cols-2 gap-3 lg:grid-cols-[minmax(12rem,2fr)_minmax(8rem,1fr)_minmax(11rem,1fr)_auto] lg:items-end">
+          <label className="col-span-2 min-w-0 space-y-1 text-sm lg:col-span-1">
+            <span className="font-medium">Find an ingredient</span>
+            <Input key={q} name="q" defaultValue={q} placeholder="Name, vendor, item # or GCODE" aria-label="Search ingredients" className="min-h-11 max-sm:text-base" />
+          </label>
+          <label className="min-w-0 space-y-1 text-sm">
+            <span className="font-medium">Category</span>
+            <Select key={category} name="category" defaultValue={category} className="min-h-11 max-sm:text-base">
+              <option value="">All categories</option>
+              {categories.map(value => <option key={value}>{value}</option>)}
+            </Select>
+          </label>
+          <label className="min-w-0 space-y-1 text-sm">
+            <span className="font-medium">Review filter</span>
+            <Select key={flag} name="flag" defaultValue={flag} className="min-h-11 max-sm:text-base">
+              <option value="">All ingredients</option>
+              <option value="missing">Missing price</option>
+              <option value="stale">Stale price</option>
+              <option value="current">Current price</option>
+              <option value="integrity">Data issues</option>
+              <option value="duplicates">Duplicates</option>
+              <option value="unused">Unused</option>
+            </Select>
+          </label>
+          <Button type="submit" variant="secondary" className="col-span-2 min-h-11 lg:col-span-1">Search</Button>
+        </Form>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+          <p aria-live="polite" className="text-zinc-600">
+            {rows.length ? `Showing ${start + 1}–${start + rows.length} of ${visible.length} ingredients` : items.length ? "No ingredients match your filters." : "No ingredients yet."}
+          </p>
+          {(category || flag || q) && <Link href="/items" className="text-blue-600 underline">Reset filters</Link>}
+          {canEdit && <Link href="/invoices" className="text-blue-600 underline">Invoices</Link>}
         </div>
-      )}
-
-      <Form action="/items" className="mb-4 flex flex-wrap items-center gap-2">
-        {category && <input type="hidden" name="category" value={category} />}
-        {flag && <input type="hidden" name="flag" value={flag} />}
-        <Input key={q} name="q" defaultValue={q} placeholder="Search name, vendor, item # or GCODE…" aria-label="Search ingredients" className="max-w-md" />
-        <Button type="submit" variant="secondary">Search</Button>
-        <Link href={hrefWith({ flag: flag === "duplicates" ? null : "duplicates" })} className="text-sm text-blue-600 hover:underline">Possible duplicates ({groups.length})</Link>
-        <Link href={hrefWith({ flag: flag === "unused" ? null : "unused" })} className="text-sm text-blue-600 hover:underline">Unused ({unused})</Link>
-      </Form>
-
-      {/* Category filter */}
-      <div className="mb-4 flex flex-wrap gap-2 text-sm">
-        <Link
-          href={hrefWith({ category: null })}
-          className={`rounded-full px-3 py-1 ${!category ? "bg-zinc-900 text-white" : "bg-white text-zinc-600 border border-zinc-200"}`}
-        >
-          All
-        </Link>
-        {categories.map((c) => (
-          <Link
-            key={c}
-            href={hrefWith({ category: c })}
-            className={`rounded-full px-3 py-1 ${category === c ? "bg-zinc-900 text-white" : "bg-white text-zinc-600 border border-zinc-200"}`}
-          >
-            {c}
-          </Link>
-        ))}
-      </div>
+        {(missingCount > 0 || staleCount > 0) && (
+          <p className="text-xs text-zinc-600">Catalog price coverage: {missingCount} missing · {staleCount} stale ({PRICE_STALE_DAYS}+ days)</p>
+        )}
+        {flag === "integrity" && <p className="text-sm text-amber-700">Showing in-use ingredients with missing costs, units, or vendors.</p>}
+      </Card>
 
       {canEdit && (
         <details className="mb-5">
@@ -145,49 +153,38 @@ export default async function ItemsPage({
         </details>
       )}
 
-      {canEdit && <p className="mb-3 text-xs text-zinc-500">Click a cell to edit · Arrows move between cells (left/right at text edges; Alt+arrows in vendor lists) · Tab / Shift+Tab across cells · Enter / Shift+Enter down/up a column · Escape cancels. Prices are per cost unit; pack size is descriptive.</p>}
-      <Card className="catalog-grid overflow-x-auto"><EditGrid>
+      {canEdit && rows.length > 0 && (
+        <details className="mb-3 hidden text-xs text-zinc-500 md:block">
+          <summary className="cursor-pointer">Keyboard editing help</summary>
+          <p className="mt-2">Click a cell to edit. Use arrows to move between cells (left/right at text edges and Alt+arrows in vendor lists). Use Tab / Shift+Tab across cells and Enter / Shift+Enter down/up a column. Escape cancels. Prices are per cost unit and pack size is descriptive.</p>
+        </details>
+      )}
+      {rows.length > 0 && <Card role="region" aria-label="Ingredient editing grid" tabIndex={0} className="catalog-grid hidden overflow-x-auto md:block print:block"><EditGrid>
         <table className="w-full text-sm">
           <thead className="bg-zinc-50 text-left font-mono text-[11px] uppercase tracking-[0.02em] text-zinc-600">
             <tr>
               <th className="px-4 py-2.5 font-medium">Ingredient</th>
+              <th className="px-4 py-2.5 font-medium">Cost unit</th>
+              <th className="px-4 py-2.5 text-right font-medium">Unit Cost</th>
+              <th className="px-4 py-2.5 font-medium">Price age</th>
               <th className="px-4 py-2.5 font-medium">Category</th>
               <th className="px-4 py-2.5 font-medium">Allergens</th>
               <th className="px-4 py-2.5 font-medium">Vendor</th>
               <th className="px-4 py-2.5 font-medium">Item #</th>
               <th className="px-4 py-2.5 font-medium">GCODE</th>
               <th className="px-4 py-2.5 font-medium">Pack size</th>
-              <th className="px-4 py-2.5 font-medium">Cost unit</th>
-              <th className="px-4 py-2.5 text-right font-medium">Unit Cost</th>
-              <th className="px-4 py-2.5 font-medium">Price age</th>
               <th className="px-4 py-2.5 font-medium">Recipes</th>
               {canEdit && <th className="px-4 py-2.5"></th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100">
-            {visible.length === 0 && (
-              <tr>
-                <td colSpan={canEdit ? 12 : 11} className="px-4 py-8 text-center text-zinc-400">
-                  {items.length === 0 ? "No ingredients yet." : "No ingredients match your filters."}
-                </td>
-              </tr>
-            )}
-            {visible.map(({ item, freshness }) => (
+            {rows.map(({ item, freshness }) => (
               <tr key={item.id} className="align-top">
                 <td className="px-4 py-2.5 font-medium text-zinc-800">
-                  <Link href={`/items/${item.id}`} className="hover:underline">{item.name}</Link>
-                  {item.packSize && <span className="ml-1 text-xs text-zinc-400">({item.packSize})</span>}
+                  <InspectorLink kind="item" id={item.id}>{item.name}</InspectorLink>
                   <Link href={`/items/${item.id}`} className="mt-1 block text-xs text-blue-600 hover:underline">{canEdit ? "edit / usage" : "view usage"}</Link>
                   {duplicateIds.has(item.id) && <span className="mt-1 block text-xs text-amber-700">Possible duplicate</span>}
                 </td>
-                <td className="px-4 py-2.5">
-                  <Badge>{item.category}</Badge>
-                </td>
-                <td className="px-4 py-2.5"><AllergenBadges allergens={item.allergens} /></td>
-                <td className="px-4 py-2.5 text-zinc-600">{canEdit ? <CatalogCell item={item} field="vendorId" vendors={vendors} /> : item.vendor?.name ?? "—"}</td>
-                <td className="px-4 py-2.5 font-mono text-xs text-zinc-600">{canEdit ? <CatalogCell item={item} field="sku" vendors={vendors} /> : item.sku ?? "—"}</td>
-                <td className="px-4 py-2.5 font-mono text-xs text-zinc-700">{canEdit ? <CatalogCell item={item} field="gcode" vendors={vendors} /> : item.gcode ?? "—"}</td>
-                <td className="px-4 py-2.5 text-zinc-600">{canEdit ? <CatalogCell item={item} field="packSize" vendors={vendors} /> : item.packSize ?? "—"}</td>
                 <td className="px-4 py-2.5 text-zinc-600">{canEdit ? <CatalogCell item={item} field="unit" vendors={vendors} /> : item.unit}</td>
                 <td className={`px-4 py-2.5 text-right ${freshness.unpriced ? "text-red-600" : "text-zinc-800"}`}>
                   {canEdit ? <CatalogCell item={item} field="unitCost" vendors={vendors} trend={trends[item.id]} /> : freshness.unpriced ? "—" : <>{money(item.unitCost, 5)}<PriceTrend trend={trends[item.id]} /></>}
@@ -201,20 +198,54 @@ export default async function ItemsPage({
                     <span className="text-zinc-500">{freshness.label}</span>
                   )}
                 </td>
+                <td className="px-4 py-2.5"><Badge>{item.category}</Badge></td>
+                <td className="px-4 py-2.5"><AllergenBadges allergens={item.allergens} /></td>
+                <td className="px-4 py-2.5 text-zinc-600">{canEdit ? <CatalogCell item={item} field="vendorId" vendors={vendors} /> : item.vendor?.name ?? "—"}</td>
+                <td className="px-4 py-2.5 font-mono text-xs text-zinc-600">{canEdit ? <CatalogCell item={item} field="sku" vendors={vendors} /> : item.sku ?? "—"}</td>
+                <td className="px-4 py-2.5 font-mono text-xs text-zinc-700">{canEdit ? <CatalogCell item={item} field="gcode" vendors={vendors} /> : item.gcode ?? "—"}</td>
+                <td className="px-4 py-2.5 text-zinc-600">{canEdit ? <CatalogCell item={item} field="packSize" vendors={vendors} /> : item.packSize ?? "—"}</td>
                 <td className="px-4 py-2.5"><Link href={`/items/${item.id}`} className="text-blue-600 hover:underline">{item._count.recipeItems}</Link></td>
                 {canEdit && (
                   <td className="px-4 py-2.5 text-right">
-                    <form action={deleteItem}>
-                      <input type="hidden" name="id" value={item.id} />
-                      <button disabled={Object.values(item._count).some(count => count > 0)} className="text-xs text-red-500 hover:underline disabled:cursor-not-allowed disabled:text-zinc-300" title="Only ingredients with no usage can be deleted">delete</button>
-                    </form>
+                    <DeleteIngredient id={item.id} disabled={Object.values(item._count).some(count => count > 0)} />
                   </td>
                 )}
               </tr>
             ))}
           </tbody>
         </table></EditGrid>
-      </Card>
+      </Card>}
+      {rows.length > 0 && (
+        <ul aria-label="Ingredient results" className="space-y-2 md:hidden print:hidden">
+          {rows.map(({ item, freshness }) => (
+            <li key={item.id}>
+              <Card className="min-w-0 space-y-2 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-x-3">
+                  <InspectorLink kind="item" id={item.id} className="min-w-0 break-words py-3 font-semibold text-blue-600 hover:underline">{item.name}</InspectorLink>
+                  {freshness.unpriced ? <Badge color="red">No price</Badge> : (
+                    <span className="tabular-nums text-sm font-medium">{money(item.unitCost, 5)} / {item.unit}</span>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-600">
+                  <span className="break-words">{item.category} · {item.vendor?.name ?? "No vendor"}</span>
+                  {freshness.stale && <Badge color="amber">{freshness.label}</Badge>}
+                  {duplicateIds.has(item.id) && <Badge color="amber">Possible duplicate</Badge>}
+                </div>
+                {(trends[item.id]?.prices.length ?? 0) >= 2 && <PriceTrend trend={trends[item.id]} />}
+                <AllergenBadges allergens={item.allergens} />
+                {canEdit && Object.values(item._count).every(count => count === 0) && <DeleteIngredient id={item.id} />}
+              </Card>
+            </li>
+          ))}
+        </ul>
+      )}
+      {pageCount > 1 && (
+        <nav aria-label="Ingredient pages" className="mt-4 flex flex-wrap items-center justify-end gap-4 text-sm">
+          <span className="tabular-nums text-zinc-600">Page {page} of {pageCount}</span>
+          {page > 1 && <LinkButton href={pageHref(page - 1)}>Previous page</LinkButton>}
+          {page < pageCount && <LinkButton href={pageHref(page + 1)}>Next page</LinkButton>}
+        </nav>
+      )}
     </div></WorkspaceInspector>
   );
 }
