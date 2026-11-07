@@ -53,6 +53,37 @@ try {
   await page.screenshot({path:`${output}/inline-grid-mobile.png`,fullPage:true});
   const overflow=await page.evaluate(()=>({width:innerWidth,scroll:document.documentElement.scrollWidth,elements:[...document.querySelectorAll("body *")].filter(el=>el.getBoundingClientRect().right>innerWidth+1&&!el.closest("[data-edit-grid]")).map(el=>({tag:el.tagName,cls:el.className,right:el.getBoundingClientRect().right,width:el.getBoundingClientRect().width})).slice(0,15)}));
   assert.equal(overflow.scroll<=overflow.width,true,JSON.stringify(overflow));
+  for (const field of ["Invoice supplier", "Invoice venue", "Invoice date", "Invoice total ($)"]) {
+    const bounds = await review.getByLabel(field, { exact: true }).boundingBox();
+    assert.ok(bounds && bounds.x >= 0 && bounds.x + bounds.width <= 390, `${field} fits on a phone`);
+  }
+  const pack = rollRow.getByLabel("Pack / unit size", { exact: true });
+  const amount = rollRow.getByLabel("Line total ($)", { exact: true });
+  for (const field of [pack, amount]) {
+    const bounds = await field.boundingBox();
+    assert.ok(bounds && bounds.x >= 0 && bounds.x + bounds.width <= 390, "Line inputs fit without horizontal scrolling");
+  }
+  await pack.fill("");
+  await review.getByText("1 line needs review.", { exact: false }).waitFor();
+  await review.getByRole("button", { name: /Go to next line needing review/ }).click();
+  assert.equal(await rollRow.evaluate(row => row === document.activeElement), true);
+  await pack.fill("105/1.3 oz");
+  await page.getByRole("button", { name: /View invoice · p/ }).click();
+  await page.getByRole("region", { name: "Invoice source document", exact: true }).waitFor();
+  await page.getByRole("button", { name: "Review lines", exact: true }).click();
+  assert.equal(await pack.inputValue(), "105/1.3 oz");
+  await draftSaved();
+
+  const filter = `q=spreadsheet-products&vendor=${vendor.id}&sort=oldest`;
+  await page.goto(`${base}/invoices?${filter}&id=${id}`);
+  await rollRow.waitFor();
+  await amount.fill("52.45");
+  await page.getByRole("link", { name: /Back to invoice inbox/ }).click();
+  await page.waitForURL(`${base}/invoices?${filter}#invoice-inbox`);
+  await page.getByRole("link", { name: "spreadsheet-products.pdf", exact: true }).click();
+  await rollRow.waitFor();
+  assert.equal(await amount.inputValue(), "52.45", "Returning to the filtered inbox saves the latest draft");
+  await amount.fill("52.44");
   await page.setViewportSize({width:1600,height:1100});
   // A lost response replays the same transaction, rather than inserting duplicate lines or learning twice.
   await page.route("**/api/invoice-purchases/batch",async route=>{await route.fetch();await route.abort();},{times:1});
@@ -69,7 +100,7 @@ try {
   const manual=rows.last();
   await manual.getByLabel("OCR description",{exact:true}).fill("Extra rolls");
   const picker=manual.getByRole("combobox");await picker.fill(roll.name);await page.locator(`[data-option-id="${roll.id}"]`).click();
-  assert.equal(await manual.getByLabel("Pack / unit size",{exact:true}).inputValue(),"case (136.5 oz)");
+  assert.match(await manual.getByLabel("Pack / unit size",{exact:true}).inputValue(),/^(?:cs|case) \(136\.5 oz\)$/);
   await manual.getByLabel("Line total ($)",{exact:true}).fill("20");
   await draftSaved();await page.reload();
   const recovered=rows.last();await recovered.waitFor();

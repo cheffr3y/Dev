@@ -26,7 +26,8 @@ type Data = Awaited<ReturnType<typeof loadLocalInvoice>>;
 type Item = ComboOption & IngredientMeasure & { unit?:string; unitCost?:number; sku?:string|null; vendorId?:string|null; invoiceDefaults?:InvoicePack|null };
 type Row = ReviewRowDraft & { page:number; rawText:string; bbox?:LocalInvoiceLine["bbox"]; warnings:string[]; confidence:string };
 const numeric = (value:string) => value.trim() === "" ? null : Number(value);
-const cellClass = "w-full min-w-16 rounded border border-transparent bg-transparent px-2 py-1 text-sm hover:border-hairline focus:border-form-focus focus:outline-none focus:ring-1 focus:ring-form-focus";
+const cellClass = "w-full min-w-0 rounded border border-hairline bg-transparent px-2 py-2 text-base focus:border-form-focus focus:outline-none focus:ring-1 focus:ring-form-focus md:border-transparent md:py-1 md:text-sm md:hover:border-hairline";
+const mobileLabel = "mb-1 block text-xs font-medium text-zinc-500 md:hidden";
 
 export function InvoicePurchaseReview({invoice,vendorId,lineRevision,lines,expense,vendors,venues,items,defaultVenueId}: {
   invoice:InvoiceChoice; vendorId:string|null; lineRevision:number; lines:InvoicePurchaseData[]; expense:FoodExpenseData|null;
@@ -94,11 +95,13 @@ export function InvoicePurchaseReview({invoice,vendorId,lineRevision,lines,expen
     const saved=lines.find(line=>line.id===row.purchaseId);
     const basis=item?.unit?invoiceNormalizationMeasure({...item,unit:item.unit},saved,{itemId:row.itemId,quantity:row.quantity??0,packQty:row.packQty??0,packUnit:row.packUnit,eachWeightOz:row.eachWeightOz}).measure:{};
     const result=invoiceLineReview(row,item?.unit?{...item,...basis,unit:item.unit}:null);
-    return {...result,problems:[...result.problems,...(!supplier?["Choose supplier."]:[]),...(!date?["Enter invoice date."]:[]),...(!venue?["Choose venue."]:[]),...(!parseInvoicePack(row.packText||"")?["Use a pack such as 16 oz x 16 or case (5 lb)."]:[])]};
+    return {...result,problems:[...result.problems,...(!parseInvoicePack(row.packText||"")?["Use a pack such as 16 oz x 16 or case (5 lb)."]:[])]};
   }
-  const visible=rows.filter(row=>draft.showIgnored||!row.ignored);
-  const ready=rows.filter(row=>!row.ignored&&!review(row).problems.length);
-  const remaining=rows.filter(row=>!row.ignored&&review(row).problems.length);
+  const reviewed = rows.map(row => ({ row, result: review(row) }));
+  const visible = reviewed.filter(({ row }) => draft.showIgnored || !row.ignored);
+  const ready = reviewed.filter(({ row, result }) => !row.ignored && !result.problems.length).map(({ row }) => row);
+  const remaining = reviewed.filter(({ row, result }) => !row.ignored && result.problems.length).map(({ row }) => row);
+  const missingDetails = [!supplier && "supplier", !venue && "venue", !date && "invoice date"].filter(Boolean);
   const total=rows.filter(row=>!row.ignored).reduce((sum,row)=>sum+Math.round((invoiceLineAmounts(row).total??0)*100),0);
   const comparison=draft.invoiceTotal?.trim()?Math.round(Number(draft.invoiceTotal)*100)-total:null;
   const ignoredKeys=rows.filter(row=>row.ignored&&row.savedRevision==null&&!row.key.startsWith("manual-")).map(row=>row.key);
@@ -156,7 +159,15 @@ export function InvoicePurchaseReview({invoice,vendorId,lineRevision,lines,expen
     const id=crypto.randomUUID(),key=`manual-${id}`;
     setRows(previous=>[...previous,{key,purchaseId:id,savedRevision:null,itemId:"",rawCode:null,rawDescription:"",quantity:1,unit:"case",unitPrice:null,extendedPrice:null,packQty:null,packUnit:"",packText:"",ignored:false,remember:true,newName:"",newUnit:"",page:1,rawText:"",warnings:[],confidence:"Unmatched"}]);
     setSelected(key);
-    requestAnimationFrame(()=>grid.current?.querySelector<HTMLInputElement>(`[data-row-key="${key}"] input[data-grid-column="description"]`)?.focus());
+    requestAnimationFrame(()=>grid.current?.querySelector<HTMLTextAreaElement>(`[data-row-key="${key}"] textarea[data-grid-column="description"]`)?.focus());
+  }
+  function focusNextIssue() {
+    const current = remaining.findIndex(row => row.key === selected);
+    const next = remaining[(current + 1) % remaining.length];
+    if (!next) return;
+    const element = grid.current?.querySelector<HTMLElement>(`[data-row-key="${CSS.escape(next.key)}"]`);
+    element?.scrollIntoView({ block: "center", inline: "nearest" });
+    element?.focus({ preventScroll: true });
   }
   function navigate(event:KeyboardEvent<HTMLDivElement>) {
     if(event.defaultPrevented)return;
@@ -172,49 +183,58 @@ export function InvoicePurchaseReview({invoice,vendorId,lineRevision,lines,expen
   }
   const gridCell=(column:string,label:string)=>({"data-grid-cell":true,"data-grid-column":column,"aria-label":label,className:cellClass,onFocus:(event:React.FocusEvent<HTMLInputElement>)=>event.currentTarget.select()});
   return <section id="invoice-accounting" aria-label="Invoice purchase review" className="min-w-0 rounded-lg border border-hairline bg-canvas">
-    <div className="sticky top-14 z-30 flex items-end gap-2 overflow-x-auto border-b border-hairline bg-canvas p-3 shadow-sm lg:top-16">
-      <label className="min-w-32 flex-1 text-xs">Supplier<Select aria-label="Invoice supplier" value={supplier} disabled={busy||!!vendorId} onChange={event=>{update(previous=>({...previous,supplier:event.target.value}));setRows(previous=>previous.map(row=>{
+    <div className="grid grid-cols-2 items-end gap-3 border-b border-hairline bg-canvas p-3 md:grid-cols-3 lg:sticky lg:top-16 lg:z-30 lg:shadow-sm 2xl:grid-cols-5">
+      <label className="min-w-0 text-xs">Supplier<Select aria-label="Invoice supplier" value={supplier} disabled={busy||!!vendorId} onChange={event=>{update(previous=>({...previous,supplier:event.target.value}));setRows(previous=>previous.map(row=>{
         if(row.savedRevision!=null||row.manual)return row;
         const match=matchInvoiceLine(row.rawCode,row.rawDescription,event.target.value,data?.aliases??[],data?.items??[]);
         return {...row,itemId:match.itemId??"",confidence:match.confidence==="learned-exact"?"Alias":match.itemId?"Fuzzy":"Unmatched"};
       }));}}><option value="">Choose supplier</option>{vendors.map(v=><option key={v.id} value={v.id}>{v.name}</option>)}</Select></label>
-      <label className="min-w-28 flex-1 text-xs">Venue<Select aria-label="Invoice venue" value={venue} disabled={busy} onChange={event=>update(previous=>({...previous,venue:event.target.value}))}><option value="">Choose venue</option>{venues.map(v=><option key={v.id} value={v.id}>{v.name}</option>)}</Select></label>
-      <label className="min-w-32 text-xs">Invoice date<Input aria-label="Invoice date" type="date" value={date} disabled={busy} onChange={event=>update(previous=>({...previous,date:event.target.value}))}/></label>
-      <label className="w-28 shrink-0 text-xs">Invoice total ($)<Input aria-label="Invoice total ($)" type="number" step="0.01" value={draft.invoiceTotal??""} disabled={busy} onChange={event=>update(previous=>({...previous,invoiceTotal:event.target.value}))}/></label>
-      <div className="min-w-32 pb-1 text-xs tabular-nums" aria-live="polite">Food-line total ($)<strong className="block text-sm">{money(total/100)}</strong>{comparison!==null&&<span className={comparison===0?"text-emerald-700":"text-amber-700"}>{comparison===0?"Matches invoice":`${money(comparison/100)} difference`}</span>}</div>
+      <label className="min-w-0 text-xs">Venue<Select aria-label="Invoice venue" value={venue} disabled={busy} onChange={event=>update(previous=>({...previous,venue:event.target.value}))}><option value="">Choose venue</option>{venues.map(v=><option key={v.id} value={v.id}>{v.name}</option>)}</Select></label>
+      <label className="min-w-0 text-xs">Invoice date<Input aria-label="Invoice date" type="date" className="min-w-0" value={date} disabled={busy} onChange={event=>update(previous=>({...previous,date:event.target.value}))}/></label>
+      <label className="min-w-0 text-xs">Invoice total ($)<Input aria-label="Invoice total ($)" type="number" step="0.01" value={draft.invoiceTotal??""} disabled={busy} onChange={event=>update(previous=>({...previous,invoiceTotal:event.target.value}))}/></label>
+      <div className="col-span-2 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-xs tabular-nums 2xl:col-span-1 2xl:block" aria-live="polite">Food-line total ($)<strong className="block text-sm">{money(total/100)}</strong>{comparison!==null&&<span className={comparison===0?"text-emerald-700":"text-amber-700"}>{comparison===0?"Matches invoice":`${money(comparison/100)} difference`}</span>}</div>
     </div>
+    {loaded && (missingDetails.length > 0 || remaining.length > 0) && <div className="space-y-2 border-b border-hairline bg-amber-500/5 px-3 py-2 text-sm">
+      {missingDetails.length > 0 && <p>Fill in the {missingDetails.join(", ")} above to approve lines.</p>}
+      {remaining.length > 0 && <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <p>{remaining.length} {remaining.length === 1 ? "line needs" : "lines need"} review. Food spending is confirmed when all included lines are ready.</p>
+        <button type="button" className="font-medium text-blue-600 underline" disabled={busy} onClick={focusNextIssue}>Go to next line needing review ↓</button>
+      </div>}
+    </div>}
     <div className="flex flex-wrap items-center gap-3 p-3" aria-label="Bulk actions">
-      <Button type="button" disabled={busy||!loaded||!supplier||!date||!venue||(!ready.length&&!ignoredKeys.length&&!rows.some(row=>row.savedRevision!=null))} onClick={()=>void approve()}>{busy?"Working…":`Approve All Matched Lines (${ready.length})`}</Button>
+      <Button type="button" disabled={busy||!loaded||missingDetails.length>0||(!ready.length&&!ignoredKeys.length&&!rows.some(row=>row.savedRevision!=null))} onClick={()=>void approve()}>{busy?"Working…":`Approve All Matched Lines (${ready.length})`}</Button>
       <Button type="button" variant="secondary" disabled={busy||!loaded||rows.length>=200} onClick={addLine}>+ Add Line</Button>
       <label className="ml-auto text-xs"><input type="checkbox" checked={draft.showIgnored} onChange={event=>update(previous=>({...previous,showIgnored:event.target.checked}))}/> Show ignored rows ({rows.filter(row=>row.ignored).length})</label>
     </div>
-    <p className="px-3 pb-3 text-xs text-zinc-500">Tab across · Enter / ↑ ↓ down a column · Alt+↑ ↓ between ingredient rows · Delete a focused row to ignore. USD. Packs and ingredient mappings are remembered by default.</p>
+    <details className="px-3 pb-3 text-xs text-zinc-500">
+      <summary className="cursor-pointer">Review tips</summary>
+      <p className="mt-1">Tab across cells. Use Enter or ↑ ↓ down a column, Alt+↑ ↓ between ingredient rows, and Delete on a focused row to ignore it. Packs and ingredient mappings are remembered by default. Amounts are in USD.</p>
+    </details>
     {recovered&&<p className="px-3 pb-2 text-xs text-zinc-500">Your invoice edits were restored.</p>}
     {!loaded&&<p role="status" className="p-3 text-sm">Loading invoice lines…</p>}
     {loaded&&!data?.draft&&<div className="p-3"><Button type="button" variant="secondary" disabled={busy} onClick={()=>void recognize()}>Run local invoice OCR</Button></div>}
     {recognizing&&<Button type="button" variant="secondary" onClick={()=>abort.current?.abort()}>Cancel OCR</Button>}
-    <div ref={grid} data-edit-grid onKeyDown={navigate} className="overflow-x-auto">
-      <fieldset disabled={busy} className="min-w-[880px]">
-        <table className="w-full table-fixed text-left text-sm" aria-label="Editable invoice lines"><thead className="border-y border-hairline bg-stone text-xs"><tr>
-          <th className="w-8 p-2">Include</th><th className="w-44 p-2">Vendor SKU / OCR description</th><th className="w-48 p-2">Matched ingredient</th><th className="w-12 p-2">Qty</th><th className="w-28 p-2">Pack / unit size</th><th className="w-24 p-2">Line total ($)</th><th className="w-24 p-2">Computed unit cost</th><th className="w-8" aria-label="Ignore"/>
-        </tr></thead><tbody>{visible.map(row=>{
-          const result=review(row),item=catalog.find(item=>item.id===row.itemId),saved=lines.find(line=>line.id===row.purchaseId);
+    {status&&<p role="status" className="border-t border-hairline p-3 text-sm">{status}</p>}
+    <div ref={grid} data-edit-grid onKeyDown={navigate} className="md:overflow-x-auto">
+      <fieldset disabled={busy} className="min-w-0 md:min-w-[880px]">
+        <table role="table" className="block w-full table-fixed text-left text-sm md:table" aria-label="Editable invoice lines"><thead role="rowgroup" className="sr-only border-y border-hairline bg-stone text-xs md:not-sr-only md:table-header-group"><tr role="row">
+          <th className="w-8 p-2" aria-label="Include">In</th><th className="w-44 p-2">Vendor SKU / OCR description</th><th className="w-48 p-2">Matched ingredient</th><th className="w-12 p-2">Qty</th><th className="w-28 p-2">Pack / unit size</th><th className="w-24 p-2">Line total ($)</th><th className="w-24 p-2">Computed unit cost</th><th className="w-8" aria-label="Ignore"/>
+        </tr></thead><tbody role="rowgroup" className="block md:table-row-group">{visible.map(({ row, result })=>{
+          const item=catalog.find(item=>item.id===row.itemId),saved=lines.find(line=>line.id===row.purchaseId);
           const delta=priceVariance(saved?.previousUnitCost??item?.unitCost??null,result.newPrice);
-          return <tr key={row.key} data-row-key={row.key} tabIndex={0} onFocus={()=>focusRow(row)} onClick={()=>focusRow(row)} className={`border-b border-hairline align-top ${selected===row.key?"bg-blue-500/5":""} ${row.ignored?"opacity-50":""}`}>
-            <td className="p-3"><input aria-label={`Include ${row.rawDescription||"new line"}`} type="checkbox" checked={!row.ignored} onChange={event=>patch(row.key,{ignored:!event.target.checked})}/></td>
-            <td className="p-1"><textarea aria-label="OCR description" data-grid-column="description" rows={2} title={row.rawDescription} className={`${cellClass} resize-none whitespace-normal font-semibold leading-tight`} maxLength={500} value={row.rawDescription} placeholder="Description" onChange={event=>patch(row.key,{rawDescription:event.target.value})}/><div className="flex items-center gap-1 px-2 text-xs text-zinc-500"><input {...gridCell("code","Vendor SKU")} className="w-20 min-w-0 bg-transparent outline-none focus:ring-1 focus:ring-form-focus" maxLength={100} placeholder="SKU" value={row.rawCode??""} onChange={event=>patch(row.key,{rawCode:event.target.value||null})}/><span className="truncate" title={row.rawText}>{row.rawText.match(/\d+(?:\.\d+)?\s*[/x]\s*\d+(?:\.\d+)?\s*(?:OZ|LB|KG|GR|G|EA)\b/i)?.[0]||""}</span></div></td>
-            <td className="p-1"><ComboPicker name={`ingredient-${row.key}`} ariaLabel={`Ingredient for ${row.rawDescription||"new line"}`} options={catalog.map(item=>({id:item.id,label:item.label,keywords:`${item.sku??""} ${item.keywords??""}`,meta:`${money(item.unitCost??0,3)} / ${item.unit||""}`}))} valueId={row.itemId} defaultId={row.itemId} selectOnTab gridColumn="ingredient" onSelect={choice=>ingredient(row,choice?.id||"")}/><span className="mt-1 inline-block text-[10px]"><Badge color={row.itemId?"green":"amber"}>{row.confidence}</Badge></span><label className="ml-2 text-[10px] text-zinc-500"><input type="checkbox" checked={row.remember} onChange={event=>patch(row.key,{remember:event.target.checked})}/> Remember</label></td>
-            <td className="p-1"><input {...gridCell("quantity","Billed quantity")} type="number" step="any" min="0.000001" value={row.quantity??""} onChange={event=>patch(row.key,{quantity:numeric(event.target.value)})}/></td>
-            <td className="p-1"><input {...gridCell("pack","Pack / unit size")} aria-invalid={!parseInvoicePack(row.packText||"")} maxLength={100} placeholder="16 oz x 16" value={row.packText??""} onChange={event=>{const pack=parseInvoicePack(event.target.value);patch(row.key,{packText:event.target.value,...(pack??{packQty:null,packUnit:""})});}}/>{item?.eachWeightOz!=null&&<label className="block px-2 text-[10px] text-zinc-500">oz / each override<input {...gridCell("weight","Received weight oz per each")} type="number" min="0.000001" step="any" placeholder={String(item.eachWeightOz)} value={row.eachWeightOz??""} onChange={event=>patch(row.key,{eachWeightOz:numeric(event.target.value)})}/></label>}</td>
-            <td className="p-1"><input {...gridCell("amount","Line total ($)")} type="number" step="0.01" value={invoiceLineAmounts(row).total??""} onChange={event=>patch(row.key,{extendedPrice:numeric(event.target.value),totalMode:"entered"})}/></td>
-            <td className="p-2 text-xs tabular-nums">{result.newPrice!=null?<><strong>{money(result.newPrice,3)} / {item?.unit}</strong>{delta!==null&&!row.ignored&&<span className={`block ${delta>0?"text-amber-700":"text-emerald-700"}`}>{delta>=0?"+":""}{delta.toFixed(1)}% vs last price</span>}</>:<span className="text-zinc-500">Needs pack / match</span>}{!row.ignored&&result.problems.length>0&&<p className="mt-1 text-[10px] text-amber-700">{result.problems.join(" ")}</p>}{result.warnings.length>0&&<details className="mt-1 text-[10px] text-amber-700"><summary>Check OCR</summary>{result.warnings.join(" ")}</details>}</td>
-            <td className="py-2"><button type="button" aria-label={`${row.ignored?"Restore":"Ignore"} ${row.rawDescription||"new line"}`} className="rounded px-2 py-1 text-zinc-500 hover:bg-stone focus:ring-1" onClick={()=>patch(row.key,{ignored:!row.ignored})}>{row.ignored?"↶":"×"}</button></td>
+          return <tr role="row" key={row.key} data-row-key={row.key} tabIndex={0} onFocus={()=>focusRow(row)} onClick={()=>focusRow(row)} className={`grid grid-cols-6 gap-2 border-t border-hairline p-3 outline-offset-[-2px] focus-visible:outline-2 focus-visible:outline-form-focus md:table-row md:border-t-0 md:border-b md:p-0 md:align-top ${selected===row.key?"bg-blue-500/5":""} ${row.ignored?"opacity-50":""}`}>
+            <td role="cell" className="col-span-6 md:p-2"><label className="flex items-center gap-2"><input aria-label={`Include ${row.rawDescription||"new line"}`} type="checkbox" checked={!row.ignored} onChange={event=>patch(row.key,{ignored:!event.target.checked})}/><span className="text-xs text-zinc-500 md:hidden">Include in review</span></label></td>
+            <td role="cell" className="col-span-6 min-w-0 md:p-1"><span className={mobileLabel}>Description / SKU</span><textarea aria-label="OCR description" data-grid-column="description" rows={2} title={row.rawDescription} className={`${cellClass} resize-none whitespace-normal font-semibold leading-tight`} maxLength={500} value={row.rawDescription} placeholder="Description" onChange={event=>patch(row.key,{rawDescription:event.target.value})}/><div className="flex items-center gap-1 px-2 text-xs text-zinc-500"><input {...gridCell("code","Vendor SKU")} className="w-20 min-w-0 bg-transparent outline-none focus:ring-1 focus:ring-form-focus" maxLength={100} placeholder="SKU" value={row.rawCode??""} onChange={event=>patch(row.key,{rawCode:event.target.value||null})}/><span className="truncate" title={row.rawText}>{row.rawText.match(/\d+(?:\.\d+)?\s*[/x]\s*\d+(?:\.\d+)?\s*(?:OZ|LB|KG|GR|G|EA)\b/i)?.[0]||""}</span></div></td>
+            <td role="cell" className="col-span-6 min-w-0 md:p-1"><span className={mobileLabel}>Matched ingredient</span><ComboPicker name={`ingredient-${row.key}`} ariaLabel={`Ingredient for ${row.rawDescription||"new line"}`} options={catalog.map(item=>({id:item.id,label:item.label,keywords:`${item.sku??""} ${item.keywords??""}`,meta:`${money(item.unitCost??0,3)} / ${item.unit||""}`}))} valueId={row.itemId} defaultId={row.itemId} selectOnTab gridColumn="ingredient" onSelect={choice=>ingredient(row,choice?.id||"")}/><span className="mt-1 inline-block text-[10px]"><Badge color={row.itemId?"green":"amber"}>{row.confidence}</Badge></span><label className="ml-2 text-xs text-zinc-500 md:text-[10px]"><input type="checkbox" checked={row.remember} onChange={event=>patch(row.key,{remember:event.target.checked})}/> Remember</label></td>
+            <td role="cell" className="col-span-2 min-w-0 md:p-1"><span className={mobileLabel}>Billed qty</span><input {...gridCell("quantity","Billed quantity")} type="number" step="any" min="0.000001" value={row.quantity??""} onChange={event=>patch(row.key,{quantity:numeric(event.target.value)})}/></td>
+            <td role="cell" className="col-span-4 min-w-0 md:p-1"><span className={mobileLabel}>Pack / unit size</span><input {...gridCell("pack","Pack / unit size")} aria-invalid={!parseInvoicePack(row.packText||"")} maxLength={100} placeholder="16 oz x 16" value={row.packText??""} onChange={event=>{const pack=parseInvoicePack(event.target.value);patch(row.key,{packText:event.target.value,...(pack??{packQty:null,packUnit:""})});}}/>{item?.eachWeightOz!=null&&<label className="block px-2 text-[10px] text-zinc-500">oz / each override<input {...gridCell("weight","Received weight oz per each")} type="number" min="0.000001" step="any" placeholder={String(item.eachWeightOz)} value={row.eachWeightOz??""} onChange={event=>patch(row.key,{eachWeightOz:numeric(event.target.value)})}/></label>}</td>
+            <td role="cell" className="col-span-3 min-w-0 md:p-1"><span className={mobileLabel}>Line total ($)</span><input {...gridCell("amount","Line total ($)")} type="number" step="0.01" value={invoiceLineAmounts(row).total??""} onChange={event=>patch(row.key,{extendedPrice:numeric(event.target.value),totalMode:"entered"})}/></td>
+            <td role="cell" className="col-span-3 min-w-0 text-xs tabular-nums md:p-2"><span className={mobileLabel}>Cost per unit</span>{result.newPrice!=null?<><strong>{money(result.newPrice,3)} / {item?.unit}</strong>{delta!==null&&!row.ignored&&<span className={`block ${delta>0?"text-amber-700":"text-emerald-700"}`}>{delta>=0?"+":""}{delta.toFixed(1)}% vs last price</span>}</>:<span className="text-zinc-500">Needs pack / match</span>}{!row.ignored&&result.problems.length>0&&<p className="mt-1 text-xs text-amber-700 md:text-[10px]">{result.problems.join(" ")}</p>}{result.warnings.length>0&&<details className="mt-1 text-xs text-amber-700 md:text-[10px]"><summary>Check OCR</summary>{result.warnings.join(" ")}</details>}</td>
+            <td role="cell" className="hidden py-2 md:table-cell"><button type="button" aria-label={`${row.ignored?"Restore":"Ignore"} ${row.rawDescription||"new line"}`} className="rounded px-2 py-1 text-zinc-500 hover:bg-stone focus:ring-1" onClick={()=>patch(row.key,{ignored:!row.ignored})}>{row.ignored?"↶":"×"}</button></td>
           </tr>;
         })}</tbody></table>
       </fieldset>
       {loaded&&!visible.length&&<p className="p-4 text-sm">No active lines. Add a line or show ignored rows to restore one.</p>}
     </div>
-    {remaining.length>0&&<p className="px-3 pb-3 text-xs text-amber-700">{remaining.length} included lines need a match, pack or amount. Ready lines can be saved now; food spending commits when all included lines are ready.</p>}
-    {status&&<p role="status" className="border-t border-hairline p-3 text-sm">{status}</p>}
   </section>;
 }

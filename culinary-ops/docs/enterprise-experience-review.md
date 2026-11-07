@@ -35,7 +35,8 @@ Active UI backlog after these slices:
 - Delivered to main: Today/shared shell foundation, Daily Prep management cleanup, compact Closeout, and recipe catalog filters and phone costing summaries.
 - Ingredient catalog improvements build on that branch in `codex/ingredient-catalog-workspace`. Search, category, and review filters share one toolbar with result counts and 40 results per page. Desktop brings costs and price warnings forward and keeps keyboard editing. Phone summaries open the existing inspector and return to the same result.
 - Recipe-detail costing and editing build on the ingredient work in `codex/recipe-detail-workspace`. The batch overview flags incomplete or stale costs, and section links lead to the inputs, yield, method, dependencies, and history. Inspect ingredient prices and child recipe yields in place, or select a linked sub-recipe to update its quantity.
-- Next: invoice refinement, then persistent venue context, fuller navigation consolidation, and planning workspace consistency.
+- Invoice refinement gives phones labeled, editable line cards alongside the source/review switch. The review screen lists missing invoice details and provides a shortcut to rows needing attention. Returning to the filtered inbox saves the current draft first.
+- Next: persistent venue context, fuller navigation consolidation, and planning workspace consistency.
 - Deferred: Cook view, cook assignments/onboarding, and broader team rollout.
 
 ## Scope and confidence

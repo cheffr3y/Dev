@@ -62,6 +62,7 @@ export function InvoiceWorkspace({ document, children }: { document: Document; c
   const file = `/api/invoices/file?id=${encodeURIComponent(document.id)}`;
   const selectPage = useCallback((value: number, bbox?:SourceBox) => { setHighlight(bbox);setPage(Math.max(1, Math.min(document.pages, value))); }, [document.pages]);
   return <SourceContext.Provider value={selectPage}>
+    <div id="invoice-workspace" className="scroll-mt-20">
     <div className="sticky top-14 z-20 mb-3 flex gap-2 bg-cream py-2 lg:hidden" aria-label="Invoice workspace view">
       <Button type="button" variant={mobileSource ? "secondary" : "primary"} aria-pressed={!mobileSource} onClick={() => setMobileSource(false)}>Review lines</Button>
       <Button type="button" variant={mobileSource ? "primary" : "secondary"} aria-pressed={mobileSource} onClick={() => setMobileSource(true)}>View invoice · p{page}</Button>
@@ -88,6 +89,7 @@ export function InvoiceWorkspace({ document, children }: { document: Document; c
         </div>
       </section>
       <div className={`${mobileSource ? "hidden" : "block"} min-w-0 lg:block`}>{children}</div>
+    </div>
     </div>
   </SourceContext.Provider>;
 }

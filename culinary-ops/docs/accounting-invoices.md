@@ -8,7 +8,9 @@ Use **Add invoices · PDF or photo**, select the document and any supplier/refer
 
 On desktop, the source stays beside review. Use page controls and zoom to inspect the stored document; choosing a candidate line selects its source page. On a phone, the sticky **Review lines / View invoice** controls switch surfaces while retaining the current row and entered values.
 
-The review pane uses one editable spreadsheet for recognized, manually added and already saved purchases. Supplier, venue, invoice date and an optional invoice total live in the sticky header. The food-line total updates while editing; its difference from the invoice total remains visible. All invoices use USD automatically.
+Recognized, manually added and already saved purchases use the same editable rows. On desktop they appear in a spreadsheet with a sticky header. On a phone they appear as labeled cards that fit the screen. Supplier, venue, invoice date and an optional invoice total are above the rows. The food-line total updates while editing and shows any difference from the invoice total. All invoices use USD automatically.
+
+If a row needs attention, choose **Go to next line needing review** to focus it and bring its source page into view. **Back to invoice inbox** saves the draft and restores the inbox filters.
 
 Each included row has its OCR description and editable SKU, ingredient picker, billed quantity, shorthand pack, paid line total and normalized unit-cost preview. Examples of supported packs are `16 oz x 16`, `105/1.3OZ PK`, `30 LB CS` and `1 cs (5 lb)`. Selecting an ingredient fills its learned supplier pack, latest purchase pack or catalog defaults. An explicit pack recognized from a new invoice is retained until edited or a different ingredient is selected. Negative paid totals represent credits. Saved measurement snapshots and invoice-specific each weights remain part of normalization.
 
@@ -20,7 +22,7 @@ The local recognizer rebuilds full-width physical rows from positioned PDF text 
 
 Working drafts save to the signed-in manager/admin account independently for each invoice, including unfinished packs, rows, include/mapping choices, invoice metadata and document page/zoom. Drafts never approve prices. Save status and retry errors remain visible. Another tab editing the same account draft produces a conflict instead of overwriting it. Server purchase revisions also reject stale corrections. Pending drafts flush before approval; only a server-confirmed draft is durable after leaving the browser.
 
-**Discard invoice & start over** remains above the workspace. Its confirmation lists saved purchases and food spending that will be voided, clears working recognition/drafts, and permits uploading the same document again. Original accounting history and supplier mappings are retained. This UI requires no new database migration beyond the existing invoice learning and review-draft migrations.
+**Discard invoice & start over** is below the workspace. Its confirmation lists saved purchases and food spending that will be voided, clears working recognition/drafts, and permits uploading the same document again. Original accounting history and supplier mappings are retained. This UI requires no new database migration beyond the existing invoice learning and review-draft migrations.
 
 ## Accounting codes and exports
 

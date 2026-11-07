@@ -5,11 +5,11 @@ import Link from "next/link";
 import Form from "next/form";
 import { requirePrepUser } from "@/lib/auth/prep-session";
 import { prisma } from "@/lib/db/prisma";
-import { Badge, PageHeader, Card } from "@/components/ui";
+import { Badge, Button, Card, Input, PageHeader, Select } from "@/components/ui";
 import { InvoiceArchive } from "./InvoiceArchive";
 import { reviewDraftSchema } from "@/lib/invoices/review-draft";
 import { InvoiceDiscard } from "@/components/InvoiceDiscard";
-import { InvoiceDraftProvider } from "@/components/InvoiceDraftProvider";
+import { InvoiceDraftLink, InvoiceDraftProvider } from "@/components/InvoiceDraftProvider";
 import { InvoiceWorkspace } from "@/components/InvoiceWorkspace";
 import { InvoiceCompletion, type InvoiceCompletionData } from "@/components/InvoiceCompletion";
 import { invoiceStateLabels, invoiceStates, type InvoiceState } from "@/lib/invoices/inbox";
@@ -65,30 +65,59 @@ export default async function InvoicePage({ searchParams }: { searchParams: Prom
     const active = review[0].filter(line => !line.voided), food = active.filter(line => line.countsAsFood);
     completion = { id: selected.id, reviewState: selected.reviewState, lineRevision: selected.lineRevision, ocrRevision: selected.ocrRevision, saved: active.length, voided: review[0].length - active.length, ignored,
       foodTotal: food.reduce((sum, line) => sum + line.amountCents, 0), accounting: !food.length ? "not_needed" : !expense || expense.voided || expense.invoiceLineRevision == null ? "unconfirmed" : expense.invoiceReviewPending ? "changed" : "current",
-      changes: changed, recipes: affectedRecipes(graph, changed.map(change => change.id)).map(recipe => ({ id: recipe.id, name: recipe.name })), nextHref: next ? href({ id: next.id, page: null, state: null }) : null, inboxHref: href() };
+      changes: changed, recipes: affectedRecipes(graph, changed.map(change => change.id)).map(recipe => ({ id: recipe.id, name: recipe.name })), nextHref: next ? href({ id: next.id, page: null, state: null }) : null };
   }
   const inbox = <section id="invoice-inbox" aria-label="Invoice inbox" className="scroll-mt-20 space-y-4">
     <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-semibold">Invoice inbox</h2><span className="text-sm text-zinc-500">{total} invoices · Page {currentPage} of {pages}</span></div>
     <nav aria-label="Invoice status filters" className="flex flex-wrap gap-2">{[null, ...invoiceStates].map(value => <Link key={value ?? "ALL"} aria-current={value === filter ? "page" : undefined} className={`rounded-full border px-3 py-1.5 text-sm ${value === filter ? "border-primary bg-primary text-white" : "border-hairline bg-canvas"}`} href={href({ state: value, page: null })}>{value ? invoiceStateLabels[value] : "All"} · {counts.reduce((sum, row) => sum + (!value || row.reviewState === value ? row._count : 0), 0)}</Link>)}</nav>
-    <Form action="/invoices" className="flex flex-wrap items-end gap-3">
+    <Form action="/invoices" className="grid grid-cols-2 items-end gap-3 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
       {id && <input type="hidden" name="id" value={id} />}{filter && <input type="hidden" name="state" value={filter} />}
-      <label className="text-sm">Search invoices<input key={q} className="ml-2 rounded border border-hairline bg-canvas p-2" name="q" defaultValue={q} /></label>
-      <label className="text-sm">Vendor<select aria-label="Filter invoice vendor" key={vendor} className="ml-2 rounded border border-hairline bg-canvas p-2" name="vendor" defaultValue={vendor}><option value="">All vendors</option>{vendors.map(value => <option key={value.id} value={value.id}>{value.name}</option>)}</select></label>
-      <label className="text-sm">Order<select aria-label="Invoice order" key={sort} className="ml-2 rounded border border-hairline bg-canvas p-2" name="sort" defaultValue={sort}><option value="newest">Newest first</option><option value="oldest">Oldest first</option></select></label><button className="rounded border border-hairline px-3 py-2 text-sm" type="submit">Filter invoices</button>
+      <label className="col-span-2 min-w-0 text-sm md:col-span-1">
+        Search invoices
+        <Input key={q} name="q" defaultValue={q} placeholder="Filename, supplier or invoice #" />
+      </label>
+      <label className="min-w-0 text-sm">
+        Vendor
+        <Select aria-label="Filter invoice vendor" key={vendor} name="vendor" defaultValue={vendor}>
+          <option value="">All vendors</option>
+          {vendors.map(value => <option key={value.id} value={value.id}>{value.name}</option>)}
+        </Select>
+      </label>
+      <label className="min-w-0 text-sm">
+        Order
+        <Select aria-label="Invoice order" key={sort} name="sort" defaultValue={sort}>
+          <option value="newest">Newest first</option><option value="oldest">Oldest first</option>
+        </Select>
+      </label>
+      <Button type="submit" variant="secondary" className="col-span-2 md:col-span-1">Filter invoices</Button>
     </Form>
     <Card className="overflow-hidden"><table className="block w-full text-left text-sm md:table"><thead className="hidden md:table-header-group"><tr><th className="p-3">Invoice</th><th>Review</th><th>Progress</th><th>Accounting</th></tr></thead><tbody className="block md:table-row-group">{documents.map(document => <tr key={document.id} className="grid grid-cols-2 border-t border-hairline md:table-row"><td className="col-span-2 min-w-0 break-words p-3 md:max-w-64"><Link className="text-blue-600 underline" href={href({ id: document.id })}>{document.filename}</Link><p className="mt-1 text-xs text-zinc-500">{document.vendor?.name ?? "Unassigned vendor"}{document.invoiceNumber ? ` · ${document.invoiceNumber}` : ""}</p></td><td className="min-w-0 px-3 pb-3 md:p-3"><span className="mb-1 block text-xs text-zinc-500 md:hidden">Review</span><Badge color={document.reviewState === "COMPLETE" ? "green" : document.reviewState === "NEEDS_ATTENTION" ? "amber" : "blue"}>{invoiceStateLabels[document.reviewState as InvoiceState] ?? "Needs review"}</Badge></td><td className="min-w-0 px-3 pb-3 md:p-3"><span className="mb-1 block text-xs text-zinc-500 md:hidden">Progress</span>{document.candidateLineCount ? `${document.reviewedCandidateCount} / ${document.candidateLineCount} lines resolved` : "Manual review / recognition pending"}</td><td className="col-span-2 px-3 pb-3 md:p-3"><span className="mb-1 block text-xs text-zinc-500 md:hidden">Accounting</span>{document.foodExpense && !document.foodExpense.voided ? <><span className="tabular-nums">{money(document.foodExpense.amountCents / 100)}</span><span className="block text-xs text-zinc-500">{document.foodExpense.invoiceLineRevision === document.lineRevision ? "Confirmed" : "Reconfirmation needed"}</span></> : document._count.purchaseLines === 0 && ["COMPLETE", "READY"].includes(document.reviewState) ? "No food lines" : "Not confirmed"}</td></tr>)}</tbody></table>{!documents.length && <p className="p-5 text-sm text-zinc-500">No invoices match this view.</p>}</Card>
     {pages > 1 && <nav aria-label="Invoice pages" className="flex justify-between text-sm">{currentPage > 1 ? <Link href={href({ page: String(currentPage - 1) })}>← Previous page</Link> : <span />}{currentPage < pages && <Link href={href({ page: String(currentPage + 1) })}>Next page →</Link>}</nav>}
   </section>;
-  return <div className="space-y-5"><PageHeader title="Invoices" subtitle="Review purchases, protect ingredient costs, and keep accounting clear." action={<Link href="#invoice-upload" className="text-sm text-blue-600 underline">Add invoices →</Link>} />
+  return <div className="space-y-5">
+    {!selected && <PageHeader title="Invoices" subtitle="Review purchases, protect ingredient costs, and keep accounting clear." action={<Link href="#invoice-upload" className="text-sm text-blue-600 underline">Add invoices →</Link>} />}
     {discarded === "1" && !selected && <p role="status" className="text-sm">Invoice discarded. Upload an invoice below to start fresh.</p>}
     {!selected && inbox}
     <div id="invoice-upload"><InvoiceArchive vendors={vendors} compact={!!selected} /></div>
     {id && !selected && <p role="alert" className="text-sm">Invoice not found.</p>}
     {selected && review && <div id="invoice-review" className="scroll-mt-20"><InvoiceDraftProvider key={selected.id} documentId={selected.id} sourceRevision={selected.ocrRevision} initial={initialDraft}>
-      <InvoiceDiscard documentId={selected.id} filename={selected.filename} lineRevision={selected.lineRevision} ocrRevision={selected.ocrRevision} savedLines={review[0].filter(line => !line.voided).length} expense={spending ? { revision: spending.revision, active: !spending.voided, amountCents: spending.amountCents } : null} />
+      <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <InvoiceDraftLink href={href()} className="text-sm text-blue-600 underline">← Back to invoice inbox</InvoiceDraftLink>
+          <h1 className="mt-2 break-words text-xl font-semibold">{selected.filename}</h1>
+          <p className="mt-1 break-words text-sm text-zinc-500">
+            {selected.vendor?.name ?? "Unassigned vendor"}{selected.invoiceNumber ? ` · Invoice #${selected.invoiceNumber}` : ""}
+          </p>
+        </div>
+        <Badge color={selected.reviewState === "COMPLETE" ? "green" : selected.reviewState === "NEEDS_ATTENTION" ? "amber" : "blue"}>
+          {invoiceStateLabels[selected.reviewState as InvoiceState] ?? "Needs review"}
+        </Badge>
+      </header>
       {completion && <InvoiceCompletion data={completion} />}
       <InvoiceWorkspace document={selected}><InvoicePurchaseReview defaultVenueId={user.homeVenueId} invoice={{ id: selected.id, filename: selected.filename, vendor: selected.vendor?.name ?? null, invoiceNumber: selected.invoiceNumber }} vendorId={selected.vendorId} lineRevision={selected.lineRevision} lines={review[0]} expense={expense} vendors={vendors} venues={review[1].map(venue => ({ id: venue.id, name: venue.name }))} items={review[2].map(item => {const learned=review[5].find(alias=>alias.itemId===item.id);return { ...item, label: item.name, meta: `${item.unit} · ${item.vendor?.name ?? "No catalog vendor"}`, keywords: [item.sku, item.gcode, item.vendor?.name].filter(Boolean).join(" "),invoiceDefaults:learned?{unit:learned.defaultUnit,packQty:learned.defaultPackQty,packUnit:learned.defaultPackUnit,rawCode:learned.rawCode}:null };})} /></InvoiceWorkspace>
+      <div className="mt-4">
+        <InvoiceDiscard documentId={selected.id} filename={selected.filename} lineRevision={selected.lineRevision} ocrRevision={selected.ocrRevision} savedLines={review[0].filter(line => !line.voided).length} expense={spending ? { revision: spending.revision, active: !spending.voided, amountCents: spending.amountCents } : null} />
+      </div>
     </InvoiceDraftProvider></div>}
-    {selected && inbox}
   </div>;
 }

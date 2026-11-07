@@ -1,6 +1,8 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { emptyReviewDraft, serializeReviewDraft, ReviewDraftConflict, ReviewDraftSaver, type DraftSaveState, type ReviewDraft, type SavedReviewDraft } from "@/lib/invoices/review-draft";
 import { Button } from "./ui";
 
@@ -10,6 +12,21 @@ export function useInvoiceDraft() {
   const context = useContext(Context);
   if (!context) throw new Error("Invoice review needs its draft provider.");
   return context;
+}
+
+export function InvoiceDraftLink({ href, className, children }: { href: string; className?: string; children: ReactNode }) {
+  const { flush } = useInvoiceDraft();
+  const router = useRouter();
+
+  return (
+    <Link href={href} className={className} onNavigate={event => {
+      event.preventDefault();
+      // The provider shows retry or conflict recovery if the save fails.
+      void flush().then(() => router.push(href), () => {});
+    }}>
+      {children}
+    </Link>
+  );
 }
 
 export function InvoiceDraftProvider({ documentId, sourceRevision, initial, children }: { documentId: string; sourceRevision: number; initial: SavedReviewDraft; children: ReactNode }) {

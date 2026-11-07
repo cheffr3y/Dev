@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { patchUrl } from "@/lib/workspace/url-state";
 import { useDocumentQueue } from "@/components/useDocumentQueue";
@@ -7,10 +7,20 @@ import { DocumentQueueStatus } from "@/components/DocumentQueueStatus";
 import { Button, Card, Input, Select, Textarea } from "@/components/ui";
 export function InvoiceArchive({vendors,compact=false}:{vendors:{id:string;name:string}[];compact?:boolean}) {
  const router=useRouter(),[error,setError]=useState("");
+ // File capture and OCR require the client handlers to be ready.
+ const mounted = useSyncExternalStore(() => () => {}, () => true, () => false);
  const activeOcr=useRef<AbortController|null>(null);
  useEffect(()=>()=>activeOcr.current?.abort(),[]);
  const { entries, enqueue, retry } = useDocumentQueue("/api/invoices", id => {
-  const target=new URL(patchUrl(window.location.href,{id}),window.location.origin);target.hash="invoice-review";router.push(`${target.pathname}${target.search}${target.hash}`);router.refresh();
+  const current = new URL(window.location.href);
+  const target = new URL(patchUrl(current.href, { id }), current.origin);
+  target.hash = "invoice-review";
+  if (current.searchParams.get("id") === id) {
+   router.refresh();
+   document.getElementById("invoice-review")?.scrollIntoView();
+  } else {
+   router.push(`${target.pathname}${target.search}${target.hash}`);
+  }
  },async(id,task,report)=>{
   const controller=new AbortController();activeOcr.current=controller;
   try {
@@ -29,9 +39,9 @@ export function InvoiceArchive({vendors,compact=false}:{vendors:{id:string;name:
   enqueue(files, ["vendorId", "invoiceNumber", "notes"].map(name => [name, String(data.get(name) ?? "")]));
   form.reset();
  }
- return <Card className="p-5"><form aria-label="Store invoice" className="space-y-4" onSubmit={event=>{event.preventDefault();void save(event.currentTarget);}} onDragOver={event=>event.preventDefault()} onDrop={event=>{event.preventDefault();save(event.currentTarget,Array.from(event.dataTransfer.files));}}>
+ return <Card className={compact ? "px-4 py-2" : "p-5"}><form aria-label="Store invoice" className="space-y-4" onSubmit={event=>{event.preventDefault();void save(event.currentTarget);}} onDragOver={event=>event.preventDefault()} onDrop={event=>{event.preventDefault();save(event.currentTarget,Array.from(event.dataTransfer.files));}}>
   <details open={!compact}><summary className="cursor-pointer text-sm font-medium">＋ Add invoices · PDF or photo</summary><div className="mt-4 space-y-4"><p className="text-sm text-zinc-500">Drop a PDF/photo here, choose a file, or take a photo. Up to 8 MB and 20 PDF pages. A readable compact copy is stored with a preview. Metadata applies to all selected files. Keep this page open until the queue finishes.</p>
-  <fieldset className="space-y-4">
+  <fieldset disabled={!mounted} className="space-y-4">
    <label className="block text-sm">Invoice PDF or photo<Input aria-label="Invoice PDF or photo" type="file" multiple name="file" accept="application/pdf,image/jpeg,image/png,image/webp" /></label>
    <label className="block text-sm">Or take a photo<Input aria-label="Take invoice photo" type="file" accept="image/*" capture="environment" onChange={event=>{const file=event.target.files?.[0];if(file&&event.currentTarget.form)save(event.currentTarget.form,[file]);}} /></label>
    <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm">Vendor (optional)<Select name="vendorId" aria-label="Invoice vendor"><option value="">Unassigned</option>{vendors.map(vendor=><option key={vendor.id} value={vendor.id}>{vendor.name}</option>)}</Select></label><label className="text-sm">Invoice number (optional)<Input name="invoiceNumber" maxLength={120} /></label></div>

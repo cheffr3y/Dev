@@ -3,12 +3,13 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { money } from "@/lib/recipes/costing";
+import { InvoiceDraftLink } from "./InvoiceDraftProvider";
 import { Button, Card } from "./ui";
 
 export type InvoiceCompletionData = {
   id: string; reviewState: string; lineRevision: number; ocrRevision: number;
   saved: number; voided: number; ignored: number; foodTotal: number;
-  accounting: "unconfirmed" | "current" | "changed" | "not_needed"; nextHref: string | null; inboxHref: string;
+  accounting: "unconfirmed" | "current" | "changed" | "not_needed"; nextHref: string | null;
   changes: { id: string; name: string; before: number; after: number; unit: string }[];
   recipes: { id: string; name: string }[];
 };
@@ -23,7 +24,10 @@ export function InvoiceCompletion({ data }: { data: InvoiceCompletionData }) {
     </div>
     <p className="text-sm">Food-line total <strong className="tabular-nums">{money(data.foodTotal / 100)}</strong> · {data.accounting === "not_needed" ? "No food lines to confirm" : data.accounting === "current" ? "Accounting total confirmed" : data.accounting === "changed" ? "Accounting total needs reconfirmation" : "Accounting total not yet confirmed"}</p>
     <details><summary className="cursor-pointer text-sm">{data.changes.length} ingredient {data.changes.length===1?"price":"prices"} changed · {data.recipes.length} affected {data.recipes.length===1?"recipe":"recipes"}</summary><div className="mt-3 space-y-2 text-sm">{data.changes.map(change => <p key={`${change.id}:${change.unit}`}><Link href={`/items/${change.id}`} className="text-blue-600 underline">{change.name}</Link> · {money(change.before, 5)} → {money(change.after, 5)} / {change.unit}</p>)}<div className="flex flex-wrap gap-3">{data.recipes.map(recipe => <Link className="text-blue-600 underline" key={recipe.id} href={`/recipes/${recipe.id}`}>{recipe.name}</Link>)}</div>{!data.changes.length && <p className="text-zinc-500">No catalog price changes were recorded for this invoice.</p>}</div></details>
-    <div className="flex flex-wrap gap-3 text-sm"><button type="button" className="text-blue-600 underline" onClick={() => { const grid = document.getElementById("invoice-accounting"); grid?.scrollIntoView({ block: "start" }); }}>Review food total / saved lines</button>{complete && data.nextHref && <Link className="font-medium text-blue-600 underline" href={data.nextHref}>Review next invoice →</Link>}<Link href={data.inboxHref} className="text-blue-600 underline">Back to invoice inbox</Link></div>
+    <div className="flex flex-wrap gap-3 text-sm">
+      <a href="#invoice-workspace" className="text-blue-600 underline">Go to invoice workspace</a>
+      {complete && data.nextHref && <InvoiceDraftLink className="font-medium text-blue-600 underline" href={data.nextHref}>Review next invoice →</InvoiceDraftLink>}
+    </div>
     {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
   </Card>;
 }
