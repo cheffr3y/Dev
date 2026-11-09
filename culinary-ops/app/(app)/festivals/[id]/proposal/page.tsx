@@ -2,10 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/session";
-import { buildForecast } from "@/lib/menus/festival";
-import { buildFestivalAccounting } from "@/lib/menus/festival-accounting";
-import { banquetRecipeSelect, buildBanquetPlan, type BanquetLine } from "@/lib/banquets/banquet";
-import { money, num, priceGapNames } from "@/lib/recipes/costing";
+import { buildFestivalProposal } from "@/lib/menus/festival-proposal";
+import { banquetRecipeSelect } from "@/lib/banquets/banquet";
+import { money, num } from "@/lib/recipes/costing";
 import { Badge } from "@/components/ui";
 import { PrintButton } from "@/components/PrintButton";
 import { STATUS_COLOR, statusLabel } from "@/lib/banquets/event-status";
@@ -32,63 +31,17 @@ export default async function FestivalProposalPage({ params }: { params: Promise
   if (!festival) notFound();
 
   const menuItems = festival.tents.flatMap((tent) => tent.menuItems);
-  const linked = menuItems.filter((item) => item.recipe != null);
-  const recipes = linked.length
-    ? await prisma.recipe.findMany({ select: { ...banquetRecipeSelect, name: true } })
+  const recipes = menuItems.some((item) => item.recipe)
+    ? await prisma.recipe.findMany({ select: banquetRecipeSelect })
     : [];
-  const forecast = buildForecast(
-    { attendance: festival.expectedAttendance, captureRate: festival.captureRate, bufferPct: festival.bufferPct },
-    menuItems.map((item) => ({
-      id: item.id,
-      mixPct: item.mixPct,
-      price: item.price,
-      chefOverride: item.chefOverride,
-      bufferPctOverride: item.bufferPctOverride,
-    })),
-  );
-  const forecastById = new Map(forecast.rows.map((row) => [row.id, row]));
-  const lines: BanquetLine[] = linked.map((item) => ({
-    recipeId: item.recipeId!,
-    recipeName: item.recipe!.name,
-    orderedQty: forecastById.get(item.id)?.finalPrepPortions ?? 0,
-    unit: item.recipe!.yieldUnit,
-  }));
-  const plan = buildBanquetPlan(lines, recipes);
-  const costByMenuItemId = new Map(linked.map((item, index) => [item.id, plan.lineCosts[index]?.cost ?? 0]));
-  const accounting = buildFestivalAccounting(forecast.totals.revenue, plan.totalCost, {
-    laborHours: festival.laborHours,
-    laborRate: festival.laborRate,
-    boothFee: festival.boothFee,
-    equipmentCost: festival.equipmentCost,
-    disposablesCost: festival.disposablesCost,
-    transportCost: festival.transportCost,
-    otherCost: festival.otherCost,
-    salesFeePct: festival.salesFeePct,
-    targetMarginPct: festival.targetMarginPct,
-  });
-
-  const nameByItemId = new Map<string, string>();
-  for (const recipe of recipes) for (const ri of recipe.items) nameByItemId.set(ri.item.id, ri.item.name);
-  const priceGaps = priceGapNames(
-    recipes.map((recipe) => ({
-      id: recipe.id,
-      items: recipe.items.map((ri) => ({
-        itemId: ri.item.id,
-        unitCost: ri.item.unitCost,
-        priceUpdatedAt: ri.item.priceUpdatedAt,
-      })),
-      components: recipe.components,
-    })),
-    linked.map((item) => item.recipeId!),
-    nameByItemId,
-  );
+  const { forecast, forecastById, plan, costByMenuItemId, accounting, priceGaps, unlinkedCount } =
+    buildFestivalProposal(festival, menuItems, recipes);
 
   const projectedCovers = Math.round(festival.expectedAttendance * festival.captureRate);
   const avgCheck = projectedCovers > 0 ? forecast.totals.revenue / projectedCovers : null;
   const targetAvgCheck = projectedCovers > 0 && accounting.targetRevenue != null ? accounting.targetRevenue / projectedCovers : null;
   const margin = accounting.netMarginPct;
   const meetsTarget = margin != null && margin >= festival.targetMarginPct;
-  const unlinkedCount = menuItems.length - linked.length;
   const hasCostRisk = unlinkedCount > 0 || priceGaps.unpriced.length > 0 || priceGaps.stale.length > 0;
   const approvalReady = menuItems.length > 0 && !hasCostRisk;
   const preparedOn = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });

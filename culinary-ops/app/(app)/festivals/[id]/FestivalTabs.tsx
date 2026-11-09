@@ -17,6 +17,7 @@ export function FestivalTabs({ festivalId }: { festivalId: string }) {
     { href: `${base}/prep-sheet`, label: "Prep Sheet" },
     { href: `${base}/order-guide`, label: "Order Guide" },
     { href: `${base}/proposal`, label: "Proposal" },
+    { href: `${base}/packet`, label: "Print Packet" },
   ];
 
   return (
@@ -27,6 +28,7 @@ export function FestivalTabs({ festivalId }: { festivalId: string }) {
           <Link
             key={t.href}
             href={t.href}
+            aria-current={active ? "page" : undefined}
             className={cn(
               "-mb-px border-b-2 px-4 py-2 text-sm transition-colors",
               active

@@ -1,0 +1,72 @@
+.sheet {
+  padding: 1.25rem;
+  border: 1px solid #d4d4d8;
+  background: white;
+}
+
+.nextSheet {
+  margin-top: 1.75rem;
+}
+
+.sectionTitle {
+  margin-block: 0.75rem 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  break-after: avoid;
+}
+
+.tableWrap {
+  margin-top: 0.75rem;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  font-size: 0.8125rem;
+  line-height: 1.3;
+  text-align: left;
+}
+
+.table :is(th, td) {
+  padding: 0.35rem 0.4rem;
+  border-bottom: 1px solid #e4e4e7;
+  vertical-align: top;
+}
+
+.table thead {
+  background: #f4f4f5;
+}
+
+.number {
+  white-space: nowrap;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+@media print {
+  :global(.ops-theme):has(.packet) {
+    background: white;
+  }
+
+  .packet .sheet {
+    border: 0;
+    padding: 0;
+  }
+
+  .nextSheet {
+    margin-top: 0;
+    break-before: page;
+  }
+
+  .tableWrap {
+    overflow: visible;
+  }
+
+  .table thead {
+    display: table-header-group;
+  }
+
+  .table tr {
+    break-inside: avoid;
+  }
+}
