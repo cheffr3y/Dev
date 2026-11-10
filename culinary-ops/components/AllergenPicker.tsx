@@ -5,17 +5,19 @@ import { MAJOR_ALLERGENS, COMMON_ALLERGENS, type Allergen } from "@/lib/recipes/
 export function AllergenPicker({
   selected,
   inherited = new Map(),
+  form,
 }: {
   selected: string[];
   inherited?: Map<string, string>;
+  form?: string;
 }) {
   const own = new Set(selected);
 
   return (
     <fieldset className="space-y-3">
       <legend className="mb-2 font-mono text-xs uppercase tracking-[0.02em] text-zinc-600">Allergens</legend>
-      <AllergenColumn label="Major (Big 9)" allergens={MAJOR_ALLERGENS} own={own} inherited={inherited} />
-      <AllergenColumn label="Also common" allergens={COMMON_ALLERGENS} own={own} inherited={inherited} />
+      <AllergenColumn label="Major (Big 9)" allergens={MAJOR_ALLERGENS} own={own} inherited={inherited} form={form} />
+      <AllergenColumn label="Also common" allergens={COMMON_ALLERGENS} own={own} inherited={inherited} form={form} />
     </fieldset>
   );
 }
@@ -25,11 +27,13 @@ function AllergenColumn({
   allergens,
   own,
   inherited,
+  form,
 }: {
   label: string;
   allergens: Allergen[];
   own: Set<string>;
   inherited: Map<string, string>;
+  form?: string;
 }) {
   return (
     <div>
@@ -51,6 +55,7 @@ function AllergenColumn({
               <input
                 type="checkbox"
                 name="allergen"
+                form={form}
                 value={a.key}
                 defaultChecked={checked}
                 disabled={isInherited}

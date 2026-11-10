@@ -1,0 +1,114 @@
+/* Recipe editor only. Print routes and the rest of the workspace retain their
+   existing theme; every panel remains mounted when its tab is hidden. */
+@layer components {
+  @media screen {
+    .recipe-editor-workspace {
+      --color-canvas: #151c24;
+      --color-cream: #10161e;
+      --color-stone: #24313b;
+      --color-hairline: #2b3743;
+      --color-ink: #edf3f5;
+      --color-primary: #087f64;
+      --color-zinc-50: #19222c;
+      --color-zinc-100: #26313b;
+      --color-zinc-200: #2b3743;
+      --color-zinc-300: #3a4a58;
+      --color-zinc-400: #8d9daa;
+      --color-zinc-500: #a1b1bd;
+      --color-zinc-600: #b4c2cc;
+      --color-zinc-700: #c5d0d8;
+      --color-zinc-800: #dbe4e9;
+      --color-zinc-900: #edf3f5;
+      --color-blue-600: #9bc9ef;
+      --color-gold: #81d6b5;
+      --color-emerald-600: #81d6b5;
+      --color-amber-100: #49351b;
+      --color-amber-700: #f1c979;
+      --color-red-50: #3e2429;
+      --color-red-200: #663c46;
+      --color-red-600: #f4a6ab;
+      --color-form-focus: #81d6b5;
+      color: var(--color-ink);
+      background: var(--color-cream);
+      color-scheme: dark;
+      border-radius: 0.75rem;
+      padding: 1rem;
+      min-width: 0;
+    }
+    .recipe-editor-workspace [hidden] { display: none !important; }
+    .recipe-editor-workspace :is(input, select, textarea) { min-width: 0; }
+    .recipe-editor-workspace :is(input:not([type="checkbox"]), select, textarea) { padding: 0.4rem 0.6rem; }
+    .recipe-editor-workspace input[type="checkbox"] { accent-color: #29a886; }
+    .recipe-editor-workspace button, .recipe-editor-workspace summary, .recipe-editor-workspace a { touch-action: manipulation; }
+    .recipe-editor-workspace :focus-visible { outline: 2px solid #81d6b5; outline-offset: 3px; }
+    .recipe-command-header { position: sticky; top: 3.5rem; z-index: 20; background: #10161ef5; backdrop-filter: blur(12px); padding: 0.5rem 0 0.85rem; border-bottom: 1px solid var(--color-hairline); }
+    .recipe-eyebrow { font-size: 0.625rem; text-transform: uppercase; letter-spacing: 0.07em; font-weight: 600; color: var(--color-zinc-500); }
+    .recipe-code { font-family: var(--font-mono); border: 1px solid #3b6156; border-radius: 4px; padding: 0.15rem 0.4rem; color: #9be3c8; background: #1b302b; }
+    .recipe-print-group { display: flex; border: 1px solid var(--color-hairline); border-radius: 6px; overflow: hidden; }
+    .recipe-print-group a { font-size: 0.6875rem; padding: 0.5rem 0.65rem; color: var(--color-zinc-600); white-space: nowrap; }
+    .recipe-print-group a + a { border-left: 1px solid var(--color-hairline); }
+    .recipe-print-group a:hover { background: #24313b; color: white; }
+    .recipe-editor-workspace .recipe-save { background: #087f64; color: white; padding: 0.5rem 0.9rem; }
+    .recipe-editor-workspace .recipe-save:hover { background: #099b78; }
+    .recipe-scale-pills { display: inline-flex; gap: 2px; padding: 3px; border-radius: 6px; background: #1c2631; }
+    .recipe-scale-pills button { min-width: 2rem; border-radius: 4px; padding: 0.2rem 0.4rem; font-size: 0.6875rem; color: var(--color-zinc-500); }
+    .recipe-scale-pills button[aria-pressed="true"] { background: #315c50; color: #c5f5e1; }
+    .recipe-editor-workspace .recipe-custom-scale { width: 4.5rem; font-size: 0.75rem; }
+    .recipe-preview-label { font-size: 0.6875rem; color: #9be3c8; }
+    .recipe-stale-pill { border: 1px solid #8b6530; background: #423019; color: #f5ce87; border-radius: 999px; padding: 0.3rem 0.65rem; font-size: 0.6875rem; font-weight: 600; }
+    .recipe-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.625rem; margin: 1rem 0; }
+    .recipe-kpi { min-width: 0; border: 1px solid var(--color-hairline); border-radius: 7px; background: var(--color-canvas); padding: 0.85rem; }
+    .recipe-kpi-value { margin-top: 0.5rem; font-size: 1.5rem; line-height: 1.3; letter-spacing: -0.03em; font-weight: 600; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+    .recipe-kpi-note { margin-top: 0.4rem; color: var(--color-zinc-500); font-size: 0.6875rem; line-height: 1.5; }
+    .recipe-editor-workspace .recipe-price-input { margin-top: 0.25rem; font-size: 1.35rem; font-weight: 600; padding: 0.1rem 0.3rem; border-color: transparent; border-bottom-color: #3a4a58; background: transparent; }
+    .recipe-tabs { display: flex; gap: 0.25rem; padding: 0.25rem; border: 1px solid var(--color-hairline); border-radius: 7px; background: #151c24; margin-bottom: 1rem; overflow-x: auto; }
+    .recipe-tabs button { flex: 1; white-space: nowrap; padding: 0.6rem 0.75rem; font-size: 0.75rem; color: var(--color-zinc-500); border-radius: 4px; }
+    .recipe-tabs button[aria-selected="true"] { background: #263a36; color: #a5e6cd; box-shadow: inset 0 -2px #57b594; }
+    .recipe-formula-table { min-width: 620px; }
+    .recipe-formula-table th { background: #1b252f; text-align: left; text-transform: uppercase; font-size: 0.625rem; letter-spacing: 0.04em; color: var(--color-zinc-500); font-weight: 500; }
+    .ops-theme .recipe-editor-workspace .recipe-formula-table :is(th, td) { padding: 0.65rem 0.75rem; vertical-align: top; }
+    .recipe-formula-table .text-right { text-align: right; }
+    .recipe-formula-table td { border-top: 1px solid #26313b; }
+    .recipe-formula-table th:first-child { width: 44%; }
+    .recipe-formula-table tbody tr:hover { background: #19232c; }
+    .recipe-formula-table tfoot { background: #1b252f; font-size: 0.75rem; font-weight: 600; }
+    .recipe-type-badge { border: 1px solid #3c4c58; border-radius: 3px; padding: 1px 4px; font-family: var(--font-mono); font-size: 8px; color: #a6b8c4; white-space: nowrap; }
+    .recipe-cost-share { display: block; height: 3px; width: 3.5rem; margin: 0.5rem 0 0 auto; background: #2a3944; border-radius: 99px; overflow: hidden; }
+    .recipe-cost-share > span { display: block; height: 100%; background: #609988; }
+    .recipe-row-actions { position: relative; min-width: 4.75rem; }
+    .recipe-row-actions > form { margin-top: 0.4rem; }
+    .recipe-row-actions details[open] { min-width: 16rem; }
+    .recipe-row-actions details[open] .recipe-sub-form { padding-top: 0.75rem; }
+    .recipe-quick-add { border-top: 1px solid var(--color-hairline); background: #19232c; padding: 0.75rem; border-radius: 0 0 7px 7px; }
+    .recipe-quick-add > div:first-child button { border: 1px solid transparent; border-radius: 4px; padding: 0.3rem 0.55rem; font-size: 0.6875rem; color: var(--color-zinc-500); }
+    .recipe-quick-add > div:first-child button[aria-pressed="true"] { border-color: #3b6156; background: #223b33; color: #a5e6cd; }
+    .recipe-method-step { padding: 0.35rem 0; }
+    .recipe-editor-workspace .recipe-method-action { background: #223730; border-color: #37564b; color: #abe1cc; font-size: 0.6875rem; letter-spacing: 0.04em; text-transform: uppercase; }
+    .recipe-delete { padding: 0.25rem 0.75rem; }
+    .recipe-compliance-fields > div { border: 0; padding-top: 0; }
+    .recipe-compliance-fields > div > .space-y-3 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+    .recipe-compliance-fields > div > .space-y-3 > * { margin: 0; }
+    .recipe-compliance-fields fieldset { grid-row: span 2; }
+    @media (hover: hover) and (pointer: fine) {
+      .recipe-row-actions > form, .recipe-row-actions > details:not([open]), .recipe-method-controls { opacity: 0.35; transition: opacity 120ms; }
+      .recipe-formula-table tr:is(:hover, :focus-within) .recipe-row-actions > *, .recipe-method-step:is(:hover, :focus-within) .recipe-method-controls { opacity: 1; }
+    }
+    @media (max-width: 1100px) {
+      .recipe-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 639px) {
+      .recipe-editor-workspace { padding: 0.65rem; margin-inline: -0.5rem; }
+      .recipe-command-header { top: 3.5rem; }
+      .recipe-command-header > div:first-child { flex-direction: column; align-items: stretch; }
+      .recipe-command-header h1 { font-size: 1.1rem; }
+      .recipe-command-header button, .recipe-command-header a, .recipe-tabs button { min-height: 2.5rem; }
+      .recipe-kpis { gap: 0.5rem; }
+      .recipe-kpi { padding: 0.65rem; }
+      .recipe-kpi-value { font-size: 1.25rem; }
+      .recipe-editor-workspace .recipe-price-input { font-size: 1.125rem; }
+      .recipe-compliance-fields > div > .space-y-3 { grid-template-columns: minmax(0, 1fr); }
+      .recipe-method-step { gap: 0.25rem; }
+      .recipe-method-controls { padding-inline: 0.25rem; }
+    }
+  }
+}

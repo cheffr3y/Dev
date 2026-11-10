@@ -15,9 +15,9 @@ type LinkedComponent = { childId: string; quantity: number; unit: string };
 // and the unit snaps to gallons, so you enter "2.5 gal", not a free-form value
 // the costing/scaling math can't interpret. Other convertible units are still
 // selectable (e.g. enter quarts of a gallon-yield sauce) and get converted.
-export function SubRecipeForm({ parentId, options, linked }: { parentId: string; options: Option[]; linked: LinkedComponent[] }) {
-  const [childId, setChildId] = useState("");
-  const [unit, setUnit] = useState("serving");
+export function SubRecipeForm({ parentId, options, linked, initialChildId = "" }: { parentId: string; options: Option[]; linked: LinkedComponent[]; initialChildId?: string }) {
+  const [childId, setChildId] = useState(initialChildId);
+  const [unit, setUnit] = useState(linked.find(component => component.childId === initialChildId)?.unit ?? "serving");
 
   const byId = useMemo(() => new Map(options.map((o) => [o.id, o])), [options]);
   const selected = byId.get(childId);
@@ -41,14 +41,16 @@ export function SubRecipeForm({ parentId, options, linked }: { parentId: string;
   }, [selected?.yieldUnit, existing?.unit]);
 
   return (
-    <div className="border-t border-zinc-100 p-4">
-      <form action={addSubRecipe} className="flex flex-wrap items-end gap-2">
+    <div className="recipe-sub-form">
+      <form action={addSubRecipe} aria-label={initialChildId ? "Edit sub-recipe" : "Add sub-recipe"} className="flex flex-wrap items-end gap-2">
         <input type="hidden" name="parentId" value={parentId} />
         <div className="min-w-[180px] flex-1">
           <Field label="Add sub-recipe">
             <ComboPicker
               options={comboOptions}
               name="childId"
+              defaultId={initialChildId}
+              selectOnTab
               placeholder="Search recipes…"
               onSelect={(o) => {
                 setChildId(o?.id ?? "");
@@ -65,7 +67,7 @@ export function SubRecipeForm({ parentId, options, linked }: { parentId: string;
         </div>
         <div className="w-32">
           <Field label="Unit">
-            <Select name="unit" value={unit} onChange={(e) => setUnit(e.target.value)} disabled={!selected}>
+            <Select name="unit" value={unit} onChange={(e) => setUnit(e.target.value)} disabled={!selected} onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }}>
               {unitGroups.map((g) => (
                 <optgroup key={g.group} label={g.group}>
                   {g.units.map((u) => (
@@ -82,11 +84,6 @@ export function SubRecipeForm({ parentId, options, linked }: { parentId: string;
           {existing ? "Update sub-recipe" : "Add"}
         </Button>
       </form>
-      <p className="mt-2 text-xs text-zinc-400">
-        {selected
-          ? `Quantity is measured in ${selected.name}'s yield (${num(selected.yieldQty)} ${selected.yieldUnit} per batch). Cost is its full cost ÷ yield, times the amount above.`
-          : "Choose a recipe to add it or update an existing quantity."}
-      </p>
     </div>
   );
 }

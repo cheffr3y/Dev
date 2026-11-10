@@ -23,11 +23,11 @@ async function openRecipe(name) {
 }
 
 async function setYield(qty, unit) {
-  const form = page.locator("#recipeForm");
+  const form = page.locator(".recipe-editor-workspace");
   await form.locator('[name="yieldQty"]').fill(String(qty));
   await form.locator('[name="yieldUnit"]').fill(unit);
   const response = page.waitForResponse((response) => response.request().method() === "POST");
-  await form.getByRole("button", { name: "Save changes", exact: true }).click();
+  await form.getByRole("button", { name: "Save Changes", exact: true }).click();
   await response;
   await page.reload();
 }
@@ -46,7 +46,7 @@ try {
   await page.setViewportSize({ width: 390, height: 844 });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   await page.screenshot({ path: join(output, "recipe-detail-phone.png"), caret: "initial" });
-  const item = page.getByRole("region", { name: "Recipe ingredients" }).getByRole("link", { name: "Roma Tomato", exact: true });
+  const item = page.getByRole("region", { name: "Recipe formula" }).getByRole("link", { name: "Roma Tomato", exact: true });
   await item.click();
   const inspector = page.getByRole("dialog");
   await inspector.getByRole("heading", { name: "Roma Tomato", exact: true }).waitFor();
@@ -97,17 +97,19 @@ try {
 
   await openRecipe("Allergen test soup");
   const subRecipes = page.locator("#recipe-sub-recipes");
+  const quickAdd = page.locator(".recipe-quick-add");
   const child = subRecipes.getByRole("link", { name: "Allergen test sauce", exact: true });
   await child.click();
   await inspector.getByRole("heading", { name: "Allergen test sauce", exact: true }).first().waitFor();
   await inspector.getByRole("button", { name: "Close inspector", exact: true }).click();
   await inspector.waitFor({ state: "detached" });
-  await subRecipes.getByRole("combobox", { name: "Search recipes…" }).fill("Allergen test sauce");
-  await subRecipes.getByRole("option").filter({ hasText: "Allergen test sauce" }).click();
-  const subQuantity = subRecipes.getByLabel("Qty", { exact: true });
+  await quickAdd.getByRole("button", { name: "+ Sub-Recipe", exact: true }).click();
+  await quickAdd.getByRole("combobox", { name: "Search recipes…" }).fill("Allergen test sauce");
+  await quickAdd.getByRole("option").filter({ hasText: "Allergen test sauce" }).click();
+  const subQuantity = quickAdd.getByRole("spinbutton", { name: "Qty", exact: true });
   assert.equal(await subQuantity.inputValue(), "1");
   await subQuantity.fill("2");
-  await subRecipes.getByRole("button", { name: "Update sub-recipe", exact: true }).click();
+  await quickAdd.getByRole("button", { name: "Update sub-recipe", exact: true }).click();
   await subRecipes.getByRole("row").filter({ hasText: "Allergen test sauce" }).getByText("2 qt", { exact: true }).waitFor();
   await page.getByRole("link", { name: "Print with Costing", exact: true }).click();
   await costs.getByText("Cost / qt", { exact: true }).waitFor();
