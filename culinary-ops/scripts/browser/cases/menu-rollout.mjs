@@ -72,7 +72,7 @@ try {
   await page.goto(`${base}/recipes/${foundation.id}`);
   assert.equal(await page.locator('select[name="category"]').inputValue(), "Stocks");
   await page.getByLabel("Prep (min)", { exact: true }).fill("5");
-  await save(page.locator("#recipeForm"), "Save changes");
+  await save(page.locator(".recipe-editor-workspace"), "Save Changes");
   assert.equal((await prisma.recipe.findUniqueOrThrow({ where: { id: foundation.id } })).category, "Stocks");
   await page.goto(`${base}/recipes/${dish.id}/print`);
   await page.locator(".recipe-dossier").waitFor();
@@ -86,9 +86,12 @@ try {
   await pdf("recipe-4x");
 
   await page.goto(`${base}/recipes/${dish.id}`);
-  assert.match(await page.getByRole("status").innerText(), /Unpriced seed oil/);
+  await page.getByRole("tab", { name: "Cost Rollup & Dependencies", exact: true }).click();
+  await page.getByRole("button", { name: "Expand all branches", exact: true }).click();
+  assert.match(await page.getByRole("region", { name: "Recipe dependency and rollup explorer", exact: true }).innerText(), /Unpriced seed oil/);
+  await page.getByRole("tab", { name: "Formula & Method", exact: true }).click();
   const ingredientRow = page.getByRole("row").filter({ hasText: "Leeks" });
-  await ingredientRow.getByText("Edit ingredient", { exact: true }).click();
+  await ingredientRow.getByText("Edit", { exact: true }).click();
   const ingredientForm = ingredientRow.locator("form").first();
   await ingredientForm.getByLabel("Group (optional)").fill("Blanching Greens");
   await ingredientForm.getByLabel("Sort order").fill("0");

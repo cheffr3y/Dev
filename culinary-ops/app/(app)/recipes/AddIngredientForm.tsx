@@ -94,6 +94,10 @@ export function AddIngredientForm({ recipeId, items, groupNames = [], nextSortOr
           </Select>
         </Field>
       </div>
+      <Button type="submit" disabled={!picked || pending}>
+        {pending ? "Adding…" : "Add"}
+      </Button>
+      <details className="w-full text-xs text-zinc-500"><summary className="w-fit cursor-pointer py-1">Prep note, group & sort order</summary><div className="mt-2 flex flex-wrap items-end gap-2">
       <div className="min-w-[150px] flex-1">
         <Field label="Prep / note">
           <Input name="note" placeholder="diced, room temp… (optional)" disabled={!picked || pending} />
@@ -101,11 +105,8 @@ export function AddIngredientForm({ recipeId, items, groupNames = [], nextSortOr
       </div>
       <div className="w-44"><Field label="Group (optional)"><Input aria-label="Group (optional)" name="groupName" list={`ingredient-groups-${recipeId}`} placeholder="Herb base, emulsion…" /><datalist id={`ingredient-groups-${recipeId}`}>{groupNames.map(name => <option key={name} value={name} />)}</datalist></Field></div>
       <div className="w-24"><Field label="Sort order"><Input name="sortOrder" type="number" min="0" step="1" defaultValue={nextSortOrder} /></Field></div>
-      <Button type="submit" disabled={!picked || pending}>
-        {pending ? "Adding…" : "Add"}
-      </Button>
-      {picked && <div className="w-full space-y-1 rounded-lg border border-hairline bg-cream p-3 text-xs text-zinc-500"><p>{picked.category} · {picked.vendor?.name ?? "No vendor"} · Item # {picked.sku ?? "—"} · GCODE {picked.gcode ?? "—"}</p><AllergenBadges allergens={picked.allergens} /><Link href={`/items/${picked.id}`} target="_blank" rel="noreferrer" className="inline-block text-blue-600 underline">Review ingredient details ↗</Link></div>}
-      <p className="w-full text-xs text-zinc-500">Type an ingredient → Tab to select → quantity → Tab → unit → Enter to add the next row. Optional notes and groups remain available.</p>
+      </div></details>
+      {picked && <div className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500"><span>{picked.category} · {picked.vendor?.name ?? "No vendor"}</span><AllergenBadges allergens={picked.allergens} /><Link href={`/items/${picked.id}`} target="_blank" rel="noreferrer" className="text-gold hover:underline">Ingredient details ↗</Link></div>}
       {state.error && <p role="alert" className="w-full text-sm text-red-600">{state.error}</p>}
     </form>
   );

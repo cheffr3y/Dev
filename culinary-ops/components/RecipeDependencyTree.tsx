@@ -8,33 +8,38 @@ import { money, preciseNum } from "@/lib/recipes/costing";
 import { allowedUnitsFor } from "@/lib/recipes/units";
 import { buildDependencyPlan, type ConsumerBranch, type DependencyBranch, type DependencyRecipe, type DependencyTotal } from "@/lib/recipes/recipe-dependencies";
 
+import { useRecipeWorkspace } from "./RecipeWorkspace";
+
 const estimatedMoney = (value: number | null) => value !== null && value > 0 && value < 0.00001 ? "<$0.00001" : money(value, value !== null && value > 0 && value < 0.01 ? 5 : 2);
 
 export function RecipeDependencyTree({ rootId, recipes, consumers, asOf }: {
   rootId: string; recipes: DependencyRecipe[]; consumers: { branches: ConsumerBranch[]; truncated: boolean }; asOf: string;
 }) {
   const root = recipes.find(recipe => recipe.id === rootId);
-  const [quantity, setQuantity] = useState(String(root?.yieldQty ?? 1));
-  const [unit, setUnit] = useState(root?.yieldUnit ?? "each");
+  const workspace = useRecipeWorkspace();
+  const [localQuantity, setQuantity] = useState(String(root?.yieldQty ?? 1));
+  const [localUnit, setUnit] = useState(root?.yieldUnit ?? "each");
+  const quantity = workspace ? (workspace.scale === null ? "" : String((root?.yieldQty ?? 1) * workspace.scale)) : localQuantity;
+  const unit = String(workspace ? root?.yieldUnit ?? "each" : localUnit);
   const [expanded, setExpanded] = useState(false);
   const validQuantity = quantity.trim() !== "" && Number.isFinite(Number(quantity)) && Number(quantity) > 0 && Number(quantity) <= 100000000;
   const plan = useMemo(() => buildDependencyPlan(rootId, recipes, validQuantity ? Number(quantity) : NaN, unit, new Date(asOf)), [rootId, recipes, validQuantity, quantity, unit, asOf]);
   const units = root ? [...new Set([root.yieldUnit, ...allowedUnitsFor(root.yieldUnit)])] : [];
   if (!plan || !root) return null;
-  return <Card className="mt-6 min-w-0" >
+  return <Card className="min-w-0" >
     <section aria-label="Recipe dependency and rollup explorer" className="recipe-dependency-explorer">
       <CardHeader>Dependency &amp; Rollup Tree</CardHeader>
       <div className="space-y-5 p-4">
         <p className="text-sm text-zinc-500">Explore this recipe’s inputs and where it is used. Preview quantities use current recipe yields and catalog prices. Each share is a percentage of its immediate parent’s ingredient cost.</p>
-        <form className="no-print flex flex-wrap items-end gap-3" onSubmit={event => event.preventDefault()}>
+        {!workspace && <form className="no-print flex flex-wrap items-end gap-3" onSubmit={event => event.preventDefault()}>
           <label className="min-w-0 text-sm">Preview quantity<Input aria-label="Dependency preview quantity" type="number" min="0.000001" max="100000000" step="any" value={quantity} onChange={event => setQuantity(event.target.value)} aria-invalid={!validQuantity || undefined} /></label>
           <label className="min-w-0 text-sm">Yield unit<Select aria-label="Dependency preview unit" value={unit} onChange={event => setUnit(event.target.value)}>{units.map(value => <option key={value} value={value}>{value}</option>)}</Select></label>
           <button type="button" className="rounded border border-hairline px-3 py-2 text-sm" onClick={() => { setQuantity(String(root.yieldQty)); setUnit(root.yieldUnit); }}>Reset to standard yield</button>
-        </form>
-        <p className="text-xs text-zinc-500">Preview only; saved recipes and orders are unchanged. Guest counts require a defined portion yield. Weight and volume yields use compatible quantities.</p>
+        </form>}
+        {!workspace && <p className="text-xs text-zinc-500">Preview only; saved recipes and orders are unchanged. Guest counts require a defined portion yield. Weight and volume yields use compatible quantities.</p>}
         {!validQuantity && <p role="alert" className="text-sm text-red-600">Enter a quantity greater than 0 and at most 100,000,000.</p>}
         <p role="status" className="text-sm"><strong>Preview cost estimate: <span className="tabular-nums" data-testid="dependency-total-cost">{estimatedMoney(plan.root.cost)}</span></strong> · <span className="tabular-nums">{plan.root.batches === null ? "Unknown scale" : `${preciseNum(plan.root.batches)}× standard batch`}</span></p>
-        {plan.stale && <p className="text-sm text-amber-700">Stale source prices are present. Cost estimates and shares need current supplier prices.</p>}
+        {!workspace && plan.stale && <p className="text-sm text-amber-700">Stale source prices are present. Cost estimates and shares need current supplier prices.</p>}
         {!plan.complete && <p className="rounded border border-amber-500 p-3 text-sm text-amber-700">Needs review: some costs or quantities are unknown. Known rows remain visible; totals are incomplete and affected cost shares are omitted.</p>}
         {plan.truncated && <p role="alert" className="text-sm text-amber-700">Large or deeply nested build: this preview is limited to 500 entries and 32 recipe levels. Demand totals below are partial.</p>}
         <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">Inputs feeding this recipe</h3><button type="button" className="no-print text-sm underline" onClick={() => setExpanded(value => !value)}>{expanded ? "Collapse branches" : "Expand all branches"}</button></div>

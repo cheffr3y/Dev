@@ -12,7 +12,7 @@ export type IngredientOption = IngredientMeasure & { id: string; name: string; u
 export function RecipeIngredientEditor({ recipeId, line, items, groupNames = [] }: { recipeId: string; line: { id: string; itemId: string; quantity: number; unit: string; note: string | null; groupName?: string | null; sortOrder?: number }; items: IngredientOption[]; groupNames?: string[] }) {
   const [picked, setPicked] = useState(items.find(item => item.id === line.itemId) ?? null);
   const [state, action, pending] = useActionState(updateRecipeIngredient, { error: "", saved: false });
-  return <details className="mt-2 font-normal"><summary className="cursor-pointer text-xs text-blue-600">Edit ingredient</summary>
+  return <details className="font-normal"><summary className="cursor-pointer text-xs text-gold">Edit</summary>
     <form action={action} className="mt-3 min-w-64 space-y-3 rounded-lg border border-hairline bg-cream p-3">
       <input type="hidden" name="id" value={line.id} /><input type="hidden" name="recipeId" value={recipeId} />
       <Field label="Ingredient"><ComboPicker selectOnTab ariaLabel="Ingredient" name="itemId" defaultId={line.itemId} options={items.map(item => ({ id: item.id, label: item.name, meta: `${money(item.unitCost, 5)} / ${item.unit}`, keywords: `${item.category} ${item.vendor?.name ?? ""} ${item.sku ?? ""} ${item.gcode ?? ""}` }))} onSelect={option => setPicked(items.find(item => item.id === option?.id) ?? null)} /></Field>

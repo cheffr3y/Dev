@@ -50,20 +50,22 @@ try {
   await manager.goto(base + soupPath);
   const soupUrl = manager.url();
   const form = manager.locator("#recipeForm");
+  const fields = manager.locator(".recipe-editor-workspace");
+  await manager.getByRole("tab", { name: "HACCP & Compliance", exact: true }).click();
   for (const key of ["milk", "soy", "mustard"]) {
-    const checkbox = form.locator(`input[name="allergen"][value="${key}"]`);
+    const checkbox = fields.locator(`input[name="allergen"][value="${key}"]`);
     assert.equal(await checkbox.isChecked(), true);
     assert.equal(await checkbox.isDisabled(), true);
   }
-  assert.equal(await form.locator('input[value="wheat"]').isChecked(), true);
+  assert.equal(await fields.locator('input[value="wheat"]').isChecked(), true);
   assert.deepEqual(await form.evaluate(el => new FormData(el).getAll("allergen")), ["wheat"]);
   console.log("Nested ingredient tags are locked; only the manual selection submits.");
   const saveRecipe = manager.waitForResponse(response => response.request().method() === "POST");
-  await form.getByRole("button", { name: "Save changes", exact: true }).click();
+  await manager.getByRole("button", { name: "Save Changes", exact: true }).click();
   await saveRecipe;
   console.log("Recipe save completed.");
   await manager.reload();
-  assert.equal(await form.locator('input[value="wheat"]').isChecked(), true);
+  assert.equal(await fields.locator('input[value="wheat"]').isChecked(), true);
   await manager.goto(`${soupUrl}/print`);
   const profile = manager.locator(".recipe-specs > div").last();
   for (const label of ["Milk", "Wheat", "Soy", "Mustard"]) assert.ok((await profile.innerText()).includes(label));
@@ -106,6 +108,7 @@ try {
   assert.equal(await staff.getByRole("link", { name: "edit / usage", exact: true }).count(), 0);
   await staff.getByRole("row").filter({ hasText: newIngredient }).getByText("Eggs", { exact: true }).waitFor();
   await staff.goto(soupUrl);
+  await staff.getByRole("tab", { name: "HACCP & Compliance", exact: true }).click();
   await staff.getByText("Wheat, Mustard", { exact: true }).waitFor();
   console.log("Ingredient creation persists tags; staff can read ingredients and inherited recipe allergens without editing controls.");
 } catch (error) {

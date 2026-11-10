@@ -67,7 +67,7 @@ export function MethodEditor({ initialSteps }: { initialSteps: string[] }) {
               setOverIndex(null);
             }}
             className={
-              "flex items-start gap-2 rounded-sm " +
+              "recipe-method-step group flex items-start gap-2 rounded-sm " +
               (overIndex === i ? "ring-1 ring-form-focus" : "")
             }
           >
@@ -79,7 +79,7 @@ export function MethodEditor({ initialSteps }: { initialSteps: string[] }) {
               ⠿
             </span>
             <span className="w-6 shrink-0 pt-2 text-right font-mono text-xs tabular-nums text-zinc-400">
-              {i + 1}.
+              {String(i + 1).padStart(2, "0")}
             </span>
             {/* Combined value the form actually submits. */}
             <input type="hidden" name="step" form="recipeForm" value={joinStep(step.action, step.detail)} />
@@ -89,7 +89,7 @@ export function MethodEditor({ initialSteps }: { initialSteps: string[] }) {
                 onChange={(e) => update(step.id, { action: e.target.value })}
                 placeholder="Action"
                 aria-label={`Step ${i + 1} action`}
-                className="w-full rounded-sm border border-zinc-300 bg-canvas px-3 py-2 text-sm font-semibold text-ink placeholder:font-normal placeholder:text-zinc-400 focus:border-form-focus focus:outline-none focus:ring-1 focus:ring-form-focus sm:w-40 sm:shrink-0"
+                className="recipe-method-action w-full rounded-sm border border-zinc-300 bg-canvas px-3 py-2 text-sm font-semibold text-ink placeholder:font-normal placeholder:text-zinc-400 focus:border-form-focus focus:outline-none focus:ring-1 focus:ring-form-focus sm:w-32 sm:shrink-0"
               />
               <input
                 value={step.detail}
@@ -99,11 +99,16 @@ export function MethodEditor({ initialSteps }: { initialSteps: string[] }) {
                 className="w-full rounded-sm border border-zinc-300 bg-canvas px-3 py-2 text-sm text-ink placeholder:text-zinc-400 focus:border-form-focus focus:outline-none focus:ring-1 focus:ring-form-focus"
               />
             </div>
+            <div className="recipe-method-controls flex shrink-0 flex-col">
+              <button type="button" disabled={i === 0} onClick={() => move(i, i - 1)} aria-label={`Move step ${i + 1} up`} className="px-1 text-xs text-zinc-500 disabled:opacity-30">↑</button>
+              <button type="button" disabled={i === steps.length - 1} onClick={() => move(i, i + 1)} aria-label={`Move step ${i + 1} down`} className="px-1 text-xs text-zinc-500 disabled:opacity-30">↓</button>
+            </div>
             <button
               type="button"
               onClick={() => remove(step.id)}
               title="Delete step"
-              className="shrink-0 rounded-sm p-2 text-zinc-400 transition-colors hover:bg-red-50 hover:text-red-600"
+              aria-label={`Delete step ${i + 1}`}
+              className="recipe-method-controls shrink-0 rounded-sm p-2 text-zinc-400 transition-colors hover:bg-red-50 hover:text-red-600"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4">
                 <path d="M6 7h12M9 7V5h6v2m-1 0v12H8V7m2 3v6m4-6v6" strokeLinecap="round" strokeLinejoin="round" />
