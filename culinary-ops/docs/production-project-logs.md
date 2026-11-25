@@ -30,7 +30,7 @@ Elapsed time is finish minus start, using server timestamps. It includes unatten
 
 - Apply `20261031000000_production_job_logs` with `prisma migrate deploy` before serving this application version. It adds the job table, relations, validation checks, and audit-protection trigger. Existing orders, snapshots and ledger values are not rewritten.
 - Normal `npm start` applies committed migrations before starting the server. Do not substitute `db push`; it omits the protection trigger.
-- Configure `APP_BASE_URL` to the public HTTPS origin phones can reach, for example `https://mise.example.com`. The auth origin and then the request origin are fallbacks. A local preview using localhost will produce localhost links unless the public origin is configured.
+- Configure `APP_BASE_URL` to the public HTTPS origin phones can reach, for example `https://angryshallot.com`. The auth origin and then the request origin are fallbacks. A local preview using localhost will produce localhost links unless the public origin is configured.
 - Codes contain project links, not a login bypass. A cook must sign in. QR generation runs locally in the application; no external QR service receives the link.
 - Existing paper without a QR remains usable. Open **Daily Prep → Start / finish a production project** to find a printed lot or active banquet project.
 

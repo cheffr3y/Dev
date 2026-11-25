@@ -197,7 +197,7 @@ export function Homestead({ userId, initialSave }: { userId: string; initialSave
 
   return <div className={styles.homestead}>
     <header className={styles.heading}>
-      <div><p className={styles.eyebrow}>Mise · The break room</p><h1>Willowbrook Acre<span> A little room to grow.</span></h1><p>Your own cozy homestead & animal sanctuary.</p></div>
+      <div><p className={styles.eyebrow}>angryshallot · The break room</p><h1>Willowbrook Acre<span> A little room to grow.</span></h1><p>Your own cozy homestead & animal sanctuary.</p></div>
       <div className={styles.headerActions}>
         <button type="button" onClick={() => setPanel("guide")}>Field guide <span aria-hidden="true">↗</span></button>
         <button type="button" onClick={() => setPanel("save")}>Save & settings</button>
@@ -256,7 +256,7 @@ export function Homestead({ userId, initialSave }: { userId: string; initialSave
     </div>
     {panel === "guide" && <Dialog title="The sanctuary field guide" onClose={() => setPanel(null)}><p className={styles.dialogIntro}>Grow a little haven for six good friends. Once they arrive, they stay. Each has one gift for you per garden day.</p><div className={styles.guide}>{FRIEND_IDS.map(id => <article key={id}><span aria-hidden="true">{FRIENDS[id].icon}</span><div><h3>{FRIENDS[id].name} <small>{FRIENDS[id].species}</small></h3><p>{FRIENDS[id].hint}</p><p>{FRIENDS[id].coins} coins{FRIENDS[id].wood ? ` + ${FRIENDS[id].wood} wood` : ""} per daily gift.</p><span aria-label={`${state.companions[id].hearts} of 5 hearts`}>{state.companions[id].unlocked ? "♥".repeat(state.companions[id].hearts) + "♡".repeat(5 - state.companions[id].hearts) : "Not yet visiting"}</span></div></article>)}</div></Dialog>}
     {panel === "save" && <Dialog title="Your little acre, kept safe" onClose={() => { setPanel(null); setResetConfirm(false); setImported(null); setFileError(""); }}>
-      <p className={styles.dialogIntro}>Your garden saves to your Mise account as you play. Growth pauses when you leave. Game supplies belong only to this garden.</p>
+      <p className={styles.dialogIntro}>Your garden saves to your angryshallot account as you play. Growth pauses when you leave. Game supplies belong only to this garden.</p>
       <div className={styles.settingRow}><div><strong>Soft garden sounds</strong><p>Gentle notes when you tend the meadow.</p></div><button type="button" aria-pressed={!muted} onClick={() => { setMuted(!muted); try { localStorage.setItem(`${storageKey}:sound`, muted ? "on" : "off"); } catch {} }}>{muted ? "Sound off" : "Sound on"}</button></div>
       <div className={styles.settingRow}><div><strong>A copy to keep</strong><p>Download your garden as a backup.</p></div><button type="button" onClick={download}>Download save</button></div>
       <div className={styles.import}><label htmlFor="homestead-import"><strong>Bring a garden with you</strong><p>Import a JSON backup, including one copied from the original Willowbrook HTML. You’ll review it before replacing your garden.</p></label><input id="homestead-import" type="file" accept=".json,application/json" disabled={disabled} onChange={async event => {

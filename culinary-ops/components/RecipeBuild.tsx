@@ -209,7 +209,7 @@ function RecipeSubBuilds(build: RecipeBuildProps) {
   if (components.length === 0) return null;
   return (
     <section className="recipe-supporting-builds mt-5 space-y-5" aria-label={`Supporting sub-recipes for ${node.name}`}>
-      <h3 className="font-display text-xl italic text-[#2C3E35]">Supporting sub-recipes</h3>
+      <h3 className="font-display text-xl italic text-[#4B1F3B]">Supporting sub-recipes</h3>
       {components.map((c) => {
         const child = byId.get(c.childId)!;
         const { batches } = componentBatchFactor(c.quantity, c.unit, child.yieldQty, child.yieldUnit);
@@ -225,7 +225,7 @@ export function SubBuild({ parentName, ...build }: RecipeBuildProps & { parentNa
   const made = displayMeasure(totalBatches * node.yieldQty, node.yieldUnit, weightInGrams);
   const sharedRef = sharedRefs?.get(node.id);
   if (sharedRef) {
-    return <aside className="break-inside-avoid border-l-2 border-gold bg-[#F4F1EA] p-3 text-sm text-[#2C3E35]">
+    return <aside className="break-inside-avoid border-l-2 border-gold bg-[#F4F1EA] p-3 text-sm text-[#4B1F3B]">
       <h3 className="font-display text-lg italic">{node.name}</h3>
       <p className="font-mono text-xs tabular-nums">pull {num(made.qty)} {made.label} → from {sharedRef}</p>
     </aside>;

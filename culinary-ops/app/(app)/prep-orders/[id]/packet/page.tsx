@@ -217,7 +217,7 @@ export default async function CookPacketPage({
         <div className="recipe-packet-content">
           <div className="no-print rounded-xl border border-hairline bg-canvas p-5">
           <div className="flex items-baseline justify-between text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-500">
-            <span>Mise · Cook Packet</span>
+            <span>angryshallot · Cook Packet</span>
             <span>Production {madeOn}</span>
           </div>
           <h1 className="mt-2 font-display text-4xl font-medium tracking-tight text-zinc-900 print:text-3xl">
@@ -272,7 +272,7 @@ export default async function CookPacketPage({
 
           <p className="no-print mt-10 border-t border-zinc-200 pt-4 text-[10px] uppercase tracking-[0.14em] text-zinc-400">
             Printed <LocalTime date={new Date()} mode="date" /> · Lots assigned
-            at first print and frozen · Mise · Culinary Ops
+            at first print and frozen · angryshallot
           </p>
         </div>
       )}
@@ -330,7 +330,7 @@ function PacketEntry({ lines, madeOn, forDate, byId, sharedRefs, references, wei
     compact={false} depth={0} stack={new Set()} sharedRefs={sharedRefs}
     weightInGrams={weightInGrams} references={references}
     context={<>
-      <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 font-medium text-[#2C3E35]">
+      <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 font-medium text-[#4B1F3B]">
         <p>Commissary Prep · Production {madeOn}</p>
         <p>Lot <strong className="font-mono tabular-nums">{lot}</strong></p>
       </div>
@@ -351,7 +351,7 @@ function PacketEntry({ lines, madeOn, forDate, byId, sharedRefs, references, wei
 function PrepProductionRecord({ lines }: { lines: PacketLine[] }) {
   const recipe = lines[0].recipe;
   return <div className="recipe-production-record mt-4 break-inside-avoid border border-hairline bg-canvas p-4 text-xs leading-relaxed">
-    <h3 className="font-display text-lg italic text-[#2C3E35]">{recipe.name} · <span className="font-mono text-xs not-italic">Lot {lines[0].lot}</span></h3>
+    <h3 className="font-display text-lg italic text-[#4B1F3B]">{recipe.name} · <span className="font-mono text-xs not-italic">Lot {lines[0].lot}</span></h3>
     <div className="mt-3 space-y-4">
       <p className="print-write-in">Actual production ______ {unitLabel(recipe.yieldUnit)} · Production waste ______ · Kept at commissary ______</p>
       {lines.map((line) => <p key={line.id} className="print-write-in">Request {line.id.slice(-6)} · {line.destinationVenue.name}: sent ______ {unitLabel(line.requestedUnit)} · Shortage / reason __________________</p>)}
@@ -416,7 +416,7 @@ function PrepPacketLog({
         </tbody>
       </table>
       <section className="mt-6" aria-label="Batch production records">
-        <h2 className="font-display text-2xl italic text-[#2C3E35]">Batch Production Records</h2>
+        <h2 className="font-display text-2xl italic text-[#4B1F3B]">Batch Production Records</h2>
         {[...batches.entries()].map(([lot, batch]) => <PrepProductionRecord key={lot} lines={batch} />)}
       </section>
       <div className="mt-8 break-inside-avoid text-sm text-zinc-900">

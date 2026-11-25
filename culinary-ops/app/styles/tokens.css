@@ -1,8 +1,8 @@
 @layer tokens {
   :root {
     /* Paper defaults. Screen workspace overrides are scoped to .ops-theme. */
-    --background: #f9f9f8;
-    --foreground: #1a1a1a;
+    --background: #f6efe6; /* porcelain */
+    --foreground: #2b1724; /* aubergine ink */
 
     /*
      * Weekly-schedule design tokens. One source of truth for the editor, the
@@ -10,7 +10,7 @@
      * the shared paper palette rather than inventing new hues —
      * every fill stays a light warm neutral that survives grayscale printing.
      */
-    --sched-bg-page: #f9f9f8; /* workspace behind the card */
+    --sched-bg-page: #f6efe6; /* workspace behind the card */
     --sched-bg-card: #ffffff; /* the schedule surface */
     --sched-text: #1a1a1a; /* primary — names, shift times, week total */
     --sched-text-secondary: #57554f; /* stations, day labels */
@@ -40,71 +40,88 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  /* Playfair Display for editorial type, Inter for body copy, and
-     IBM Plex Mono for quantities, metadata, and tabular figures. */
+  /* angryshallot type: Fraunces for headlines and the wordmark, Inter for UI
+     and body copy, and IBM Plex Mono for quantities and tabular figures. */
   --font-sans: var(--font-sans-fallback);
   --font-display: var(--font-serif);
   --font-mono: var(--font-monospace);
 }
 @theme {
+  /*
+   * angryshallot brand palette (angryshallot.com identity board).
+   *   Aubergine #4B1F3B · Mauve #7A5164 · Paprika #C65A37
+   *   Olive #6B6A4A · Porcelain #F6EFE6
+   * Legacy token names (charcoal, gold, sage, …) are kept so existing
+   * components pick up the brand without per-file rewrites.
+   */
+  --color-aubergine: #4b1f3b;
+  --color-aubergine-deep: #3a1730;
+  --color-mauve: #7a5164;
+  --color-mauve-soft: #c9afba;
+  --color-pale-mauve: #f1e7eb;
+  --color-paprika: #c65a37;
+  --color-olive: #6b6a4a;
+  --color-porcelain: #f6efe6;
+
   /* Brand & surfaces */
-  --color-primary: #1a1a1a; /* charcoal — primary buttons */
-  --color-ink: #1a1a1a;
-  --color-charcoal: #1a1a1a; /* sidebar */
-  --color-navy: #101827; /* alternate sidebar */
-  --color-canvas: #ffffff; /* cards float white on cream */
-  --color-cream: #f9f9f8; /* workspace */
-  --color-stone: #f1efea; /* warm tint for stat cards */
-  --color-hairline: #e5e5e5; /* very light grey borders */
+  --color-primary: #4b1f3b; /* aubergine — primary buttons */
+  --color-ink: #2b1724; /* near-black aubergine for text */
+  --color-charcoal: #4b1f3b; /* sidebar */
+  --color-navy: #3a1730; /* alternate sidebar */
+  --color-canvas: #fffcf8; /* cards float on porcelain */
+  --color-cream: #f6efe6; /* porcelain workspace */
+  --color-stone: #efe5da; /* warm tint for stat cards */
+  --color-hairline: #e6dad0;
 
-  /* Accents — subtle gold & sage */
-  --color-gold: #9c7c50;
-  --color-gold-soft: #c8b18c;
-  --color-pale-gold: #f5efe4;
-  --color-sage: #5c6e54;
-  --color-sage-soft: #aab69f;
-  --color-pale-sage: #eaefe6;
+  /* Accents — paprika (a touch deeper than the swatch so text passes AA) & olive */
+  --color-gold: #b5502f;
+  --color-gold-soft: #e0a58e;
+  --color-pale-gold: #f8e6dd;
+  --color-sage: #6b6a4a;
+  --color-sage-soft: #b3b195;
+  --color-pale-sage: #ecebdf;
 
-  /* Focus uses the warm gold rather than a tech blue */
-  --color-focus: #9c7c50;
-  --color-form-focus: #9c7c50;
+  --color-focus: #c65a37;
+  --color-form-focus: #c65a37;
 
-  /* Neutral ramp — warm, gallery greys */
-  --color-zinc-50: #f7f6f4;
-  --color-zinc-100: #efedea;
-  --color-zinc-200: #e5e5e5;
-  --color-zinc-300: #d6d4cf;
-  --color-zinc-400: #9a9892;
-  --color-zinc-500: #76746e;
-  --color-zinc-600: #57554f;
-  --color-zinc-700: #3a3833;
-  --color-zinc-800: #262420;
-  --color-zinc-900: #1a1a1a;
-  --color-zinc-950: #000000;
+  /* Neutral ramp — porcelain to aubergine-black */
+  --color-zinc-50: #f9f4ee;
+  --color-zinc-100: #f1e9e1;
+  --color-zinc-200: #e6dad0;
+  --color-zinc-300: #d3c3ba;
+  --color-zinc-400: #a3918f;
+  --color-zinc-500: #7e6b6f;
+  --color-zinc-600: #5e4b53;
+  --color-zinc-700: #45333c;
+  --color-zinc-800: #33232c;
+  --color-zinc-900: #2b1724;
+  --color-zinc-950: #1a0e16;
 
-  /* "Blue" -> muted slate-navy, used for links & info badges */
-  --color-blue-100: #eef1f4;
-  --color-blue-600: #3e4c5e;
-  --color-blue-700: #2e3a48;
+  /* "Blue" -> mauve, used for links & info badges */
+  --color-blue-100: #f1e7eb;
+  --color-blue-600: #7a5164;
+  --color-blue-700: #5e3d4d;
 
-  /* Error -> deep wine red */
-  --color-red-50: #f6ecea;
-  --color-red-100: #ebd3cf;
-  --color-red-200: #dbb3ac;
-  --color-red-500: #a33d31;
-  --color-red-600: #8c3328;
-  --color-red-700: #6e281f;
+  /* Error -> brick red, kept distinct from paprika */
+  --color-red-50: #f8e9e6;
+  --color-red-100: #f0d2cb;
+  --color-red-200: #e2afa4;
+  --color-red-500: #b0372b;
+  --color-red-600: #962e24;
+  --color-red-700: #74231c;
 
-  /* Warm "watch" accents -> muted ochre / gold */
-  --color-amber-50: #f7f1e8;
-  --color-amber-100: #efe3d2;
-  --color-amber-300: #c8b18c;
-  --color-amber-600: #9c7c50;
-  --color-amber-700: #7e6440;
-  --color-amber-900: #5c4a30;
+  /* Warm "watch" accents -> ochre */
+  --color-amber-50: #f8f0e2;
+  --color-amber-100: #f0e1c8;
+  --color-amber-200: #e6cfa3;
+  --color-amber-300: #d4b47e;
+  --color-amber-600: #a0742f;
+  --color-amber-700: #7e5a22;
+  --color-amber-800: #6a4a1b;
+  --color-amber-900: #4e3614;
 
-  /* Success "green" -> sage */
-  --color-emerald-100: #eaefe6;
-  --color-emerald-600: #5c6e54;
-  --color-emerald-700: #44523e;
+  /* Success "green" -> olive */
+  --color-emerald-100: #ecebdf;
+  --color-emerald-600: #6b6a4a;
+  --color-emerald-700: #545339;
 }

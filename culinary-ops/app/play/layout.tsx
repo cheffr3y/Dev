@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
-  title: "Mise Trivia",
+  title: "Trivia",
   description: "Head-to-head trivia — join with a room code.",
 };
 

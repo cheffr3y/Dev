@@ -7,8 +7,8 @@ import "./globals.css";
 const serif = localFont({
   variable: "--font-serif",
   src: [
-    { path: "./fonts/playfair-display-normal-400-700-latin.woff2", weight: "400 700", style: "normal" },
-    { path: "./fonts/playfair-display-italic-400-700-latin.woff2", weight: "400 700", style: "italic" },
+    { path: "./fonts/fraunces-normal-100-900-opsz-latin.woff2", weight: "100 900", style: "normal" },
+    { path: "./fonts/fraunces-italic-100-900-opsz-latin.woff2", weight: "100 900", style: "italic" },
   ],
   display: "swap",
   fallback: ["Georgia", "serif"],
@@ -57,13 +57,18 @@ const atelierMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Mise — Culinary Operations",
-  description: "Recipes, invoice pricing, menu planning, and culinary operations across every venue.",
+  title: {
+    default: "angryshallot — Built for the back of house",
+    template: "%s · angryshallot",
+  },
+  applicationName: "angryshallot",
+  description: "Recipes, invoice pricing, menu planning, and culinary operations across every venue. Built for the back of house.",
 };
 
 // viewport-fit=cover lets the mobile nav drawer pad itself with
 // env(safe-area-inset-*) on notched phones.
 export const viewport: Viewport = {
+  themeColor: "#4B1F3B",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",

@@ -112,7 +112,7 @@ export function createHomestead(): HomesteadState {
   };
 }
 
-// Accept the original HTML's JSON export as well as native Mise backups.
+// Accept the original HTML's JSON export as well as native angryshallot backups.
 // Legacy overlaps are repaired; unknown/malformed data is rejected, never rendered.
 export function importHomestead(input: unknown): HomesteadState {
   const legacySchema = z.object({

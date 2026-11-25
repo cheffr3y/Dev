@@ -113,8 +113,7 @@ export default async function BanquetCookPacketPage({ params }: { params: Promis
           <RecipeReferences references={references} byId={byId} />
 
           <p className="no-print mt-10 border-t border-zinc-200 pt-4 text-[10px] uppercase tracking-[0.14em] text-zinc-400">
-            Printed <LocalTime date={new Date()} mode="date" /> · Each dish scaled to its ordered count · Mise ·
-            Culinary Ops
+            Printed <LocalTime date={new Date()} mode="date" /> · Each dish scaled to its ordered count · angryshallot
           </p>
         </div>
       )}
@@ -132,7 +131,7 @@ function DishEntry({ node, lineId, batches, converted, description, orderedQty, 
     projectCode={<ProductionJobQr href={jobScanHref({ kind: "BANQUET", lineId })} />}
     compact={false} depth={0} stack={new Set()} references={references}
     context={<>
-      <p className="font-medium text-[#2C3E35]">{eventLabel}</p>
+      <p className="font-medium text-[#4B1F3B]">{eventLabel}</p>
       <p className="mt-1">Ordered: <span className="font-mono tabular-nums">{num(orderedQty)} {unitLabel(unit)}</span>{description ? ` · ${description}` : ""}</p>
       {!converted && <p className="recipe-scaling-warning mt-2 border-l-2 border-gold bg-[#F4F1EA] p-2 font-semibold">Ordered units don&apos;t convert to the base yield unit — verify the batch size manually.</p>}
     </>} />;

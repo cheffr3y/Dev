@@ -4,6 +4,7 @@ import { DesktopSidebar } from "@/components/DesktopSidebar";
 import { MobileNav } from "@/components/MobileNav";
 import { CommandSearch } from "@/components/CommandSearch";
 import { signOutAction } from "@/lib/auth/auth-actions";
+import { ShallotMark, Wordmark } from "@/components/Brand";
 
 const ROLE_LABEL: Record<string, string> = {
   ADMIN: "Admin",
@@ -34,7 +35,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <header className="no-print sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-hairline bg-cream/95 px-4 backdrop-blur md:px-6">
           <div className="flex items-center gap-2 md:gap-4">
             <MobileNav role={user.role} />
-            <span className="font-display text-lg leading-none text-ink md:hidden">Mise</span>
+            <span className="flex items-center gap-1.5 text-aubergine md:hidden">
+              <ShallotMark className="h-6 w-6" />
+              <Wordmark className="text-lg leading-none" />
+            </span>
             <CommandSearch recipes={recipes} items={items} role={user.role} />
           </div>
           <div className="flex items-center gap-3 md:gap-4">

@@ -202,7 +202,7 @@ export default async function FestivalBuildsPage({ params }: { params: Promise<{
       )}
 
       <p className="mt-8 text-[10px] uppercase tracking-[0.14em] text-zinc-400">
-        Printed {printedOn} · Scaled from final prep portions (forecast + buffer) · Mise · Culinary Ops
+        Printed {printedOn} · Scaled from final prep portions (forecast + buffer) · angryshallot
       </p>
     </div>
   );

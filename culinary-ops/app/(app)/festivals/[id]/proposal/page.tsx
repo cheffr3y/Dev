@@ -218,7 +218,7 @@ export default async function FestivalProposalPage({ params }: { params: Promise
         </section>
 
         <footer className="mt-8 border-t border-zinc-300 pt-3 text-[10px] uppercase tracking-[0.12em] text-zinc-400">
-          Internal planning proposal · Recipe and sub-recipe detail intentionally omitted · Mise Culinary Operations
+          Internal planning proposal · Recipe and sub-recipe detail intentionally omitted · angryshallot
         </footer>
       </article>
     </div>

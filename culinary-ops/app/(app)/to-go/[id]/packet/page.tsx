@@ -36,7 +36,7 @@ export default async function ToGoPacket({ params, searchParams }: {
     <div className="no-print mb-6 flex flex-wrap items-center gap-3"><Link href={`/to-go/${id}`} className="mr-auto text-sm text-gold hover:underline">← {rollup.name}</Link>{TO_GO_PACKETS.map(packet => <PrintOptionLink key={packet.value} href={printOptionHref(`/to-go/${id}/packet?mode=${packet.value}`, query.density)} className={`text-xs ${mode === packet.value ? "font-bold text-ink" : "text-gold underline"}`}>{packet.label}</PrintOptionLink>)}</div>
     <PrintSpecHeader venue={rollup.venue?.name ?? "Company-wide"} title={rollup.name} targetDate={rollup.orderCutoff ?? undefined} targetLabel={rollup.orderCutoff ? `Order cutoff ${rollup.orderCutoff}` : "Menu planning"} printedAt={printedAt} />
     <header className="mb-8 border-t-4 border-ink pt-4">
-      <p className="font-mono text-[10px] uppercase tracking-widest text-zinc-500">MISE · HMR Rollout · {rollup.venue?.name ?? "Company-wide"}</p>
+      <p className="font-mono text-[10px] uppercase tracking-widest text-zinc-500">ANGRYSHALLOT · HMR Rollout · {rollup.venue?.name ?? "Company-wide"}</p>
       <h1 className="mt-4 font-display text-4xl text-ink">{rollup.name}</h1>
       <p className="mt-2 font-display text-xl text-gold">{TO_GO_PACKETS.find(packet => packet.value === mode)?.label ?? "Saved planning packet"}</p>
       <p className="mt-3 text-xs text-zinc-500">{rollup.status} · {plan.rows.length} proposed items · Prepared <LocalTime date={printedAt} /></p>

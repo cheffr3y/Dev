@@ -1,4 +1,10 @@
-# Mise — Culinary Operations Platform
+# angryshallot — Culinary Operations Platform
+
+*Built for the back of house.* · [angryshallot.com](https://angryshallot.com)
+
+> Formerly called **Mise**. The identity (shallot mark, aubergine / mauve /
+> paprika / olive / porcelain palette, Fraunces + Inter type) lives in
+> `app/styles/tokens.css`, `components/Brand.tsx`, and `app/icon.svg`.
 
 A single operational hub for multi-venue culinary teams: standardized **recipes & builds** with live costing, per-venue **inventory** with par levels, vendor **order guides** that compute what to buy, and **event planning** with auto-generated prep and shopping lists.
 

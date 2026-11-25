@@ -13,6 +13,14 @@
 
 name: culinary-ops
 region: nyc
+# angryshallot.com is the product's public domain. After deploying, add the
+# DNS records DigitalOcean shows under Settings → Domains at your registrar
+# (or delegate the domain to DigitalOcean's nameservers).
+domains:
+  - domain: angryshallot.com
+    type: PRIMARY
+  - domain: www.angryshallot.com
+    type: ALIAS
 services:
   - name: web
     github:
@@ -40,3 +48,7 @@ services:
         scope: RUN_AND_BUILD_TIME
         type: SECRET
         value: REPLACE_WITH_A_LONG_RANDOM_STRING
+      # Public origin used in printed QR codes so phones open the real site.
+      - key: APP_BASE_URL
+        scope: RUN_TIME
+        value: https://angryshallot.com

@@ -118,7 +118,7 @@ export default async function FestivalPrepSheetPage({ params }: { params: Promis
       ) : (
         <div className="print-sheet mx-auto max-w-3xl rounded-xl border border-zinc-200 bg-white p-10 shadow-sm">
           <div className="flex items-baseline justify-between text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-500">
-            <span>Mise · Festival Prep Sheet</span>
+            <span>angryshallot · Festival Prep Sheet</span>
             <span>{Math.round(festival.captureRate * 100)}% capture · {Math.round(festival.bufferPct * 100)}% buffer</span>
           </div>
           <h1 className="mt-2 font-display text-4xl font-medium tracking-tight text-zinc-900">{festival.name}</h1>
@@ -250,7 +250,7 @@ export default async function FestivalPrepSheetPage({ params }: { params: Promis
           )}
 
           <p className="mt-10 border-t border-zinc-200 pt-4 text-[10px] uppercase tracking-[0.14em] text-zinc-400">
-            Printed {printedOn} · Scaled from final prep portions (forecast + buffer) · Mise · Culinary Ops
+            Printed {printedOn} · Scaled from final prep portions (forecast + buffer) · angryshallot
           </p>
         </div>
       )}

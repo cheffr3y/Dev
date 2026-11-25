@@ -164,7 +164,7 @@ export default async function BanquetPrepSheetPage({ params }: { params: Promise
           )}
 
           <p className="mt-10 border-t border-zinc-200 pt-4 text-[10px] uppercase tracking-[0.14em] text-zinc-400">
-            Printed {printedOn} · Quantities summed across all ordered dishes · Mise · Culinary Ops
+            Printed {printedOn} · Quantities summed across all ordered dishes · angryshallot
           </p>
         </div>
       )}

@@ -27,7 +27,7 @@ export function BanquetSetupSheet({ plan: rawPlan, menu, event, revision, draft 
   const warnings = setupWarnings(plan, menu);
   return <article className="banquet-setup-sheet atelier-paper">
     <header className="banquet-setup-heading">
-      <div className="flex justify-between gap-3 text-xs uppercase tracking-widest"><span>Mise · Banquet setup</span><span>{draft ? "UNSAVED DRAFT" : `Revision ${revision}`}</span></div>
+      <div className="flex justify-between gap-3 text-xs uppercase tracking-widest"><span>angryshallot · Banquet setup</span><span>{draft ? "UNSAVED DRAFT" : `Revision ${revision}`}</span></div>
       <h2 className="mt-3 font-display text-3xl">{event.name}</h2>
       <p className="mt-2 text-sm">{event.date} · {event.guestCount} guests · {event.venue}</p>
       <p className="text-sm">{[event.location, event.areas, event.timeLabel].filter(Boolean).join(" · ") || "Service time / room to be confirmed"}</p>

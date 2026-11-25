@@ -99,7 +99,7 @@ export default async function ShoppingListPage({
       ) : (
         <div className="print-sheet rounded-xl border border-zinc-200 bg-white p-10 shadow-sm">
           <div className="flex items-baseline justify-between text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-500">
-            <span>Mise · Shopping List</span>
+            <span>angryshallot · Shopping List</span>
             <span>Production {forDate}</span>
           </div>
           <h1 className="mt-2 font-display text-4xl font-medium tracking-tight text-zinc-900">
@@ -116,7 +116,7 @@ export default async function ShoppingListPage({
 
           <p className="mt-10 border-t border-zinc-200 pt-4 text-[10px] uppercase tracking-[0.14em] text-zinc-400">
             Printed {printedOn} · Quantities summed across all printed batches ·
-            Mise · Culinary Ops
+            angryshallot
           </p>
         </div>
       )}

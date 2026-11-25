@@ -184,7 +184,7 @@ export function ShiftCellContent({
 // ── Print footer ────────────────────────────────────────────────────────────
 export function PrintFooter({
   weekRange,
-  productName = "Mise — Culinary Ops",
+  productName = "angryshallot",
 }: {
   weekRange: string;
   productName?: string;

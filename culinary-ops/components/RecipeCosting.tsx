@@ -60,7 +60,7 @@ export function RecipeCosting({ costs, trends = {} }: { costs: RecipeCostSheet; 
             </tr>
           </tbody>
         ))}
-        <tfoot className="border-t border-[#2C3E35] text-ink">
+        <tfoot className="border-t border-[#4B1F3B] text-ink">
           <tr>
             <th scope="row" colSpan={3} className="py-2">Total batch cost</th>
             <td className="py-2 text-right font-mono font-semibold tabular-nums">{money(costs.totalCost)}</td>

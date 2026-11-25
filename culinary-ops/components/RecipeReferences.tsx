@@ -16,7 +16,7 @@ export function RecipeReferences({ references, byId, sharedRefs, weightInGrams =
   return (
     <section className="recipe-references mt-10" aria-label="Sub-recipe references">
       <div className="break-inside-avoid border-b border-hairline pb-2">
-        <h2 className="font-display text-3xl italic text-[#2C3E35]">Sub-recipe references</h2>
+        <h2 className="font-display text-3xl italic text-[#4B1F3B]">Sub-recipe references</h2>
         <p className="mt-1 text-xs text-zinc-600">
           Deeper supporting recipes. Amounts show total demand in this packet; use prepared stock when available.
         </p>
@@ -30,7 +30,7 @@ export function RecipeReferences({ references, byId, sharedRefs, weightInGrams =
             compact depth={1} stack={new Set()} supporting
             sharedRefs={sharedRefs} weightInGrams={weightInGrams} references={references}
             context={<>
-              <p className="font-semibold text-[#2C3E35]">Reference {reference.label} · Sub-recipe of {reference.parents.join(" · ")}</p>
+              <p className="font-semibold text-[#4B1F3B]">Reference {reference.label} · Sub-recipe of {reference.parents.join(" · ")}</p>
               <p className="mt-1">Total needed: <span className="font-mono tabular-nums">{num(needed.qty)} {needed.label}</span> · Used in: {reference.roots.join(" · ")}</p>
             </>} />;
         })}

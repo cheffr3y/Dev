@@ -2,13 +2,6 @@
    Paper documents retain their own palette and layout. */
 @layer components {
   @media screen {
-    .ops-theme {
-      --color-primary: #356f59;
-      --color-gold: #a8d8c0;
-      --color-gold-soft: #c0e2ce;
-      --color-focus: #a8d8c0;
-      --color-form-focus: #a8d8c0;
-    }
     .workday-page-header { padding-bottom: 1rem; border-bottom: 1px solid var(--color-hairline); }
     .workday-prep-toolbar { padding: 0.75rem 0; }
     .workday-prep-toolbar input[type="date"] { width: 10rem; }

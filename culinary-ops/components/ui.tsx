@@ -17,7 +17,7 @@ export function PageHeader({
   return (
     <div className="workday-page-header mb-6 flex flex-wrap items-center justify-between gap-4">
       <div>
-        <h1 className="font-sans text-[28px] font-medium leading-tight tracking-tight text-ink">
+        <h1 className="font-display text-[30px] font-semibold leading-tight tracking-[-0.015em] text-ink">
           {title}
         </h1>
         {subtitle && (

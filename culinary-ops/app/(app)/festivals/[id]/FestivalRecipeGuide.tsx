@@ -120,7 +120,7 @@ export function FestivalRecipeGuide({ festival, byId, rowById, inPacket = false 
       {!inPacket && (
         <div className="no-print rounded-xl border border-hairline bg-canvas p-5">
           <div className="flex items-baseline justify-between text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-500">
-            <span>Mise · Festival Recipe Guide</span>
+            <span>angryshallot · Festival Recipe Guide</span>
             <span>{Math.round(festival.captureRate * 100)}% capture · {Math.round(festival.bufferPct * 100)}% default buffer</span>
           </div>
           <h1 className="mt-2 font-display text-4xl font-medium tracking-tight text-zinc-900">{festival.name}</h1>
@@ -206,7 +206,7 @@ export function FestivalRecipeGuide({ festival, byId, rowById, inPacket = false 
 
       {!inPacket && <p className="no-print mt-10 border-t border-zinc-200 pt-4 text-[10px] uppercase tracking-[0.14em] text-zinc-400">
         Printed <LocalTime date={new Date()} mode="date" /> · Scaled from final prep portions (forecast + buffer) ·
-        Mise · Culinary Ops
+        angryshallot
       </p>}
     </div>
   );
@@ -218,7 +218,7 @@ function RecipeGuideEntry({ entry, byId, sharedRefs, festivalLabel, forecastLabe
   return <RecipeBuildCard node={entry.node} byId={byId} totalBatches={entry.totalBatches}
     compact={false} depth={0} stack={new Set()} sharedRefs={sharedRefs}
     context={<>
-      <p className="font-medium text-[#2C3E35]">{festivalLabel}</p>
+      <p className="font-medium text-[#4B1F3B]">{festivalLabel}</p>
       <p className="mt-1 text-[9px]">{forecastLabel}</p>
       <ul className="mt-1 grid grid-cols-2 gap-x-4 gap-y-1">
         {entry.uses.map((use, index) => <li key={`${use.tentName}-${use.menuName}-${index}`}>

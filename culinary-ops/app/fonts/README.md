@@ -9,9 +9,14 @@ These are the Latin subsets used by the application, downloaded from Google
 Fonts on October 29, 2026. The existing CSS variable names, font families,
 weight ranges, and normal/italic selections are retained.
 
+Fraunces replaced Playfair Display as the display serif (`--font-serif`) for
+the angryshallot identity in November 2026. Its WOFF2 files are the Latin
+`opsz` variable subsets from the `@fontsource-variable/fraunces` 5.3.0 npm
+package, which repackages the Google Fonts build.
+
 | Family | Weights | Styles | License |
 | --- | --- | --- | --- |
-| Playfair Display | 400–700 | Normal, italic | [OFL](playfair-display-OFL.txt) |
+| Fraunces (variable: wght, opsz) | 100–900 | Normal, italic | [OFL](fraunces-OFL.txt) |
 | Inter | 100–900 | Normal | [OFL](inter-OFL.txt) |
 | IBM Plex Mono | 400, 500, 600 | Normal | [OFL](ibm-plex-mono-OFL.txt) |
 | Cormorant Garamond | 400–700 | Normal, italic | [OFL](cormorant-garamond-OFL.txt) |
@@ -20,4 +25,4 @@ weight ranges, and normal/italic selections are retained.
 `sources.json` records each stylesheet URL, asset URL, SHA-256 hash, and license
 source. When updating a font, replace its asset and provenance entry together,
 retain the license, and verify `npm run build` without network access. The nine
-font assets total approximately 258 KiB.
+font assets total approximately 340 KiB.

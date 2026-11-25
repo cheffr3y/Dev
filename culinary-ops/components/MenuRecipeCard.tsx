@@ -43,7 +43,7 @@ export function MenuRecipeCard({ recipe, kind, openingParBatches, context, id, a
     batchLabel={serving ? "1× Single-Serving" : "1× Standard Batch"} allergenKeys={allergenKeys}
     lines={lines} printedAt={printedAt} className="launch-recipe-sheet" context={<>
       <p>{context}</p>
-      <p className="recipe-opening-prep mt-1 font-mono text-[10px] text-[#2C3E35]">
+      <p className="recipe-opening-prep mt-1 font-mono text-[10px] text-[#4B1F3B]">
         {serving ? "Pickup spec: 1 serving" : `Standard batch: ${num(recipe.yieldQty)} ${yieldUnit}`}
         {kind === "plated" && openingParBatches != null && <span className="recipe-opening-par text-zinc-500"> · Opening Par Target: {num((serving?.servings ?? recipe.yieldQty) * openingParBatches)} {serving ? "servings" : yieldUnit}</span>}
       </p>

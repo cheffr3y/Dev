@@ -1,24 +1,26 @@
 [
   {
-    "family": "playfair-display",
-    "css": "https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..700;1,400..700&display=swap",
-    "license": "https://raw.githubusercontent.com/google/fonts/main/ofl/playfairdisplay/OFL.txt",
+    "family": "fraunces",
+    "css": "https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,100..900;1,9..144,100..900&display=swap",
+    "license": "https://raw.githubusercontent.com/google/fonts/main/ofl/fraunces/OFL.txt",
     "assets": [
       {
-        "file": "playfair-display-italic-400-700-latin.woff2",
-        "style": "italic",
-        "weight": "400 700",
-        "source": "https://fonts.gstatic.com/s/playfairdisplay/v40/nuFkD-vYSZviVYUb_rj3ij__anPXDTnogkk7yRZrPA.woff2",
-        "sha256": "c68530044e7c4ce6cd3c1c239d0a93be71af53821574714f83e1380d8b393d14",
-        "bytes": 38888
+        "file": "fraunces-normal-100-900-opsz-latin.woff2",
+        "style": "normal",
+        "weight": "100 900",
+        "axes": "wght, opsz",
+        "source": "https://registry.npmjs.org/@fontsource-variable/fraunces/-/fraunces-5.3.0.tgz (files/fraunces-latin-opsz-normal.woff2)",
+        "sha256": "7234ed860a9cc83045413c4faee63c960a8f2d1917adcf728119307d56e0d783",
+        "bytes": 67304
       },
       {
-        "file": "playfair-display-normal-400-700-latin.woff2",
-        "style": "normal",
-        "weight": "400 700",
-        "source": "https://fonts.gstatic.com/s/playfairdisplay/v40/nuFiD-vYSZviVYUb_rj3ij__anPXDTzYgEM86xQ.woff2",
-        "sha256": "5d91eb5d522a03081946c44c8ca17c902230dfed5f0f9b5014262135d47b15b2",
-        "bytes": 38460
+        "file": "fraunces-italic-100-900-opsz-latin.woff2",
+        "style": "italic",
+        "weight": "100 900",
+        "axes": "wght, opsz",
+        "source": "https://registry.npmjs.org/@fontsource-variable/fraunces/-/fraunces-5.3.0.tgz (files/fraunces-latin-opsz-italic.woff2)",
+        "sha256": "066710ce7ed235a339d3d6cdcc8b55c0bea5632232662d83aacea25852108271",
+        "bytes": 81520
       }
     ]
   },

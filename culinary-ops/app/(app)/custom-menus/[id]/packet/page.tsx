@@ -170,7 +170,7 @@ export default async function CustomMenuPacket({ params, searchParams }: { param
           {builds.map((b) => <RecipeBuildCard key={b.node.id} node={b.node} byId={tree} totalBatches={b.totalBatches}
             compact={false} depth={0} stack={new Set()} sharedRefs={sharedRefs}
             context={<>
-              <p className="font-medium text-[#2C3E35]">{eventLabel}</p>
+              <p className="font-medium text-[#4B1F3B]">{eventLabel}</p>
               <ul className="mt-1 space-y-0.5">{b.uses.map((use) => <li key={use.id}>{use.title}: {describeQuantity(use, menu.guestCount, num)}</li>)}</ul>
             </>} />)}
         </div>

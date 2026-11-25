@@ -76,7 +76,7 @@ export default async function RecipePrintPage({
                 key={option.label}
                 href={printOptionHref(`/recipes/${recipe.id}/print?scale=${scale}${option.costs ? "&costs=1" : ""}`, query.density)}
                 aria-current={option.costs === showCosts ? "page" : undefined}
-                className={`rounded-full px-3 py-1 text-xs transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold ${option.costs === showCosts ? "bg-[#2C3E35] text-white" : "text-zinc-600 hover:bg-cream hover:text-ink"}`}
+                className={`rounded-full px-3 py-1 text-xs transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold ${option.costs === showCosts ? "bg-[#4B1F3B] text-white" : "text-zinc-600 hover:bg-cream hover:text-ink"}`}
               >
                 {option.label}
               </PrintOptionLink>

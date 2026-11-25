@@ -3,7 +3,7 @@ import { requireUser } from "@/lib/auth/session";
 import { readHomestead } from "@/lib/games/homestead-storage";
 import { Homestead } from "./Homestead";
 
-export const metadata: Metadata = { title: "Willowbrook Acre · Mise Break Room" };
+export const metadata: Metadata = { title: "Willowbrook Acre · Break Room" };
 
 export default async function HomesteadPage() {
   const user = await requireUser();

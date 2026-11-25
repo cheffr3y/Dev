@@ -285,7 +285,7 @@ export default async function FestivalOrderGuidePage({ params }: { params: Promi
       )}
 
       <p className="mt-8 text-[10px] uppercase tracking-[0.14em] text-zinc-400">
-        Printed {printedOn} · Raw need ÷ yield factor, less on-hand, rounded up to pack · Mise · Culinary Ops
+        Printed {printedOn} · Raw need ÷ yield factor, less on-hand, rounded up to pack · angryshallot
       </p>
     </div>
   );

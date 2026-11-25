@@ -1,54 +1,9 @@
 @layer components {
   @media screen {
+    /* angryshallot screen workspace: porcelain surfaces, aubergine chrome.
+       Colors come from the brand tokens in tokens.css. */
     .ops-theme {
-      color-scheme: dark;
-      --color-primary: #2563eb;
-      --color-ink: #f1f5f9;
-      --color-charcoal: #0c1423;
-      --color-navy: #0c1423;
-      --color-canvas: #151f30;
-      --color-cream: #0e1625;
-      --color-stone: #1c293c;
-      --color-hairline: #2c3a50;
-      --color-gold: #93b4f5;
-      --color-gold-soft: #b4ccff;
-      --color-pale-gold: #202e46;
-      --color-sage: #6ee7b7;
-      --color-sage-soft: #a7f3d0;
-      --color-pale-sage: #10392f;
-      --color-focus: #60a5fa;
-      --color-form-focus: #60a5fa;
-      --color-zinc-50: #1b2739;
-      --color-zinc-100: #233047;
-      --color-zinc-200: #2c3a50;
-      --color-zinc-300: #42526a;
-      --color-zinc-400: #94a3b8;
-      --color-zinc-500: #a4b1c4;
-      --color-zinc-600: #bfcbda;
-      --color-zinc-700: #d6dfeb;
-      --color-zinc-800: #e2e8f0;
-      --color-zinc-900: #f1f5f9;
-      --color-zinc-950: #f8fafc;
-      --color-blue-100: #172f53;
-      --color-blue-600: #93c5fd;
-      --color-blue-700: #bfdbfe;
-      --color-red-50: #3a1b2b;
-      --color-red-100: #4c2033;
-      --color-red-200: #713044;
-      --color-red-500: #fb7185;
-      --color-red-600: #fda4af;
-      --color-red-700: #fecdd3;
-      --color-amber-50: #352a16;
-      --color-amber-100: #473519;
-      --color-amber-200: #695023;
-      --color-amber-300: #8b682c;
-      --color-amber-600: #fbbf24;
-      --color-amber-700: #fcd34d;
-      --color-amber-800: #fde68a;
-      --color-amber-900: #fef3c7;
-      --color-emerald-100: #10392f;
-      --color-emerald-600: #34d399;
-      --color-emerald-700: #6ee7b7;
+      color-scheme: light;
       --sched-bg-page: var(--color-cream);
       --sched-bg-card: var(--color-canvas);
       --sched-text: var(--color-ink);
@@ -57,9 +12,9 @@
       --sched-border: var(--color-hairline);
       --sched-border-strong: var(--color-zinc-300);
       --sched-fill-header: var(--color-zinc-50);
-      --sched-fill-weekend: #222b3c;
+      --sched-fill-weekend: var(--color-pale-mauve);
       --sched-fill-totals: var(--color-zinc-100);
-      --sched-fill-active: #202e43;
+      --sched-fill-active: var(--color-pale-gold);
     }
 
     /* Legacy white surfaces use the card token; true paper resets it to white. */
@@ -67,7 +22,7 @@
     .ops-theme .bg-white\/70 { background-color: color-mix(in srgb, var(--color-canvas) 70%, transparent); }
     .ops-theme .hover\:bg-white:hover { background-color: var(--color-zinc-50); }
     .ops-theme .bg-zinc-900 { background-color: var(--color-primary); }
-    .ops-theme .bg-primary.hover\:bg-zinc-700:hover { background-color: #1d4ed8; }
+    .ops-theme .bg-primary.hover\:bg-zinc-700:hover { background-color: #5e2a4b; }
 
     /* Preserve the culinary paper system in on-screen document previews too. */
     .ops-theme :is(.recipe-dossier, .atelier-packet, .atelier-event, .atelier-paper, .print-sheet, .schedule-print, .paper-preview) {
@@ -81,14 +36,14 @@
       --color-cream: #f9f9f8;
       --color-stone: #f1efea;
       --color-hairline: #e5e5e5;
-      --color-gold: #9c7c50;
-      --color-gold-soft: #c8b18c;
-      --color-pale-gold: #f5efe4;
-      --color-sage: #5c6e54;
-      --color-sage-soft: #aab69f;
-      --color-pale-sage: #eaefe6;
-      --color-focus: #9c7c50;
-      --color-form-focus: #9c7c50;
+      --color-gold: #b5502f;
+      --color-gold-soft: #e0a58e;
+      --color-pale-gold: #f8e6dd;
+      --color-sage: #6b6a4a;
+      --color-sage-soft: #b3b195;
+      --color-pale-sage: #ecebdf;
+      --color-focus: #c65a37;
+      --color-form-focus: #c65a37;
       --color-zinc-50: #f7f6f4;
       --color-zinc-100: #efedea;
       --color-zinc-200: #e5e5e5;
@@ -100,9 +55,9 @@
       --color-zinc-800: #262420;
       --color-zinc-900: #1a1a1a;
       --color-zinc-950: #000000;
-      --color-blue-100: #eef1f4;
-      --color-blue-600: #3e4c5e;
-      --color-blue-700: #2e3a48;
+      --color-blue-100: #f1e7eb;
+      --color-blue-600: #7a5164;
+      --color-blue-700: #5e3d4d;
       --color-red-50: #f6ecea;
       --color-red-100: #ebd3cf;
       --color-red-200: #dbb3ac;
@@ -117,9 +72,9 @@
       --color-amber-700: #7e6440;
       --color-amber-800: #92400e;
       --color-amber-900: #5c4a30;
-      --color-emerald-100: #eaefe6;
-      --color-emerald-600: #5c6e54;
-      --color-emerald-700: #44523e;
+      --color-emerald-100: #ecebdf;
+      --color-emerald-600: #6b6a4a;
+      --color-emerald-700: #545339;
       --sched-border: #e5e5e5;
       --sched-border-strong: #d6d4cf;
       --sched-fill-header: #f7f6f4;
@@ -159,8 +114,8 @@
     }
     .ops-theme .atelier-header:not(:where(.atelier-packet *, .atelier-event *, .atelier-paper *)) .atelier-title {
       color: var(--color-ink);
-      font-family: var(--font-sans-fallback), sans-serif;
-      font-size: 1.5rem;
+      font-family: var(--font-serif), Georgia, serif;
+      font-size: 1.625rem;
       font-weight: 600;
     }
     .ops-theme .atelier-header:not(:where(.atelier-packet *, .atelier-event *, .atelier-paper *)) .atelier-metadata {
@@ -331,26 +286,26 @@
     justify-content: center;
     gap: 0.65rem;
     padding: 0.75rem;
-    border: 1px solid #42526a;
+    border: 1px solid #7a5164;
     border-radius: 0.75rem;
-    background: #101827;
-    color: #f1f5f9;
-    box-shadow: 0 12px 40px #0006;
+    background: #4b1f3b;
+    color: #fbf6f1;
+    box-shadow: 0 12px 40px #2b172466;
     font: 12px/1.35 var(--font-sans-fallback), sans-serif;
     color-scheme: dark;
   }
-  .print-controller fieldset { margin: 0; padding: 3px; border: 1px solid #42526a; border-radius: 6px; }
+  .print-controller fieldset { margin: 0; padding: 3px; border: 1px solid #7a5164; border-radius: 6px; }
   .print-control-group { display: flex; gap: 2px; }
   .print-controller button { cursor: pointer; white-space: nowrap; }
   .print-control-group button, .print-scale-form button { padding: 6px 8px; border-radius: 4px; }
-  .print-control-group button[aria-pressed="true"] { background: #33465f; color: #fff; }
-  .print-control-group button:hover, .print-scale-form button:hover { background: #33465f; }
-  .print-controller button:focus-visible, .print-controller input:focus-visible { outline: 2px solid #93c5fd; outline-offset: 2px; }
+  .print-control-group button[aria-pressed="true"] { background: #7a5164; color: #fff; }
+  .print-control-group button:hover, .print-scale-form button:hover { background: #643f52; }
+  .print-controller button:focus-visible, .print-controller input:focus-visible { outline: 2px solid #e0a58e; outline-offset: 2px; }
   .print-controller button:disabled, .print-controller fieldset:disabled { opacity: 0.55; cursor: wait; }
   .print-scale-form { display: flex; align-items: center; gap: 6px; }
-  .print-scale-form input { width: 4.5rem; padding: 5px; border: 1px solid #64748b; border-radius: 4px; background: #1c293c; color: #fff; font-variant-numeric: tabular-nums; }
-  .print-controller .print-controller-submit { border-radius: 6px; background: #2563eb; border-color: #3b82f6; color: #fff; padding: 8px 12px; font-size: 12px; }
-  .print-controller-hint { flex-basis: 100%; margin: 0; text-align: center; color: #cbd5e1; font-size: 10px; }
+  .print-scale-form input { width: 4.5rem; padding: 5px; border: 1px solid #9c7a8a; border-radius: 4px; background: #3a1730; color: #fff; font-variant-numeric: tabular-nums; }
+  .print-controller .print-controller-submit { border-radius: 6px; background: #c65a37; border-color: #d9774f; color: #fff; padding: 8px 12px; font-size: 12px; }
+  .print-controller-hint { flex-basis: 100%; margin: 0; text-align: center; color: #e9dce2; font-size: 10px; }
   .print-spec-header { margin-bottom: 14px; padding: 12px 0; border-block: 2px solid #1a1a1a; color: #111; background: #fff; break-inside: avoid; break-after: avoid; }
   .print-spec-identity { display: flex; align-items: baseline; flex-wrap: wrap; gap: 10px; }
   .print-venue-badge { border: 1px solid #555; padding: 3px 7px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
