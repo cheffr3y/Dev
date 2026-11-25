@@ -26,6 +26,9 @@ export function commandActions(role: "ADMIN" | "MANAGER" | "STAFF", now = new Da
   }, {
     kind: "action", id: "new-recipe", name: "New Recipe", meta: "Create",
     href: "/recipes?new=1#new-recipe", keywords: "add build dish",
+  }, {
+    kind: "action", id: "new-custom-menu", name: "New Custom Menu", meta: "Create",
+    href: "/custom-menus", keywords: "one-off event banquet pop-up costing packet bbq",
   });
   actions.push({
     kind: "action", id: "daily-prep", name: "Open Daily Prep", meta: "Today",

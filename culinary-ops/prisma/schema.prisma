@@ -142,6 +142,7 @@ model Venue {
   banquets           Banquet[]
   festivals          Festival[] // festivals hinting at this venue's inventory
   menuRollouts       MenuRollout[]
+  customMenus        CustomMenu[]
   toGoRollups        ToGoRollup[]
   prepLines          PrepOrderLine[] // production destined here
   prepOrders         PrepOrder[] // orders destined here
@@ -256,6 +257,7 @@ model Recipe {
   banquetItems      BanquetMenuItem[]
   festivalItems     FestivalMenuItem[]
   menuRolloutItems  MenuRolloutItem[]
+  customMenuItems   CustomMenuItem[]
   toGoRollupItems   ToGoRollupItem[]
   prepLines         PrepOrderLine[]
   productionBatches ProductionBatch[]
@@ -350,6 +352,50 @@ model MenuRolloutItem {
 
 // Holiday retail planning starts with sales estimates, before recipes,
 // package specs or final production quantities are necessarily known.
+// ---------------------------------------------------------------------------
+// Custom Menus — one-off menus for a single occasion (an internal BBQ, a
+// pop-up, a tasting). Every dish links to a saved recipe or sub-recipe; the
+// quantity is either guests x portion or an explicit fixed total. The packet
+// prints a costed copy and a kitchen/client copy without dollars.
+// ---------------------------------------------------------------------------
+model CustomMenu {
+  id            String           @id @default(cuid())
+  name          String
+  subtitle      String?
+  date          DateTime? // business date, stored as UTC midnight; optional for undated ideas
+  serviceTime   String? // free text, e.g. "5:30 pm buffet"
+  venueId       String?
+  venue         Venue?           @relation(fields: [venueId], references: [id], onDelete: SetNull)
+  guestCount    Int              @default(0)
+  pricePerGuest Float? // optional charge per guest; null = cost-only menu
+  targetFcp     Float            @default(30) // food cost % target
+  status        String           @default("DRAFT")
+  notes         String? // internal planning notes; costed copy only
+  serviceNotes  String? // prints on both copies
+  items         CustomMenuItem[]
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+}
+
+model CustomMenuItem {
+  id              String     @id @default(cuid())
+  customMenuId    String
+  customMenu      CustomMenu @relation(fields: [customMenuId], references: [id], onDelete: Cascade)
+  recipeId        String
+  recipe          Recipe     @relation(fields: [recipeId], references: [id], onDelete: Restrict)
+  section         String     @default("Main")
+  menuTitle       String?
+  menuDescription String?
+  portionQty      Float? // per guest, in portionUnit
+  portionUnit     String?
+  totalQty        Float? // fixed total; when set it replaces guests x portion
+  totalUnit       String?
+  sortOrder       Int        @default(0)
+  createdAt       DateTime   @default(now())
+
+  @@index([customMenuId])
+}
+
 model ToGoRollup {
   id          String @id @default(cuid())
   name        String

@@ -40,6 +40,7 @@ const SECTIONS: NavSection[] = [
       { href: "/recipes", label: "Recipes", icon: "recipes" },
       { href: "/specials", label: "Specials", icon: "recipes" },
       { href: "/menus", label: "Menus", icon: "recipes" },
+      { href: "/custom-menus", label: "Custom Menus", icon: "events" },
       { href: "/banquets", label: "Banquets", icon: "events" },
       { href: "/events", label: "Events", icon: "events" },
       { href: "/festivals", label: "Festivals", icon: "events" },
