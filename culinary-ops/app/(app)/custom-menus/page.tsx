@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db/prisma";
 import { requireUser, hasRole } from "@/lib/auth/session";
 import { getVenues } from "@/lib/venues/venue";
 import { buildCustomMenuPlan, CUSTOM_MENU_STATUSES, formatMenuDate } from "@/lib/menus/custom-menu";
-import { customMenuRecipeSelect } from "@/lib/menus/custom-menu-data";
+import { customMenuLineInclude, customMenuRecipeSelect } from "@/lib/menus/custom-menu-data";
 import { money, pct } from "@/lib/recipes/costing";
 import { Badge, Card, PageHeader } from "@/components/ui";
 import { CustomMenuForm } from "./CustomMenuForms";
@@ -12,7 +12,7 @@ export default async function CustomMenusPage() {
   const user = await requireUser();
   const canEdit = hasRole(user, "MANAGER");
   const [menus, venues] = await Promise.all([
-    prisma.customMenu.findMany({ include: { venue: true, items: true }, orderBy: [{ date: { sort: "asc", nulls: "last" } }, { updatedAt: "desc" }] }),
+    prisma.customMenu.findMany({ include: { venue: true, items: { include: customMenuLineInclude } }, orderBy: [{ date: { sort: "asc", nulls: "last" } }, { updatedAt: "desc" }] }),
     getVenues(),
   ]);
   const recipes = menus.some((menu) => menu.items.length) ? await prisma.recipe.findMany({ select: customMenuRecipeSelect }) : [];

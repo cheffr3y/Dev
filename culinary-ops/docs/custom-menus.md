@@ -20,6 +20,14 @@ menu lives on its own page and prints one packet to send.
 3. Optional **menu title** and **menu description** print on the menu page.
    Sections (Mains, Sides, Sauces & Condiments, …) order the menu.
 
+**+ Raw ingredient** adds something bought ready to serve (buns, chips, pickles)
+straight from Ingredients. It costs exactly as it would inside a recipe: a
+case price converts to pieces once the ingredient's pack size (e.g. 96 each)
+or each weight has been applied under **Apply reviewed measurements**. Until
+then it can only be measured in its purchase unit. Its allergen tags, cost and
+pull-list quantity carry into the packet. It has no scaled recipe card; the
+packet lists it under *Purchased items*.
+
 Need a dish that doesn't exist yet? Create it as a normal recipe first, then add
 it. Custom Menus do not hold temporary recipes.
 
@@ -63,5 +71,7 @@ Everyone signed in can view and print. Managers and admins create, edit,
 duplicate and delete; these writes check the account's current role in the
 database.
 
-Apply migration `20261125000000_custom_menus` (two new tables; additive). The
+Apply migrations `20261125000000_custom_menus` (two new tables) and
+`20261126000000_custom_menu_raw_items` (optional ingredient link on menu lines;
+existing lines are unchanged). Both are additive. The
 standard `npm start` runs `prisma migrate deploy` before serving.

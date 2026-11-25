@@ -1,20 +1,25 @@
 // Custom Menus — costing for a one-off menu built for a single occasion.
 //
-// Each dish links to a saved recipe (a dish or a sub-recipe served on its own,
-// such as a sauce). Its quantity is either:
+// Each line links to a saved recipe (a dish or a sub-recipe served on its own,
+// such as a sauce) or to a purchased raw ingredient (buns, chips, pickles).
+// Its quantity is either:
 //   • per guest — guestCount × portionQty, in portionUnit; or
 //   • fixed     — totalQty in totalUnit, which replaces the per-guest amount.
-// The quantity must convert to the recipe's yield unit. A quantity that does
-// not convert (e.g. "6 oz" of a recipe yielded in quarts) is never guessed:
-// the dish is left out of the totals, the shopping list and the recipe
-// guide, and is reported for review.
+// The quantity must convert to the recipe's yield unit (or, for a raw
+// ingredient, to its purchase unit using the same pack/each/density rules as
+// recipe costing). A quantity that does not convert is never guessed: the line
+// is left out of the totals, the shopping list and the recipe guide, and is
+// reported for review.
 //
 // Costs reuse buildBanquetPlan so nested sub-recipes, yield conversions and
-// the pull list match the rest of the app.
+// the pull list match the rest of the app. A raw ingredient line is costed as
+// a one-ingredient virtual recipe yielding one of the requested unit.
 
 import { buildBanquetPlan, type BanquetLine, type BanquetRecipeRow } from "../banquets/banquet";
 import { componentBatchFactor, priceGapNames } from "../recipes/costing";
 import { convertQty, unitLabel } from "../recipes/units";
+import { ALLERGENS, effectiveAllergens, parseAllergens, type AllergenNode } from "../recipes/allergens";
+import { recipePurchaseQuantity, type IngredientMeasure } from "../ingredients/measurements";
 import type { ShoppingList } from "../purchasing/shopping";
 
 export const CUSTOM_MENU_STATUSES = ["DRAFT", "CONFIRMED", "COMPLETE", "ARCHIVED"] as const;
@@ -28,9 +33,21 @@ export type CustomMenuHeader = {
   targetFcp: number;
 };
 
+export type CustomMenuRawItem = IngredientMeasure & {
+  id: string;
+  name: string;
+  category: string;
+  unit: string;
+  unitCost: number;
+  priceUpdatedAt: Date | null;
+  allergens: string | null;
+};
+
 export type CustomMenuLine = {
   id: string;
-  recipeId: string;
+  recipeId: string | null;
+  itemId?: string | null;
+  item?: CustomMenuRawItem | null;
   section: string;
   menuTitle: string | null;
   menuDescription: string | null;
@@ -47,11 +64,13 @@ export type CustomMenuRecipe = BanquetRecipeRow & {
 };
 
 export type QuantityMode = "fixed" | "per-guest";
-export type LineIssue = "no-quantity" | "no-guests" | "unit-mismatch" | "no-yield" | "missing-recipe";
+export type LineIssue = "no-quantity" | "no-guests" | "unit-mismatch" | "no-yield" | "missing-recipe" | "missing-item" | "no-price-unit";
 
 export type CustomMenuRow = CustomMenuLine & {
+  kind: "recipe" | "item";
   title: string;
-  recipeName: string;
+  recipeName: string; // recipe name, or ingredient name for a raw line
+  itemAllergens: string[] | null; // raw lines only; recipe lines inherit through the recipe tree
   yieldQty: number;
   yieldUnit: string;
   mode: QuantityMode;
@@ -85,7 +104,17 @@ export const ISSUE_TEXT: Record<LineIssue, string> = {
   "unit-mismatch": "This amount doesn't convert to the recipe's yield unit. Use a matching unit.",
   "no-yield": "The recipe has no usable yield. Fix the recipe before costing.",
   "missing-recipe": "The linked recipe no longer exists.",
+  "missing-item": "The linked ingredient no longer exists.",
+  "no-price-unit": "This amount doesn't convert to the ingredient's purchase unit. Use a matching unit or review its measurements.",
 };
+
+const RAW_PREFIX = "raw-item:";
+
+// Units a raw ingredient can be portioned in, matching how recipe costing
+// converts it (reviewed measurements unlock each/pack/density bridges).
+export function rawItemUnits(item: IngredientMeasure & { unit: string }, candidates: string[]): string[] {
+  return [...new Set([item.unit, item.eachLabel || "", ...candidates])].filter((unit) => unit && recipePurchaseQuantity(1, unit, item) != null);
+}
 
 // The amount a line asks for, before checking it against the recipe.
 export function lineQuantity(line: Pick<CustomMenuLine, "portionQty" | "portionUnit" | "totalQty" | "totalUnit">, guestCount: number, fallbackUnit: string) {
@@ -110,7 +139,32 @@ export function buildCustomMenuPlan(
   const guests = Math.max(0, menu.guestCount);
 
   const costable: Array<{ index: number; line: BanquetLine }> = [];
+  const virtualRecipes: CustomMenuRecipe[] = [];
   const rows: CustomMenuRow[] = sortLines(lines).map((line, index) => {
+    if (line.recipeId == null) {
+      // Raw ingredient: cost it as a virtual recipe that yields 1 of the unit.
+      const item = line.item ?? null;
+      const { mode, qty, unit } = lineQuantity(line, guests, item?.unit ?? "");
+      let issue: LineIssue | null = null;
+      if (!item) issue = "missing-item";
+      else if (mode === "per-guest" && (line.portionQty ?? 0) <= 0) issue = "no-quantity";
+      else if (mode === "per-guest" && guests <= 0) issue = "no-guests";
+      else if (recipePurchaseQuantity(1, unit, item) == null) issue = "no-price-unit";
+      if (!issue && item) {
+        const id = `${RAW_PREFIX}${line.id}`;
+        virtualRecipes.push({ id, name: item.name, yieldQty: 1, yieldUnit: unit, items: [{ quantity: 1, unit, item }], components: [] });
+        costable.push({ index, line: { recipeId: id, recipeName: item.name, orderedQty: qty, unit } });
+      }
+      const keys = item ? new Set(parseAllergens(item.allergens)) : null;
+      return {
+        ...line, kind: "item" as const,
+        title: line.menuTitle || item?.name || "Missing ingredient",
+        recipeName: item?.name ?? "Missing ingredient",
+        itemAllergens: keys ? ALLERGENS.filter((a) => keys.has(a.key)).map((a) => a.key) : null,
+        yieldQty: 1, yieldUnit: unit, mode, qty, unit,
+        batches: issue ? 0 : qty, cost: null, costPerGuest: null, issue,
+      };
+    }
     const recipe = byId.get(line.recipeId);
     const yieldUnit = recipe?.yieldUnit ?? "";
     const yieldQty = recipe?.yieldQty ?? 0;
@@ -126,8 +180,10 @@ export function buildCustomMenuPlan(
     if (!issue && recipe) costable.push({ index, line: { recipeId: recipe.id, recipeName: recipe.name, orderedQty: qty, unit } });
     return {
       ...line,
+      kind: "recipe" as const,
       title: line.menuTitle || recipe?.name || "Missing recipe",
       recipeName: recipe?.name ?? "Missing recipe",
+      itemAllergens: null,
       yieldQty,
       yieldUnit,
       mode,
@@ -140,7 +196,8 @@ export function buildCustomMenuPlan(
     };
   });
 
-  const plan = buildBanquetPlan(costable.map((c) => c.line), recipes);
+  const allRecipes = virtualRecipes.length ? [...recipes, ...virtualRecipes] : recipes;
+  const plan = buildBanquetPlan(costable.map((c) => c.line), allRecipes);
   costable.forEach((c, i) => {
     const cost = plan.lineCosts[i].cost;
     rows[c.index].cost = cost;
@@ -158,17 +215,18 @@ export function buildCustomMenuPlan(
   const totalCost = plan.totalCost;
   const revenue = menu.pricePerGuest != null && menu.pricePerGuest > 0 && guests > 0 ? menu.pricePerGuest * guests : null;
   const fcp = revenue ? (totalCost / revenue) * 100 : null;
-  const costedRecipeIds = [...new Set(costable.map((c) => c.line.recipeId))];
+  const costedIds = [...new Set(costable.map((c) => c.line.recipeId))];
+  const costedRecipeIds = costedIds.filter((id) => !id.startsWith(RAW_PREFIX));
 
   const nameByItemId = new Map<string, string>();
-  for (const recipe of recipes) for (const { item } of recipe.items) nameByItemId.set(item.id, item.name);
+  for (const recipe of allRecipes) for (const { item } of recipe.items) nameByItemId.set(item.id, item.name);
   const priceGaps = priceGapNames(
-    recipes.map((recipe) => ({
+    allRecipes.map((recipe) => ({
       id: recipe.id,
       items: recipe.items.map(({ item }) => ({ itemId: item.id, unitCost: item.unitCost, priceUpdatedAt: item.priceUpdatedAt })),
       components: recipe.components,
     })),
-    costedRecipeIds,
+    costedIds,
     nameByItemId,
     now,
   );
@@ -186,6 +244,14 @@ export function buildCustomMenuPlan(
     priceGaps,
     issueCount: rows.filter((row) => row.issue).length,
   };
+}
+
+// Recorded allergen keys for a line: a raw ingredient's own tags, or a
+// recipe's tags inherited through its ingredients and sub-recipes. Null when
+// the line has no linked source to read.
+export function rowAllergenKeys(row: Pick<CustomMenuRow, "kind" | "recipeId" | "itemAllergens">, byId: Map<string, AllergenNode>): string[] | null {
+  if (row.kind === "item") return row.itemAllergens;
+  return row.recipeId && byId.has(row.recipeId) ? effectiveAllergens(row.recipeId, byId) : null;
 }
 
 // "6 oz per guest × 120 = 720 oz" or "Fixed total: 2 gal".

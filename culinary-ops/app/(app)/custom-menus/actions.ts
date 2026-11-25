@@ -30,8 +30,11 @@ const headerSchema = z.object({
   serviceNotes: optionalText(),
 });
 
+const optionalId = z.preprocess(blankToNull, z.string().min(1).nullable());
 const lineSchema = z.object({
-  recipeId: z.string().min(1, "Choose a recipe"),
+  // Exactly one source: a recipe/sub-recipe or a purchased raw ingredient.
+  recipeId: optionalId,
+  itemId: optionalId,
   section: z.string().trim().min(1).max(100),
   menuTitle: optionalText(200),
   menuDescription: optionalText(2000),
@@ -91,13 +94,17 @@ export async function saveCustomMenuItem(_previous: CustomMenuFormState, form: F
   try {
     const customMenuId = z.string().min(1).parse(form.get("customMenuId"));
     const id = String(form.get("id") || "");
+    const kind = form.get("kind") === "item" ? "item" : "recipe";
     const data = lineSchema.parse({
-      recipeId: field(form, "recipeId"), section: field(form, "section") || "Mains",
+      recipeId: kind === "recipe" ? field(form, "recipeId") : null,
+      itemId: kind === "item" ? field(form, "itemId") : null,
+      section: field(form, "section") || "Mains",
       menuTitle: field(form, "menuTitle"), menuDescription: field(form, "menuDescription"),
       portionQty: field(form, "portionQty"), portionUnit: field(form, "portionUnit"),
       totalQty: field(form, "totalQty"), totalUnit: field(form, "totalUnit"),
       sortOrder: field(form, "sortOrder") || 0,
     });
+    if (!data.recipeId && !data.itemId) return { error: kind === "item" ? "Choose an ingredient." : "Choose a recipe.", saved: false };
     if (!(data.portionQty && data.portionQty > 0) && !(data.totalQty && data.totalQty > 0)) {
       return { error: "Enter a portion per guest or a fixed total.", saved: false };
     }
@@ -106,7 +113,10 @@ export async function saveCustomMenuItem(_previous: CustomMenuFormState, form: F
       if (id) {
         const existing = await tx.customMenuItem.findFirst({ where: { id, customMenuId } });
         if (!existing) throw new Error("This dish is no longer on the menu. Refresh the page.");
-        await tx.customMenuItem.update({ where: { id }, data });
+        // A saved line keeps its source; only its amounts and menu text change.
+        const { recipeId: _recipeId, itemId: _itemId, ...editable } = data;
+        void _recipeId; void _itemId;
+        await tx.customMenuItem.update({ where: { id }, data: editable });
       } else {
         await tx.customMenuItem.create({ data: { ...data, customMenuId } });
       }
@@ -143,7 +153,7 @@ export async function duplicateCustomMenu(form: FormData) {
       status: "DRAFT", notes: source.notes, serviceNotes: source.serviceNotes,
       items: {
         create: source.items.map((item) => ({
-          recipeId: item.recipeId, section: item.section, menuTitle: item.menuTitle, menuDescription: item.menuDescription,
+          recipeId: item.recipeId, itemId: item.itemId, section: item.section, menuTitle: item.menuTitle, menuDescription: item.menuDescription,
           portionQty: item.portionQty, portionUnit: item.portionUnit, totalQty: item.totalQty, totalUnit: item.totalUnit, sortOrder: item.sortOrder,
         })),
       },

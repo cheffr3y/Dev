@@ -214,6 +214,7 @@ model Item {
   inventoryItems  InventoryItem[]
   orderGuideLines OrderGuideLine[]
   festivalOnHand  FestivalOnHand[]
+  customMenuItems CustomMenuItem[]
 
   @@index([category])
 }
@@ -381,8 +382,12 @@ model CustomMenuItem {
   id              String     @id @default(cuid())
   customMenuId    String
   customMenu      CustomMenu @relation(fields: [customMenuId], references: [id], onDelete: Cascade)
-  recipeId        String
-  recipe          Recipe     @relation(fields: [recipeId], references: [id], onDelete: Restrict)
+  // Exactly one of recipeId / itemId is set (enforced by a CHECK constraint):
+  // a recipe or sub-recipe, or a purchased raw ingredient such as buns.
+  recipeId        String?
+  recipe          Recipe?    @relation(fields: [recipeId], references: [id], onDelete: Restrict)
+  itemId          String?
+  item            Item?      @relation(fields: [itemId], references: [id], onDelete: Restrict)
   section         String     @default("Main")
   menuTitle       String?
   menuDescription String?
@@ -394,6 +399,7 @@ model CustomMenuItem {
   createdAt       DateTime   @default(now())
 
   @@index([customMenuId])
+  @@index([itemId])
 }
 
 model ToGoRollup {

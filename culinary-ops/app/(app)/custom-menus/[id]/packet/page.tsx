@@ -5,9 +5,9 @@ import { PrintButton } from "@/components/PrintButton";
 import { RecipeBuildCard, SharedBuildCard, buildRecipeTree, consolidateSharedSubBuilds, type RecipeTreeNode } from "@/components/RecipeBuild";
 import { RecipePrintSettings } from "@/components/RecipeDossier";
 import { requireUser } from "@/lib/auth/session";
-import { buildCustomMenuPlan, describeQuantity, formatMenuDate, ISSUE_TEXT, type CustomMenuRow } from "@/lib/menus/custom-menu";
+import { buildCustomMenuPlan, describeQuantity, formatMenuDate, ISSUE_TEXT, rowAllergenKeys, type CustomMenuRow } from "@/lib/menus/custom-menu";
 import { loadCustomMenu } from "@/lib/menus/custom-menu-data";
-import { ALLERGENS, MAJOR_ALLERGENS, effectiveAllergens } from "@/lib/recipes/allergens";
+import { ALLERGENS, MAJOR_ALLERGENS } from "@/lib/recipes/allergens";
 import { money, num, pct } from "@/lib/recipes/costing";
 import { unitLabel } from "@/lib/recipes/units";
 import styles from "./packet.module.css";
@@ -38,7 +38,7 @@ export default async function CustomMenuPacket({ params, searchParams }: { param
   // Scaled recipes: combine repeated recipes, then pull shared sub-recipes up front.
   const entries = new Map<string, { node: RecipeTreeNode; totalBatches: number; uses: CustomMenuRow[] }>();
   for (const row of plan.rows) {
-    const node = tree.get(row.recipeId);
+    const node = row.recipeId ? tree.get(row.recipeId) : undefined;
     if (row.issue || !node) continue;
     const entry = entries.get(node.id) ?? { node, totalBatches: 0, uses: [] };
     entry.totalBatches += row.batches;
@@ -48,7 +48,8 @@ export default async function CustomMenuPacket({ params, searchParams }: { param
   const builds = [...entries.values()];
   const { shared, sharedRefs } = consolidateSharedSubBuilds(builds.map((b) => ({ node: b.node, totalBatches: b.totalBatches })), tree);
 
-  const allergenRows = plan.rows.map((row) => ({ row, keys: tree.has(row.recipeId) ? effectiveAllergens(row.recipeId, tree) : null }));
+  const allergenRows = plan.rows.map((row) => ({ row, keys: rowAllergenKeys(row, tree) }));
+  const purchased = plan.rows.filter((row) => row.kind === "item" && !row.issue);
   const otherAllergens = ALLERGENS.filter((a) => a.group !== "major");
 
   return (
@@ -80,7 +81,7 @@ export default async function CustomMenuPacket({ params, searchParams }: { param
             {section.rows.map((row) => <div key={row.id} className="mb-3">
               <p className="font-display text-xl text-ink">{row.title}</p>
               {row.menuDescription && <p className="text-sm italic text-zinc-700">{row.menuDescription}</p>}
-              {tree.has(row.recipeId) && <p className="mt-0.5 text-[11px] uppercase tracking-wider text-zinc-500">{allergenText(effectiveAllergens(row.recipeId, tree))}</p>}
+              {(() => { const keys = rowAllergenKeys(row, tree); return keys && keys.length > 0 && <p className="mt-0.5 text-[11px] uppercase tracking-wider text-zinc-500">{allergenText(keys)}</p>; })()}
             </div>)}
           </div>)}
         </div>
@@ -109,10 +110,10 @@ export default async function CustomMenuPacket({ params, searchParams }: { param
             {plan.sections.map((section) => <tbody key={section.name}>
               <tr><th scope="rowgroup" colSpan={6} className="bg-zinc-100">{section.name}</th></tr>
               {section.rows.map((row) => <tr key={row.id}>
-                <th scope="row">{row.title}{row.menuTitle && <span className="block text-xs font-normal text-zinc-600">{row.recipeName}</span>}
+                <th scope="row">{row.title}{(row.menuTitle || row.kind === "item") && <span className="block text-xs font-normal text-zinc-600">{row.kind === "item" ? `Raw ingredient${row.menuTitle ? ` · ${row.recipeName}` : ""}` : row.recipeName}</span>}
                   {row.issue && <span className="block text-xs font-normal text-amber-800">{ISSUE_TEXT[row.issue]}</span>}</th>
                 <td className="text-xs">{describeQuantity(row, menu.guestCount, num)}</td>
-                <td className={styles.number}>{row.issue ? "—" : `${num(row.batches)} × ${num(row.yieldQty)} ${unitLabel(row.yieldUnit)}`}</td>
+                <td className={styles.number}>{row.issue ? "—" : row.kind === "item" ? "Purchased" : `${num(row.batches)} × ${num(row.yieldQty)} ${unitLabel(row.yieldUnit)}`}</td>
                 <td className={styles.number}>{money(row.cost)}</td>
                 <td className={styles.number}>{money(row.costPerGuest)}</td>
                 <td className={styles.number}>{pct(row.cost != null && plan.totalCost > 0 ? (row.cost / plan.totalCost) * 100 : null)}</td>
@@ -144,7 +145,7 @@ export default async function CustomMenuPacket({ params, searchParams }: { param
             <tbody>{allergenRows.map(({ row, keys }) => <tr key={row.id}>
               <th scope="row">{row.title}</th>
               {MAJOR_ALLERGENS.map((a) => <td key={a.key} className="text-center font-semibold">{keys?.includes(a.key) ? "●" : ""}</td>)}
-              <td className="text-xs">{keys == null ? "No recipe — verify" : otherAllergens.filter((a) => keys.includes(a.key)).map((a) => a.label).join(", ") || (keys.length ? "" : "None recorded — verify")}</td>
+              <td className="text-xs">{keys == null ? "Not linked — verify" : otherAllergens.filter((a) => keys.includes(a.key)).map((a) => a.label).join(", ") || (keys.length ? "" : "None recorded — verify")}</td>
             </tr>)}</tbody>
           </table>
         </div> : <p className="mt-3 text-sm text-zinc-600">No dishes to review.</p>}
@@ -153,7 +154,11 @@ export default async function CustomMenuPacket({ params, searchParams }: { param
       {/* 4 · Scaled recipes */}
       <section className={styles.nextSheet} aria-labelledby="custom-packet-recipes">
         <SectionHeader id="custom-packet-recipes" title="Scaled recipes" eventLabel={eventLabel} />
-        {builds.length === 0 && <p className="text-sm text-zinc-600">No recipes to scale yet.</p>}
+        {purchased.length > 0 && <div className="mb-6 break-inside-avoid border border-zinc-300 p-3">
+          <h3 className="text-sm font-semibold">Purchased items — no recipe</h3>
+          <ul className="mt-1 text-sm">{purchased.map((row) => <li key={row.id}>{row.title}{row.menuTitle ? ` (${row.recipeName})` : ""}: {describeQuantity(row, menu.guestCount, num)}</li>)}</ul>
+        </div>}
+        {builds.length === 0 && purchased.length === 0 && <p className="text-sm text-zinc-600">No recipes to scale yet.</p>}
         {shared.length > 0 && <>
           <h3 className="mb-4 border-b border-zinc-300 pb-1 font-display text-2xl text-ink print:break-after-avoid">Shared builds — make these first</h3>
           <div className="recipe-packet-builds space-y-8">
