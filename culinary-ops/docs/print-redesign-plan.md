@@ -8,7 +8,7 @@ Jeff stepped back to rank by payoff. Biggest weekly time sink: **ordering & invo
 
 | Rank | Work | Why | Status |
 |---|---|---|---|
-| 1 | **On-hand counts on the purchasing list** (see "Ordering: on-hand counts" below) | Removes the manual step in the weekly order | ✅ Built and tested — on branch, not yet on main |
+| 1 | **On-hand counts on the purchasing list** (see "Ordering: on-hand counts" below) | Removes the manual step in the weekly order | ✅ Live on main (8b226ac, 2026-11-26) |
 | 2 | Dietary tagging screens + "Needs attention" list (D3–D5) | DB fields are live but can't be filled in; allergen review | ⬜ |
 | 3 | Branded client menu | Half built; what clients see | 🔧 Paused |
 | 4 | Station cards in v3 look; chef's copy | Approved look, mostly build | ⬜ |
@@ -206,3 +206,4 @@ Jeff's idea: add **vegan / vegetarian** to recipes and ingredients, and flag ing
 - **2026-11-26** — Priorities reset around ordering; on-hand count plan written, awaiting Jeff's OK.
 - **2026-11-26** — On-hand counts built (count screen, count sheet, order sheet, migration, tests).
 - **2026-11-26** — On-hand counts verified on a disposable database: all integration tests, new `purchase-counts` browser test (phone + desk), and existing `event-planning` / `banquet-setup` browser tests pass. Waiting on Jeff's OK to push to main (adds migration).
+- **2026-11-26** — On-hand counts pushed to main (`8b226ac`); migration `20261128000000_purchase_counts` runs on deploy.
