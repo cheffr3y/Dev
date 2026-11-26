@@ -1,9 +1,9 @@
-import { useId, type ReactNode } from "react";
+import { useId, type CSSProperties, type ReactNode } from "react";
 import { InspectorLink } from "./InspectorLink";
 import { num } from "@/lib/recipes/costing";
 import { displayMeasure } from "@/lib/recipes/units";
 import { ALLERGENS } from "@/lib/recipes/allergens";
-import { splitStep } from "@/lib/recipes/method";
+import { splitMethodAndNotes, splitStep } from "@/lib/recipes/method";
 import { MethodCues } from "./MethodCues";
 import { groupMiseLines } from "@/lib/recipes/recipe-groups";
 import { PrintPageRules, ScaledProductionBanner } from "./PrintSpecHeader";
@@ -45,13 +45,6 @@ export type MiseLine = {
   sortOrder?: number;
 };
 
-function parseSteps(instructions: string | null): string[] {
-  return (instructions ?? "")
-    .split(/\r?\n/)
-    .map((line) => line.trim().replace(/^\d+[.)]\s*/, ""))
-    .filter(Boolean);
-}
-
 export type RecipeDossierProps = {
   recipe: DossierRecipe;
   scale: number;
@@ -84,6 +77,12 @@ export function RecipeDossier({
   const totalMinutes = (recipe.prepMinutes ?? 0) + (recipe.cookMinutes ?? 0);
   const hasTime = recipe.prepMinutes != null || recipe.cookMinutes != null;
   const shelfLife = recipe.shelfLife || (recipe.holdLifeDays != null ? `${recipe.holdLifeDays} Days` : null);
+  const specs = [
+    { label: scale === 1 ? "Standard Yield" : "Scaled Yield", value: yieldLabel },
+    hasTime && { label: "Prep / Cook", value: `${recipe.prepMinutes != null ? `${recipe.prepMinutes}m` : "—"} / ${recipe.cookMinutes != null ? `${recipe.cookMinutes}m` : "—"}` },
+    hasTime && { label: "Total Time", value: `${totalMinutes}m` },
+    shelfLife && { label: "Shelf / Hold Life", value: shelfLife },
+  ].filter((spec): spec is { label: string; value: string } => !!spec);
   return (
     <article id={id} className={`print-sheet recipe-dossier flex flex-col border border-hairline bg-canvas shadow-sm ${supporting ? "recipe-dossier-supporting" : ""} ${className}`} aria-labelledby={titleId}>
       <ScaledProductionBanner scale={scale} />
@@ -105,13 +104,9 @@ export function RecipeDossier({
           <span className="shrink-0 rounded-full border border-[#D5CFC4] bg-[#F4F1EA] px-3 py-2 text-right font-mono text-[10px] tabular-nums text-[#4B1F3B]">{batchLabel ?? (scale === 1 ? "Standard batch" : "Makes")}<span className="block text-[9px] text-zinc-500">{yieldLabel}</span></span>
         </header>
 
-        <dl className="recipe-specs grid grid-cols-[1fr_1fr_0.85fr_1.1fr_1.45fr] border-y border-hairline py-3">
-          {[
-            { label: scale === 1 ? "Standard Yield" : "Scaled Yield", value: yieldLabel },
-            { label: "Prep / Cook", value: `${recipe.prepMinutes != null ? `${recipe.prepMinutes}m` : "—"} / ${recipe.cookMinutes != null ? `${recipe.cookMinutes}m` : "—"}` },
-            { label: "Total Time", value: hasTime ? `${totalMinutes}m` : "—" },
-            { label: "Shelf / Hold Life", value: shelfLife ?? "—" },
-          ].map((spec) => (
+        {/* Empty specs are left off the sheet rather than printed as dashes. */}
+        <dl className="recipe-specs grid grid-cols-[var(--recipe-spec-cols)] border-y border-hairline py-3" style={{ "--recipe-spec-cols": `${specs.map(() => "minmax(0,1fr)").join(" ")} minmax(0,1.45fr)` } as CSSProperties}>
+          {specs.map((spec) => (
             <div key={spec.label} className="recipe-spec min-w-0 border-r border-hairline px-3 first:pl-0">
               <dt className="recipe-meta font-mono text-[8px] uppercase tracking-[0.1em] text-zinc-500">{spec.label}</dt>
               <dd className="mt-1.5 font-mono text-[11px] leading-snug tabular-nums text-[#4B1F3B]">{spec.value}</dd>
@@ -146,7 +141,7 @@ export function RecipeDossierWorkspace({ recipe, lines, scale, weightInGrams = f
 }) {
   const sectionId = useId();
   const groups = groupMiseLines(lines);
-  const steps = parseSteps(recipe.instructions);
+  const { steps, notes: kitchenNotes } = splitMethodAndNotes(recipe.instructions);
   const shelfLife = recipe.shelfLife || (recipe.holdLifeDays != null ? `${recipe.holdLifeDays} Days` : null);
   const storageNotes = (recipe.storage ?? "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   return (
@@ -198,8 +193,8 @@ export function RecipeDossierWorkspace({ recipe, lines, scale, weightInGrams = f
                 <li key={index} className="recipe-step grid grid-cols-[28px_1fr] gap-3">
                   <span className="recipe-step-number whitespace-nowrap font-display text-[29px] italic leading-none tabular-nums text-gold" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
                   <div className="min-w-0">
-                    <div className="recipe-step-heading flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
-                      <h3 className="font-semibold text-[#4B1F3B]">{action || `Step ${index + 1}`}</h3>
+                    <div className={`recipe-step-heading flex flex-wrap items-baseline gap-x-2 gap-y-1 ${action ? "justify-between" : "justify-end"}`}>
+                      {action && <h3 className="font-semibold text-[#4B1F3B]">{action}</h3>}
                       <MethodCues step={step} />
                     </div>
                     {detail && <p className="recipe-step-prose mt-1 leading-relaxed text-zinc-700">{detail}</p>}
@@ -208,6 +203,14 @@ export function RecipeDossierWorkspace({ recipe, lines, scale, weightInGrams = f
               );
             })}
           </ol>
+        )}
+        {kitchenNotes.length > 0 && (
+          <aside className="recipe-notes mt-5 border border-[#E2DDD5] p-3">
+            <h3 className="font-display text-[15px] italic text-[#4B1F3B]">Kitchen Notes</h3>
+            <ul className="mt-2 list-disc space-y-1 pl-3 text-[10px] leading-relaxed marker:text-gold">
+              {kitchenNotes.map((note, index) => <li key={index} className="whitespace-pre-wrap">{note}</li>)}
+            </ul>
+          </aside>
         )}
         {(storageNotes.length > 0 || shelfLife) && (
           <aside className="recipe-storage mt-5 border border-[#E2DDD5] p-3">

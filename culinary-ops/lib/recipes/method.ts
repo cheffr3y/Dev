@@ -27,3 +27,23 @@ export function joinStep(action: string, detail: string): string {
   if (!d) return a;
   return `${a}${STEP_SEPARATOR}${d}`;
 }
+
+// Recipes imported from FoxtownHQ carry a "— Migrated notes —" block appended
+// to the method (equipment, critical steps, storage, shelf life …). On paper
+// those are notes, not numbered steps. Bookkeeping lines (recipe type, source
+// venue, menu descriptor, prep time) mean nothing to a cook and are dropped.
+const MIGRATED_MARKER = /^[—–-]*\s*Migrated notes\s*[—–-]*$/i;
+const BOOKKEEPING = /^(?:Recipe type|Source venue|Menu descriptor|Prep time \(min\))\s*:/i;
+
+export function splitMethodAndNotes(instructions: string | null | undefined): { steps: string[]; notes: string[] } {
+  const steps: string[] = [], notes: string[] = [];
+  let inNotes = false;
+  for (const raw of (instructions ?? "").split(/\r?\n/)) {
+    const line = raw.trim().replace(/^\d+[.)]\s*/, "");
+    if (!line) continue;
+    if (MIGRATED_MARKER.test(line)) { inNotes = true; continue; }
+    if (BOOKKEEPING.test(line)) continue;
+    (inNotes ? notes : steps).push(line);
+  }
+  return { steps, notes };
+}
