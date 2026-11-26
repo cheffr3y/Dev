@@ -152,14 +152,33 @@ export function priceFreshness(
 // when it was last priced, plus its sub-recipe links so gaps propagate up.
 export type RecipePriceNode = {
   id: string;
-  items: { itemId: string; unitCost: number; priceUpdatedAt: Date | null }[];
+  // allergenReviewedAt: pass it (even as null) to include allergen/diet review
+  // gaps; leave it out and the item is not judged for review.
+  items: { itemId: string; unitCost: number; priceUpdatedAt: Date | null; allergenReviewedAt?: Date | null }[];
   components: { childId: string }[];
 };
+
+// Allergens and dietary tags must be re-confirmed against the product label
+// at least this often (Jeff, 2026-11-26: six months).
+export const ALLERGEN_REVIEW_DAYS = 183;
+
+export type AllergenReview = { unreviewed: boolean; stale: boolean; label: string };
+
+export function allergenReview(reviewedAt: Date | null | undefined, now: Date = new Date()): AllergenReview {
+  if (!reviewedAt) return { unreviewed: true, stale: false, label: "never reviewed" };
+  const days = Math.floor((now.getTime() - reviewedAt.getTime()) / 86400000);
+  const stale = days >= ALLERGEN_REVIEW_DAYS;
+  const ago = days <= 0 ? "today" : days < 30 ? `${days}d ago` : days < 365 ? `${Math.floor(days / 30)}mo ago` : `${Math.floor(days / 365)}y ago`;
+  return { unreviewed: false, stale, label: `reviewed ${ago}` };
+}
 
 // Ingredients in a recipe tree that need cost attention: `unpriced` (no cost on
 // file — the recipe cost is understated) and `stale` (priced but not re-costed
 // within PRICE_STALE_DAYS, or never stamped).
-export type PriceGap = { unpriced: Set<string>; stale: Set<string> };
+// `unreviewed` / `reviewStale`: allergen & dietary tags never confirmed, or not
+// re-confirmed within ALLERGEN_REVIEW_DAYS.
+export type PriceGap = { unpriced: Set<string>; stale: Set<string>; unreviewed: Set<string>; reviewStale: Set<string> };
+export const emptyGap = (): PriceGap => ({ unpriced: new Set(), stale: new Set(), unreviewed: new Set(), reviewStale: new Set() });
 
 // recipeId -> the price gaps reachable ANYWHERE in its tree: its own ingredients
 // plus every nested sub-recipe's, to any depth. This is what makes "ensure all
@@ -173,17 +192,24 @@ export function buildPriceGapMap(recipes: RecipePriceNode[], now: Date = new Dat
     const cached = cache.get(id);
     if (cached) return cached;
     const node = byId.get(id);
-    if (!node || stack.has(id)) return { unpriced: new Set(), stale: new Set() };
+    if (!node || stack.has(id)) return emptyGap();
     stack.add(id);
-    const gap: PriceGap = { unpriced: new Set(), stale: new Set() };
+    const gap = emptyGap();
     for (const ri of node.items) {
       if (isUnpriced(ri.unitCost)) gap.unpriced.add(ri.itemId);
       else if (priceFreshness(ri.priceUpdatedAt, ri.unitCost, now).stale) gap.stale.add(ri.itemId);
+      if (ri.allergenReviewedAt !== undefined) {
+        const review = allergenReview(ri.allergenReviewedAt, now);
+        if (review.unreviewed) gap.unreviewed.add(ri.itemId);
+        else if (review.stale) gap.reviewStale.add(ri.itemId);
+      }
     }
     for (const c of node.components) {
       const cg = walk(c.childId, stack);
       for (const x of cg.unpriced) gap.unpriced.add(x);
       for (const x of cg.stale) gap.stale.add(x);
+      for (const x of cg.unreviewed) gap.unreviewed.add(x);
+      for (const x of cg.reviewStale) gap.reviewStale.add(x);
     }
     stack.delete(id);
     cache.set(id, gap);
@@ -202,18 +228,25 @@ export function priceGapNames(
   rootIds: Iterable<string>,
   nameByItemId: Map<string, string>,
   now: Date = new Date(),
-): { unpriced: string[]; stale: string[] } {
+): { unpriced: string[]; stale: string[]; unreviewed: string[]; reviewStale: string[] } {
   const gapMap = buildPriceGapMap(recipes, now);
-  const unpriced = new Set<string>();
-  const stale = new Set<string>();
+  const all = emptyGap();
   for (const id of rootIds) {
     const g = gapMap.get(id);
     if (!g) continue;
-    for (const x of g.unpriced) unpriced.add(x);
-    for (const x of g.stale) stale.add(x);
+    for (const key of ["unpriced", "stale", "unreviewed", "reviewStale"] as const) for (const x of g[key]) all[key].add(x);
   }
   const names = (s: Set<string>) => [...s].map((i) => nameByItemId.get(i) ?? i).sort((a, b) => a.localeCompare(b));
-  return { unpriced: names(unpriced), stale: names(stale) };
+  return { unpriced: names(all.unpriced), stale: names(all.stale), unreviewed: names(all.unreviewed), reviewStale: names(all.reviewStale) };
+}
+
+// "Allergen review needed: never reviewed — Ketchup, Molasses; over 6 months — Mayonnaise."
+export function allergenReviewText(gaps: { unreviewed: string[]; reviewStale: string[] }): string {
+  const parts = [
+    gaps.unreviewed.length ? `never reviewed — ${gaps.unreviewed.join(", ")}` : "",
+    gaps.reviewStale.length ? `over 6 months — ${gaps.reviewStale.join(", ")}` : "",
+  ].filter(Boolean);
+  return parts.length ? `${parts.join("; ")}.` : "";
 }
 
 // Menu price and food cost use the same recipe yield unit.

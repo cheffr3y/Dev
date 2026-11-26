@@ -190,6 +190,12 @@ model Item {
   name           String
   category       String    @default("Other")
   allergens      String?   // canonical comma-separated keys; recipes inherit these
+  // Dietary status: "vegan" (also vegetarian) | "vegetarian" (not vegan) |
+  // "neither" (meat, fish, gelatin…) | null = not yet tagged. Recipes roll up.
+  diet           String?
+  // When someone last confirmed this item's allergens and diet against the
+  // product label. Null or older than ALLERGEN_REVIEW_DAYS = out of review.
+  allergenReviewedAt DateTime?
   unit           String    @default("each") // purchase & count unit, e.g. "lb", "case", "each"
   packSize       String? // descriptive display fallback, e.g. "6 x #10 can"
   // Structured purchasing data for pack-rounded ordering (Festivals order guide
@@ -249,6 +255,10 @@ model Recipe {
   shelfLife               String? // e.g. "3 days refrigerated"
   storage                 String? // storage & holding instructions
   allergens               String? // comma-separated, e.g. "dairy, gluten, tree nuts"
+  // Chef override of the rolled-up diet ("vegan" | "vegetarian" | "neither"),
+  // with the reason. Null = use the ingredient roll-up.
+  dietOverride            String?
+  dietOverrideNote        String?
   criticalNotes           String? // HACCP / critical control points, e.g. "Cook to 165°F internal"
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt

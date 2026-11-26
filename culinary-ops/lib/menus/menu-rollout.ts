@@ -1,6 +1,6 @@
 import { convertQty } from "../recipes/units";
 import { recipePurchaseQuantity } from "../ingredients/measurements";
-import { buildCostMap, buildPriceGapMap, componentBatchFactor, costPerYieldUnit, foodCostPct, type PriceGap } from "../recipes/costing";
+import { buildCostMap, buildPriceGapMap, componentBatchFactor, costPerYieldUnit, emptyGap, foodCostPct, type PriceGap } from "../recipes/costing";
 import { buildBanquetPlan, type BanquetRecipeRow } from "../banquets/banquet";
 import { effectiveAllergens } from "../recipes/allergens";
 
@@ -70,7 +70,7 @@ export function buildMenuRollout(rollout: { items: RolloutLine[] }, recipes: Rol
     return [{ ...item, recipe, title: item.menuTitle || recipe.name, batchCost, portionCost,
       effectiveMenuPrice, fcp: foodCostPct(portionCost, effectiveMenuPrice),
       grossMargin: effectiveMenuPrice != null ? effectiveMenuPrice - portionCost : null,
-      priceGaps: gapMap.get(recipe.id) ?? { unpriced: new Set<string>(), stale: new Set<string>() },
+      priceGaps: gapMap.get(recipe.id) ?? emptyGap(),
       allergens: effectiveAllergens(recipe.id, byId),
     }];
   });
@@ -136,10 +136,12 @@ export function buildMenuRollout(rollout: { items: RolloutLine[] }, recipes: Rol
   const vendorGroups = [...vendors.values()].sort((a, b) => a.name.localeCompare(b.name)).map(vendor => ({
     ...vendor, lines: vendor.lines.sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name)),
   }));
-  const priceGaps: PriceGap = { unpriced: new Set(), stale: new Set() };
+  const priceGaps: PriceGap = emptyGap();
   for (const row of rows) {
     for (const id of row.priceGaps.unpriced) priceGaps.unpriced.add(id);
     for (const id of row.priceGaps.stale) priceGaps.stale.add(id);
+    for (const id of row.priceGaps.unreviewed) priceGaps.unreviewed.add(id);
+    for (const id of row.priceGaps.reviewStale) priceGaps.reviewStale.add(id);
   }
   const names = (ids: Set<string>) => [...ids].map(id => catalog.get(id)?.name ?? id).sort();
   const average = (values: (number | null)[]) => {

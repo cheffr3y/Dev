@@ -130,8 +130,8 @@ Jeff's idea: add **vegan / vegetarian** to recipes and ingredients, and flag ing
 ### Status
 | Step | What | Status |
 |---|---|---|
-| D1 | Database fields (ingredient dietary + reviewed date; recipe override + note) — additive migration | ⬜ |
-| D2 | Roll-up + review-gap logic, with tests | ⬜ |
+| D1 | Database fields (ingredient dietary + reviewed date; recipe override + note) — additive migration | ✅ 2026-11-26 — migration `20261127000000_dietary_tags`: `Item.diet`, `Item.allergenReviewedAt`, `Recipe.dietOverride`, `Recipe.dietOverrideNote`. Database rejects unknown diet values and an override without a note. Tested on a throwaway Postgres. **Not yet applied to production** — runs on next deploy. |
+| D2 | Roll-up + review-gap logic, with tests | ✅ 2026-11-26 — `lib/recipes/diet.ts` (roll-up, override, untagged list, menu text); review gaps added to the shared price-gap logic (6-month window) with a ready-made warning sentence. Screens don't pass the review date yet, so nothing new shows until D5. |
 | D3 | Ingredient editing: dietary field, Mark reviewed, review filter on Ingredients page | ⬜ |
 | D4 | Recipe override field | ⬜ |
 | D5 | Warning everywhere stale price shows | ⬜ |
@@ -149,3 +149,4 @@ Jeff's idea: add **vegan / vegetarian** to recipes and ingredients, and flag ing
 - **2026-11-26** — Bug 5 investigated (data, not print code — unconfirmed). Bug 6 fixed: migrated notes become a Kitchen Notes box; empty spec boxes and "Step N" placeholder headings removed.
 - **2026-11-26** — Added backlog: vegan/vegetarian tags and allergen/aversion review warnings.
 - **2026-11-26** — Dietary tags question round done; design and build steps D1–D6 added. Building before resuming Phase 2.
+- **2026-11-26** — Dietary D1 (database fields + migration) and D2 (roll-up and review logic, tests) done.
