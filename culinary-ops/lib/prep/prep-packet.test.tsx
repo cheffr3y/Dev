@@ -17,6 +17,14 @@ test("grams converts scaled weights while preserving volume, count and unknown u
     assert.deepEqual(displayMeasure(2, unit, true), displayMeasure(2, unit));
   }
   assert.deepEqual(displayMeasure(32, "oz"), { qty: 2, label: "lb" });
+  // Truncated "eac" from imported data is still "each".
+  assert.deepEqual(displayMeasure(10.83, "eac"), { qty: 10.83, label: "each" });
+  // Scaled copies and order lists round counts up; masters keep exact counts.
+  assert.deepEqual(displayMeasure(10.83, "eac", false, true), { qty: 11, label: "each" });
+  assert.deepEqual(displayMeasure(81.25, "each", false, true), { qty: 82, label: "each" });
+  assert.deepEqual(displayMeasure(3, "each", false, true), { qty: 3, label: "each" });
+  assert.deepEqual(displayMeasure(0.5, "each"), { qty: 0.5, label: "each" });
+  assert.deepEqual(displayMeasure(2.5, "lb", false, true), { qty: 2.5, label: "lb" });
 });
 
 test("grams reaches nested builds and shared pull amounts without changing default packets", () => {

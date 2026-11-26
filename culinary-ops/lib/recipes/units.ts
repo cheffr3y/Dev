@@ -61,6 +61,7 @@ const ALIASES: Record<string, string> = {
   kilogram: "kg",
   // count
   ea: "each",
+  eac: "each", // truncated "each" seen in imported recipe and item data
   ct: "each",
   count: "each",
   pc: "each",
@@ -92,7 +93,11 @@ export function unitLabel(raw: string): string {
 // weight rolls into g → oz → lb (under an ounce drops to grams). Count and
 // unrecognized units pass through unchanged. This is display-only — the stored
 // quantity/unit (and any costing that depends on it) are left untouched.
-export function displayMeasure(qty: number, unit: string, weightInGrams = false): { qty: number; label: string } {
+//
+// roundCountsUp: for scaled cook copies and order lists, count units (each,
+// dozen) round up to a whole number — nobody pulls 10.83 eggs. Master recipes
+// keep their exact counts (half a lemon stays 0.5).
+export function displayMeasure(qty: number, unit: string, weightInGrams = false, roundCountsUp = false): { qty: number; label: string } {
   const def = resolve(unit);
   if (!def) return { qty, label: unit };
 
@@ -111,7 +116,7 @@ export function displayMeasure(qty: number, unit: string, weightInGrams = false)
     return { qty: oz, label: UNITS.oz.label };
   }
 
-  return { qty, label: def.label };
+  return { qty: roundCountsUp ? Math.ceil(qty - 1e-9) : qty, label: def.label };
 }
 
 // Convert a quantity between units. Returns null when the conversion is

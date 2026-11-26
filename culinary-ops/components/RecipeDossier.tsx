@@ -164,7 +164,7 @@ export function RecipeDossierWorkspace({ recipe, lines, scale, weightInGrams = f
             )}
             <ul>
               {group.lines.map((line) => {
-                const measure = displayMeasure(line.quantity * scale, line.unit, weightInGrams);
+                const measure = displayMeasure(line.quantity * scale, line.unit, weightInGrams, scale !== 1);
                 return (
                   <li key={line.id} className="recipe-ingredient flex items-baseline justify-between gap-3 border-b border-dotted border-[#E2DDD5] py-1.5">
                     <div className="min-w-0">

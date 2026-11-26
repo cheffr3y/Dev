@@ -135,7 +135,7 @@ export function buildShoppingList(roots: ShoppingRootLine[], recipes: ShoppingRe
   const byCategory = new Map<string, ShoppingListItem[]>();
   for (const [itemId, agg] of items) {
     const amounts = agg.buckets.map((b) => {
-      const m = displayMeasure(b.qty, b.unit);
+      const m = displayMeasure(b.qty, b.unit, false, true);
       return { qty: m.qty, unit: m.label };
     });
     const arr = byCategory.get(agg.category) ?? [];
