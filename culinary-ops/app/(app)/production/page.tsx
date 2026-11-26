@@ -9,6 +9,7 @@ import { preciseNum } from "@/lib/recipes/costing";
 import { Card, PageHeader } from "@/components/ui";
 import { PrintController } from "@/components/PrintController";
 import { PrintSpecHeader } from "@/components/PrintSpecHeader";
+import { startPurchaseCount } from "./counts/actions";
 
 type Query = Record<string, string | string[] | undefined>;
 const first = (value: string | string[] | undefined) => Array.isArray(value) ? value[0] : value;
@@ -52,6 +53,13 @@ export default async function ProductionPage({ searchParams }: { searchParams: P
       {shopping ? <article className="atelier-paper p-4">
         <h1 className="text-2xl font-semibold">Combined shopping · {selected.length} selected jobs</h1>
         <p className="my-2 text-sm">Purchasing estimate using current vendor/pack/usable-yield settings. Frozen prep quantities retain their saved recipe contents. Check stock, pack sizes, and source overlaps before ordering. Event cook work remains separate.</p>
+        {selected.length > 0 && !!list?.rows.length && <form action={startPurchaseCount} className="no-print my-4 flex flex-wrap items-center gap-3 rounded border border-hairline bg-canvas p-3">
+          <input type="hidden" name="from" value={from} /><input type="hidden" name="to" value={to} />
+          {undated && <input type="hidden" name="undated" value="1" />}
+          {selected.map(source => <input key={source.id} type="hidden" name="source" value={source.id} />)}
+          <button className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-white">Start a count</button>
+          <span className="text-sm text-zinc-600">Count what&apos;s on hand on your phone or a printed sheet; To order fills in for you. Each count starts blank.</span>
+        </form>}
         {staleSelection && <p role="alert" className="my-3 border-2 border-amber-500 p-3">Some selected jobs are no longer in this range or are completed/cancelled. Reselect jobs before ordering.</p>}
         {!selected.length && <p className="my-4">Select at least one event or prep job above.</p>}
         <ul className="my-4 list-disc pl-5 text-sm">{selected.map(source => <li key={source.id}>{source.name} · {source.dateLabel}: {source.date ?? "Unspecified"} · {source.destination}</li>)}</ul>

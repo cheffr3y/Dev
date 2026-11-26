@@ -12,7 +12,7 @@ test("purchasing combines raw demand with source contributions, usable yield and
   assert.equal(plan.rows.length, 1);
   assert.equal(plan.rows[0].quantity, 10);
   assert.deepEqual(plan.rows[0].contributions.map(p => p.quantity), [6, 4]);
-  assert.equal(plan.rows[0].suggestedPacks, 2);
+  assert.equal(plan.rows[0].suggestedPacks, 2); assert.ok(plan.rows[0].packQtyInUnit! > 0);
   assert.equal(plan.sourceCount, 2);
   assert.deepEqual(plan.warnings, []);
   assert.equal(a.lines[0].quantity, 12);
@@ -38,7 +38,7 @@ test("incompatible ingredient units stay separate and are explicitly labeled as 
   const plan = buildPurchasingList([source("Mixed")], [mixed], [item]);
   assert.equal(plan.rows.length, 2);
   const unknown = plan.rows.find(r => r.unit === "cup")!;
-  assert.match(unknown.basis, /review/); assert.equal(unknown.quantity, 2); assert.equal(unknown.suggestedPacks, null);
+  assert.match(unknown.basis, /review/); assert.equal(unknown.quantity, 2); assert.equal(unknown.suggestedPacks, null); assert.equal(unknown.packQtyInUnit, null);
   assert.ok(plan.warnings.some(w => /incompatible unit/.test(w)));
 });
 test("frozen source recipes override current recipe demand without modifying either", () => {

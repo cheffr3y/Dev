@@ -8,13 +8,13 @@ Jeff stepped back to rank by payoff. Biggest weekly time sink: **ordering & invo
 
 | Rank | Work | Why | Status |
 |---|---|---|---|
-| 1 | **On-hand counts on the purchasing list** (see "Ordering: on-hand counts" below) | Removes the manual step in the weekly order | ⬜ Plan awaiting OK |
+| 1 | **On-hand counts on the purchasing list** (see "Ordering: on-hand counts" below) | Removes the manual step in the weekly order | 🔧 Built, in testing |
 | 2 | Dietary tagging screens + "Needs attention" list (D3–D5) | DB fields are live but can't be filled in; allergen review | ⬜ |
 | 3 | Branded client menu | Half built; what clients see | 🔧 Paused |
 | 4 | Station cards in v3 look; chef's copy | Approved look, mostly build | ⬜ |
 | — | Custom Menus as a purchasing-list source | Small; not a pain point Jeff named | ⬜ Optional |
 
-## Ordering: on-hand counts (proposed 2026-11-26)
+## Ordering: on-hand counts (approved and built 2026-11-26)
 
 Decisions: count on **phone and on paper**; counts are **fresh every order** (no pre-fill from last time).
 
@@ -25,6 +25,15 @@ Decisions: count on **phone and on paper**; counts are **fresh every order** (no
 - **Order sheet:** by vendor, only items to order, with cases, units and SKU.
 - **Database:** additive tables for a count and its lines. Goes live on push to main.
 - Out of scope for now: pars / non-recipe staples, vendor ordering, remembering counts.
+
+**Built:**
+- *Start a count* button on Production planning → Combined purchasing list (managers/admins).
+- `/production/counts/[id]`: phone-first count screen; each amount saves ~0.7 s after typing or on leaving the field; *To order* and cases update live; invalid amounts (negative, text) are refused and not saved.
+- `?sheet=count`: printable count sheet (only this order's ingredients, by category, blank on-hand column, QR to the count).
+- `?sheet=order`: printable order sheet by vendor; covered items drop off; uncounted items order the full need and are marked "not counted".
+- Needs are recalculated live from the selected events each time the count opens; a warning shows if a selected job has dropped out of range.
+- Migration `20261128000000_purchase_counts` (two new tables, additive).
+- Tests: order math unit tests; browser test `purchase-counts` (phone + desk, saves, reload, invalid input, sheets, QR, fresh count, staff blocked).
 
 
 **Started:** 2026-11-26
@@ -195,3 +204,4 @@ Jeff's idea: add **vegan / vegetarian** to recipes and ingredients, and flag ing
 - **2026-11-26** — Jeff asked to merge Wheat into Gluten. Flagged: they're not interchangeable (wheat is a Big 9 label allergen; gluten also comes from barley/rye — beer). Jeff chose option A.
 - **2026-11-26** — Wheat/gluten (option A) done: a Wheat tag now always implies Gluten everywhere (stored, rolled up, grids, menus). Gluten can still be tagged alone for barley/rye/malt/beer. Guest menus read "Gluten (wheat)". The allergen checkboxes explain the rule. Review list: `npx tsx scripts/report-gluten-tags.ts` (read-only) lists items tagged Wheat-only and items named like barley/rye/malt/beer with no Gluten tag.
 - **2026-11-26** — Priorities reset around ordering; on-hand count plan written, awaiting Jeff's OK.
+- **2026-11-26** — On-hand counts built (count screen, count sheet, order sheet, migration, tests).

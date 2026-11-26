@@ -23,7 +23,7 @@ export function buildPurchasingList(sources: PlanningSource[], recipes: Shopping
   const items = new Map(catalog.map(item => [item.id, item]));
   const warnings = new Set<string>();
   type Row = { key: string; itemId: string; name: string; category: string; vendor: string; unit: string; quantity: number; basis: string;
-    packSize: string | null; sku: string | null; suggestedPacks: number | null; contributions: Array<{ sourceId: string; event: string; quantity: number }> };
+    packSize: string | null; sku: string | null; suggestedPacks: number | null; packQtyInUnit: number | null; contributions: Array<{ sourceId: string; event: string; quantity: number }> };
   const rows: Row[] = [];
   const buckets = new Map<string, Row[]>();
   const seen = new Set<string>();
@@ -75,7 +75,7 @@ export function buildPurchasingList(sources: PlanningSource[], recipes: Shopping
         const match = buckets.get(c.itemId)?.find(row => row.basis === basis && convertQty(quantity, unit, row.unit) != null);
         const row = match ?? { key: `${c.itemId}:${rows.length}`, itemId: c.itemId, name: c.name, category: c.category,
           vendor: item?.vendor?.name ?? "Unassigned vendor", unit, basis, quantity: 0, packSize: item?.packSize ?? null, sku: item?.sku ?? null,
-          suggestedPacks: null, contributions: [] };
+          suggestedPacks: null, packQtyInUnit: null, contributions: [] };
         const added = convertQty(quantity, unit, row.unit)!;
         row.quantity += added;
         const contribution = row.contributions.find(part => part.sourceId === source.id);
@@ -88,6 +88,7 @@ export function buildPurchasingList(sources: PlanningSource[], recipes: Shopping
   for (const row of rows) {
     const item = items.get(row.itemId);
     const packQty = row.basis === "Raw purchase quantity" && item?.packQty && item.packUnit ? convertIngredientQty(item.packQty, item.packUnit, row.unit,item) : null;
+    row.packQtyInUnit = packQty && packQty > 0 ? packQty : null;
     row.suggestedPacks = packQty && packQty > 0 ? Math.ceil(Math.round(row.quantity / packQty * 1e9) / 1e9) : null;
     if ((buckets.get(row.itemId)?.length ?? 0) > 1) warnings.add(`${row.name}: incompatible unit families are listed separately; resolve before ordering.`);
   }
