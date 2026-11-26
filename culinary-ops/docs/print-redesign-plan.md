@@ -12,7 +12,7 @@ Living document. Updated as decisions are made and work lands.
 | Phase | What | Status |
 |---|---|---|
 | 0 | Discovery questions | ✅ Done |
-| 1 | Fix print bugs | 🔧 In progress (2 of 6 done) |
+| 1 | Fix print bugs | 🔧 In progress (3 of 6 — #3 code part done, data part open) |
 | 2 | Split the packet into three prints | ⬜ Not started |
 | 3 | Carry the new layouts to other packets | ⬜ Not started |
 
@@ -42,12 +42,16 @@ Living document. Updated as decisions are made and work lands.
 |---|---|---|---|
 | 1 | Batch banner prints full float, e.g. `2.4299065420560746x` | Every recipe card | ✅ 2026-11-26 — multiplier removed from banner and badge; badge now reads "Makes 16.25 lb" ("Standard batch" at 1×). Costing table on the chef's copy keeps its batch math. |
 | 2 | Count units truncated (`eac`) and fractional (10.83 eggs, 81.25 buns) — should round up to whole units | Cornbread card, pull list, costing | ✅ 2026-11-26 — `eac` was stored that way in the data; app now reads it as "each". Counts round up on scaled cards and on the pull/shopping lists (10.83 → 11 eggs, 81.25 → 82 buns). Master recipes keep exact counts (½ lemon stays 0.5). Costing table keeps exact math. |
-| 3 | Pull list: mixed units on one line (`1.28 qt + 1.14 lb`), duplicate categories (Spices / Spices & Seasonings), duplicate items (Black Pepper vs Black Pepper, Coarse Grind), Water filed under Frozen | Pages 21–23 | ⬜ |
+| 3 | Pull list: mixed units on one line (`1.28 qt + 1.14 lb`), duplicate categories (Spices / Spices & Seasonings), duplicate items (Black Pepper vs Black Pepper, Coarse Grind), Water filed under Frozen | Pages 21–23 | 🟡 2026-11-26 — **Code:** weight and volume of the same ingredient now merge into one amount when the ingredient has a density or each-weight recorded (custom menu, banquet, banquet week lists). Without one, amounts stay separate instead of being guessed. **Data (open):** duplicate categories, duplicate pepper items and Water→Frozen are ingredient-record fixes — see list below. Prep-order lists use frozen snapshots and still keep amounts separate. |
 | 4 | Menu page shows no "Contains" line when a dish has no allergen data — reads as allergen-free | Brisket, Green Beans on page 1–2 | ⬜ |
 | 5 | Steps missing first letter ("lace brisket", "llow smoker", "ransfer", "heck") — print code or imported data? **Needs investigation** | Brisket, Pork cards | ⬜ |
 | 6 | Junk printing on cards: "— Migrated notes —", "Recipe type: batch" as steps; empty "Prep/Cook — / —" and "Shelf life —" fields | Most cards | ⬜ |
 
 Data issues noticed (fix in the recipe/ingredient records, not the print code):
+- **Pull list categories:** "Spices" and "Spices & Seasonings" are two categories — pick one and recategorize.
+- **Water** is categorized as Frozen.
+- **Black Pepper** and **Black Pepper, Coarse Grind** are separate ingredients — merge if they're the same product.
+- **Ketchup** (oz + fl oz) and **Oil, Canola Blend** (qt + lb) need a density recorded on the ingredient so their amounts combine.
 - Unit stored as `eac` instead of `each` (Eggs, Large on the cornbread). Now read correctly, but worth cleaning in the record. Side effect: lines using `eac` may now cost where they were previously unpriced, so food cost on affected recipes can rise slightly.
 - "Mustard Powder[please add as cross-reference]" ingredient name
 - "Mlse en Place" step title (New Carolina Gold), "Lable" (typo)
@@ -104,3 +108,4 @@ Still to discuss separately: prep sheets, festival builds/recipe guide, smoking 
 - **2026-11-26** — Plan created from discovery questions on the Fromm Holiday Lunch packet.
 - **2026-11-26** — Bug 1 fixed: scaled cards no longer print a multiplier. Banner reads "SCALED PRODUCTION COPY — AMOUNTS ALREADY SCALED · DO NOT FILE IN MASTER BINDER". Applies to every scaled recipe print (custom menu, banquet, festival, menu, prep order, single recipe at a custom scale).
 - **2026-11-26** — Bug 2 fixed: `eac` recognized as each; count units round up to whole numbers on scaled cards and pull/shopping lists (custom menu, prep order, banquet week).
+- **2026-11-26** — Bug 3 (code part): pull lists combine weight and volume for an ingredient when its density/each-weight is recorded. Remaining pull-list problems are ingredient data, listed under Data issues.

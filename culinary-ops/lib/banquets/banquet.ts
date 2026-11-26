@@ -78,6 +78,7 @@ export function buildBanquetPlan(lines: BanquetLine[], recipes: BanquetRecipeRow
       category: ri.item.category,
       quantity: ri.quantity,
       unit: ri.unit,
+      measure: ri.item,
     })),
     components: r.components,
   }));

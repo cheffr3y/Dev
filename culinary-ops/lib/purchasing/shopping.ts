@@ -6,6 +6,7 @@ import type { IngredientMeasure } from "../ingredients/measurements";
 // instead of cost. The result is grouped by item category for the printout.
 
 import { convertQty, canConvert, displayMeasure } from "../recipes/units";
+import { convertIngredientQty } from "../ingredients/measurements";
 import { componentBatchFactor } from "../recipes/costing";
 
 // A recipe reduced to what the explosion needs: its raw items (with the parent
@@ -78,14 +79,14 @@ function accumulate(
   factor: number,
   byId: Map<string, ShoppingRecipeNode>,
   stack: Set<string>,
-  add: (itemId: string, name: string, category: string, qty: number, unit: string) => void,
+  add: (itemId: string, name: string, category: string, qty: number, unit: string, measure?: IngredientMeasure & { unit: string }) => void,
 ) {
   const node = byId.get(recipeId);
   if (!node || stack.has(recipeId)) return;
   stack.add(recipeId);
 
   for (const ri of node.items) {
-    add(ri.itemId, ri.name, ri.category, ri.quantity * factor, ri.unit);
+    add(ri.itemId, ri.name, ri.category, ri.quantity * factor, ri.unit, ri.measure);
   }
   for (const c of node.components) {
     const child = byId.get(c.childId);
@@ -104,7 +105,7 @@ export function buildShoppingList(roots: ShoppingRootLine[], recipes: ShoppingRe
   const items = new Map<string, ItemAccumulator>();
   const unscaled = new Set<string>();
 
-  const add = (itemId: string, name: string, category: string, qty: number, unit: string) => {
+  const add = (itemId: string, name: string, category: string, qty: number, unit: string, measure?: IngredientMeasure & { unit: string }) => {
     let agg = items.get(itemId);
     if (!agg) {
       agg = { name, category, buckets: [] };
@@ -113,9 +114,20 @@ export function buildShoppingList(roots: ShoppingRootLine[], recipes: ShoppingRe
     const bucket = agg.buckets.find((b) => canConvert(unit, b.unit));
     if (bucket) {
       bucket.qty += convertQty(qty, unit, bucket.unit)!;
-    } else {
-      agg.buckets.push({ unit, qty });
+      return;
     }
+    // Weight ↔ volume ↔ each only when the ingredient records a density or
+    // each-weight; otherwise the amounts stay listed separately, never guessed.
+    if (measure) {
+      for (const b of agg.buckets) {
+        const converted = convertIngredientQty(qty, unit, b.unit, measure);
+        if (converted != null) {
+          b.qty += converted;
+          return;
+        }
+      }
+    }
+    agg.buckets.push({ unit, qty });
   };
 
   for (const line of roots) {
