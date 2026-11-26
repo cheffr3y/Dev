@@ -13,7 +13,7 @@ Living document. Updated as decisions are made and work lands.
 |---|---|---|
 | 0 | Discovery questions | ✅ Done |
 | 1 | Fix print bugs | 🟡 Code fixes done; #3 and #5 need recipe/ingredient data fixes |
-| 2 | Split the packet into three prints | ⬜ Not started |
+| 2 | Split the packet into three prints + new branded look | 🎨 Mockups out for review |
 | 3 | Carry the new layouts to other packets | ⬜ Not started |
 
 ---
@@ -99,10 +99,15 @@ Packets that share the same building blocks and should pick up B and C:
 
 Still to discuss separately: prep sheets, festival builds/recipe guide, smoking and preservation logs, shopping lists, order guides, festival proposal, weekly schedule.
 
+### Look & feel (decided 2026-11-26)
+- Brief from Jeff: new branding and colors; **professional, a touch of humor, a little panache / soigné**.
+- **Printers:** kitchen sheets print **black & white**; client documents print in **color**.
+- **Humor:** **minimal** — at most one quiet line per document; panache comes from typography and layout. Safety information is never joked about. Client copy gets a sincere line, no jokes.
+- **Mockups v1:** station card (B&W) + client menu (color) — https://claude.ai/artifact/7KgZcsrKwyteV8eGTDRRJd
+
 ### General questions still open
-- Printer: black-and-white only, or color? Letter size? Any half-sheets?
 - Where the paper lives: clipboard, sleeve, binder, wall? Gets wet/greasy? Kept or tossed?
-- Branding: full angryshallot on everything, or plain working sheets with branding only on client documents?
+- Letter size only, or any half-sheets / cards?
 
 ---
 
@@ -150,3 +155,5 @@ Jeff's idea: add **vegan / vegetarian** to recipes and ingredients, and flag ing
 - **2026-11-26** — Added backlog: vegan/vegetarian tags and allergen/aversion review warnings.
 - **2026-11-26** — Dietary tags question round done; design and build steps D1–D6 added. Building before resuming Phase 2.
 - **2026-11-26** — Dietary D1 (database fields + migration) and D2 (roll-up and review logic, tests) done.
+- **2026-11-26** — Everything through dietary D2 merged and pushed to `main` (auto-deploys; dietary migration runs on startup).
+- **2026-11-26** — Phase 2 kicked off: look-and-feel decisions recorded; v1 mockups published for review.
