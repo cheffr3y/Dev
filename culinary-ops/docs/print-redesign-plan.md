@@ -103,7 +103,9 @@ Still to discuss separately: prep sheets, festival builds/recipe guide, smoking 
 - Brief from Jeff: new branding and colors; **professional, a touch of humor, a little panache / soigné**.
 - **Printers:** kitchen sheets print **black & white**; client documents print in **color**.
 - **Humor:** **minimal** — at most one quiet line per document; panache comes from typography and layout. Safety information is never joked about. Client copy gets a sincere line, no jokes.
-- **Mockups v1:** station card (B&W) + client menu (color) — https://claude.ai/artifact/7KgZcsrKwyteV8eGTDRRJd
+- **Mockups:** station card (B&W) + client menu (color) — https://claude.ai/artifact/7KgZcsrKwyteV8eGTDRRJd
+  - v1 feedback (Jeff): station card "missing character, a lot of boxes".
+  - v2: cookbook-page treatment — type and rules instead of boxes; large "Makes 16¼ lb"; timing as a sentence; hanging italic step numbers with run-in step names; "long haul" cook timeline (hatched for B&W, only when step times exist); one loud "Pull at 200–203°F" moment; optional per-recipe margin line and footer quip.
 
 ### General questions still open
 - Where the paper lives: clipboard, sleeve, binder, wall? Gets wet/greasy? Kept or tossed?
@@ -157,3 +159,4 @@ Jeff's idea: add **vegan / vegetarian** to recipes and ingredients, and flag ing
 - **2026-11-26** — Dietary D1 (database fields + migration) and D2 (roll-up and review logic, tests) done.
 - **2026-11-26** — Everything through dietary D2 merged and pushed to `main` (auto-deploys; dietary migration runs on startup).
 - **2026-11-26** — Phase 2 kicked off: look-and-feel decisions recorded; v1 mockups published for review.
+- **2026-11-26** — Station card mockup v2 (less boxy, more character) published.
