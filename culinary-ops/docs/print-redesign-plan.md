@@ -106,6 +106,8 @@ Still to discuss separately: prep sheets, festival builds/recipe guide, smoking 
 - **Mockups:** station card (B&W) + client menu (color) — https://claude.ai/artifact/7KgZcsrKwyteV8eGTDRRJd
   - v1 feedback (Jeff): station card "missing character, a lot of boxes".
   - v2: cookbook-page treatment — type and rules instead of boxes; large "Makes 16¼ lb"; timing as a sentence; hanging italic step numbers with run-in step names; "long haul" cook timeline (hatched for B&W, only when step times exist); one loud "Pull at 200–203°F" moment; optional per-recipe margin line and footer quip.
+  - v2 feedback (Jeff): liked v1 more — keep v1's layout, add angryshallot styling.
+  - **v3 (current direction):** v1 layout + shallot mark in the station band, paprika period ending the title and section names, soft/wonky Fraunces on title, section names and step numbers, aubergine in place of black for band/rules/cues (prints near-black on B&W), softened corners and pill cues, wordmark in the footer. Safety text and pull temp unchanged.
 
 ### General questions still open
 - Where the paper lives: clipboard, sleeve, binder, wall? Gets wet/greasy? Kept or tossed?
@@ -160,3 +162,4 @@ Jeff's idea: add **vegan / vegetarian** to recipes and ingredients, and flag ing
 - **2026-11-26** — Everything through dietary D2 merged and pushed to `main` (auto-deploys; dietary migration runs on startup).
 - **2026-11-26** — Phase 2 kicked off: look-and-feel decisions recorded; v1 mockups published for review.
 - **2026-11-26** — Station card mockup v2 (less boxy, more character) published.
+- **2026-11-26** — Station card mockup v3: back to v1 layout with angryshallot brand touches.
