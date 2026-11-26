@@ -18,7 +18,8 @@ import type { RecipeReferencePlan } from "@/lib/recipes/recipe-references";
 // Catalog node used for recursive sub-build rendering.
 export type RecipeTreeNode = DossierRecipe & {
   allergens: string | null;
-  items: Array<{ id: string; quantity: number; unit: string; note: string | null; name: string; groupName?: string | null; sortOrder?: number; category?: string | null; allergens?: string | null }>;
+  dietOverride?: string | null;
+  items: Array<{ id: string; quantity: number; unit: string; note: string | null; name: string; groupName?: string | null; sortOrder?: number; category?: string | null; allergens?: string | null; diet?: string | null }>;
   components: Array<{ id: string; childId: string; quantity: number; unit: string; note?: string | null }>;
 };
 
@@ -32,6 +33,7 @@ export const recipeTreeSelect = {
   yieldUnit: true,
   instructions: true,
   allergens: true,
+  dietOverride: true,
   criticalNotes: true,
   category: true,
   station: true,
@@ -42,7 +44,7 @@ export const recipeTreeSelect = {
   storage: true,
   updatedAt: true,
   items: {
-    select: { id: true, quantity: true, unit: true, note: true, groupName: true, sortOrder: true, item: { select: { name: true, category: true, allergens: true } } },
+    select: { id: true, quantity: true, unit: true, note: true, groupName: true, sortOrder: true, item: { select: { name: true, category: true, allergens: true, diet: true } } },
     orderBy: [{ sortOrder: "asc" }, { item: { name: "asc" } }],
   },
   components: {
@@ -55,7 +57,7 @@ export const recipeTreeSelect = {
 // Older frozen snapshots lack the optional display metadata. Never hydrate
 // them from today's catalog: a historical packet must stay historical.
 type RecipeTreeRow = Omit<RecipeTreeNode, "items"> & {
-  items: Array<{ id: string; quantity: number; unit: string; note: string | null; groupName?: string | null; sortOrder?: number; item: { name: string; groupName?: string | null; sortOrder?: number; category?: string | null; allergens?: string | null } }>;
+  items: Array<{ id: string; quantity: number; unit: string; note: string | null; groupName?: string | null; sortOrder?: number; item: { name: string; groupName?: string | null; sortOrder?: number; category?: string | null; allergens?: string | null; diet?: string | null } }>;
 };
 
 export function buildRecipeTree(rows: RecipeTreeRow[]): Map<string, RecipeTreeNode> {
@@ -63,7 +65,7 @@ export function buildRecipeTree(rows: RecipeTreeRow[]): Map<string, RecipeTreeNo
     ...r,
     items: r.items.map((ri) => ({
       id: ri.id, quantity: ri.quantity, unit: ri.unit, note: ri.note,
-      groupName: ri.groupName, sortOrder: ri.sortOrder, name: ri.item.name, category: ri.item.category, allergens: ri.item.allergens,
+      groupName: ri.groupName, sortOrder: ri.sortOrder, name: ri.item.name, category: ri.item.category, allergens: ri.item.allergens, diet: ri.item.diet,
     })),
   }]));
 }

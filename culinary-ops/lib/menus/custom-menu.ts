@@ -19,6 +19,7 @@ import { buildBanquetPlan, type BanquetLine, type BanquetRecipeRow } from "../ba
 import { componentBatchFactor, priceGapNames } from "../recipes/costing";
 import { convertQty, unitLabel } from "../recipes/units";
 import { ALLERGENS, effectiveAllergens, parseAllergens, type AllergenNode } from "../recipes/allergens";
+import { effectiveDiet, parseDiet, type DietNode, type EffectiveDiet } from "../recipes/diet";
 import { recipePurchaseQuantity, type IngredientMeasure } from "../ingredients/measurements";
 import type { ShoppingList } from "../purchasing/shopping";
 
@@ -40,6 +41,7 @@ export type CustomMenuRawItem = IngredientMeasure & {
   unit: string;
   unitCost: number;
   priceUpdatedAt: Date | null;
+  diet?: string | null;
   allergens: string | null;
 };
 
@@ -274,4 +276,14 @@ export function formatMenuDate(date: Date | null, style: "long" | "short" = "lon
 // No tags recorded is not the same as none present, so it says so.
 export function allergenText(keys: string[] | null) {
   return keys?.length ? `Contains: ${keys.map((key) => ALLERGENS.find((a) => a.key === key)?.label ?? key).join(", ")}` : "Allergens not recorded — ask the kitchen";
+}
+
+// Vegan / vegetarian for a menu line: a raw item reads its own tag; a recipe
+// rolls up through its ingredients and sub-recipes (or the chef's override).
+export function rowDiet(row: Pick<CustomMenuRow, "kind" | "recipeId" | "item" | "recipeName">, byId: Map<string, DietNode>): EffectiveDiet {
+  if (row.kind === "item") {
+    const diet = parseDiet(row.item?.diet);
+    return { diet, overridden: false, untagged: diet ? [] : [row.recipeName] };
+  }
+  return row.recipeId && byId.has(row.recipeId) ? effectiveDiet(row.recipeId, byId) : { diet: null, overridden: false, untagged: [] };
 }

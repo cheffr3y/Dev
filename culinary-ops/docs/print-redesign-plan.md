@@ -165,3 +165,5 @@ Jeff's idea: add **vegan / vegetarian** to recipes and ingredients, and flag ing
 - **2026-11-26** — Station card mockup v2 (less boxy, more character) published.
 - **2026-11-26** — Station card mockup v3: back to v1 layout with angryshallot brand touches.
 - **2026-11-26** — Mockup v3.1: shallot divider adopted as the house print accent.
+- **2026-11-26** — Scope narrowed (Jeff): build the client-facing redesign first; kitchen cards wait. Started: diet data now flows through the recipe tree and custom menu lines (`rowDiet`) for the client menu.
+- **2026-11-26** — Jeff asked to merge Wheat into Gluten. Flagged: they're not interchangeable (wheat is a Big 9 label allergen; gluten also comes from barley/rye — beer). Recommended keeping both with wheat auto-adding gluten. Awaiting decision.
