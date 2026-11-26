@@ -2,6 +2,31 @@
 
 Living document. Updated as decisions are made and work lands.
 
+## Priorities (reset 2026-11-26)
+
+Jeff stepped back to rank by payoff. Biggest weekly time sink: **ordering & invoices**, specifically **knowing what to order**. He uses Production planning → Combined purchasing list regularly; the step still done by hand is **subtracting what's on hand**.
+
+| Rank | Work | Why | Status |
+|---|---|---|---|
+| 1 | **On-hand counts on the purchasing list** (see "Ordering: on-hand counts" below) | Removes the manual step in the weekly order | ⬜ Plan awaiting OK |
+| 2 | Dietary tagging screens + "Needs attention" list (D3–D5) | DB fields are live but can't be filled in; allergen review | ⬜ |
+| 3 | Branded client menu | Half built; what clients see | 🔧 Paused |
+| 4 | Station cards in v3 look; chef's copy | Approved look, mostly build | ⬜ |
+| — | Custom Menus as a purchasing-list source | Small; not a pain point Jeff named | ⬜ Optional |
+
+## Ordering: on-hand counts (proposed 2026-11-26)
+
+Decisions: count on **phone and on paper**; counts are **fresh every order** (no pre-fill from last time).
+
+- **Start a count** from the Combined purchasing list. Saves a count for that list (date range + selected events) so the phone and the desk see the same numbers. A new order starts blank.
+- **Phone:** one row per ingredient, grouped by category, big number box in the purchase unit. Saves as you type. *To order* updates live.
+- **Paper:** a count sheet of only the ingredients on this order, grouped by category, blank on-hand column, QR code to open the same count on a phone.
+- **To order** = need − on hand (never below zero), then rounded up to cases where a case size is on file.
+- **Order sheet:** by vendor, only items to order, with cases, units and SKU.
+- **Database:** additive tables for a count and its lines. Goes live on push to main.
+- Out of scope for now: pars / non-recipe staples, vendor ordering, remembering counts.
+
+
 **Started:** 2026-11-26
 **Reference packet:** Fromm Holiday Lunch Party (Custom Menu, 65 guests, 23 pages, printed before the angryshallot rebrand)
 
@@ -169,3 +194,4 @@ Jeff's idea: add **vegan / vegetarian** to recipes and ingredients, and flag ing
 - **2026-11-26** — Scope narrowed (Jeff): build the client-facing redesign first; kitchen cards wait. Started: diet data now flows through the recipe tree and custom menu lines (`rowDiet`) for the client menu.
 - **2026-11-26** — Jeff asked to merge Wheat into Gluten. Flagged: they're not interchangeable (wheat is a Big 9 label allergen; gluten also comes from barley/rye — beer). Jeff chose option A.
 - **2026-11-26** — Wheat/gluten (option A) done: a Wheat tag now always implies Gluten everywhere (stored, rolled up, grids, menus). Gluten can still be tagged alone for barley/rye/malt/beer. Guest menus read "Gluten (wheat)". The allergen checkboxes explain the rule. Review list: `npx tsx scripts/report-gluten-tags.ts` (read-only) lists items tagged Wheat-only and items named like barley/rye/malt/beer with no Gluten tag.
+- **2026-11-26** — Priorities reset around ordering; on-hand count plan written, awaiting Jeff's OK.
