@@ -5,7 +5,7 @@ import { PrintButton } from "@/components/PrintButton";
 import { RecipeBuildCard, SharedBuildCard, buildRecipeTree, consolidateSharedSubBuilds, type RecipeTreeNode } from "@/components/RecipeBuild";
 import { RecipePrintSettings } from "@/components/RecipeDossier";
 import { requireUser } from "@/lib/auth/session";
-import { buildCustomMenuPlan, describeQuantity, formatMenuDate, ISSUE_TEXT, rowAllergenKeys, type CustomMenuRow } from "@/lib/menus/custom-menu";
+import { allergenText, buildCustomMenuPlan, describeQuantity, formatMenuDate, ISSUE_TEXT, rowAllergenKeys, type CustomMenuRow } from "@/lib/menus/custom-menu";
 import { loadCustomMenu } from "@/lib/menus/custom-menu-data";
 import { ALLERGENS, MAJOR_ALLERGENS } from "@/lib/recipes/allergens";
 import { money, num, pct } from "@/lib/recipes/costing";
@@ -66,6 +66,13 @@ export default async function CustomMenuPacket({ params, searchParams }: { param
         {plan.issueCount} {plan.issueCount === 1 ? "dish has" : "dishes have"} no usable quantity and {plan.issueCount === 1 ? "is" : "are"} left out of the recipes and pull list. Fix {plan.issueCount === 1 ? "it" : "them"} on the menu before sending.
       </p>}
 
+      {(() => {
+        const missing = allergenRows.filter(({ keys }) => !keys?.length).map(({ row }) => row.title);
+        return missing.length > 0 && <p className="no-print mb-4 border-l-2 border-amber-600 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+          No allergens recorded for {missing.join(", ")}. The menu will print &ldquo;Allergens not recorded — ask the kitchen&rdquo; for {missing.length === 1 ? "it" : "them"}. Tag the recipe or ingredient before sending to the client.
+        </p>;
+      })()}
+
       {/* 1 · Cover and menu */}
       <section className={styles.sheet} aria-labelledby="custom-packet-title">
         <header className="border-b-2 border-ink pb-3">
@@ -81,7 +88,7 @@ export default async function CustomMenuPacket({ params, searchParams }: { param
             {section.rows.map((row) => <div key={row.id} className="mb-3">
               <p className="font-display text-xl text-ink">{row.title}</p>
               {row.menuDescription && <p className="text-sm italic text-zinc-700">{row.menuDescription}</p>}
-              {(() => { const keys = rowAllergenKeys(row, tree); return keys && keys.length > 0 && <p className="mt-0.5 text-[11px] uppercase tracking-wider text-zinc-500">{allergenText(keys)}</p>; })()}
+              {(() => { const keys = rowAllergenKeys(row, tree); return <p className="mt-0.5 text-[11px] uppercase tracking-wider text-zinc-500">{allergenText(keys)}</p>; })()}
             </div>)}
           </div>)}
         </div>
@@ -199,9 +206,6 @@ export default async function CustomMenuPacket({ params, searchParams }: { param
   );
 }
 
-function allergenText(keys: string[]) {
-  return keys.length ? `Contains: ${keys.map((key) => ALLERGENS.find((a) => a.key === key)?.label ?? key).join(", ")}` : "";
-}
 
 function Metric({ label, value, detail }: { label: string; value: string; detail?: string }) {
   return (

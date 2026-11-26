@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildCustomMenuPlan, describeQuantity, formatMenuDate, lineQuantity, rawItemUnits, type CustomMenuLine, type CustomMenuRecipe } from "./custom-menu";
+import { allergenText, buildCustomMenuPlan, describeQuantity, formatMenuDate, lineQuantity, rawItemUnits, type CustomMenuLine, type CustomMenuRecipe } from "./custom-menu";
 
 const now = new Date("2026-11-25T12:00:00Z");
 const close = (actual: number | null, expected: number) => assert.ok(actual != null && Math.abs(actual - expected) < 1e-9, `${actual} ≠ ${expected}`);
@@ -120,4 +120,10 @@ test("raw ingredients without a usable conversion are flagged, not guessed", () 
   assert.deepEqual(plan.rows.map((r) => r.issue), ["no-price-unit", "missing-item"]);
   assert.equal(plan.totalCost, 0);
   assert.deepEqual(rawItemUnits(chips, ["each", "oz"]), ["case"]);
+});
+
+test("every menu dish prints an allergen line; missing tags never read as allergen-free", () => {
+  assert.equal(allergenText(["milk", "eggs"]), "Contains: Milk, Eggs");
+  assert.equal(allergenText([]), "Allergens not recorded — ask the kitchen");
+  assert.equal(allergenText(null), "Allergens not recorded — ask the kitchen");
 });
