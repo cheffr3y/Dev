@@ -39,7 +39,9 @@ export function PrintSpecHeader({ venue, title, targetDate, targetLabel, printed
   </>;
 }
 
+// Scaled copies show final amounts only; the multiplier itself is not printed
+// (event scales such as 2.4299…× mean nothing to a cook).
 export function ScaledProductionBanner({ scale }: { scale: number }) {
   if (scale === 1) return null;
-  return <p className="print-scaled-banner">SCALED PRODUCTION BATCH ({scale}x) — DO NOT FILE IN MASTER BINDER</p>;
+  return <p className="print-scaled-banner">SCALED PRODUCTION COPY — AMOUNTS ALREADY SCALED · DO NOT FILE IN MASTER BINDER</p>;
 }

@@ -41,9 +41,10 @@ test("schedule headers keep landscape while reference documents label their targ
 
 test("every nonstandard recipe batch carries the binder warning, including half batches", () => {
   assert.equal(renderToStaticMarkup(createElement(ScaledProductionBanner, { scale: 1 })), "");
-  for (const scale of [0.5, 2.75, 4]) {
+  for (const scale of [0.5, 2.75, 4, 2.4299065420560746]) {
     const html = renderToStaticMarkup(createElement(ScaledProductionBanner, { scale }));
-    assert.ok(html.includes(`SCALED PRODUCTION BATCH (${scale}x)`));
+    assert.match(html, /SCALED PRODUCTION COPY/);
     assert.match(html, /DO NOT FILE IN MASTER BINDER/);
+    assert.doesNotMatch(html, /\d+(\.\d+)?x/, "multiplier is not printed");
   }
 });

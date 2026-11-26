@@ -179,7 +179,8 @@ test("dossier preserves fractional scaling, culinary stages, cues and inherited 
   const text = textContent(html);
   assert.match(text, /25 each/);
   assert.match(html, /recipe-masthead/);
-  assert.match(text, /2.5× Batch/);
+  assert.match(text, /Makes/);
+  assert.doesNotMatch(text, /2.5× Batch/);
   assert.doesNotMatch(text, /Prepared By|Date &amp; Time|Verified By/);
   assert.doesNotMatch(html, /recipe-signatures|recipe-colophon/);
   assert.match(text, /Garde Manger.*Lunch/);
