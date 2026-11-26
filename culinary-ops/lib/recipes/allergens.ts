@@ -83,6 +83,16 @@ function normalizeAllergen(raw: string): string | null {
 
 // Parse a stored allergen string into a de-duplicated list of valid keys in the
 // canonical catalog order. Unknown tokens are dropped.
+// Wheat always contains gluten, so a wheat tag implies gluten everywhere
+// (Jeff, 2026-11-26). The reverse is not true: barley, rye and malt (beer)
+// carry gluten without wheat, so Gluten can still be tagged on its own.
+// Wheat stays its own tag because it is a Big 9 label allergen and a wheat
+// allergy is not the same as celiac disease.
+function withImplied(found: Set<string>): Set<string> {
+  if (found.has("wheat")) found.add("gluten");
+  return found;
+}
+
 export function parseAllergens(raw: string | null | undefined): string[] {
   if (!raw) return [];
   const found = new Set<string>();
@@ -90,15 +100,26 @@ export function parseAllergens(raw: string | null | undefined): string[] {
     const key = normalizeAllergen(part);
     if (key) found.add(key);
   }
+  withImplied(found);
   return ALLERGENS.filter((a) => found.has(a.key)).map((a) => a.key);
 }
 
 // Serialize selected keys back to storage form (canonical order, valid only).
 export function serializeAllergens(keys: Iterable<string>): string {
-  const set = new Set(keys);
+  const set = withImplied(new Set(keys));
   return ALLERGENS.filter((a) => set.has(a.key))
     .map((a) => a.key)
     .join(",");
+}
+
+// Guest-facing "Contains:" wording. Guests ask about gluten, so it leads;
+// wheat stays named alongside it: "Gluten (wheat)". Gluten from barley or
+// rye alone reads just "Gluten".
+export function guestAllergenLabels(keys: string[]): string[] {
+  const set = new Set(keys);
+  const both = set.has("wheat") && set.has("gluten");
+  return ALLERGENS.filter((a) => set.has(a.key) && !(both && a.key === "gluten"))
+    .map((a) => (both && a.key === "wheat" ? "Gluten (wheat)" : a.label));
 }
 
 export function allergenLabel(key: string): string {

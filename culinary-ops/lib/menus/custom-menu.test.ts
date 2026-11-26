@@ -101,7 +101,7 @@ test("raw ingredients cost by the piece from a case price and reach allergens an
   assert.equal(bun.issue, null);
   close(bun.qty, 65);
   close(bun.cost, (65 / 96) * 42);
-  assert.deepEqual(bun.itemAllergens, ["milk", "eggs", "wheat"]);
+  assert.deepEqual(bun.itemAllergens, ["milk", "eggs", "wheat", "gluten"]);
   close(plan.totalCost, plan.rows[0].cost! + (65 / 96) * 42);
   assert.deepEqual(plan.costedRecipeIds, ["Brisket"], "raw lines never enter the scaled recipe guide");
   const pulled = plan.shoppingList.categories.flatMap((c) => c.items).find((i) => i.itemId === "buns");

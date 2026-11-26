@@ -23,12 +23,12 @@ test("ingredient tag edits propagate dynamically without overwriting manual reci
   const ingredient = { name: "Cream", allergens: "milk" as string | null };
   const recipe: AllergenNode = { allergens: "milk,wheat", items: [{ item: ingredient }], components: [] };
   const byId = new Map([["dish", recipe]]);
-  assert.deepEqual(effectiveAllergens("dish", byId), ["milk", "wheat"]);
+  assert.deepEqual(effectiveAllergens("dish", byId), ["milk", "wheat", "gluten"]);
   assert.equal(inheritedAllergenSources("dish", byId).size, 0);
   ingredient.allergens = "soy";
-  assert.deepEqual(effectiveAllergens("dish", byId), ["milk", "wheat", "soy"]);
+  assert.deepEqual(effectiveAllergens("dish", byId), ["milk", "wheat", "soy", "gluten"]);
   ingredient.allergens = null;
-  assert.deepEqual(effectiveAllergens("dish", byId), ["milk", "wheat"]);
+  assert.deepEqual(effectiveAllergens("dish", byId), ["milk", "wheat", "gluten"]);
   assert.equal(recipe.allergens, "milk,wheat");
   recipe.allergens = null;
   ingredient.allergens = "milk";
@@ -76,4 +76,17 @@ test("print trees carry captured ingredient tags into parent profiles and keep o
   assert.deepEqual(effectiveAllergens(parent.id, byId), ["milk"]);
   const legacy = buildRecipeTree([{ ...row, items: [{ ...row.items[0], item: { name: "Cream" } }] }]);
   assert.deepEqual(effectiveAllergens("child", legacy), []);
+});
+
+test("wheat always implies gluten; gluten alone (barley, rye, beer) stays gluten only", () => {
+  assert.deepEqual(parseAllergens("wheat"), ["wheat", "gluten"]);
+  assert.equal(serializeAllergens(["wheat", "milk"]), "milk,wheat,gluten");
+  assert.deepEqual(parseAllergens("gluten"), ["gluten"]);
+  assert.deepEqual(effectiveAllergens("r", new Map<string, AllergenNode>([["r", { allergens: null, items: [{ item: { name: "Flour", allergens: "wheat" } }], components: [] }]])), ["wheat", "gluten"]);
+});
+
+test("guest menus lead with gluten and still name wheat", async () => {
+  const { guestAllergenLabels } = await import("./allergens");
+  assert.deepEqual(guestAllergenLabels(["milk", "wheat", "gluten", "sesame"]), ["Milk", "Gluten (wheat)", "Sesame"]);
+  assert.deepEqual(guestAllergenLabels(["gluten", "sulfites"]), ["Gluten", "Sulfites"]);
 });

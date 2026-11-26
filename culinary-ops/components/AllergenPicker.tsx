@@ -18,6 +18,7 @@ export function AllergenPicker({
       <legend className="mb-2 font-mono text-xs uppercase tracking-[0.02em] text-zinc-600">Allergens</legend>
       <AllergenColumn label="Major (Big 9)" allergens={MAJOR_ALLERGENS} own={own} inherited={inherited} form={form} />
       <AllergenColumn label="Also common" allergens={COMMON_ALLERGENS} own={own} inherited={inherited} form={form} />
+      <p className="text-xs text-zinc-500">Wheat always includes Gluten. Tick Gluten on its own for barley, rye or malt, including beer.</p>
     </fieldset>
   );
 }
@@ -66,6 +67,11 @@ function AllergenColumn({
                 {isInherited && (
                   <span className="ml-1 font-mono text-[10px] uppercase tracking-[0.02em] text-zinc-400">
                     via {via}
+                  </span>
+                )}
+                {!isInherited && a.key === "gluten" && own.has("wheat") && (
+                  <span className="ml-1 font-mono text-[10px] uppercase tracking-[0.02em] text-zinc-400">
+                    with wheat
                   </span>
                 )}
               </span>

@@ -18,7 +18,7 @@
 import { buildBanquetPlan, type BanquetLine, type BanquetRecipeRow } from "../banquets/banquet";
 import { componentBatchFactor, priceGapNames } from "../recipes/costing";
 import { convertQty, unitLabel } from "../recipes/units";
-import { ALLERGENS, effectiveAllergens, parseAllergens, type AllergenNode } from "../recipes/allergens";
+import { ALLERGENS, effectiveAllergens, guestAllergenLabels, parseAllergens, type AllergenNode } from "../recipes/allergens";
 import { effectiveDiet, parseDiet, type DietNode, type EffectiveDiet } from "../recipes/diet";
 import { recipePurchaseQuantity, type IngredientMeasure } from "../ingredients/measurements";
 import type { ShoppingList } from "../purchasing/shopping";
@@ -275,7 +275,7 @@ export function formatMenuDate(date: Date | null, style: "long" | "short" = "lon
 // Every dish gets a line: a blank would read as "allergen-free" to a guest.
 // No tags recorded is not the same as none present, so it says so.
 export function allergenText(keys: string[] | null) {
-  return keys?.length ? `Contains: ${keys.map((key) => ALLERGENS.find((a) => a.key === key)?.label ?? key).join(", ")}` : "Allergens not recorded — ask the kitchen";
+  return keys?.length ? `Contains: ${guestAllergenLabels(keys).join(", ")}` : "Allergens not recorded — ask the kitchen";
 }
 
 // Vegan / vegetarian for a menu line: a raw item reads its own tag; a recipe

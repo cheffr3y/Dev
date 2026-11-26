@@ -48,6 +48,7 @@ Living document. Updated as decisions are made and work lands.
 | 6 | Junk printing on cards: "— Migrated notes —", "Recipe type: batch" as steps; empty "Prep/Cook — / —" and "Shelf life —" fields | Most cards | ✅ 2026-11-26 — Everything after "— Migrated notes —" moves into a **Kitchen Notes** box instead of numbered steps; "Recipe type", "Source venue", "Menu descriptor" and "Prep time" lines are dropped. Empty Prep/Cook, Total Time and Shelf Life boxes are left off. Steps with no title no longer print a "Step 4" heading. Allergen box always shows ("None recorded" stays — safety). |
 
 Data issues noticed (fix in the recipe/ingredient records, not the print code):
+- Run `npx tsx scripts/report-gluten-tags.ts` against production and tag Gluten on any beer, malt, barley or rye ingredients it lists (check each label).
 - **Pull list categories:** "Spices" and "Spices & Seasonings" are two categories — pick one and recategorize.
 - **Water** is categorized as Frozen.
 - **Black Pepper** and **Black Pepper, Coarse Grind** are separate ingredients — merge if they're the same product.
@@ -166,4 +167,5 @@ Jeff's idea: add **vegan / vegetarian** to recipes and ingredients, and flag ing
 - **2026-11-26** — Station card mockup v3: back to v1 layout with angryshallot brand touches.
 - **2026-11-26** — Mockup v3.1: shallot divider adopted as the house print accent.
 - **2026-11-26** — Scope narrowed (Jeff): build the client-facing redesign first; kitchen cards wait. Started: diet data now flows through the recipe tree and custom menu lines (`rowDiet`) for the client menu.
-- **2026-11-26** — Jeff asked to merge Wheat into Gluten. Flagged: they're not interchangeable (wheat is a Big 9 label allergen; gluten also comes from barley/rye — beer). Recommended keeping both with wheat auto-adding gluten. Awaiting decision.
+- **2026-11-26** — Jeff asked to merge Wheat into Gluten. Flagged: they're not interchangeable (wheat is a Big 9 label allergen; gluten also comes from barley/rye — beer). Jeff chose option A.
+- **2026-11-26** — Wheat/gluten (option A) done: a Wheat tag now always implies Gluten everywhere (stored, rolled up, grids, menus). Gluten can still be tagged alone for barley/rye/malt/beer. Guest menus read "Gluten (wheat)". The allergen checkboxes explain the rule. Review list: `npx tsx scripts/report-gluten-tags.ts` (read-only) lists items tagged Wheat-only and items named like barley/rye/malt/beer with no Gluten tag.
