@@ -108,6 +108,7 @@ Still to discuss separately: prep sheets, festival builds/recipe guide, smoking 
   - v2: cookbook-page treatment — type and rules instead of boxes; large "Makes 16¼ lb"; timing as a sentence; hanging italic step numbers with run-in step names; "long haul" cook timeline (hatched for B&W, only when step times exist); one loud "Pull at 200–203°F" moment; optional per-recipe margin line and footer quip.
   - v2 feedback (Jeff): liked v1 more — keep v1's layout, add angryshallot styling.
   - **v3 (current direction):** v1 layout + shallot mark in the station band, paprika period ending the title and section names, soft/wonky Fraunces on title, section names and step numbers, aubergine in place of black for band/rules/cues (prints near-black on B&W), softened corners and pill cues, wordmark in the footer. Safety text and pull temp unchanged.
+  - v3.1: Jeff liked the client menu's shallot divider (hairline · shallot · hairline). Added it to the station card under the header and as a "fin" end mark after the last step (tells a cook the pulled page is the end of the recipe). Paprika on screen, mid-gray on B&W. Use this divider as the house accent across all prints.
 
 ### General questions still open
 - Where the paper lives: clipboard, sleeve, binder, wall? Gets wet/greasy? Kept or tossed?
@@ -163,3 +164,4 @@ Jeff's idea: add **vegan / vegetarian** to recipes and ingredients, and flag ing
 - **2026-11-26** — Phase 2 kicked off: look-and-feel decisions recorded; v1 mockups published for review.
 - **2026-11-26** — Station card mockup v2 (less boxy, more character) published.
 - **2026-11-26** — Station card mockup v3: back to v1 layout with angryshallot brand touches.
+- **2026-11-26** — Mockup v3.1: shallot divider adopted as the house print accent.
