@@ -106,22 +106,36 @@ Still to discuss separately: prep sheets, festival builds/recipe guide, smoking 
 
 ---
 
-## Backlog — Dietary tags & review status (raised 2026-11-26)
+## Dietary tags & allergen review (raised 2026-11-26)
 
-Jeff's idea: add **vegan / vegetarian** to recipes and ingredients, and show ingredients that are **out of review for allergens and aversions** in the same place the stale-price warning shows today ("Cost review needed: no price for … stale price for …").
+Jeff's idea: add **vegan / vegetarian** to recipes and ingredients, and flag ingredients whose allergen/dietary info is **out of review** wherever the stale-price warning shows today.
 
-What exists today (checked in code):
-- Allergen tags: 9 major (milk, eggs, fish, shellfish, tree nuts, peanuts, wheat, soy, sesame) + gluten, allium, mustard, sulfites. No vegan/vegetarian.
-- No record of *when* an ingredient's allergens were last reviewed, so "out of review" can't be computed yet. (Price staleness works because invoices stamp a price date.)
+### Decisions (2026-11-26)
+| # | Question | Answer |
+|---|---|---|
+| 1 | How do tags get onto a dish? | **Both:** tag ingredients and roll up through recipes and sub-recipes (like allergens), plus a manual override on a recipe with a note why |
+| 2 | Other avoidances (pork, alcohol, nightshades…)? | No preference — **start with vegan + vegetarian only**; built so more tags can be added later |
+| 3 | When is an ingredient "out of review"? | **Never reviewed**, or **last reviewed more than 6 months ago** |
+| 4 | Where does the warning show? | **Everywhere the stale-price warning shows** (costing rollups/audits on custom menus, menus, festivals, banquets, to-go, events, Ingredients page). On client-facing proposals it stays screen-only. |
+| 5 | Client menu markers? | **Yes, spelled out** — a "Vegan" or "Vegetarian" line under the dish, matching the "Contains:" line |
 
-Open questions (to ask one at a time before building):
-1. Vegan/vegetarian: tag it on ingredients and let recipes work it out (like allergens), or tag recipes by hand?
-2. What counts as an "aversion" beyond allergens — pork, alcohol, shellfish-free, halal/kosher, nightshades, cilantro…?
-3. "Out of review": never reviewed only, or also reviewed too long ago (how long)? Or re-review when the vendor/product changes on an invoice?
-4. Where the warning shows: costing rollup only, or also the allergen grid, client menu pre-print warning and recipe pages?
-5. Should the client menu print "V" / "VG" markers next to dishes?
+### Design
+- **Ingredient:** one dietary field — *Vegan* (also vegetarian) · *Vegetarian, not vegan* (e.g. butter, eggs) · *Neither* (meat, fish, gelatin) · blank = not yet tagged.
+- **Ingredient:** "Allergens & dietary reviewed on" date, set by a **Mark reviewed** action on the ingredient. Out of review = blank or older than 6 months.
+- **Recipe roll-up:** vegan only if every ingredient and sub-recipe is vegan; vegetarian if every one is vegan or vegetarian; any *Neither* → not vegetarian; any untagged ingredient → unknown (no claim made).
+- **Recipe override:** set Vegan / Vegetarian / Neither by hand with a required note; shown as "set by hand" wherever the tag appears.
+- **Client menu:** prints "Vegan" / "Vegetarian" only when the roll-up (or override) says so. Unknown prints nothing — no claim. Pre-print warning lists dishes with untagged or out-of-review ingredients.
+- **Warning text** sits next to "Cost review needed", e.g. *"Allergen review needed: never reviewed — Ketchup, Molasses; over 6 months — Mayonnaise."*
 
-Status: ⬜ Parked until the print bugs are wrapped; then question round.
+### Status
+| Step | What | Status |
+|---|---|---|
+| D1 | Database fields (ingredient dietary + reviewed date; recipe override + note) — additive migration | ⬜ |
+| D2 | Roll-up + review-gap logic, with tests | ⬜ |
+| D3 | Ingredient editing: dietary field, Mark reviewed, review filter on Ingredients page | ⬜ |
+| D4 | Recipe override field | ⬜ |
+| D5 | Warning everywhere stale price shows | ⬜ |
+| D6 | Client menu "Vegan"/"Vegetarian" line + pre-print warning; allergen grid column | ⬜ |
 
 ---
 
@@ -134,3 +148,4 @@ Status: ⬜ Parked until the print bugs are wrapped; then question round.
 - **2026-11-26** — Bug 4 fixed on the custom menu: no blank allergen lines; pre-print warning lists untagged dishes.
 - **2026-11-26** — Bug 5 investigated (data, not print code — unconfirmed). Bug 6 fixed: migrated notes become a Kitchen Notes box; empty spec boxes and "Step N" placeholder headings removed.
 - **2026-11-26** — Added backlog: vegan/vegetarian tags and allergen/aversion review warnings.
+- **2026-11-26** — Dietary tags question round done; design and build steps D1–D6 added. Building before resuming Phase 2.
