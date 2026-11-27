@@ -10,7 +10,7 @@ Jeff stepped back to rank by payoff. Biggest weekly time sink: **ordering & invo
 |---|---|---|---|
 | 1 | **On-hand counts on the purchasing list** (see "Ordering: on-hand counts" below) | Removes the manual step in the weekly order | ✅ Live on main (8b226ac, 2026-11-26) |
 | 2 | Dietary tagging screens + "Needs attention" list (D3–D5) | DB fields are live but can't be filled in; allergen review | ✅ Live on main (90217fc, 2026-11-27) |
-| 2a | **Cleanup page + simpler sidebar** (see "Cleanup & navigation" below) | Jeff: cleanup work needs its own page; sidebar too cluttered | ✅ Built and tested — on branch |
+| 2a | **Cleanup page + simpler sidebar** (see "Cleanup & navigation" below) | Jeff: cleanup work needs its own page; sidebar too cluttered | ✅ Live on main (05dceb2, 2026-11-27) |
 | 3 | Branded client menu | Half built; what clients see | 🔧 Paused |
 | 4 | Station cards in v3 look; chef's copy | Approved look, mostly build | ⬜ |
 | — | Custom Menus as a purchasing-list source | Small; not a pain point Jeff named | ⬜ Optional |
@@ -239,3 +239,4 @@ Jeff: data cleanup (allergens, stale costs, the #2 data list) should have its ow
 - **2026-11-27** — Dietary D3–D5 + Needs attention page built. New browser test `dietary-review`; all browser suites run (dietary-review, purchase-counts, event-planning, banquet-setup) pass, 299 unit tests pass. No new migration. On branch, not yet on main.
 - **2026-11-27** — Correction: D3–D5 had already reached main (90217fc); the line above saying "not yet on main" was out of date.
 - **2026-11-27** — Cleanup page + short sidebar by job built and tested. On branch, not yet on main. No migration.
+- **2026-11-27** — Cleanup page + new sidebar pushed to main (`05dceb2`). No migration.
