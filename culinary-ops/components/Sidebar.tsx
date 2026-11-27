@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { activePage, navFor, type NavGroup, type NavIcon } from "@/lib/navigation/nav";
 import { cn } from "./ui";
 
@@ -59,17 +59,81 @@ export function Sidebar({ role, collapsed = false, onNavigate, cleanupCount = 0 
 }) {
   const pathname = usePathname();
   const groups = navFor(role);
-  const activeKey = activePage(groups, pathname)?.group.key;
+  const current = activePage(groups, pathname);
+  const activeKey = current?.group.key;
   const main = groups.filter((group) => !group.footer);
   const footer = groups.filter((group) => group.footer);
-  const link = (group: NavGroup) => <GroupLink key={group.key} group={group} active={group.key === activeKey}
-    collapsed={collapsed} onNavigate={onNavigate} badge={group.key === "cleanup" ? cleanupCount : 0} />;
+  // Desktop only (no onNavigate): hovering or focusing a job shows its pages.
+  const entry = (group: NavGroup) => <NavEntry key={group.key} group={group} flyout={!onNavigate && group.pages.length > 1}
+    activeHref={current?.page.href}>
+    <GroupLink group={group} active={group.key === activeKey}
+      collapsed={collapsed} onNavigate={onNavigate} badge={group.key === "cleanup" ? cleanupCount : 0} />
+  </NavEntry>;
 
   return (
     <nav aria-label="Main navigation" className="flex flex-col gap-1">
-      <ul className="space-y-1">{main.map((group) => <li key={group.key}>{link(group)}</li>)}</ul>
-      {footer.length > 0 && <ul className="mt-3 space-y-1 border-t border-white/10 pt-3">{footer.map((group) => <li key={group.key}>{link(group)}</li>)}</ul>}
+      <ul className="space-y-1">{main.map(entry)}</ul>
+      {footer.length > 0 && <ul className="mt-3 space-y-1 border-t border-white/10 pt-3">{footer.map(entry)}</ul>}
     </nav>
+  );
+}
+
+// A sidebar row plus its hover/focus flyout. The flyout is position: fixed so
+// the sidebar's scroll area doesn't clip it, and it stays a DOM child of the
+// row so moving the mouse onto it (or tabbing into it) keeps it open.
+function NavEntry({ group, flyout, activeHref, children }: {
+  group: NavGroup; flyout: boolean; activeHref?: string; children: ReactNode;
+}) {
+  const row = useRef<HTMLLIElement>(null);
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const [spot, setSpot] = useState<{ left: number; top: number } | null>(null);
+  const pathname = usePathname();
+  const [prevPath, setPrevPath] = useState(pathname);
+  if (prevPath !== pathname) { setPrevPath(pathname); setSpot(null); }
+  useEffect(() => () => clearTimeout(timer.current), []);
+
+  const show = (delay: number) => {
+    if (!flyout) return;
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      const box = row.current?.getBoundingClientRect();
+      const right = row.current?.closest("aside")?.getBoundingClientRect().right ?? box?.right ?? 0;
+      if (!box) return;
+      const height = 52 + group.pages.length * 40;
+      setSpot({ left: right - 4, top: Math.max(8, Math.min(box.top - 8, window.innerHeight - height - 8)) });
+    }, delay);
+  };
+  const hide = (delay: number) => {
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => setSpot(null), delay);
+  };
+
+  return (
+    <li ref={row}
+      onMouseEnter={() => show(80)} onMouseLeave={() => hide(150)}
+      onFocus={() => show(0)}
+      onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) hide(0); }}
+      onKeyDown={(event) => { if (event.key === "Escape" && spot) { setSpot(null); row.current?.querySelector("a")?.focus(); } }}>
+      {children}
+      {spot && <div className="fixed z-50 pl-2" style={{ left: spot.left, top: spot.top }}>
+        <div role="group" aria-label={`${group.label} pages`}
+          className="min-w-56 rounded-lg border border-white/10 bg-charcoal p-1.5 shadow-xl shadow-black/30">
+          <p className="px-3 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/50" aria-hidden>{group.label}</p>
+          <ul>
+            {group.pages.map((page) => {
+              const here = page.href === activeHref;
+              return <li key={page.href}>
+                <Link href={page.href} aria-current={here ? "page" : undefined}
+                  className={cn("flex min-h-10 items-center whitespace-nowrap rounded-md px-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus",
+                    here ? "bg-white/10 font-medium text-white" : "text-white/80 hover:bg-white/10 hover:text-white")}>
+                  {page.label}
+                </Link>
+              </li>;
+            })}
+          </ul>
+        </div>
+      </div>}
+    </li>
   );
 }
 

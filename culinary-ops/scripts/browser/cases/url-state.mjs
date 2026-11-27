@@ -35,6 +35,27 @@ try {
   assert.deepEqual(await tabs.getByRole("link").allTextContents(), ["Invoices", "Ingredients", "Vendors", "Monthly Tracker"]);
   assert.equal(await tabs.locator('[aria-current="page"]').textContent(), "Invoices");
   await page.screenshot({ path: `${output}/desktop-invoices.png`, caret: "initial" });
+  // Hovering a job shows its pages; a page can be opened straight from there.
+  await nav.getByRole("link", { name: "Events", exact: true }).hover();
+  const flyout = nav.getByRole("group", { name: "Events pages", exact: true });
+  await flyout.waitFor();
+  assert.deepEqual(await flyout.getByRole("link").allTextContents(), ["Custom Menus", "Banquets", "Events", "Festivals"]);
+  await page.screenshot({ path: `${output}/desktop-flyout.png`, caret: "initial" });
+  await flyout.getByRole("link", { name: "Banquets", exact: true }).click();
+  await page.waitForURL(`${base}/banquets`);
+  await flyout.waitFor({ state: "detached" });
+  // Keyboard: focusing a job opens it, Tab moves into it, Escape closes it.
+  await page.mouse.move(900, 600);
+  await nav.getByRole("link", { name: "Kitchen", exact: true }).focus();
+  const kitchen = nav.getByRole("group", { name: "Kitchen pages", exact: true });
+  await kitchen.waitFor();
+  await page.keyboard.press("Tab");
+  assert.equal(await page.evaluate(() => document.activeElement?.textContent), "Daily prep");
+  await page.keyboard.press("Escape");
+  await kitchen.waitFor({ state: "detached" });
+  assert.equal(await page.evaluate(() => document.activeElement?.textContent), "Kitchen");
+  await page.goto(`${base}/invoices`);
+  await page.waitForLoadState("networkidle");
   await page.getByRole("button", { name: "Collapse sidebar", exact: true }).click();
   assert.equal(await nav.getByRole("link", { name: "Recipes & Menus", exact: true }).getAttribute("title"), "Recipes & Menus");
   await page.getByRole("button", { name: "Expand sidebar", exact: true }).click();

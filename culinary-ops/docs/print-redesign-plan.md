@@ -197,6 +197,7 @@ Jeff: data cleanup (allergens, stale costs, the #2 data list) should have its ow
 
 ### What was built
 - **Sidebar:** Today · Kitchen (Daily prep, Production, Smoking, Schedule, Prep reports) · Recipes & Menus (Recipes, Specials, Menus, HMR) · Events (Custom Menus, Banquets, Events, Festivals) · Ordering (Invoices, Ingredients, Vendors, Monthly Tracker) · Cleanup · Admin. Each job has its own icon; role rules unchanged (staff don't see Invoices, Monthly Tracker, Prep reports or Admin). Menu lives in `lib/navigation/nav.ts`; tabs in `components/SectionTabs.tsx`.
+- **Hover menu (desktop):** hovering or tabbing to a job opens its pages in a panel beside the sidebar (works collapsed too); Escape closes it. Not on phones.
 - **Cleanup badge:** count of ingredients used in a recipe that need a label check or have no price.
 - **Cleanup page (`/cleanup`)** — replaces Needs attention (old link redirects). Sections:
   - Allergens & diet: label review with one-click diet + Label checked; possible gluten.
@@ -240,3 +241,4 @@ Jeff: data cleanup (allergens, stale costs, the #2 data list) should have its ow
 - **2026-11-27** — Correction: D3–D5 had already reached main (90217fc); the line above saying "not yet on main" was out of date.
 - **2026-11-27** — Cleanup page + short sidebar by job built and tested. On branch, not yet on main. No migration.
 - **2026-11-27** — Cleanup page + new sidebar pushed to main (`05dceb2`). No migration.
+- **2026-11-27** — Sidebar hover menu added (Jeff's request); `url-state` browser test covers mouse and keyboard. First live Cleanup count on real data: 470.
