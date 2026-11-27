@@ -19,7 +19,7 @@ export function CostIntegrityBanner({ unpriced, stale, unreviewed = [], reviewSt
     {subRecipes.length > 0 && <p className="mt-2 text-xs"><strong>Affected sub-recipes:</strong> {subRecipes.join(", ")}</p>}
     <div className="mt-2 flex flex-wrap gap-4 text-xs font-medium">
       {pricing && <Link href={unpriced.length ? "/items?flag=missing" : "/items?flag=stale"} className="underline">Update ingredient prices →</Link>}
-      {review && <Link href="/items/attention" className="underline">Review allergens →</Link>}
+      {review && <Link href="/cleanup" className="underline">Review allergens →</Link>}
     </div>
   </>;
   return <aside role="status" className="no-print mb-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-900">

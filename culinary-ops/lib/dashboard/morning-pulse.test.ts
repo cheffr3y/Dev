@@ -87,8 +87,8 @@ test("closeout queue merges activity dates, excludes finalized days and retains 
 
 test("action permissions match existing admin and manager workflows", () => {
   const ids = (role: "ADMIN" | "MANAGER" | "STAFF") => commandActions(role, now).map(action => action.id);
-  assert.deepEqual(ids("STAFF"), ["print-banquet-week", "daily-prep"]);
-  assert.deepEqual(ids("MANAGER"), ["print-banquet-week", "merge-items", "new-recipe", "new-custom-menu", "daily-prep"]);
+  assert.deepEqual(ids("STAFF"), ["print-banquet-week", "cleanup", "daily-prep"]);
+  assert.deepEqual(ids("MANAGER"), ["print-banquet-week", "merge-items", "new-recipe", "new-custom-menu", "cleanup", "daily-prep"]);
   assert.equal(ids("ADMIN").includes("export-accounting"), true);
   assert.equal(ids("ADMIN").includes("daily-closeout"), true);
 });

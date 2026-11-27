@@ -27,7 +27,7 @@ export function DietSection({ effective, fromIngredients, override, note, unrevi
       {fromIngredients.untagged.length} ingredient{fromIngredients.untagged.length === 1 ? "" : "s"} not tagged yet: {shortList(fromIngredients.untagged)}. Menus won&apos;t say vegan or vegetarian until {fromIngredients.untagged.length === 1 ? "it is" : "they are"} tagged.
     </p>}
     {review > 0 && <p className="text-xs text-amber-800">
-      Allergen review due on {review} ingredient{review === 1 ? "" : "s"}: {shortList([...unreviewed, ...reviewStale])}. <Link href="/items/attention" className="underline">Review allergens</Link>
+      Allergen review due on {review} ingredient{review === 1 ? "" : "s"}: {shortList([...unreviewed, ...reviewStale])}. <Link href="/cleanup" className="underline">Review allergens</Link>
     </p>}
     {canEdit && <div className="grid gap-3 sm:grid-cols-2">
       <Field label="Set diet by hand" hint="Only when the ingredients can't tell the full story.">

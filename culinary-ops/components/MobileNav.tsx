@@ -15,7 +15,7 @@ const noopSubscribe = () => () => {};
 // open and close; `inert` keeps it out of the tab order while hidden. It is
 // portaled to <body> because the header's backdrop-blur makes the header the
 // containing block for fixed descendants, which would clip the overlay.
-export function MobileNav({ role }: { role: string }) {
+export function MobileNav({ role, cleanupCount = 0 }: { role: string; cleanupCount?: number }) {
   const [open, setOpen] = useState(false);
   const mounted = useSyncExternalStore(
     noopSubscribe,
@@ -151,7 +151,7 @@ export function MobileNav({ role }: { role: string }) {
                 </button>
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-                <Sidebar role={role} onNavigate={() => setOpen(false)} />
+                <Sidebar role={role} cleanupCount={cleanupCount} onNavigate={() => setOpen(false)} />
               </div>
             </div>
           </div>,

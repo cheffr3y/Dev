@@ -9,7 +9,8 @@ Jeff stepped back to rank by payoff. Biggest weekly time sink: **ordering & invo
 | Rank | Work | Why | Status |
 |---|---|---|---|
 | 1 | **On-hand counts on the purchasing list** (see "Ordering: on-hand counts" below) | Removes the manual step in the weekly order | ✅ Live on main (8b226ac, 2026-11-26) |
-| 2 | Dietary tagging screens + "Needs attention" list (D3–D5) | DB fields are live but can't be filled in; allergen review | ✅ Built and tested — on branch |
+| 2 | Dietary tagging screens + "Needs attention" list (D3–D5) | DB fields are live but can't be filled in; allergen review | ✅ Live on main (90217fc, 2026-11-27) |
+| 2a | **Cleanup page + simpler sidebar** (see "Cleanup & navigation" below) | Jeff: cleanup work needs its own page; sidebar too cluttered | ✅ Built and tested — on branch |
 | 3 | Branded client menu | Half built; what clients see | 🔧 Paused |
 | 4 | Station cards in v3 look; chef's copy | Approved look, mostly build | ⬜ |
 | — | Custom Menus as a purchasing-list source | Small; not a pain point Jeff named | ⬜ Optional |
@@ -184,6 +185,34 @@ Jeff's idea: add **vegan / vegetarian** to recipes and ingredients, and flag ing
 
 ---
 
+## Cleanup & navigation (raised 2026-11-27)
+
+Jeff: data cleanup (allergens, stale costs, the #2 data list) should have its own page; the sidebar is cluttered and hard to find things in.
+
+### Decisions (2026-11-27)
+| # | Question | Answer |
+|---|---|---|
+| 1 | Sidebar layout | **Short list by job** — each job opens its first page; its pages show as tabs across the top |
+| 2 | Pages used most weeks | Recipes/Specials/Menus, Custom Menus/Banquets/Events/Festivals, Invoices/Ingredients/Vendors/Monthly Tracker |
+
+### What was built
+- **Sidebar:** Today · Kitchen (Daily prep, Production, Smoking, Schedule, Prep reports) · Recipes & Menus (Recipes, Specials, Menus, HMR) · Events (Custom Menus, Banquets, Events, Festivals) · Ordering (Invoices, Ingredients, Vendors, Monthly Tracker) · Cleanup · Admin. Each job has its own icon; role rules unchanged (staff don't see Invoices, Monthly Tracker, Prep reports or Admin). Menu lives in `lib/navigation/nav.ts`; tabs in `components/SectionTabs.tsx`.
+- **Cleanup badge:** count of ingredients used in a recipe that need a label check or have no price.
+- **Cleanup page (`/cleanup`)** — replaces Needs attention (old link redirects). Sections:
+  - Allergens & diet: label review with one-click diet + Label checked; possible gluten.
+  - Prices: no price / over 90 days, used ingredients only, most-used first.
+  - Duplicates: look-alike categories with a one-click **Move all from A into B** (e.g. Spices → Spices & Seasonings); look-alike ingredient names with Compare (merge tool unchanged at `/items/cleanup`).
+  - Units: recipe lines whose unit can't convert to the purchase unit — no cost, split pull-list amounts (Ketchup / canola type). Fix by adding a weight per cup/each on the ingredient.
+  - Recipes & names: steps starting lowercase (possible missing first letter, bug 5), recipes with no method, ingredient names with brackets/notes.
+- Not automated (no reliable rule): wrong category on a single item (Water under Frozen), storage notes stored as steps, typos like "Lable".
+
+### Tests (2026-11-27, disposable Postgres)
+- 306 unit tests pass (new: cleanup checks, nav roles/active page). All 70 integration tests pass.
+- Browser: `url-state` (rewritten for new nav), `dietary-review` (now on /cleanup + redirect), `purchase-counts` pass.
+- Already failing before this change, not touched: `ingredient-cleanup` (looks for an "Edit ingredient" button that no longer exists), `ingredient-allergens` (expects wheat without gluten — predates wheat→gluten rule), `operating-calendar` (clicks a "Saved lines & food spending" header that no longer exists).
+
+---
+
 ## Change log
 
 - **2026-11-26** — Plan created from discovery questions on the Fromm Holiday Lunch packet.
@@ -208,3 +237,5 @@ Jeff's idea: add **vegan / vegetarian** to recipes and ingredients, and flag ing
 - **2026-11-26** — On-hand counts verified on a disposable database: all integration tests, new `purchase-counts` browser test (phone + desk), and existing `event-planning` / `banquet-setup` browser tests pass. Waiting on Jeff's OK to push to main (adds migration).
 - **2026-11-26** — On-hand counts pushed to main (`8b226ac`); migration `20261128000000_purchase_counts` runs on deploy.
 - **2026-11-27** — Dietary D3–D5 + Needs attention page built. New browser test `dietary-review`; all browser suites run (dietary-review, purchase-counts, event-planning, banquet-setup) pass, 299 unit tests pass. No new migration. On branch, not yet on main.
+- **2026-11-27** — Correction: D3–D5 had already reached main (90217fc); the line above saying "not yet on main" was out of date.
+- **2026-11-27** — Cleanup page + short sidebar by job built and tested. On branch, not yet on main. No migration.

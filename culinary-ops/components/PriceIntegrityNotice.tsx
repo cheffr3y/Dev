@@ -73,7 +73,7 @@ export function PriceIntegrityNotice({
               <span className="font-semibold text-amber-800">Allergens not reviewed in 6 months:</span> {shortList(reviewStale)}.
             </p>
           )}
-          {review > 0 && <Link href="/items/attention" className="underline">Review allergens</Link>}
+          {review > 0 && <Link href="/cleanup" className="underline">Review allergens</Link>}
         </div>
       </details>
     </div>

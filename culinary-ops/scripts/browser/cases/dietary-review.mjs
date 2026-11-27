@@ -31,15 +31,15 @@ try {
   assert.match(await diet.innerText(), /Not confirmed/); assert.match(await diet.innerText(), /Planning tomatoes/);
 
   // Needs attention: tag vegan and confirm the label in one step.
-  await page.goto(`${base}/items/attention?all=1`);
-  await page.getByRole("heading", { name: "Needs attention", exact: true }).waitFor();
+  await page.goto(`${base}/cleanup?all=1`);
+  await page.getByRole("heading", { name: "Cleanup", exact: true }).waitFor();
   const row = page.locator("li").filter({ has: page.getByRole("link", { name: "Planning tomatoes", exact: true }) });
   await row.getByLabel("Diet for Planning tomatoes").selectOption("vegan");
   await row.getByRole("button", { name: "Label checked" }).click();
   await page.waitForFunction(() => !document.body.innerText.includes("Diet for Planning tomatoes"));
   const item = await db.item.findUniqueOrThrow({ where: { id: "planning-item" } });
   assert.equal(item.diet, "vegan"); assert.ok(item.allergenReviewedAt && Date.now() - item.allergenReviewedAt.getTime() < 60000);
-  await page.screenshot({ path: `${output}/needs-attention.png`, fullPage: true });
+  await page.screenshot({ path: `${output}/cleanup.png`, fullPage: true });
 
   // Roll-up through the sub-recipe: dish is vegan, no review warning.
   await openCompliance();
@@ -71,14 +71,14 @@ try {
 
   // Staff see the list but can't change it.
   const staff = await login("staff");
-  await staff.goto(`${base}/items/attention`);
-  await staff.getByRole("heading", { name: "Needs attention", exact: true }).waitFor();
+  await staff.goto(`${base}/items/attention`); await staff.waitForURL(`${base}/cleanup`);
+  await staff.getByRole("heading", { name: "Cleanup", exact: true }).waitFor();
   assert.equal(await staff.getByRole("button", { name: "Label checked" }).count(), 0);
   const phone = await login("admin", { width: 390, height: 844 });
-  await phone.goto(`${base}/items/attention`);
+  await phone.goto(`${base}/cleanup`);
   assert.equal(await phone.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-  await phone.screenshot({ path: `${output}/needs-attention-phone.png`, fullPage: true });
+  await phone.screenshot({ path: `${output}/cleanup-phone.png`, fullPage: true });
   assert.deepEqual(errors, []);
-  console.log(`Needs attention quick review, ingredient label review, recipe roll-up and override, prep-sheet warning, staff read-only and phone layout passed. Review: ${output}`);
+  console.log(`Cleanup quick review (and old Needs attention link redirect), ingredient label review, recipe roll-up and override, prep-sheet warning, staff read-only and phone layout passed. Review: ${output}`);
 } catch (error) { if (page) await page.screenshot({ path: `${output}/failure.png`, fullPage: true }); throw error; }
 finally { await browser.close(); await db.$disconnect(); }

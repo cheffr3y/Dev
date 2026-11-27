@@ -31,6 +31,9 @@ export function commandActions(role: "ADMIN" | "MANAGER" | "STAFF", now = new Da
     href: "/custom-menus", keywords: "one-off event banquet pop-up costing packet bbq",
   });
   actions.push({
+    kind: "action", id: "cleanup", name: "Open Cleanup", meta: "Allergens · prices · duplicates · units",
+    href: "/cleanup", keywords: "needs attention review allergen label stale price duplicate category units method data fix",
+  }, {
     kind: "action", id: "daily-prep", name: "Open Daily Prep", meta: "Today",
     href: `/prep-orders?date=${day}`, keywords: "orders production",
   });

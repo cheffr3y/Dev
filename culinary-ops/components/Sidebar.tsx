@@ -2,252 +2,101 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useId, useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
+import { activePage, navFor, type NavGroup, type NavIcon } from "@/lib/navigation/nav";
 import { cn } from "./ui";
 
-type IconKey =
-  | "dashboard"
-  | "schedule"
-  | "recipes"
-  | "events"
-  | "prep"
-  | "production"
-  | "reports"
-  | "invoice"
-  | "orders"
-  | "catalog"
-  | "vendors"
-  | "venues"
-  | "users";
-
-type NavItem = { href: string; label: string; icon: IconKey; adminOnly?: boolean; managerOnly?: boolean };
-type NavSection = { heading: string; items: NavItem[] };
-
-const SECTIONS: NavSection[] = [
-  {
-    heading: "Operations",
-    items: [
-      { href: "/", label: "Today", icon: "dashboard" },
-      { href: "/prep-orders", label: "Daily prep", icon: "prep" },
-      { href: "/production", label: "Production", icon: "production" },
-      { href: "/smoking", label: "Smoking", icon: "production" },
-      { href: "/schedule", label: "Schedule", icon: "schedule" },
-    ],
-  },
-  {
-    heading: "Culinary & Events",
-    items: [
-      { href: "/recipes", label: "Recipes", icon: "recipes" },
-      { href: "/specials", label: "Specials", icon: "recipes" },
-      { href: "/menus", label: "Menus", icon: "recipes" },
-      { href: "/custom-menus", label: "Custom Menus", icon: "events" },
-      { href: "/banquets", label: "Banquets", icon: "events" },
-      { href: "/events", label: "Events", icon: "events" },
-      { href: "/festivals", label: "Festivals", icon: "events" },
-      { href: "/to-go", label: "Home Meal Replacement", icon: "orders" },
-    ],
-  },
-  {
-    heading: "Purchasing & Accounting",
-    items: [
-      { href: "/operating-calendar", label: "Monthly Tracker", icon: "reports", managerOnly: true },
-      { href: "/invoices", label: "Invoices", icon: "invoice", managerOnly: true },
-      { href: "/items", label: "Ingredients", icon: "catalog" },
-      { href: "/vendors", label: "Vendors", icon: "vendors" },
-      { href: "/prep-orders/report", label: "Prep Reports", icon: "reports", adminOnly: true },
-    ],
-  },
-];
-
-const ADMIN_SECTION: NavSection = {
-  heading: "Admin",
-  items: [
-    { href: "/venues", label: "Venues & Rooms", icon: "venues" },
-    { href: "/admin/users", label: "Users", icon: "users" },
-  ],
+const ICONS: Record<NavIcon, ReactNode> = {
+  today: <>
+    <rect x="3" y="3" width="7" height="7" rx="1" />
+    <rect x="14" y="3" width="7" height="7" rx="1" />
+    <rect x="3" y="14" width="7" height="7" rx="1" />
+    <rect x="14" y="14" width="7" height="7" rx="1" />
+  </>,
+  // Chef's knife
+  kitchen: <>
+    <path d="M3 21 14.5 9.5" />
+    <path d="M14.5 9.5 20 4c1 1 1 3.5-1 5.5l-3 3-1.5-3Z" />
+  </>,
+  // Open book
+  recipes: <>
+    <path d="M12 6c-2-1.5-5-2-8-1.5V19c3-.5 6 0 8 1.5 2-1.5 5-2 8-1.5V4.5C17 4 14 4.5 12 6Z" />
+    <path d="M12 6v14.5" />
+  </>,
+  events: <>
+    <rect x="3" y="5" width="18" height="16" rx="2" />
+    <path d="M3 9h18M8 3v4M16 3v4" />
+    <path d="m9.5 15 1.8 1.8 3.7-3.8" />
+  </>,
+  // Delivery truck
+  ordering: <>
+    <path d="M3 7h11v9H3z" />
+    <path d="M14 10h4l3 3v3h-7" />
+    <circle cx="7" cy="18" r="1.6" />
+    <circle cx="17" cy="18" r="1.6" />
+  </>,
+  // Clipboard with check
+  cleanup: <>
+    <rect x="5" y="4" width="14" height="17" rx="2" />
+    <path d="M9 4V3h6v1" />
+    <path d="m9 13 2 2 4-4" />
+  </>,
+  // Gear
+  admin: <>
+    <circle cx="12" cy="12" r="3" />
+    <path d="M12 2v3M12 19v3M4.9 4.9 7 7M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1" />
+  </>,
 };
 
-function Icon({ name }: { name: IconKey }) {
-  const paths: Record<IconKey, ReactNode> = {
-    dashboard: (
-      <>
-        <rect x="3" y="3" width="7" height="7" rx="1" />
-        <rect x="14" y="3" width="7" height="7" rx="1" />
-        <rect x="3" y="14" width="7" height="7" rx="1" />
-        <rect x="14" y="14" width="7" height="7" rx="1" />
-      </>
-    ),
-    schedule: (
-      <>
-        <rect x="3" y="4" width="18" height="17" rx="2" />
-        <path d="M3 9h18M8 2v4M16 2v4" />
-        <path d="M12 13v3l2 1" />
-      </>
-    ),
-    recipes: (
-      <>
-        <path d="M4 4h13a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2V4Z" />
-        <path d="M8 8h7M8 12h7" />
-      </>
-    ),
-    events: (
-      <>
-        <rect x="3" y="5" width="18" height="16" rx="2" />
-        <path d="M3 9h18M8 3v4M16 3v4" />
-      </>
-    ),
-    prep: (
-      <>
-        <rect x="4" y="3" width="16" height="18" rx="2" />
-        <path d="M8 7h8M8 11h8M8 15h5" />
-      </>
-    ),
-    production: (
-      <>
-        <path d="M4 7h16v13H4zM8 7V3h8v4M8 12h8M8 16h5" />
-      </>
-    ),
-    reports: (
-      <>
-        <path d="M4 3h16v18H4zM8 16v-4M12 16V8M16 16v-6" />
-      </>
-    ),
-    invoice: (
-      <>
-        <path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Z" />
-        <path d="M9 7h6M9 11h6M9 15h3" />
-      </>
-    ),
-    orders: (
-      <>
-        <path d="M8 3h8l1 4H7l1-4Z" />
-        <path d="M5 7h14l-1 13H6L5 7Z" />
-        <path d="M10 11v5M14 11v5" />
-      </>
-    ),
-    catalog: (
-      <>
-        <path d="M6 3v12l-2 6h16l-2-6V3" />
-        <path d="M6 3h12M9 7h6" />
-      </>
-    ),
-    vendors: (
-      <>
-        <path d="M3 8h11v8H3z" />
-        <path d="M14 11h4l3 3v2h-7" />
-        <circle cx="7" cy="18" r="1.6" />
-        <circle cx="17" cy="18" r="1.6" />
-      </>
-    ),
-    venues: (
-      <>
-        <path d="M3 11l9-7 9 7" />
-        <path d="M5 10v10h14V10" />
-        <path d="M10 20v-6h4v6" />
-      </>
-    ),
-    users: (
-      <>
-        <circle cx="12" cy="8" r="3.5" />
-        <path d="M5 20a7 7 0 0 1 14 0" />
-      </>
-    ),
-  };
-
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="h-[18px] w-[18px]"
-      aria-hidden
-    >
-      {paths[name]}
-    </svg>
-  );
+function Icon({ name }: { name: NavIcon }) {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden>
+    {ICONS[name]}
+  </svg>;
 }
 
-export function Sidebar({ role, collapsed = false, onNavigate }: { role: string; collapsed?: boolean; onNavigate?: () => void }) {
+export function Sidebar({ role, collapsed = false, onNavigate, cleanupCount = 0 }: {
+  role: string; collapsed?: boolean; onNavigate?: () => void; cleanupCount?: number;
+}) {
   const pathname = usePathname();
-  const sections = SECTIONS.map(section => ({
-    ...section,
-    items: section.items.filter(item => (!item.adminOnly || role === "ADMIN") && (!item.managerOnly || role === "ADMIN" || role === "MANAGER")),
-  }));
-  if (role === "ADMIN" || role === "MANAGER") {
-    const items = role === "ADMIN" ? ADMIN_SECTION.items : ADMIN_SECTION.items.filter((i) => i.href === "/venues");
-    sections.push({ heading: ADMIN_SECTION.heading, items });
-  }
-
-  const matchesPath = (p: string) => pathname === p || pathname.startsWith(p + "/");
-  // The most specific destination wins: Reports must not also light Prep Orders.
-  const activeHref = sections.flatMap(section => section.items)
-    .filter(item => item.href === "/" ? pathname === "/" : matchesPath(item.href))
-    .sort((a, b) => b.href.length - a.href.length)[0]?.href;
+  const groups = navFor(role);
+  const activeKey = activePage(groups, pathname)?.group.key;
+  const main = groups.filter((group) => !group.footer);
+  const footer = groups.filter((group) => group.footer);
+  const link = (group: NavGroup) => <GroupLink key={group.key} group={group} active={group.key === activeKey}
+    collapsed={collapsed} onNavigate={onNavigate} badge={group.key === "cleanup" ? cleanupCount : 0} />;
 
   return (
-    <nav aria-label="Main navigation" className="flex flex-col gap-2">
-      {sections.map((section) => (
-        <SidebarSection key={`${section.heading}:${pathname}`} section={section} collapsed={collapsed} activeHref={activeHref} onNavigate={onNavigate} />
-      ))}
+    <nav aria-label="Main navigation" className="flex flex-col gap-1">
+      <ul className="space-y-1">{main.map((group) => <li key={group.key}>{link(group)}</li>)}</ul>
+      {footer.length > 0 && <ul className="mt-3 space-y-1 border-t border-white/10 pt-3">{footer.map((group) => <li key={group.key}>{link(group)}</li>)}</ul>}
     </nav>
   );
 }
 
-function SidebarSection({ section, collapsed, activeHref, onNavigate }: {
-  section: NavSection; collapsed: boolean; activeHref?: string; onNavigate?: () => void;
+function GroupLink({ group, active, collapsed, onNavigate, badge }: {
+  group: NavGroup; active: boolean; collapsed: boolean; onNavigate?: () => void; badge: number;
 }) {
-  const [open, setOpen] = useState(section.items.some(item => item.href === activeHref) || section.heading === "Operations");
-  const listId = useId();
+  const label = badge ? `${group.label}, ${badge} to review` : group.label;
   return (
-    <section aria-label={section.heading} className="border-t border-white/10 pt-2 first:border-0 first:pt-0">
-      {collapsed ? <h2 className="sr-only">{section.heading}</h2> : (
-        <h2>
-          <button type="button" aria-expanded={open} aria-controls={listId} onClick={() => setOpen(!open)}
-            className="flex min-h-10 w-full items-center justify-between gap-1 rounded-md px-3 text-left text-[10px] font-semibold uppercase tracking-[0.06em] text-white/60 hover:bg-white/5 hover:text-white focus-visible:outline-2 focus-visible:outline-focus md:min-h-8">
-            {section.heading}
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className={cn("h-3 w-3 shrink-0 transition-transform motion-reduce:transition-none", !open && "-rotate-90")} aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg>
-          </button>
-        </h2>
+    <Link
+      href={group.pages[0].href}
+      onClick={onNavigate}
+      aria-current={active ? "page" : undefined}
+      aria-label={collapsed || badge ? label : undefined}
+      title={collapsed ? label : undefined}
+      className={cn(
+        "group relative flex min-h-11 items-center rounded-md text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus md:min-h-10",
+        collapsed ? "justify-center px-0" : "gap-3 px-3",
+        active ? "bg-white/10 font-medium text-white ring-1 ring-inset ring-white/10" : "text-white/75 hover:bg-white/5 hover:text-white",
       )}
-      <ul id={listId} hidden={!collapsed && !open} className="space-y-0.5">
-        {section.items.map((item) => {
-          const active = activeHref === item.href;
-          return (
-            <li key={item.href}>
-              <Link
-                href={item.href}
-                onClick={onNavigate}
-                aria-current={active ? "page" : undefined}
-                aria-label={collapsed ? item.label : undefined}
-                title={collapsed ? item.label : undefined}
-                className={cn(
-                  "group relative flex min-h-11 items-center rounded-md text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus md:min-h-8",
-                  collapsed ? "justify-center px-0" : "gap-3 px-3",
-                  active
-                    ? "bg-white/10 font-medium text-white ring-1 ring-inset ring-white/10"
-                    : "text-white/70 hover:bg-white/5 hover:text-white",
-                )}
-              >
-                {active && (
-                  <span className="absolute left-0 top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-full bg-focus" />
-                )}
-                <span
-                  className={cn(
-                    "shrink-0 transition-colors",
-                    active ? "text-gold-soft" : "text-white/45 group-hover:text-white/70",
-                  )}
-                >
-                  <Icon name={item.icon} />
-                </span>
-                <span className={collapsed ? "sr-only" : "whitespace-nowrap"}>{item.label}</span>
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-    </section>
+    >
+      {active && <span className="absolute left-0 top-1/2 h-5 w-[2px] -translate-y-1/2 rounded-full bg-focus" />}
+      <span className={cn("relative shrink-0 transition-colors", active ? "text-gold-soft" : "text-white/50 group-hover:text-white/75")}>
+        <Icon name={group.icon} />
+        {collapsed && badge > 0 && <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-paprika" aria-hidden />}
+      </span>
+      <span className={collapsed ? "sr-only" : "flex-1 whitespace-nowrap"}>{group.label}</span>
+      {!collapsed && badge > 0 && <span aria-hidden className="rounded-full bg-paprika/90 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-white">{badge > 999 ? "999+" : badge}</span>}
+    </Link>
   );
 }

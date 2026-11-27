@@ -5,6 +5,8 @@ import { MobileNav } from "@/components/MobileNav";
 import { CommandSearch } from "@/components/CommandSearch";
 import { signOutAction } from "@/lib/auth/auth-actions";
 import { ShallotMark, Wordmark } from "@/components/Brand";
+import { SectionTabs } from "@/components/SectionTabs";
+import { cleanupBadgeWhere } from "@/lib/cleanup/cleanup-badge";
 
 const ROLE_LABEL: Record<string, string> = {
   ADMIN: "Admin",
@@ -14,7 +16,7 @@ const ROLE_LABEL: Record<string, string> = {
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requirePrepUser();
-  const [recipes, items] = await Promise.all([
+  const [recipes, items, cleanupCount] = await Promise.all([
     prisma.recipe.findMany({
       select: { id: true, name: true, category: true, station: true },
       orderBy: { name: "asc" },
@@ -23,18 +25,19 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       select: { id: true, name: true, unit: true },
       orderBy: { name: "asc" },
     }),
+    prisma.item.count({ where: cleanupBadgeWhere() }),
   ]);
 
   return (
     <div className="ops-theme flex min-h-screen bg-cream text-ink">
       {/* Sidebar */}
-      <DesktopSidebar role={user.role} />
+      <DesktopSidebar role={user.role} cleanupCount={cleanupCount} />
 
       {/* Main column */}
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="no-print sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-hairline bg-cream/95 px-4 backdrop-blur md:px-6">
           <div className="flex items-center gap-2 md:gap-4">
-            <MobileNav role={user.role} />
+            <MobileNav role={user.role} cleanupCount={cleanupCount} />
             <span className="flex items-center gap-1.5 text-aubergine md:hidden">
               <ShallotMark className="h-6 w-6" />
               <Wordmark className="text-lg leading-none" />
@@ -56,7 +59,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
         </header>
 
-        <main className="print-full mx-auto w-full max-w-[100rem] flex-1 px-4 py-5 md:px-6 md:py-6">{children}</main>
+        <main className="print-full mx-auto w-full max-w-[100rem] flex-1 px-4 py-5 md:px-6 md:py-6"><SectionTabs role={user.role} />{children}</main>
       </div>
     </div>
   );

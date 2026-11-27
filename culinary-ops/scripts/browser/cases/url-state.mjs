@@ -23,15 +23,20 @@ try {
   const nav = page.locator("aside").getByRole("navigation", { name: "Main navigation" });
   assert.equal(await nav.getByRole("link", { name: "Inventory", exact: true }).count(), 0);
   assert.equal(await nav.getByRole("link", { name: "Order Guides", exact: true }).count(), 0);
-  await nav.getByRole("button", { name: "Purchasing & Accounting", exact: true }).click();
-  await nav.getByRole("link", { name: "Invoices", exact: true }).click();
+  // Short sidebar by job: Ordering opens its first page; its pages show as tabs.
+  assert.deepEqual(await nav.getByRole("link").evaluateAll(links => links.map(link => link.textContent.replace(/\d+$/, "").trim())),
+    ["Today", "Kitchen", "Recipes & Menus", "Events", "Ordering", "Cleanup", "Admin"]);
+  await nav.getByRole("link", { name: "Ordering", exact: true }).click();
   await page.waitForURL(`${base}/invoices`);
   await page.getByRole("heading", { name: "Invoices", exact: true }).waitFor();
   await page.waitForLoadState("networkidle");
-  assert.equal(await nav.locator('[aria-current="page"]').textContent(), "Invoices");
+  assert.equal(await nav.locator('[aria-current="page"]').textContent(), "Ordering");
+  const tabs = page.getByRole("navigation", { name: "Ordering pages", exact: true });
+  assert.deepEqual(await tabs.getByRole("link").allTextContents(), ["Invoices", "Ingredients", "Vendors", "Monthly Tracker"]);
+  assert.equal(await tabs.locator('[aria-current="page"]').textContent(), "Invoices");
   await page.screenshot({ path: `${output}/desktop-invoices.png`, caret: "initial" });
   await page.getByRole("button", { name: "Collapse sidebar", exact: true }).click();
-  assert.equal(await nav.getByRole("link", { name: "Home Meal Replacement", exact: true }).getAttribute("title"), "Home Meal Replacement");
+  assert.equal(await nav.getByRole("link", { name: "Recipes & Menus", exact: true }).getAttribute("title"), "Recipes & Menus");
   await page.getByRole("button", { name: "Expand sidebar", exact: true }).click();
   await page.goto(`${base}/recipes?q=Clipboard&sort=name&new=1`);
   await page.waitForLoadState("networkidle");
@@ -147,12 +152,13 @@ try {
   await page.getByRole("button", { name: "Open navigation", exact: true }).click();
   const drawer = page.getByRole("dialog", { name: "Navigation", exact: true });
   await drawer.waitFor();
-  assert.equal(await drawer.locator('[aria-current="page"]').textContent(), "Invoices");
+  assert.equal(await drawer.locator('[aria-current="page"]').textContent(), "Ordering");
   await page.screenshot({ path: `${output}/mobile-navigation.png`, animations: "disabled", caret: "initial" });
-  await drawer.getByRole("button", { name: "Culinary & Events", exact: true }).click();
-  await drawer.getByRole("link", { name: "Home Meal Replacement", exact: true }).click();
-  await page.waitForURL(`${base}/to-go`);
+  await drawer.getByRole("link", { name: "Recipes & Menus", exact: true }).click();
+  await page.waitForURL(`${base}/recipes`);
   await drawer.waitFor({ state: "hidden" });
+  await page.getByRole("navigation", { name: "Recipes & Menus pages", exact: true }).getByRole("link", { name: "Home Meal Replacement", exact: true }).click();
+  await page.waitForURL(`${base}/to-go`);
   await page.getByRole("heading", { name: "HMR Rollouts", exact: true }).waitFor();
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   for (const role of ["manager", "staff"]) {
@@ -167,12 +173,14 @@ try {
     await rolePage.getByRole("button", { name: "Open navigation", exact: true }).click();
     const roleDrawer = rolePage.getByRole("dialog", { name: "Navigation", exact: true });
     await roleDrawer.waitFor();
-    await roleDrawer.getByRole("button", { name: "Purchasing & Accounting", exact: true }).click();
-    assert.equal(await roleDrawer.getByRole("link", { name: "Inventory", exact: true }).count(), 0);
-    assert.equal(await roleDrawer.getByRole("link", { name: "Order Guides", exact: true }).count(), 0);
-    assert.equal(await roleDrawer.getByRole("link", { name: "Invoices", exact: true }).count(), role === "manager" ? 1 : 0);
-    if (role === "manager") await roleDrawer.getByRole("link", { name: "Invoices", exact: true }).click();
-    else await rolePage.goto(`${base}/invoices`);
+    assert.equal(await roleDrawer.getByRole("link", { name: "Admin", exact: true }).count(), role === "manager" ? 1 : 0);
+    await roleDrawer.getByRole("link", { name: "Ordering", exact: true }).click();
+    await rolePage.waitForURL(`${base}/${role === "manager" ? "invoices" : "items"}`);
+    const roleTabs = rolePage.getByRole("navigation", { name: "Ordering pages", exact: true });
+    assert.equal(await roleTabs.getByRole("link", { name: "Inventory", exact: true }).count(), 0);
+    assert.equal(await roleTabs.getByRole("link", { name: "Order Guides", exact: true }).count(), 0);
+    assert.equal(await roleTabs.getByRole("link", { name: "Invoices", exact: true }).count(), role === "manager" ? 1 : 0);
+    if (role === "staff") await rolePage.goto(`${base}/invoices`);
     await rolePage.waitForURL(`${base}/${role === "manager" ? "invoices" : "prep-orders"}`);
     await roleContext.close();
   }
