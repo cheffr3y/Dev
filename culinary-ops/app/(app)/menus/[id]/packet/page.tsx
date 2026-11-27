@@ -36,7 +36,7 @@ export default async function MenuPacket({ params, searchParams }: {
   return <PrintController className="atelier-packet mx-auto max-w-[8.5in] text-ink" label="Print launch packet">
     <div className="no-print mb-5 space-y-3"><div className="flex justify-between gap-3"><Link href={`/menus/${id}`} className="text-sm text-gold underline">← Rollout workspace</Link></div><nav aria-label="Launch packet sections" className="flex flex-wrap gap-2">{PACKET_MODES.map(option => <PrintOptionLink key={option.mode} href={printOptionHref(`/menus/${id}/packet?mode=${option.mode}`, query.density)} aria-current={mode === option.mode ? "page" : undefined} className={`rounded-full border border-hairline px-3 py-2 text-xs ${mode === option.mode ? "bg-[#4B1F3B] text-white" : "bg-canvas text-zinc-600"}`}>{option.label}</PrintOptionLink>)}</nav></div>
     <PrintSpecHeader venue={rollout.venue?.name ?? "Company-wide"} title={rollout.name} printedAt={printedAt} />
-    {show("costing") && <CostIntegrityBanner unpriced={plan.unpricedNames} stale={plan.staleNames} />}
+    {show("costing") && <CostIntegrityBanner unpriced={plan.unpricedNames} stale={plan.staleNames} unreviewed={plan.unreviewedNames} reviewStale={plan.reviewStaleNames} />}
     <section className="atelier-cover atelier-paper print-sheet">
       {header("Menu Rollout & Launch Book")}
       <p className="font-display text-2xl italic text-gold">{rollout.subtitle || "A considered guide to opening service"}</p>

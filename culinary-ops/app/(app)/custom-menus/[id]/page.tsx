@@ -35,7 +35,7 @@ export default async function CustomMenuWorkspace({ params }: { params: Promise<
       <LinkButton href={`/custom-menus/${id}/packet?copy=kitchen`} variant="secondary">Print kitchen / client copy</LinkButton>
     </div>
 
-    <CostIntegrityBanner unpriced={plan.priceGaps.unpriced} stale={plan.priceGaps.stale} />
+    <CostIntegrityBanner unpriced={plan.priceGaps.unpriced} stale={plan.priceGaps.stale} unreviewed={plan.priceGaps.unreviewed} reviewStale={plan.priceGaps.reviewStale} />
     {plan.issueCount > 0 && <aside role="status" className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
       <strong>{plan.issueCount} {plan.issueCount === 1 ? "dish isn't" : "dishes aren't"} costed yet.</strong> They are left out of totals, recipes and the pull list until fixed.
     </aside>}

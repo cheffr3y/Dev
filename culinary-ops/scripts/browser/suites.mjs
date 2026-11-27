@@ -15,6 +15,7 @@ export const suites = {
   "menu-rollout": "prep_workflow_test",
   "event-planning": "prep_workflow_test",
   "purchase-counts": "prep_workflow_test",
+  "dietary-review": "prep_workflow_test",
   "banquet-setup": "prep_workflow_test",
   "print-controller": "prep_workflow_test",
   "recipe-costing": "prep_workflow_test",

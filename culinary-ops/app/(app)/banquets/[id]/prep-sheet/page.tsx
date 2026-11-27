@@ -47,7 +47,7 @@ export default async function BanquetPrepSheetPage({ params }: { params: Promise
   const priceGaps = priceGapNames(
     recipeRows.map((r) => ({
       id: r.id,
-      items: r.items.map((ri) => ({ itemId: ri.item.id, unitCost: ri.item.unitCost, priceUpdatedAt: ri.item.priceUpdatedAt })),
+      items: r.items.map((ri) => ({ itemId: ri.item.id, unitCost: ri.item.unitCost, priceUpdatedAt: ri.item.priceUpdatedAt, allergenReviewedAt: ri.item.allergenReviewedAt })),
       components: r.components,
     })),
     lines.map((l) => l.recipeId),
@@ -88,7 +88,7 @@ export default async function BanquetPrepSheetPage({ params }: { params: Promise
             </div>
           )}
 
-          <PriceIntegrityNotice unpriced={priceGaps.unpriced} stale={priceGaps.stale} className="mt-4" />
+          <PriceIntegrityNotice unpriced={priceGaps.unpriced} stale={priceGaps.stale} unreviewed={priceGaps.unreviewed} reviewStale={priceGaps.reviewStale} className="mt-4" />
 
           {/* Dish summary — what each ordered count works out to. */}
           <section className="mt-8 break-inside-avoid">

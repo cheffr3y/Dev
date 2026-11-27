@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { parseDiet } from "../recipes/diet";
 import { serializeAllergens } from "../recipes/allergens";
 
 export const INGREDIENT_CATEGORIES = ["Produce", "Protein", "Poultry", "Seafood", "Dairy", "Frozen", "Bakery", "Dry Goods", "Grains & Pasta", "Canned & Jarred", "Oils & Vinegars", "Spices & Seasonings", "Condiments & Sauces", "Baking", "Beverage", "Paper & Disposables", "Cleaning & Chemicals", "Other"];
@@ -15,5 +16,12 @@ export function parseIngredientForm(form: FormData) {
   return { ...schema.parse({ name: form.get("name"), category: form.get("category") || "Other", unit: form.get("unit") || "each",
     unitCost: form.get("unitCost") || 0, packSize: nullable("packSize"), packQty: nullable("packQty"), packUnit: nullable("packUnit"),
     yieldFactor: form.get("yieldFactor") || 1, sku: nullable("sku"), gcode: nullable("gcode"), vendorId: nullable("vendorId") }),
-    allergens: serializeAllergens(form.getAll("allergen").map(String)) || null };
+    allergens: serializeAllergens(form.getAll("allergen").map(String)) || null,
+    // Only forms that show the diet field post it; others leave it alone.
+    ...(form.has("diet") ? { diet: parseDiet(String(form.get("diet") ?? "")) } : {}) };
+}
+
+// "I checked the allergens and diet against the current product label."
+export function ingredientReviewed(form: FormData) {
+  return form.get("allergenReviewed") === "1";
 }

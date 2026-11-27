@@ -19,6 +19,8 @@ import { unitLabel } from "@/lib/recipes/units";
 import { allergenLabels, effectiveAllergens, inheritedAllergenSources, parseAllergens } from "@/lib/recipes/allergens";
 import { Badge, Card, CardHeader, Field, Input, Select, TableScroll, Textarea } from "@/components/ui";
 import { AllergenPicker } from "@/components/AllergenPicker";
+import { DietSection } from "@/components/DietSection";
+import { effectiveDiet } from "@/lib/recipes/diet";
 import { AllergenBadges } from "@/components/AllergenBadges";
 import { RecipeIngredientEditor } from "@/components/RecipeIngredientEditor";
 import { MethodEditor } from "@/components/MethodEditor";
@@ -104,7 +106,8 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
         yieldQty: true,
         yieldUnit: true,
         allergens: true,
-        items: { select: { quantity: true, unit: true, item: { select: { id: true, priceUpdatedAt: true, name: true, allergens: true, ...measurementSelect, unitCost: true, unit: true } } } },
+        dietOverride: true,
+        items: { select: { quantity: true, unit: true, item: { select: { id: true, priceUpdatedAt: true, allergenReviewedAt: true, name: true, allergens: true, diet: true, ...measurementSelect, unitCost: true, unit: true } } } },
         components: { select: { childId: true, quantity: true, unit: true } },
       },
       orderBy: { name: "asc" },
@@ -119,7 +122,7 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
   const priceTrends = await loadPriceTrends(recipe.items.map(line => line.item));
 
   const groupNames = [...new Set(recipe.items.map(line => line.groupName?.trim()).filter((name): name is string => !!name))];
-  const gapMap = buildPriceGapMap(allRecipes.map(node => ({ id: node.id, components: node.components, items: node.items.map(({ item }) => ({ itemId: item.id, unitCost: item.unitCost, priceUpdatedAt: item.priceUpdatedAt })) })), asOf);
+  const gapMap = buildPriceGapMap(allRecipes.map(node => ({ id: node.id, components: node.components, items: node.items.map(({ item }) => ({ itemId: item.id, unitCost: item.unitCost, priceUpdatedAt: item.priceUpdatedAt, allergenReviewedAt: item.allergenReviewedAt })) })), asOf);
   const gap = gapMap.get(id);
   const costMap = buildCostMap(allRecipes);
   const byId = new Map(allRecipes.map((r) => [r.id, r]));
@@ -138,6 +141,11 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
   const ownAllergens = parseAllergens(recipe.allergens);
   const inheritedAllergens = inheritedAllergenSources(recipe.id, byId);
   const effectiveAllergenKeys = effectiveAllergens(recipe.id, byId);
+  const effectiveDietStatus = effectiveDiet(recipe.id, byId);
+  const dietFromIngredients = effectiveDiet(recipe.id, new Map(byId).set(recipe.id, { ...byId.get(recipe.id)!, dietOverride: null }));
+  const reviewNames = (ids: Iterable<string> | undefined) => [...(ids ?? [])].map(itemId => itemNames.get(itemId) ?? itemId).sort((a, b) => a.localeCompare(b));
+  const dietSection = (editable: boolean) => <DietSection effective={effectiveDietStatus} fromIngredients={dietFromIngredients} override={recipe.dietOverride} note={recipe.dietOverrideNote}
+    unreviewed={reviewNames(gap?.unreviewed)} reviewStale={reviewNames(gap?.reviewStale)} canEdit={editable} form="recipeForm" />;
 
   // Recipes available to add as sub-recipes (everything but this one).
   const subRecipeOptions = allRecipes.filter((r) => r.id !== recipe.id);
@@ -286,6 +294,7 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
                         <AllergenPicker form="recipeForm" selected={ownAllergens} inherited={inheritedAllergens} />
                         <p className="mt-2 text-xs text-zinc-500">Ingredient and sub-recipe tags are inherited automatically. Select any additional allergens here.</p>
                       </div>
+                      {dietSection(true)}
                       <Field label="Storage Instructions" hint="One step per line so it's easy to follow on the line.">
                         <Textarea form="recipeForm" name="storage" rows={3} defaultValue={recipe.storage ?? ""} placeholder={"Cool rapidly to 41°F within 4 hrs\nStore covered & labeled, FIFO\nKeep below 40°F"} />
                       </Field>
@@ -299,7 +308,7 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
                   </Section>
 
 
-        </div> : <dl className="max-w-3xl space-y-4 text-sm"><DetailRow label="Critical / Food Safety" value={recipe.criticalNotes} multiline /><DetailRow label="Allergens" value={allergenLabels(effectiveAllergenKeys) || "None recorded"} multiline /><DetailRow label="Storage Instructions" value={recipe.storage} multiline /><DetailRow label="Shelf Life" value={recipe.shelfLife} /><DetailRow label="Hold Life (days)" value={recipe.holdLifeDays != null ? `${recipe.holdLifeDays} days` : null} /></dl>}
+        </div> : <><dl className="max-w-3xl space-y-4 text-sm"><DetailRow label="Critical / Food Safety" value={recipe.criticalNotes} multiline /><DetailRow label="Allergens" value={allergenLabels(effectiveAllergenKeys) || "None recorded"} multiline /><DetailRow label="Storage Instructions" value={recipe.storage} multiline /><DetailRow label="Shelf Life" value={recipe.shelfLife} /><DetailRow label="Hold Life (days)" value={recipe.holdLifeDays != null ? `${recipe.holdLifeDays} days` : null} /></dl><div className="mt-4 max-w-3xl">{dietSection(false)}</div></>}
       </div></Card></RecipeTabPanel>
       <RecipeTabPanel tab="history">
       {/* Changelog — one row per version (editing session) */}

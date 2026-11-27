@@ -9,7 +9,7 @@ Jeff stepped back to rank by payoff. Biggest weekly time sink: **ordering & invo
 | Rank | Work | Why | Status |
 |---|---|---|---|
 | 1 | **On-hand counts on the purchasing list** (see "Ordering: on-hand counts" below) | Removes the manual step in the weekly order | ✅ Live on main (8b226ac, 2026-11-26) |
-| 2 | Dietary tagging screens + "Needs attention" list (D3–D5) | DB fields are live but can't be filled in; allergen review | ⬜ |
+| 2 | Dietary tagging screens + "Needs attention" list (D3–D5) | DB fields are live but can't be filled in; allergen review | ✅ Built and tested — on branch |
 | 3 | Branded client menu | Half built; what clients see | 🔧 Paused |
 | 4 | Station cards in v3 look; chef's copy | Approved look, mostly build | ⬜ |
 | — | Custom Menus as a purchasing-list source | Small; not a pain point Jeff named | ⬜ Optional |
@@ -177,9 +177,9 @@ Jeff's idea: add **vegan / vegetarian** to recipes and ingredients, and flag ing
 |---|---|---|
 | D1 | Database fields (ingredient dietary + reviewed date; recipe override + note) — additive migration | ✅ 2026-11-26 — migration `20261127000000_dietary_tags`: `Item.diet`, `Item.allergenReviewedAt`, `Recipe.dietOverride`, `Recipe.dietOverrideNote`. Database rejects unknown diet values and an override without a note. Tested on a throwaway Postgres. **Not yet applied to production** — runs on next deploy. |
 | D2 | Roll-up + review-gap logic, with tests | ✅ 2026-11-26 — `lib/recipes/diet.ts` (roll-up, override, untagged list, menu text); review gaps added to the shared price-gap logic (6-month window) with a ready-made warning sentence. Screens don't pass the review date yet, so nothing new shows until D5. |
-| D3 | Ingredient editing: dietary field, Mark reviewed, review filter on Ingredients page | ⬜ |
-| D4 | Recipe override field | ⬜ |
-| D5 | Warning everywhere stale price shows | ⬜ |
+| D3 | Ingredient editing: dietary field, Mark reviewed, review filter on Ingredients page | ✅ 2026-11-27 — Diet dropdown + "I checked the allergens and diet against the current product label" checkbox on the ingredient form (stamps the review date; shows last reviewed / over 6 months). **Needs attention** page (`/items/attention`, linked from Ingredients): review backlog most-used first with one-click "set diet + Label checked", plus missing/stale price counts, recipes with no method, possible-gluten names. |
+| D4 | Recipe override field | ✅ 2026-11-27 — Diet section on the recipe HACCP & Compliance tab: rolled-up diet, untagged ingredients, review due, and "Set diet by hand" with a required reason (logged in the recipe changelog). |
+| D5 | Warning everywhere stale price shows | ✅ 2026-11-27 — Allergen review line added beside price warnings on custom menus (screen + costing page), menus, banquet prep sheets, festival builds/prep/accounting, recipe page. Long lists capped at 8 names + "and N more". Not added to client-facing proposals or the home dashboard. |
 | D6 | Client menu "Vegan"/"Vegetarian" line + pre-print warning; allergen grid column | ⬜ |
 
 ---
@@ -207,3 +207,4 @@ Jeff's idea: add **vegan / vegetarian** to recipes and ingredients, and flag ing
 - **2026-11-26** — On-hand counts built (count screen, count sheet, order sheet, migration, tests).
 - **2026-11-26** — On-hand counts verified on a disposable database: all integration tests, new `purchase-counts` browser test (phone + desk), and existing `event-planning` / `banquet-setup` browser tests pass. Waiting on Jeff's OK to push to main (adds migration).
 - **2026-11-26** — On-hand counts pushed to main (`8b226ac`); migration `20261128000000_purchase_counts` runs on deploy.
+- **2026-11-27** — Dietary D3–D5 + Needs attention page built. New browser test `dietary-review`; all browser suites run (dietary-review, purchase-counts, event-planning, banquet-setup) pass, 299 unit tests pass. No new migration. On branch, not yet on main.

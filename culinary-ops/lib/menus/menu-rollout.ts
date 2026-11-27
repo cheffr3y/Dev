@@ -58,7 +58,7 @@ export function buildMenuRollout(rollout: { items: RolloutLine[] }, recipes: Rol
   const costMap = buildCostMap(recipes);
   const gapMap = buildPriceGapMap(recipes.map(recipe => ({
     id: recipe.id, components: recipe.components,
-    items: recipe.items.map(({ item }) => ({ itemId: item.id, unitCost: item.unitCost, priceUpdatedAt: item.priceUpdatedAt })),
+    items: recipe.items.map(({ item }) => ({ itemId: item.id, unitCost: item.unitCost, priceUpdatedAt: item.priceUpdatedAt, allergenReviewedAt: item.allergenReviewedAt })),
   })), now);
   const rows = [...rollout.items].sort((a, b) => a.sortOrder - b.sortOrder).flatMap(item => {
     const recipe = byId.get(item.recipeId);
@@ -155,7 +155,7 @@ export function buildMenuRollout(rollout: { items: RolloutLine[] }, recipes: Rol
   const parCost = pricedRows.reduce((sum, row) => sum + row.batchCost * row.parBatches, 0);
   return { rows, sections: [...sections].map(([name, rows]) => ({ name, rows })), dependencies,
     vendorGroups, guideLines, orderLines, openingPlan, priceGaps,
-    unpricedNames: names(priceGaps.unpriced), staleNames: names(priceGaps.stale),
+    unpricedNames: names(priceGaps.unpriced), staleNames: names(priceGaps.stale), unreviewedNames: names(priceGaps.unreviewed), reviewStaleNames: names(priceGaps.reviewStale),
     averageMenuPrice: average(rows.map(row => row.effectiveMenuPrice)),
     averageFcp: average(rows.map(row => row.fcp)), averageMargin: average(rows.map(row => row.grossMargin)),
     parWeightedFcp: parRevenue > 0 ? parCost / parRevenue * 100 : null,

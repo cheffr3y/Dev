@@ -63,6 +63,7 @@ export default async function FestivalAccountingPage({ params }: { params: Promi
         itemId: ri.item.id,
         unitCost: ri.item.unitCost,
         priceUpdatedAt: ri.item.priceUpdatedAt,
+        allergenReviewedAt: ri.item.allergenReviewedAt,
       })),
       components: recipe.components,
     })),
@@ -91,7 +92,7 @@ export default async function FestivalAccountingPage({ params }: { params: Promi
       />
       <FestivalTabs festivalId={festival.id} />
 
-      <PriceIntegrityNotice unpriced={priceGaps.unpriced} stale={priceGaps.stale} className="mb-4" />
+      <PriceIntegrityNotice unpriced={priceGaps.unpriced} stale={priceGaps.stale} unreviewed={priceGaps.unreviewed} reviewStale={priceGaps.reviewStale} className="mb-4" />
       {festival.menuItems.some((item) => !item.recipe) && (
         <div className="mb-4 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
           ⚠ Food cost is incomplete: {festival.menuItems.filter((item) => !item.recipe).map((item) => item.name).join(", ")} has no linked recipe.

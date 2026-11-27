@@ -10,6 +10,7 @@ import { money } from "@/lib/recipes/costing";
 import { unitLabel } from "@/lib/recipes/units";
 import { generateProdCode } from "@/lib/prep/prep";
 import { allergenLabels, parseAllergens, serializeAllergens } from "@/lib/recipes/allergens";
+import { parseDiet } from "@/lib/recipes/diet";
 
 const recipeSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
@@ -150,6 +151,8 @@ const FIELD_LABELS: Record<string, string> = {
   allergens: "Allergens",
   criticalNotes: "Critical notes",
   holdLifeDays: "Hold life (days)",
+  dietOverride: "Diet set by hand",
+  dietOverrideNote: "Diet note",
 };
 
 function fmt(field: string, v: unknown): string {
@@ -173,6 +176,7 @@ function fmt(field: string, v: unknown): string {
 function diffRecipe(prev: Record<string, unknown>, next: Record<string, unknown>): string[] {
   const lines: string[] = [];
   for (const key of Object.keys(FIELD_LABELS)) {
+    if (!(key in next)) continue; // field not on this form; unchanged
     const a = prev[key] ?? null;
     const b = next[key] ?? null;
     if (key === "instructions") {
@@ -203,7 +207,15 @@ export async function updateRecipe(formData: FormData) {
   const user = await requireRole("MANAGER");
   const id = String(formData.get("id"));
   const prev = await prisma.recipe.findUnique({ where: { id } });
-  const data = parseRecipe(formData);
+  const data: ReturnType<typeof parseRecipe> & { dietOverride?: string | null; dietOverrideNote?: string | null } = parseRecipe(formData);
+  // Only forms that show the dietary section post it; others leave it alone.
+  if (formData.has("dietOverride")) {
+    const dietOverride = parseDiet(String(formData.get("dietOverride") ?? ""));
+    const note = String(formData.get("dietOverrideNote") ?? "").trim().slice(0, 500);
+    if (dietOverride && !note) throw new Error("Add a short note saying why the diet is set by hand (for example, \"buns confirmed vegan with supplier\"), then save again.");
+    data.dietOverride = dietOverride;
+    data.dietOverrideNote = dietOverride ? note : null;
+  }
   await prisma.recipe.update({ where: { id }, data });
 
   if (prev) {

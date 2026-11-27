@@ -72,7 +72,7 @@ export default async function FestivalBuildsPage({ params }: { params: Promise<{
   const priceGaps = priceGapNames(
     recipeRows.map((r) => ({
       id: r.id,
-      items: r.items.map((ri) => ({ itemId: ri.item.id, unitCost: ri.item.unitCost, priceUpdatedAt: ri.item.priceUpdatedAt })),
+      items: r.items.map((ri) => ({ itemId: ri.item.id, unitCost: ri.item.unitCost, priceUpdatedAt: ri.item.priceUpdatedAt, allergenReviewedAt: ri.item.allergenReviewedAt })),
       components: r.components,
     })),
     linked.map((mi) => mi.recipeId!),
@@ -95,7 +95,7 @@ export default async function FestivalBuildsPage({ params }: { params: Promise<{
 
       <FestivalTabs festivalId={festival.id} />
 
-      <PriceIntegrityNotice unpriced={priceGaps.unpriced} stale={priceGaps.stale} className="mb-4" />
+      <PriceIntegrityNotice unpriced={priceGaps.unpriced} stale={priceGaps.stale} unreviewed={priceGaps.unreviewed} reviewStale={priceGaps.reviewStale} className="mb-4" />
 
       {(plan.shoppingList.unscaledRecipes.length > 0 || unlinked.length > 0) && (
         <div className="mb-4 space-y-2">

@@ -22,7 +22,7 @@ export type BanquetRecipeRow = {
   items: Array<{
     quantity: number;
     unit: string;
-    item: IngredientMeasure & { id: string; name: string; category: string; unitCost: number; unit: string; priceUpdatedAt: Date | null };
+    item: IngredientMeasure & { id: string; name: string; category: string; unitCost: number; unit: string; priceUpdatedAt: Date | null; allergenReviewedAt?: Date | null };
   }>;
   components: Array<{ childId: string; quantity: number; unit: string }>;
 };
@@ -229,6 +229,6 @@ export const banquetRecipeSelect = {
   id: true,
   yieldQty: true,
   yieldUnit: true,
-  items: { select: { quantity: true, unit: true, item: { select: { id: true, name: true, category: true, ...measurementSelect, unitCost: true, unit: true, priceUpdatedAt: true } } } },
+  items: { select: { quantity: true, unit: true, item: { select: { id: true, name: true, category: true, ...measurementSelect, unitCost: true, unit: true, priceUpdatedAt: true, allergenReviewedAt: true } } } },
   components: { select: { childId: true, quantity: true, unit: true } },
 } as const;

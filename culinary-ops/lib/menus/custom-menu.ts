@@ -96,7 +96,7 @@ export type CustomMenuPlan = {
   overTarget: boolean;
   costedRecipeIds: string[]; // dishes included in totals/guides
   shoppingList: ShoppingList;
-  priceGaps: { unpriced: string[]; stale: string[] };
+  priceGaps: { unpriced: string[]; stale: string[]; unreviewed: string[]; reviewStale: string[] };
   issueCount: number;
 };
 
@@ -225,7 +225,7 @@ export function buildCustomMenuPlan(
   const priceGaps = priceGapNames(
     allRecipes.map((recipe) => ({
       id: recipe.id,
-      items: recipe.items.map(({ item }) => ({ itemId: item.id, unitCost: item.unitCost, priceUpdatedAt: item.priceUpdatedAt })),
+      items: recipe.items.map(({ item }) => ({ itemId: item.id, unitCost: item.unitCost, priceUpdatedAt: item.priceUpdatedAt, allergenReviewedAt: item.allergenReviewedAt })),
       components: recipe.components,
     })),
     costedIds,

@@ -22,7 +22,7 @@ export const customMenuRecipeSelect = {
 // A raw ingredient line carries everything costing, allergens and the pull
 // list need.
 export const customMenuRawItemSelect = {
-  id: true, name: true, category: true, unit: true, unitCost: true, priceUpdatedAt: true, allergens: true, diet: true, ...measurementSelect,
+  id: true, name: true, category: true, unit: true, unitCost: true, priceUpdatedAt: true, allergenReviewedAt: true, allergens: true, diet: true, ...measurementSelect,
 } satisfies Prisma.ItemSelect;
 
 export const customMenuLineInclude = { item: { select: customMenuRawItemSelect } } satisfies Prisma.CustomMenuItemInclude;

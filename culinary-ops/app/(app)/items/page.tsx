@@ -136,7 +136,7 @@ export default async function ItemsPage({
           {canEdit && <Link href="/invoices" className="text-blue-600 underline">Invoices</Link>}
         </div>
         {(missingCount > 0 || staleCount > 0) && (
-          <p className="text-xs text-zinc-600">Catalog price coverage: {missingCount} missing · {staleCount} stale ({PRICE_STALE_DAYS}+ days)</p>
+          <p className="text-xs text-zinc-600">Catalog price coverage: {missingCount} missing · {staleCount} stale ({PRICE_STALE_DAYS}+ days) · <Link href="/items/attention" className="font-medium text-gold underline">Needs attention</Link></p>
         )}
         {flag === "integrity" && <p className="text-sm text-amber-700">Showing in-use ingredients with missing costs, units, or vendors.</p>}
       </Card>

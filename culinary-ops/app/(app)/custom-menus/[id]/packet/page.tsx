@@ -8,7 +8,7 @@ import { requireUser } from "@/lib/auth/session";
 import { allergenText, buildCustomMenuPlan, describeQuantity, formatMenuDate, ISSUE_TEXT, rowAllergenKeys, type CustomMenuRow } from "@/lib/menus/custom-menu";
 import { loadCustomMenu } from "@/lib/menus/custom-menu-data";
 import { ALLERGENS, MAJOR_ALLERGENS } from "@/lib/recipes/allergens";
-import { money, num, pct } from "@/lib/recipes/costing";
+import { allergenReviewText, money, num, pct } from "@/lib/recipes/costing";
 import { unitLabel } from "@/lib/recipes/units";
 import styles from "./packet.module.css";
 
@@ -107,6 +107,9 @@ export default async function CustomMenuPacket({ params, searchParams }: { param
         {(plan.priceGaps.unpriced.length > 0 || plan.priceGaps.stale.length > 0) && <p className="mt-3 border-l-2 border-amber-600 bg-amber-50 px-2 py-1.5 text-xs text-amber-950">
           <strong>Cost review needed:</strong>{" "}
           {[plan.priceGaps.unpriced.length > 0 && `no price for ${plan.priceGaps.unpriced.join(", ")}`, plan.priceGaps.stale.length > 0 && `stale price for ${plan.priceGaps.stale.join(", ")}`].filter(Boolean).join("; ")}. Food cost may be understated.
+        </p>}
+        {(plan.priceGaps.unreviewed.length > 0 || plan.priceGaps.reviewStale.length > 0) && <p className="mt-2 border-l-2 border-amber-600 bg-amber-50 px-2 py-1.5 text-xs text-amber-950">
+          <strong>Allergen review needed:</strong> {allergenReviewText(plan.priceGaps)} Check these against the product label before the allergen grid goes to a client.
         </p>}
         <div className={styles.tableWrap}>
           <table className={styles.table} aria-label="Dish costs">

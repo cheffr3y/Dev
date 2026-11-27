@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { requireRole, requireActiveUser } from "@/lib/auth/session";
-import { parseIngredientForm } from "@/lib/ingredients/ingredient-fields";
+import { ingredientReviewed, parseIngredientForm } from "@/lib/ingredients/ingredient-fields";
 import { replaceIngredientRecipes } from "@/lib/ingredients/ingredient-replacement";
 
 export async function createItem(formData: FormData) {
@@ -13,7 +13,7 @@ export async function createItem(formData: FormData) {
   const data = parseIngredientForm(formData);
   // Only treat it as "priced" when a real cost was entered.
   await prisma.item.create({
-    data: { ...data, priceUpdatedAt: data.unitCost > 0 ? new Date() : null },
+    data: { ...data, priceUpdatedAt: data.unitCost > 0 ? new Date() : null, allergenReviewedAt: ingredientReviewed(formData) ? new Date() : null },
   });
   revalidatePath("/", "layout");
 }
@@ -29,7 +29,7 @@ export async function updateItem(formData: FormData) {
   const priceChanged = existing != null && (existing.unitCost !== data.unitCost || existing.unit !== data.unit);
   await prisma.item.update({
     where: { id },
-    data: priceChanged ? { ...data, priceUpdatedAt: new Date() } : data,
+    data: { ...data, ...(priceChanged ? { priceUpdatedAt: new Date() } : {}), ...(ingredientReviewed(formData) ? { allergenReviewedAt: new Date() } : {}) },
   });
   revalidatePath("/", "layout");
 }

@@ -28,7 +28,7 @@ export default async function RecipesPage({ searchParams }: { searchParams: Prom
   const gapMap = buildPriceGapMap(
     recipes.map((r) => ({
       id: r.id,
-      items: r.items.map((ri) => ({ itemId: ri.item.id, unitCost: ri.item.unitCost, priceUpdatedAt: ri.item.priceUpdatedAt })),
+      items: r.items.map((ri) => ({ itemId: ri.item.id, unitCost: ri.item.unitCost, priceUpdatedAt: ri.item.priceUpdatedAt, allergenReviewedAt: ri.item.allergenReviewedAt })),
       components: r.components,
     })),
   );

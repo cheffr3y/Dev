@@ -9,13 +9,18 @@ import Link from "next/link";
 export function PriceIntegrityNotice({
   unpriced,
   stale,
+  unreviewed = [],
+  reviewStale = [],
   className,
 }: {
   unpriced: string[];
   stale: string[];
+  unreviewed?: string[];
+  reviewStale?: string[];
   className?: string;
 }) {
-  if (unpriced.length === 0 && stale.length === 0) return null;
+  const review = unreviewed.length + reviewStale.length;
+  if (unpriced.length === 0 && stale.length === 0 && review === 0) return null;
   const hasMissing = unpriced.length > 0;
 
   return (
@@ -34,6 +39,9 @@ export function PriceIntegrityNotice({
         )}
         {stale.length > 0 && (
           <span className="font-medium text-amber-800">⌛ {stale.length} not re-costed recently</span>
+        )}
+        {review > 0 && (
+          <span className="font-medium text-amber-800">{review} allergen review{review === 1 ? "" : "s"} due</span>
         )}
         <Link
           href={hasMissing ? "/items?flag=missing" : "/items?flag=stale"}
@@ -55,8 +63,25 @@ export function PriceIntegrityNotice({
               <span className="font-semibold text-amber-800">Stale:</span> {stale.join(", ")}.
             </p>
           )}
+          {unreviewed.length > 0 && (
+            <p>
+              <span className="font-semibold text-amber-800">Allergens never reviewed:</span> {shortList(unreviewed)}.
+            </p>
+          )}
+          {reviewStale.length > 0 && (
+            <p>
+              <span className="font-semibold text-amber-800">Allergens not reviewed in 6 months:</span> {shortList(reviewStale)}.
+            </p>
+          )}
+          {review > 0 && <Link href="/items/attention" className="underline">Review allergens</Link>}
         </div>
       </details>
     </div>
   );
+}
+
+// The review backlog starts with every ingredient unreviewed; keep warnings
+// readable and send people to the full list instead.
+function shortList(names: string[], max = 8) {
+  return names.length > max ? `${names.slice(0, max).join(", ")} and ${names.length - max} more` : names.join(", ");
 }

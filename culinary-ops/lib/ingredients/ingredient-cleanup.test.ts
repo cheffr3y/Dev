@@ -55,3 +55,15 @@ test("matching package-unit labels do not imply equal pack sizes", () => {
   assert.equal(packageBasisConflict(source, { ...source }), false);
   assert.equal(packageBasisConflict({ ...source, unit: "lb" }, { ...source, unit: "lb", packQty: 12 }), false);
 });
+
+test("ingredient diet and label review: parsed only when the form shows them", async () => {
+  const { ingredientReviewed } = await import("./ingredient-fields");
+  const form = new FormData();
+  for (const [key, value] of Object.entries({ name: "Butter", unit: "lb", unitCost: "4" })) form.set(key, value);
+  assert.equal("diet" in parseIngredientForm(form), false);
+  form.set("diet", "vegetarian"); assert.equal(parseIngredientForm(form).diet, "vegetarian");
+  form.set("diet", ""); assert.equal(parseIngredientForm(form).diet, null);
+  form.set("diet", "paleo"); assert.equal(parseIngredientForm(form).diet, null);
+  assert.equal(ingredientReviewed(form), false);
+  form.set("allergenReviewed", "1"); assert.equal(ingredientReviewed(form), true);
+});

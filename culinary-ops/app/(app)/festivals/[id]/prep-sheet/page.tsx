@@ -71,7 +71,7 @@ export default async function FestivalPrepSheetPage({ params }: { params: Promis
   const gapMap = buildPriceGapMap(
     recipeRows.map((r) => ({
       id: r.id,
-      items: r.items.map((ri) => ({ itemId: ri.item.id, unitCost: ri.item.unitCost, priceUpdatedAt: ri.item.priceUpdatedAt })),
+      items: r.items.map((ri) => ({ itemId: ri.item.id, unitCost: ri.item.unitCost, priceUpdatedAt: ri.item.priceUpdatedAt, allergenReviewedAt: ri.item.allergenReviewedAt })),
       components: r.components,
     })),
   );
@@ -79,14 +79,20 @@ export default async function FestivalPrepSheetPage({ params }: { params: Promis
   for (const r of recipeRows) for (const ri of r.items) nameByItemId.set(ri.item.id, ri.item.name);
   const unpriced = new Set<string>();
   const stale = new Set<string>();
+  const unreviewed = new Set<string>();
+  const reviewStale = new Set<string>();
   for (const mi of linked) {
     const gap = gapMap.get(mi.recipeId!);
     for (const iid of gap?.unpriced ?? []) unpriced.add(iid);
     for (const iid of gap?.stale ?? []) stale.add(iid);
+    for (const iid of gap?.unreviewed ?? []) unreviewed.add(iid);
+    for (const iid of gap?.reviewStale ?? []) reviewStale.add(iid);
   }
   const names = (set: Set<string>) => [...set].map((iid) => nameByItemId.get(iid) ?? iid).sort((a, b) => a.localeCompare(b));
   const unpricedNames = names(unpriced);
   const staleNames = names(stale);
+  const unreviewedNames = names(unreviewed);
+  const reviewStaleNames = names(reviewStale);
 
   const list = plan.shoppingList;
   const printedOn = new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
@@ -137,7 +143,7 @@ export default async function FestivalPrepSheetPage({ params }: { params: Promis
               Counted as one base batch each; verify by hand.
             </div>
           )}
-          <PriceIntegrityNotice unpriced={unpricedNames} stale={staleNames} className="mt-3" />
+          <PriceIntegrityNotice unpriced={unpricedNames} stale={staleNames} unreviewed={unreviewedNames} reviewStale={reviewStaleNames} className="mt-3" />
           {unlinked.length > 0 && (
             <div className="mt-3 border border-amber-300 bg-amber-50 px-4 py-2 text-xs text-amber-800">
               Forecast-only (no recipe linked, not in this sheet): {unlinked.map((mi) => mi.name).join(", ")}.

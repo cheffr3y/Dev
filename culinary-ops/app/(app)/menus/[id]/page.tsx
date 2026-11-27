@@ -29,7 +29,7 @@ export default async function MenuWorkspace({ params }: { params: Promise<{ id: 
     <Link href="/menus" className="mb-4 inline-block text-sm text-gold hover:underline">← Menu Rollouts</Link>
     <PageHeader title={rollout.name} subtitle={`${rollout.venue?.name ?? "Company-wide"} · ${rollout.status} · ${rollout.expectedCovers} baseline covers${rollout.subtitle ? ` · ${rollout.subtitle}` : ""}`} />
     <div className="mb-6 flex flex-wrap gap-2">{PACKET_MODES.map(packet => <LinkButton key={packet.mode} href={`/menus/${id}/packet?mode=${packet.mode}`} variant={packet.mode === "all" ? "gold" : "secondary"}>{packet.mode === "all" ? "Print Master Launch Book (All-in-One)" : packet.label.slice(6)}</LinkButton>)}</div>
-    <CostIntegrityBanner unpriced={plan.unpricedNames} stale={plan.staleNames} />
+    <CostIntegrityBanner unpriced={plan.unpricedNames} stale={plan.staleNames} unreviewed={plan.unreviewedNames} reviewStale={plan.reviewStaleNames} />
     <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
       <StatCard label="Total dishes" value={plan.rows.length} sub={`${plan.dependencies.length} required sub-recipes`} />
       <StatCard label="Avg food cost" value={pct(matrix.averageFcp)} sub={`Target ${pct(rollout.targetFcp)} · Validated dishes only`} />

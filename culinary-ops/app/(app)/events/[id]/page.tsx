@@ -64,7 +64,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
   const menuRecipeIds = new Set(event.menuItems.map((m) => m.recipeId));
   const availableRecipes = recipeRows.filter((r) => !menuRecipeIds.has(r.id));
 
-  const priceGaps = priceGapNames(recipeRows.map(recipe => ({ id: recipe.id, components: recipe.components, items: recipe.items.map(({ item }) => ({ itemId: item.id, unitCost: item.unitCost, priceUpdatedAt: item.priceUpdatedAt })) })), lines.map(line => line.recipeId), new Map(recipeRows.flatMap(recipe => recipe.items.map(({ item }) => [item.id, item.name] as const))));
+  const priceGaps = priceGapNames(recipeRows.map(recipe => ({ id: recipe.id, components: recipe.components, items: recipe.items.map(({ item }) => ({ itemId: item.id, unitCost: item.unitCost, priceUpdatedAt: item.priceUpdatedAt, allergenReviewedAt: item.allergenReviewedAt })) })), lines.map(line => line.recipeId), new Map(recipeRows.flatMap(recipe => recipe.items.map(({ item }) => [item.id, item.name] as const))));
 
   return (
     <div className="atelier-event">
