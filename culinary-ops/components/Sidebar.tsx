@@ -86,6 +86,8 @@ function NavEntry({ group, flyout, activeHref, children }: {
 }) {
   const row = useRef<HTMLLIElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  // Escape returns focus to the job link; that focus must not reopen the menu it just closed.
+  const escaping = useRef(false);
   const [spot, setSpot] = useState<{ left: number; top: number } | null>(null);
   const pathname = usePathname();
   const [prevPath, setPrevPath] = useState(pathname);
@@ -111,9 +113,9 @@ function NavEntry({ group, flyout, activeHref, children }: {
   return (
     <li ref={row}
       onMouseEnter={() => show(80)} onMouseLeave={() => hide(150)}
-      onFocus={() => show(0)}
+      onFocus={() => { if (escaping.current) { escaping.current = false; return; } show(0); }}
       onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) hide(0); }}
-      onKeyDown={(event) => { if (event.key === "Escape" && spot) { setSpot(null); row.current?.querySelector("a")?.focus(); } }}>
+      onKeyDown={(event) => { if (event.key === "Escape" && spot) { clearTimeout(timer.current); setSpot(null); escaping.current = true; row.current?.querySelector("a")?.focus(); escaping.current = false; } }}>
       {children}
       {spot && <div className="fixed z-50 pl-2" style={{ left: spot.left, top: spot.top }}>
         <div role="group" aria-label={`${group.label} pages`}

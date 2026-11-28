@@ -18,7 +18,7 @@ function DocumentCanvas({ document, page, zoom, onReady }: { document: Document;
     let dispose: (() => void) | undefined;
     async function render() {
       try {
-        const pdfjs = await import("pdfjs-dist/build/pdf.mjs");
+        const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
         if (abort.signal.aborted) return;
         pdfjs.GlobalWorkerOptions.workerSrc = "/ocr/pdf.worker.min.mjs";
         const response = await fetch(`/api/invoices/file?id=${encodeURIComponent(document.id)}`, { signal: abort.signal });

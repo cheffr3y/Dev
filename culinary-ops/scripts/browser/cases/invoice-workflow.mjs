@@ -13,7 +13,8 @@ try {
   for(const [item,code,description,packQty] of [[roll,"104028","PAR BAKED ASSORTED DIAMOND ROLL",136.5],[pepper,"SPP101","WHITE PEPPER",80]]) {
     await db.invoiceItemAlias.create({data:{vendorId:vendor.id,itemId:item.id,rawCode:code,normalizedOcrText:description,tokens:description.split(" "),defaultUnit:"cs",defaultPackQty:packQty,defaultPackUnit:"oz"}});
   }
-  const context=await browser.newContext({viewport:{width:1600,height:1100}}),page=await context.newPage(),errors=[];
+  const context=await browser.newContext({viewport:{width:1600,height:1100}});// Act like an older phone/browser without Map.getOrInsertComputed: invoice PDFs must still read (pdf.js legacy build).
+  await context.addInitScript(()=>{delete Map.prototype.getOrInsertComputed;delete WeakMap.prototype.getOrInsertComputed;});const page=await context.newPage(),errors=[];
   page.setDefaultTimeout(60000);page.on("pageerror",error=>{errors.push(error.message);console.error("BROWSER_ERROR",error.message);});page.on("console",message=>{if(message.type()==="error")console.error("BROWSER_CONSOLE",message.text());});
   await page.goto(`${base}/login`);await page.getByLabel("Email").fill("admin@local.test");await page.getByLabel("Password").fill("local-smoke-only");await page.getByRole("button",{name:"Sign in",exact:true}).click();await page.waitForURL(`${base}/`);
   const pdf=await PDFDocument.create(),font=await pdf.embedFont(StandardFonts.Courier),sheet=pdf.addPage([1000,600]);
