@@ -1,320 +1,146 @@
-# `culinary-ops` Master Commercial Roadmap & Agent Execution Guide
+# angryshallot roadmap
 
-## Product & Architecture North Star
-1. **Desktop Executive Command Center:** The web application is a commercial-grade desktop/laptop executive platform used for recipe costing, menu engineering, vendor pricing, scheduling, and accounting integration. The UI should look and feel like an enterprise financial/ERP platform (e.g., Linear, Ramp, Stripe): high-density data tables, crisp `1px` borders, tabular monospace numbers (`font-variant-numeric: tabular-nums`), keyboard-first inline editing, and high-signal financial badges.
-2. **Paper is the Line Cook UI:** Line and prep cooks interact with the system via printed physical clipboard packets (`/packet` and `/print` routes). Every printout must look like a commercial culinary spec sheet—Sharpie-friendly write-in cells (`min-height: 28px`), explicit `[  ]` checkboxes, zebra-striped rows, zero awkward page-break orphans (`break-inside: avoid`), and a non-printing floating toolbar for batch scaling and 1-page density squeezing.
+**This is the only roadmap.** All earlier roadmaps and plans were retired on 2026-11-28 (they remain in git history).
+Built from three independent audits (Nov 27–28, 2026) and checked against `main` @ `2ae4ce0`.
 
----
-
-## Chunk 1: Commercial UI Foundation & Navigation Architecture
-**Goal:** Make the desktop application immediately look and feel like an enterprise financial/hospitality platform (high-density data, crisp borders, aligned numbers, zero clutter).
-
-**Target Files:**
-* `app/globals.css`
-* `components/ui.tsx`
-* `components/DesktopSidebar.tsx`
-* `components/Sidebar.tsx`
-* `components/AtelierHeader.tsx`
-* `components/RecipeCosting.tsx`
-* `components/CostAudit.tsx`
-* `app/(app)/recipes/RecipesTable.tsx`
-* `app/(app)/festivals/[id]/accounting/AccountingWorksheet.tsx`
-
-### Checklist
-- [x] **Enterprise Surface & Border Tokens:** Update `app/globals.css` and `components/ui.tsx` with a refined commercial dark/slate palette—deep background surfaces, elevated card surfaces, crisp `1px` subtle borders, and high-contrast semantic pills (Emerald = On Target, Amber = Missing Price/Warning, Crimson = Over Cost/Alert), while strictly preserving clean black-on-white styles inside `@media print`.
-- [x] **Tabular Monospace Financials:** Create a global `.tabular-nums` utility (`font-variant-numeric: tabular-nums; font-family: var(--font-mono), monospace;`) and apply it to every dollar amount, unit cost, weight, yield, and Food Cost % across `RecipeCosting.tsx`, `CostAudit.tsx`, `RecipesTable.tsx`, and `AccountingWorksheet.tsx` so decimals align vertically.
-- [x] **High-Density Table Layout:** Reduce vertical row padding across all data tables so 25–30 rows fit comfortably on a laptop screen, and add sticky headers (`position: sticky; top: 0`) to long tables.
-- [x] **Commercial ERP Sidebar Grouping:** Reorganize `DesktopSidebar.tsx` and `Sidebar.tsx` into structured collapsible sections:
-  * **Operations:** Dashboard, Prep Orders, Production, Schedule
-  * **Culinary & Events:** Recipes, Menus, Banquets, Events, Festivals, To-Go
-  * **Purchasing & Accounting:** Items, Vendors, Order Guides, Inventory, Prep Reports
-- [x] **Hide Non-Ops Modules from Primary Nav:** Remove `/homestead` and `/trivia` from the main culinary sidebar (keep their routes accessible via direct URL or a discrete footer link) so the workspace presents 100% as a dedicated commercial hospitality suite.
-
-### Implementation status — October 29, 2026
-
-Implemented. The desktop and mobile navigation share collapsible groups; Prep Reports respects its existing admin-only access. Screen workspace colors and table density are scoped away from paper previews and print. Recipe price warnings have their own column so monetary amounts stay aligned.
-
-Validation: TypeScript, targeted ESLint, the production build, 158 unit checks, and 24 disposable-PostgreSQL integration checks passed. Browser review covered group toggles, persisted sidebar collapse, active-link selection, role visibility, a 40-row sticky-header table, accounting figures, mobile navigation, and recipe print styling.
-
-### Copy-Paste Agent Prompt for Chunk 1
-> Read `AGENTS.md`, `app/globals.css`, `components/ui.tsx`, `components/DesktopSidebar.tsx`, and `components/Sidebar.tsx`. Execute **Chunk 1** of `ROADMAP.md`: upgrade the web UI to a high-density commercial enterprise design system, enforce `.tabular-nums` across all financial/weight columns in `RecipeCosting.tsx`, `CostAudit.tsx`, `RecipesTable.tsx`, and `AccountingWorksheet.tsx`, reorganize the sidebar into Operations / Culinary & Events / Purchasing & Accounting, and remove `/homestead` and `/trivia` from the primary navigation. Strictly preserve `@media print` black-on-white styling. Run `npx tsc --noEmit` to verify when complete.
+How to use it:
+- Work top to bottom. Each item has an ID, a status, the files to start from, and a "done when" check.
+- Status: ⬜ not started · 🔧 in progress · ✅ done (add commit) · ⏸ waiting on a decision · ❌ dropped
+- Anything marked **❓ Jeff** is a decision for the chef. Don't build past it without an answer.
+- Before starting an item, re-check the claim against current code. The audits were read-only and some findings are source-only.
+- Don't bulk merge, close or delete live data based on this document alone.
 
 ---
 
-## Chunk 2: Executive Dashboard & `Cmd+K` Action Center
-**Goal:** Turn the home page into a high-signal morning command center and let you trigger any major workflow or print job from the keyboard.
+## Standing decisions (carry forward)
 
-**Target Files:**
-* `app/(app)/page.tsx`
-* `components/CommandSearch.tsx`
-* `components/PriceIntegrityNotice.tsx`
-
-### Checklist
-- [x] **Executive "Morning Pulse" Dashboard (`app/(app)/page.tsx`):**
-  * **Card 1 — Costing & Price Integrity:** Count of active ingredients with `$0.00` cost, missing units, or unlinked vendors (clicking opens `/items/cleanup`).
-  * **Card 2 — This Week's Event & Banquet Load:** Summary of active banquets, guest counts (pax), and upcoming festival/event milestones for the next 7 days.
-  * **Card 3 — Prep & Closeout Queue:** Open daily prep worksheets (`prep-orders/closeout`) and pending inter-venue transfers awaiting sign-off.
-  * **Card 4 — Menu Margin Watchlist:** Quick list of active menu items whose food cost % has crept above target threshold.
-- [x] **Upgrade `CommandSearch.tsx` (`Cmd+K`) to an Action Palette:**
-  * Add instant action commands (not just page links): *"Print This Week's Banquet Packet"*, *"Export Prep Accounting XLSX"*, *"Open Daily Closeout"*, *"Merge Duplicate Items"*, and *"New Recipe"*.
-  * Add keyboard shortcut hints (`↑` `↓` to navigate, `Enter` to execute, `Esc` to close).
-
-### Implementation status — October 31, 2026
-
-Implemented. Morning Pulse shows company-wide in-use ingredient integrity, the selected venue’s next seven days of active events/banquets plus shared festivals, the admin-only company-wide closeout queue, and above-target dishes on active venue/shared menus. In-use ingredients have recipe, inventory, order-guide, or festival-count references; unused catalog entries do not inflate alerts. Integrity links open the matching cleanup list (or the read-only ingredient filter for staff). Nested missing costs, invalid yields, unit mismatches, empty builds, and cycles require margin review; stale prices remain labeled. Historical ledger records do not become new unfinished closeout days.
-
-The action palette prints the current Monday–Sunday banquet packet, downloads Sunday-to-today accounting XLSX, opens today’s closeout/prep, reviews duplicate consolidation, and opens the recipe creation form. Dates follow Chicago business time and refresh each time the palette opens. Actions and queue reads respect current database roles; accounting and closeout remain admin-only. Printing is requested once and does not repeat on reload. Keyboard navigation, focus containment/restoration, scrolling, empty results, and export failures are handled.
-
-Validation: TypeScript, targeted ESLint, the production build, 167 unit checks, 24 disposable-PostgreSQL transaction checks, dedicated dashboard database assertions, and desktop/mobile browser checks. Browser coverage includes data scope, ingredient review links, role restrictions, keyboard recovery, repeated recipe-form opening, XLSX download/error feedback, print invocation/reload behavior, and print styling. Desktop/mobile screenshots were visually reviewed; a packet PDF and accounting workbook were captured from disposable fixtures.
-
-### Copy-Paste Agent Prompt for Chunk 2
-> Read `app/(app)/page.tsx`, `components/CommandSearch.tsx`, and `components/PriceIntegrityNotice.tsx`. Execute **Chunk 2** of `ROADMAP.md`: transform `app/(app)/page.tsx` into an Executive "Morning Pulse" Dashboard with the 4 high-signal operational/accounting cards, and upgrade `components/CommandSearch.tsx` into a full `Cmd+K` action palette with quick-action shortcuts and keyboard hints. Verify with `npx tsc --noEmit`.
+- **Personal use first.** The chef is the main user. A dedicated Cook view and team rollout were deferred on Nov 4. ❓ Jeff: is that still true? (It decides when Phase 4 happens.)
+- **Biggest weekly time sink is ordering: knowing what to order.** On-hand counts shipped on Nov 26 (`8b226ac`).
+- **Paper is the line cook's interface.** Kitchen sheets print black and white; client documents print in color.
+- **Local OCR only.** Paid AI extraction stays off.
+- **Wheat always implies Gluten.** Gluten can be tagged on its own (barley, rye, malt, beer).
+- **An ingredient is out of review** if it has never been reviewed or was last reviewed more than 6 months ago.
+- **Never claim allergen-free or vegan without data.** Unknown prints "not recorded", never blank.
+- **Home venue for the chef: The Station.**
+- **Keep the brand.** Aubergine, porcelain, paprika, Fraunces / Inter / IBM Plex Mono, and the shallot divider as the house print accent.
 
 ---
 
-## Chunk 3: The "Bulletproof Clipboard" Print Engine (Part 1: Global Controller & CSS)
-**Goal:** Since paper is the UI for your cooks, make every printed sheet look like a commercial spec sheet that never splits awkwardly across pages.
+## Phase 1 — Safety rails (about 1 week, mostly invisible)
 
-**Target Files:**
-* `components/PrintButton.tsx` (or new `components/PrintController.tsx`)
-* `app/globals.css`
-* `app/(app)/recipes/[id]/print/page.tsx`
-* `app/(app)/prep-orders/[id]/packet/page.tsx`
-* `app/(app)/banquets/[id]/packet/page.tsx`
-* `app/(app)/banquets/week/[date]/packet/page.tsx`
-* `app/(app)/menus/[id]/packet/page.tsx`
-* `app/(app)/schedule/[week]/print/page.tsx`
-* `app/(app)/to-go/[id]/packet/page.tsx`
+Goal: nobody can accidentally break production, lose data, or keep access they shouldn't have.
 
-### Checklist
-- [x] **Build `<PrintController />` Floating Toolbar:** Replace the basic `PrintButton.tsx` on all `/packet` and `/print` routes with a sleek dark-mode floating control bar (hidden on print via `print:hidden`) containing:
-  * **Density Toggle (`Standard` vs. `1-Page Squeeze`):** Toggles a `.print-compact` class on the print wrapper that tightens font size and cell padding by ~15% so a 24-line sheet fits on 1 page instead of spilling 3 orphan lines onto page 2.
-  * **Batch Scale Multiplier (for Recipe & Prep prints):** Quick buttons (`0.5x`, `1x`, `2x`, `3x`, plus custom numeric input) that dynamically multiply ingredient weights on the printout.
-  * **Scaled Production Banner:** Whenever a recipe is printed at anything other than `1x`, automatically render a bold top banner: `SCALED PRODUCTION BATCH ({scale}x) — DO NOT FILE IN MASTER BINDER`.
-- [x] **Standardized Commercial Print Header:** Create a reusable `<PrintSpecHeader />` component for all printouts displaying: Venue Badge, Document Title, Target Date, Print Timestamp, and Page rules.
-- [x] **Sharpie-Friendly `@media print` Rules:**
-  * Force `min-height: 28px` on all handwritten write-in cells (par, pull, waste, temp check, initials).
-  * Add alternating light-gray zebra striping (`#f4f4f5` with `-webkit-print-color-adjust: exact; print-color-adjust: exact;`) so cooks don't lose their row across wide tables.
-  * Add `break-inside: avoid` on all recipe cards, prep station groups, and banquet setup sections.
+| ID | Status | Item | Start from | Done when |
+|---|---|---|---|---|
+| 1.1 | ⬜ | **CI gate before deploy.** GitHub Action: `tsc`, lint, unit tests, Postgres integration tests, `next build`. Deploy only after it passes. | new `.github/workflows/ci.yml`, `.do/app.yaml` (`deploy_on_push: true`) | A failing PR can't reach production. First fix or mark the 3 browser tests already failing before this work (`ingredient-cleanup`, `ingredient-allergens`, `operating-calendar`). |
+| 1.2 | ⬜ | **Role checks read the database, not just the login token.** Make `requireRole` / `requireUser` confirm the current role in the database (as `requireActiveUser` already does). Add an "account disabled" flag. | `lib/auth/session.ts:25-66`; 58 files in `app/` call these | A demoted or removed user loses access on their next click. There are tests for both cases. |
+| 1.3 | ⬜ | **Lock down hidden Inventory.** Any logged-in user can currently edit pars and delete rows at any venue. | `app/(app)/inventory/actions.ts` (`requireUser` only) | Staff can't change inventory. The longer-term decision is item 3.6. |
+| 1.4 | ⬜ | **Confirm before delete.** Add a confirmation step for users, vendors, order guides, prep orders, ingredients, inventory rows, cooks, banquets, festivals and events. Remove cooks by deactivating them, not hard-deleting. | `admin/users/page.tsx:112`, `vendors/page.tsx`, `schedule/cooks/page.tsx`, `prep-orders/[id]`, `items/`, `banquets/[id]`, `festivals/[id]`, `events/` | No destructive action runs on one click. Cook shift history survives removal. |
+| 1.5 | ⬜ | **Date bugs.** Today's events show as past after midnight UTC, and event dates display a day early in Central time. | `events/page.tsx:24-26`, `banquets/page.tsx`, `banquets/[id]/page.tsx`, `festivals/**`; use the existing business-date helper | Card, detail and print all show the same date for a Saturday event, viewed Friday night and Saturday morning. |
+| 1.6 | ⬜ | **Bring back Quick-Create Ingredient in invoice review.** It was lost when review moved to the new screen. Then delete the dead old component. | `components/InvoicePurchaseReview.tsx`; dead `components/InvoiceLocalReview.tsx:192` | A new item can be created and matched on an invoice without leaving the page. |
+| 1.7 | ⬜ | **Server headroom.** Move from `basic-xs` (512 MB) to `basic-s`, and allow only 1–2 PDF/image processing jobs at a time. | `.do/app.yaml:38`, `app/api/invoices/route.ts`, `app/api/smoking/route.ts` | A multi-page PDF upload and a photo upload at the same time both succeed. ❓ Jeff: OK with roughly double the monthly cost for that one server? |
 
-### Implementation status — October 31, 2026
-
-Implemented across all seven `/packet` and `/print` routes. The shared floating toolbar provides Standard / 1-Page Squeeze density, printing, and recipe/prep multipliers (0.5×, 1×, 2×, 3×, legacy 4×, and custom positive values up to 100×). Scale and density are retained through content changes and packet option forms. Quantities and costing are recomputed together; unit prices remain fixed. Prep scaling updates this copy’s frozen ingredient demand, sub-recipe references, shopping list, destination targets, and planned accountability/cooling quantities without changing saved requests, lots, or snapshots. Each nonstandard recipe batch carries the binder warning.
-
-Print headers show venue, document title, target date/reference, Chicago timestamp, paper orientation, and page counters. Handwriting fields retain at least 28px in compact mode. Alternating gray rows, explicit checkboxes, repeating table headings, and section/card break rules keep paper usable. Longer recipes paginate naturally while individual rows and steps stay together. The menu cover no longer creates an empty page when the document header is present. Schedule prints remain landscape.
-
-Validation: TypeScript, targeted ESLint, production build, 173 unit checks, 24 disposable-PostgreSQL transaction checks, and desktop/mobile browser checks for every print route. Existing recipe-costing browser regressions passed. Twelve PDFs (27 pages) were rendered and visually reviewed; page dimensions/counters, hidden controls, empty pages, and retained ingredient rows were checked. The 24-line fixture changes from two pages (three overflow rows) to one in Squeeze; all 80 rows of the long recipe remain present across three pages. Frozen packet snapshots and request rows were unchanged after the checks.
-
-### Copy-Paste Agent Prompt for Chunk 3
-> Read `components/PrintButton.tsx`, `app/globals.css`, and the `/packet` and `/print` route pages. Execute **Chunk 3** of `ROADMAP.md`: build the floating `<PrintController />` with 1-Page Squeeze density toggle and dynamic Batch Scale Multiplier (with the scaled production warning banner), add `<PrintSpecHeader />`, and enforce Sharpie-friendly `@media print` ergonomics (`min-height: 28px` write-in cells, zebra striping, `break-inside: avoid`). Verify with `npx tsc --noEmit`.
+**Phase gate:** CI is green, there are no one-click deletes, and the role-revocation test passes.
 
 ---
 
-## Chunk 4: QR Project Start / Finish & Admin Review
-**Goal:** Scan a prep or banquet project when work starts, finish after labeling/dating, and capture actual elapsed time, yield, and notes for review.
+## Phase 2 — Quick wins you'll see (1–2 weeks)
 
-**Scope — October 31, 2026:** QR project logging is the only retained work from the original Chunk 4. The combined packet/compiler, station filters, and label generator remain removed. Chunk 5 follows this work; Chunks 5 and 6 are now implemented.
+| ID | Status | Item | Start from | Done when |
+|---|---|---|---|---|
+| 2.1 | ⬜ | **Venue switcher.** A pill at the top of the sidebar (and `⌘K → Switch venue`) that sets the existing `activeVenue` cookie. Nothing sets it today. Admins get an "All venues" option. Pages that ignore venue say so. | `lib/venues/venue.ts`, `app/(app)/layout.tsx`, `components/DesktopSidebar.tsx`, `MobileNav.tsx` | Today, Schedule, Inventory and Monthly Tracker all follow the pill, and the current venue is visible on every page. |
+| 2.2 | ⬜ | **Separate old closeouts from Today.** 54 open days going back to June bury today's work. Show them as a separate "Needs reconciling" queue. Don't auto-close them. | `app/(app)/page.tsx`, `lib/dashboard/morning-pulse-data.ts`, prep closeout | Today shows only today and overdue work. The history queue is one click away. |
+| 2.3 | ⬜ | **Remove duplicate tabs.** Drop `<EventsTabs>` (it also leaves out Custom Menus) and the second nav bar in Daily Prep. Delete dead `PrepOrdersTabs.tsx`. | `events/page.tsx`, `banquets/page.tsx`, `festivals/page.tsx`, `prep-orders/layout.tsx` | Each section has one tab row. |
+| 2.4 | ⬜ | **Make empty look different from zero.** An empty inventory shouldn't read "all stocked", a banquet with no guest count shouldn't show "0 guests", and no active menus shouldn't show a green "0 warnings". | Today, inventory, banquets, closeout empty states | No empty dataset looks successful. |
+| 2.5 | ⬜ | **Quieter ingredient rows.** Hide "Price trend needs 2 comparable purchases" when there's nothing to plot, show money to 2 decimals in overview rows, and stop "Review duplicates (0)" from being the main button. | `components/PriceTrend.tsx`, `items/page.tsx`, recipe list | Ingredient row height roughly halves. |
+| 2.6 | ⬜ | **Inputs and buttons that work on phones.** Use 16px input text so iOS doesn't zoom in, 44px buttons on touch screens, and let wide tables scroll sideways. | `components/ui.tsx` (`fieldBase`, `Button`) | No iOS zoom on any form. No page scrolls sideways at 390px. |
+| 2.7 | ⬜ | **Recipe filters on phone.** Currently the first result sits about 1,670px down. Show search, station and one Filters button above the results. | recipes catalog page | The first recipe is visible without scrolling at 390px. |
+| 2.8 | ⬜ | **Small fixes from the audits.** Smoking shouldn't ask for a "correction reason" on a brand-new reading. Use `router.refresh()` instead of a full reload after manual OCR. Let the supplier be changed on an invoice until a line is approved. | `smoking-client.tsx:689`, `InvoicePurchaseReview.tsx` | Each fix is checked by hand. |
 
-### Checklist
-- [x] **Project-specific printed QR codes:** Prep lot recipe cards, banquet cook cards and prep-sheet food lines, weekly banquet project selection, and daily worksheet recipe groups open the matching project on a phone. Printed copy multipliers remain attached to prep targets. Sign-in returns to the scanned project.
-- [x] **Start / finish work:** Cooks and managers start a persistent server timer, then submit actual yield with a compatible unit, shift/quality notes, and labeling/dating confirmation. Repeat scans and interrupted start/save responses reuse the existing project. Managers can finish another cook’s work; staff can finish their own.
-- [x] **Admin review and actual-time history:** Review start/finish timestamps, elapsed time, cook, planned versus actual yield, and notes. Yield corrections require an explanation and preserve the original submission. Reviewed prep yields can populate the existing worksheet after an explicit click; deliveries and labor remain for admin confirmation. Pending prep logs block production confirmation and day finalization. Banquet logs create no prep charges.
-
-### Implementation status — October 31, 2026
-
-Implemented. Project logs are separate from the accounting ledger, with database protection for start facts, submitted results, and reviewed records. Elapsed time includes waiting/unattended cooking and never automatically replaces labor person-minutes. Each printed prep lot or banquet food line has one job; scans resume that job instead of starting duplicate timers. Daily/weekly QR selectors lead to the relevant printed lots or banquet event projects.
-
-Apply `20261031000000_production_job_logs` before releasing this version; normal `npm start` applies migrations before serving. Set `APP_BASE_URL` to the public application origin for paper used on phones (the configured auth origin/request origin is the fallback).
-
-Validation: production build, TypeScript, targeted ESLint, 178 unit checks, and 26 disposable-PostgreSQL transaction checks. Mobile/desktop browser checks cover QR decoding, sign-in return, an interrupted start response, reload recovery, labeling/yield validation, role restrictions, admin review and deliberate worksheet prefill, unchanged snapshots, and zero automatic ledger writes. Prep/banquet QR codes also decode from 300 dpi PDF renders; all seven sample PDF pages were visually reviewed.
+**Phase gate:** the chef can do Today → invoice (with a new ingredient) → recipe → closeout → count with no dead ends.
 
 ---
 
-## Chunk 5: Spreadsheet-Speed Inline Editing & Inspector Drawers
-**Goal:** Eliminate slow form-by-form clicking when building menus, editing recipes, or updating vendor prices.
+## Phase 3 — Trust the numbers (3–6 weeks)
 
-**Target Files:**
-* `components/RecipeIngredientEditor.tsx`
-* `app/(app)/items/page.tsx`
-* `app/(app)/order-guides/[id]/page.tsx`
-* `app/(app)/menus/[id]/page.tsx`
-* `app/(app)/banquets/[id]/page.tsx`
-* `app/(app)/prep-orders/[id]/page.tsx`
-* `components/RecipeDossier.tsx`
+Goal: the same recipe, ingredient and event tell the same story on every screen.
 
-### Checklist
-- [x] **Keyboard-Driven Inline Grid for `Items` & `Order Guides`:** Allow clicking directly into Price, Unit, Pack Size, Vendor, and ProdCode cells in `items/page.tsx` and `order-guides/[id]/page.tsx`. Support `Tab`, `Shift+Tab`, and `Enter` to move down rows with optimistic auto-save and a subtle green "Saved" flash.
-- [x] **Fast Keyboard Entry in `RecipeIngredientEditor.tsx`:** Let you add 10 ingredients in a row using only the keyboard (type ingredient $\rightarrow$ `Tab` $\rightarrow$ quantity $\rightarrow$ `Tab` $\rightarrow$ unit $\rightarrow$ `Enter` to commit and auto-focus the next new ingredient row).
-- [x] **Slide-Over "Inspector Drawer" (`RecipeDossier` & `Item` quick-edit):** When working inside `menus/[id]/page.tsx`, `banquets/[id]/page.tsx`, or `prep-orders/[id]/page.tsx`, clicking an ingredient or sub-recipe opens a right-hand slide-over drawer instead of navigating away. You can fix a missing price or tweak a recipe yield inside the drawer and watch the parent menu/banquet cost recalculate live.
+| ID | Status | Item | Start from | Done when |
+|---|---|---|---|---|
+| 3.1 | ⬜ | **One cost-completeness rule.** A single shared result: known estimate, complete or partial, what's blocking it, and price freshness. Reuse the recipe editor's stricter logic. An empty formula, missing price, failed unit conversion or missing sub-recipe shows as "incomplete", never `$0.00`. | `lib/recipes/costing.ts`, recipe list and inspector, menus list and detail, custom menus, banquets, packets | Cheese Curds (no ingredients) shows incomplete everywhere. Annex Small Plates shows the same food cost % on the list and the detail page, with its denominator shown (e.g. "4 of 6 dishes"). |
+| 3.2 | ⬜ | **One rounding rule for pull lists.** Today the Event list rounds Butter to 4 lb while the Banquet list shows 1.45 lb, from the same planner. | `buildBanquetPlan` and its callers | Events and Banquets print the same quantity for the same food. |
+| 3.3 | ⬜ | **Show allergen confidence on cook-facing pages.** Separate "allergens recorded" from "review complete" on recipe summaries and packets. Finish dietary item D6: "Vegan"/"Vegetarian" line and a pre-print warning on the client menu, plus an allergen grid column. | recipe summary, print packets, client menu | No summary says "none recorded" without also showing the review status. |
+| 3.4 | ⬜ | **One clear set of "needs attention" counts.** Today, the sidebar badge, Cleanup tabs and catalogs each name what they count (e.g. "used this week" vs "all") and link to the same rules. | `cleanupBadgeWhere()`, Today integrity card, `/cleanup` | Each number on screen says what it counts and links to that list. |
+| 3.5 | ⬜ | **Price "verified" vs price "changed."** An invoice at the same price should refresh price age. Track the last verified source and date separately from the last change. | invoice price cascade, `priceUpdatedAt` | Approving a same-price invoice clears the stale flag without altering past exports. |
+| 3.6 | ⏸ | **Inventory and Order Guides: retire or revive.** ❓ Jeff. If retired, migrate the references so old rows stop blocking ingredient merges. | `app/(app)/inventory/**`, `order-guides/**`, `/items/merge` | The routes are gone (or back in the nav with proper permissions). |
+| 3.7 | ⬜ | **Count every ingredient reference.** The "unused ingredient" and delete checks miss Custom Menu and Purchase Count lines. | ingredient usage selector, `/items/merge` | An ingredient used only on a custom menu is never shown as unused. |
+| 3.8 | ⬜ | **Server-side search.** Stop loading every recipe and ingredient on every page for `⌘K`. Add a debounced search endpoint, and include all nav pages, invoices, vendors and events. | `app/(app)/layout.tsx:20-28`, `components/CommandSearch.tsx` | The layout no longer queries the full catalog. `⌘K` can jump to any page. |
+| 3.9 | ⬜ | **Basic speed work.** Fix the N+1 snapshot loop in production planning, add missing database indexes, use narrower `revalidatePath` calls, and stop sending the full item catalog on every row of the recipe page. | `lib/production/production-planning-data.ts:37-46`, `prisma/schema.prisma`, `recipes/[id]/page.tsx` | Measure before and after on realistic data, with no regressions. |
+| 3.10 | ⬜ | **One Cleanup page.** Fold `/items/cleanup` (merge picker, vendor/SKU duplicates, missing vendor, unused items) into `/cleanup`. Add bulk "Label checked" and inline price edits. Order work by "used in the next service" first. | `cleanup/page.tsx`, `items/cleanup/page.tsx` | One Cleanup page, and label review can be done in batches. |
+| 3.11 | ⬜ | **Data fixes found while printing.** Two pepper items, Spices vs Spices & Seasonings, Water filed under Frozen, Ketchup and canola needing a density, the `eac` unit, steps missing their first letter (Brisket 6–7, Pork 6/11/13, Maitake 3), Coleslaw and Field Greens with no method, storage notes stored as steps, and the "Mustard Powder[…]" name. Run `scripts/report-gluten-tags.ts`. | Cleanup page; edit the records | All are fixed in the live data by the chef or with the chef's OK. |
 
-### Implementation status — November 1, 2026
-
-Implemented. Ingredients and Order Guides support field-by-field autosave, Tab / Shift+Tab navigation, Enter down a column, Escape cancellation, visible save feedback, retained failed drafts, and explicit conflict resolution. Ingredient names stay visible while scrolling. Order Guide estimates normalize compatible stock and cost units and flag partial totals when units or prices need attention.
-
-Recipe ingredient entry supports ten consecutive additions using only the keyboard, resets after a successful save, and restores search focus. Menu, banquet, and prep workspaces open recipe/ingredient inspectors with nested navigation, yield and catalog editing, live parent costing refresh, focus/scroll restoration, and mobile layouts. Current database roles protect writes; recipe yield changes are audited. Existing packet snapshots and accounting records remain intact. No database migration is required.
-
-Validation: production build and TypeScript, targeted ESLint, 180 unit checks, and 29 disposable-PostgreSQL transaction checks passed. Browser coverage includes keyboard cell navigation, invalid/conflicting edits, lost-response recovery, ten consecutive keyboard ingredient additions, nested inspector edits and live parent refresh, focus/scroll restoration, mobile read-only access, print visibility, and preserved snapshots/accounting records. Desktop and mobile screenshots were visually reviewed.
-
-See [workspace-editing.md](docs/workspace-editing.md) for operation and verification details.
-
-### Copy-Paste Agent Prompt for Chunk 5
-> Read `components/RecipeIngredientEditor.tsx`, `app/(app)/items/page.tsx`, `app/(app)/order-guides/[id]/page.tsx`, and `app/(app)/menus/[id]/page.tsx`. Execute **Chunk 5** of `ROADMAP.md`: implement spreadsheet-style inline keyboard editing (`Tab`/`Enter` with optimistic saves) for Items, Order Guides, and Recipe Ingredient entry, and add a right-hand Slide-Over Inspector Drawer for viewing/editing recipes and items in-place without losing scroll position. Verify with `npx tsc --noEmit`.
+**Phase gate:** every cost, count and allergen summary shows its value, scope, completeness and date.
 
 ---
 
-## Chunk 6: Accounting Pipeline & Compact Invoice Documents
-**Goal:** Improve accounting exports and keep readable invoice photos/PDFs for reference without AI usage.
+## Phase 4 — Connect the planning modules (next release, 1–3 months)
 
-### Checklist
-- [x] **Optional accounting mappings:** Admin-configured category/labor GL accounts and venue cost centers. Leave unknown codes blank and flag unmapped exports.
-- [x] **Expanded exports:** Executive Summary, Inter-Venue Transfers, Line-Item Detail with cost/mapping flags, and a single-table transfer CSV. Preserve existing ledger values and immutable export snapshots.
-- [x] **Invoice document archive:** Upload/drop a PDF or photo, or take a phone photo. Optional vendor, invoice number and notes. Store a compact, readable document in PostgreSQL with authenticated first-page preview, full-size view, download, and duplicate detection.
-- [x] **Legibility-aware compression:** Rotate photos, reduce their longest edge to 2600 pixels and compress to JPEG (or a smaller PNG for crisp text). Raster PDF copies target 150 dpi, retain every page and its dimensions, and are stored only when smaller than the source. Already compact digital PDFs keep their original sharp text. Input limit 8 MB / 20 PDF pages.
+Goal: plan once, prep once, buy once.
 
-### Scope decision — November 1, 2026
-
-AI extraction, cross-vendor matching, automated price proposals and API spending controls are **future work**, listed below. The active invoice upload/view/download flow makes no AI calls and requires no API key. Previous AI extraction/review helpers remain internal groundwork, with no active UI or API route to invoke them. Legacy invoice review records are preserved.
-
-Deployment requires `20261101000000_accounting_invoice_review` and `20261101010000_invoice_document_archive`, applied by normal `npm start`. Runtime: Node 22.13+ (24 recommended). Compact document bytes and previews are database-backed, so there is no dependence on ephemeral server disk or a new cloud-storage account. Include these tables in normal database backups.
-
-Validation: production build/TypeScript, targeted ESLint, 187 unit checks and 31 disposable-PostgreSQL transaction checks. Browser checks cover photo/PDF uploads, stored preview/download, duplicate detection, malformed inputs, disabled AI routes, unchanged prices/ledger, permissions, mobile layout and accounting exports. A two-page scan shrank from 1,243,706 to 368,723 bytes; a sample photo from 1,093,354 to 321,703 bytes. Sample digital PDFs remained unchanged when already smaller. Both stored scan pages and seven-point footers were visually reviewed at 150 dpi. Savings vary with source quality/content.
-
-See [accounting-invoices.md](docs/accounting-invoices.md).
+| ID | Status | Item | Done when |
+|---|---|---|---|
+| 4.1 | ⏸ | **Demand ledger and Production board.** Every plan type (banquet, festival, custom menu, event, HMR, daily prep) writes demand lines: recipe, quantity, needed-by date, venue, source. Prep lines record which demand they cover, so Production stops asking you to dedupe by hand. ❓ Jeff: first time a real "banquet that also goes to Daily Prep" end to end. If it isn't painful, move this down. | A banquet plus its linked prep request counts once. An extra pickup still adds. A cancelled event drops out. Every number traces back to its source. |
+| 4.2 | ⬜ | **"Send to prep" from a plan.** Choose the production date per dish (default: the day before). Lines appear in Daily Prep, linked to the plan. | No re-typing a banquet into Daily Prep. |
+| 4.3 | ⬜ | **Custom Menus and Events feed Production.** Today they're left out. | Both show up in the planner. |
+| 4.4 | ⏸ | **Events: merge or keep as a light type.** Audits A and C say merge into Custom Menus; B says link first and merge later. ❓ Jeff. | Decision recorded, and existing records are kept either way. |
+| 4.5 | ⬜ | **Specials can become recipes.** Add a reviewed "Promote to recipe" action. Never overwrite a live recipe silently. | A special that sells doesn't have to be rebuilt by hand. |
+| 4.6 | ⬜ | **"Start from…" for daily prep.** Start from yesterday's order, a standing par for the venue, or linked plans. Enter several lines in a grid. | A morning order takes minutes. |
+| 4.7 | ⬜ | **Plan pages: autosave and phone layout.** Remove the per-row ✓ buttons, and make Banquet, Event and Festival detail pages fit at 390px. | Counts can be edited from a phone. |
+| 4.8 | ⬜ | **Festivals: 9 tabs down to about 4** (Overview, Menu and forecast, Accounting and proposal, Print). Lead with unfinished assumptions, not $0 headline figures. | Fewer tabs, and missing inputs are obvious. |
+| 4.9 | ⬜ | **Today as a work list.** Ranked "needs you now" (menu changed after printing, invoices to review, unfinished closeout, stale prices on this week's recipes), plus the next 72 hours. | The chef can name the next urgent task within 10 seconds. |
+| 4.10 | ⏸ | **Recipe Cook view.** Read-only, large quantities, scale to a target yield ("make 18 lb"), allergens and critical control points up top. ❓ Jeff: deferred since Nov 4. Revive it? | — |
 
 ---
 
-## Chunk 7: Menu Engineering, Banquets & Event Diffing
-**Goal:** Give you commercial menu-engineering analytics, protect the kitchen from last-minute banquet BEO changes, and plan production while keeping each event's quantities, deadlines, and destinations clear to cooks.
+## Phase 5 — Design system and print (runs alongside phases 3–4)
 
-**Target Files:**
-* `app/(app)/menus/[id]/page.tsx`
-* `app/(app)/banquets/[id]/setup/SetupEditor.tsx`
-* `components/BanquetSetupSheet.tsx`
-* `lib/banquets/banquet-setup.ts`
-* `app/(app)/production/page.tsx`
-* `lib/production/production.ts`
-
-### Checklist
-- [x] **Menu Rollout Margin Matrix (`menus/[id]/page.tsx`):** Add a commercial summary bar at the top of every menu showing Category Average Food Cost %, Average Contribution Margin (`$`), and visual progress bars on each dish comparing actual cost % to your target threshold.
-- [x] **Banquet BEO Snapshot & Change Diffing (`banquets/[id]/setup`):** Add a "Lock Baseline / Snapshot" action to Banquet Setups. When event details change 48 hours out (e.g., Guest Count changes from 80 to 115, or a timeline/allergen note changes), highlight the modified fields in high-contrast amber on screen and print a bold **`REVISED: [Date] — Pax +35`** badge on `BanquetSetupSheet.tsx`.
-- [x] **Event-based production planning (`/production`):** Select a date range across Banquets, Festivals, To-Go rollups, and Daily Prep Orders, keeping each source job/event separate by default. Cook-facing work and printouts retain event name/reference, venue/destination, service date/time, prep deadline, recipe/variant, quantity/unit, and event-specific instructions. A date-range overview must not replace individual event packets with an undifferentiated weekly total.
-- [x] **Combined shopping list for purchasing:** Let the purchaser select source events/jobs and combine their raw ingredient needs into one vendor/category shopping list. Show total quantities with explicit units and each event's contribution; flag missing recipe links, incomplete package mappings, and incompatible units instead of assuming quantities. Keep this purchasing overview separate from cook-facing work. Do not combine production batches or replace event-specific prep sheets, cook packets, project timers, or accounting records.
-
-### Production scope decision — November 1, 2026
-
-The user clarified that only the shopping list should be combined, for their purchasing. Cooks continue to receive separate event prep sheets and cook packets with event identities, quantities, timing, destinations, and special instructions. The weekly packet must also default to separate event sections. There is no shared production-batch or allocation workflow in this chunk. Combined purchasing shows the source event breakdown and remains an estimate until the purchaser reviews it.
-
-### Implementation status — November 1, 2026
-
-Implemented. Production opens date-scoped event work summaries with separate quantities, instructions, destinations and packet links. Managers/admins can explicitly select Banquets, Festivals, To-Go plans and unfinished Daily Prep requests for one vendor/category purchasing list with source contributions, raw usable-yield adjustments, compatible pack suggestions and review warnings. Printed prep demand uses frozen order/daily recipes; unknown mappings and invalid recipe paths are excluded rather than silently approximated. To-Go order cutoffs and undated plans are labeled explicitly. Purchasing creates no production batches or accounting writes.
-
-Weekly banquet prep and cook packets remain event-specific, including supporting recipes, QR projects and event-local reference links. Existing day-prep bookmarks open the daily event view. Locked BEO baselines preserve the original saved reference, reject stale previews and concurrent duplicate locks, and show before/after changes on screen and print. Packing checks do not create BEO changes. Menu category averages exclude incomplete or invalid costing; dish bars show the target and stale-price estimates.
-
-Apply `20261101020000_event_production_planning` before release; normal `npm start` applies migrations. Existing frozen packets and accounting facts are unchanged. See [event-production-planning.md](docs/event-production-planning.md) for operation, scope and verification.
-
-Validation: production build (webpack), TypeScript, targeted ESLint, 200 unit checks and 34 disposable-PostgreSQL checks passed. Desktop/mobile browser coverage verifies source selection/totals/warnings, event separation, live menu margin refresh, BEO locks/revisions, date validation, role restrictions and unchanged frozen/ledger data. Existing banquet-setup, print-controller and recipe-costing browser regressions passed. The purchasing PDF and all four sample weekly-event pages were rendered and visually reviewed; event names remain attached to supporting recipes.
-
-### Copy-Paste Agent Prompt for Chunk 7
-> Read `app/(app)/menus/[id]/page.tsx`, `app/(app)/banquets/[id]/setup/SetupEditor.tsx`, `components/BanquetSetupSheet.tsx`, `lib/banquets/banquet-setup.ts`, and `app/(app)/production/page.tsx`. Execute **Chunk 7** of `ROADMAP.md`: add category menu margin summaries and dish cost bars, implement locked Banquet BEO baselines with change details on screen and print, and build event-based production planning in `/production`. Preserve separate cook work/packets for every event, including the weekly banquet packet. Add a purchaser-facing combined shopping list for explicitly selected source events/jobs; preserve source contributions, units, conversion warnings and missing mapping warnings. Do not combine production batches. Verify date/selection/source demand, nested recipe math, incompatible units, permissions, event instruction visibility, baseline diffs, print usability, and unchanged historical snapshots/accounting. Run TypeScript and relevant tests/build/browser/print checks.
+| ID | Status | Item |
+|---|---|---|
+| 5.1 | ⬜ | Role-based color tokens (`--color-action`, `--color-status-watch`, `--color-safety`…). Remove the remapped Tailwind palettes, where `blue` actually renders mauve. Migrate one module at a time. |
+| 5.2 | ⬜ | Three font families. Drop Cormorant Garamond and JetBrains Mono from the root layout, which saves about 108 KB. |
+| 5.3 | ⬜ | One page template: title, context line (venue · date · status), one primary action, overflow menu. Smoking, Specials and Events move onto it. Fix the nested `<main>` in Smoking. |
+| 5.4 | ⬜ | Type floor: no text under 12px (156 current uses). Monospace only for numbers and codes. No emoji in the UI. |
+| 5.5 | ⬜ | `loading.tsx` skeletons per section (there are none today) and shared Empty / Saving / Saved / Retry states. |
+| 5.6 | 🔧 | **Print redesign.** The branded client menu was paused partway. Then station cards in the approved v3 look and the chef's copy (costing, allergen grid, make-ahead list, order list by vendor). Then carry these to banquet, festival, menu, prep and to-go packets. Open question: does a sub-recipe from a different station print with its parent dish or with its own station? |
+| 5.7 | ⬜ | Move all printouts onto `PrintController`, and remove the doubled print headers. |
 
 ---
 
-## Chunk 8: The "Un-Fun" Repo & Architecture Cleanup
-**Goal:** Pay down technical debt, organize the 70+ flat files in `lib/`, and isolate non-ops code so the repo stays fast and clean for years.
+## Phase 6 — Later (only after the core is connected)
 
-**Target Files:**
-* `lib/*`
-* `scripts/*`
-* `app/(games)/homestead/*`
-* `app/(games)/trivia/*`
-* `.gitignore`
+- Yield library: suggest recipe yields from actual smoking, preservation and prep runs.
+- Price-change digest on Today: "Butter +12% moved 6 dishes; 2 are now over target."
+- Guest dietary counts on plans, checked against each dish's allergens.
+- Link Cook ↔ User and add a wage band, so scheduled labor can appear in Monthly Tracker.
+- Show banquet and festival load in the Schedule header.
+- POS sales import. ❓ Jeff: which POS does Foxtown use?
+- Move invoice and smoking files out of the database into object storage.
+- Store money as integer cents in new columns. Migrate old columns only with reconciliation tests.
 
-### Checklist
-- [x] **Organize `lib/` into Domain Folders (with barrel re-exports or clean import updates):**
-  * `lib/recipes/` (`costing.ts`, `recipe-cost-sheet.ts`, `recipe-groups.ts`, `recipe-references.ts`, `method.ts`, `method-cues.ts`, `allergens.ts`, `units.ts`)
-  * `lib/prep/` (`prep.ts`, `prep-workflow.ts`, `prep-costing.ts`, `prep-accounting-report.ts`, `prep-packets.ts`, `prep-worksheet.ts`, `prep-dates.ts`)
-  * `lib/banquets/` (`banquet.ts`, `banquet-setup.ts`, `banquet-week.ts`, `event-status.ts`)
-  * `lib/menus/` (`menu-rollout.ts`, `menu-rollout-data.ts`, `to-go-rollup.ts`, `festival.ts`, `festival-accounting.ts`)
-  * `lib/games/` (`homestead.ts`, `homestead-storage.ts`, `trivia.ts`, `trivia-engine.ts`, `trivia-custom.ts`, `trivia-fallback.ts`)
-- [x] **Route Group Isolation for Games:** Move `app/(app)/homestead` and `app/(app)/trivia` into `app/(games)/homestead` and `app/(games)/trivia` with their own dedicated layout so they are completely decoupled from the culinary operations shell.
-- [x] **Archive One-Off Launch & Backfill Scripts:** Keep the completed Annex launch repair, its helper/regressions, and historical backfills under `scripts/archive/`, with existing operator package commands preserved.
-- [x] **Consolidate Browser Test Scripts:** Unify the standalone `scripts/test-*-browser.mjs` files into a clean test runner setup.
-- [x] **Git Hygiene:** Remove `.DS_Store` from git tracking (`git rm --cached .DS_Store`) and ensure `.DS_Store` is in the root `.gitignore`.
-
-### Implementation status — November 1, 2026
-
-Implemented. Domain modules and colocated tests use explicit updated imports across the app, API routes, components, fixtures and operator scripts. Games have an independent authenticated layout at the same public URLs, without loading the operations sidebar or catalog-search queries. Public trivia joining remains separate. Completed backfills and the Annex repair/helper/regressions are archived; operator commands retain their preview/apply protections. Finder metadata is no longer tracked and is ignored at the repository root.
-
-Browser checks use one suite registry/runner with shared Chromium setup, local origin, server readiness and disposable-database validation; all requested legacy smoke flags run instead of exiting after the first. Unit checks discover colocated tests automatically. Existing Homestead lint issues were resolved by giving ordinary functions non-hook names and deferring/canceling local-save hydration safely. Regression checks also exposed floating-point noise in the executive accounting export total; it now sums the existing captured integer cents before converting to dollars once. Existing ledger facts and saved export snapshots are unchanged.
-
-Validation: production build (webpack), standalone TypeScript, full ESLint, 209 unit checks, 40 operational PostgreSQL checks plus the Homestead persistence check passed. Eleven desktop/mobile browser suites cover game authentication/layout separation and saves, workspace editing, monthly calendar/invoice prices, invoice photo/PDF storage, To-Go, venue migration preservation, event-specific purchasing/BEO changes, banquet setup, shared print controls and recipe costing. Runner discovery and unknown-suite/remote-database rejection were checked. Game screenshots were visually reviewed. No database migration or dependency change is required. See [repository-structure.md](docs/repository-structure.md).
-
-### Copy-Paste Agent Prompt for Chunk 8
-> Execute **Chunk 8** of `ROADMAP.md`: move `homestead` and `trivia` into an `app/(games)` route group, archive completed one-off backfill/repair scripts into `scripts/archive/`, organize `lib/` into domain folders (updating imports cleanly across the repo), and clean up `.DS_Store` in `.gitignore`. Run `npx tsc --noEmit` and the test suite to verify zero broken imports.
+**Not planned:** chat assistant, auto-ordering to vendors, recipe marketplace, multi-tenant SaaS.
 
 ---
 
-## Chunk 9: Smoking Program — Batch Logs & Thermometer Photos
-**Goal:** Build a repeatable smoking-program history from the thermometer screenshots/photos the kitchen already receives, without requiring a device export or live integration.
+## Open decisions for Jeff
 
-**Status — November 1, 2026:** First release implemented. Mixed-product runs, local screenshot OCR/manual entry, checkpoints/yields, history/repeat setup, QR smoke sheets and audited review are available. See [smoking-program.md](docs/smoking-program.md) for operation, verification and deployment.
+1. Is the Cook view and team rollout still deferred? (Affects 2.6, 2.7, 4.7 and 4.10.)
+2. Inventory and Order Guides: retire or revive? (3.6)
+3. Events: merge into Custom Menus, or keep as a light type? (4.4)
+4. Do the Break Room games stay in this app?
+5. Does Cleanup stay in the top-level sidebar?
+6. Upgrade the server size? (1.7)
+7. Which POS system, if any?
 
-### Checklist
-- [x] **Smoking runs with multiple product lots:** Add an Operations workspace for a dated smoker run, venue, smoker/equipment, responsible cook, and notes. A run can contain multiple products with separate load/pull times, quantities, recipe links, and probe assignments. Support brisket, pork shoulder, ribs, whole chicken, cheddar cheese, jalapeño cheddar sausage, and custom products as needed. Keep hot-smoking and cold-smoking procedures/targets separate and configurable by product.
-- [x] **Photo-first cook records:** Upload thermometer screenshots, phone photos, and supporting handwritten sheets to a run or individual lot; allow multiple images per cook. Reuse the compact, authenticated document-storage pattern from Chunk 6 with smoking-specific records. Preserve legible chart labels, viewing/download access, upload attribution, and duplicate detection; do not require a CSV export, device account, or API key. Offer local OCR plus quick manual summary entry beside the image so the first release works without paid AI services.
-- [x] **Local OCR and field parsing:** Run an open-source OCR engine such as Tesseract.js in the user's browser, with self-hosted engine/language assets and no third-party image processing. Normalize light/dark screenshots, locate labels and nearby values, and parse known formats for date, target/peak temperature, units, and duration into a draft. Support the supplied thermometer layout first, using label positions rather than fixed screen coordinates alone. Show the source beside editable results and require confirmation; leave unclear values blank and retain manual entry if recognition fails. Benchmark recognition accuracy and phone performance on real screenshots before release. Handwritten logs remain attachments/manual entry until separately validated.
-- [x] **Structured cook summaries and checkpoints:** Record the source label/date, cooking duration, displayed target and peak temperatures with units, and food-versus-ambient probe identity when known. Keep the device's preset/title separate from the actual product and lot. Allow timestamped manual readings and notes for load, wrap, pull, rest, hold, and cooling where applicable. Distinguish device-reported duration, manually recorded start/finish times, and hands-on labor; leave unknown values blank.
-- [x] **Actual yield and process notes:** Capture raw weight/count, optional trimmed weight, finished usable weight/count and units, trim/waste, seasoning/brine, wood/fuel, smoker settings, and quality notes. Calculate yield/shrink only from compatible measurements and compare planned versus actual output. Link recipes and existing prep/banquet projects where relevant, reusing project identity and review rather than creating duplicate timers. Cook history must not automatically alter recipe yield standards, inventory, or accounting; applying a reviewed prep result follows the existing explicit review/prefill workflow.
-- [x] **Searchable history and repeat cooks:** Filter by product, date, venue, smoker, and cook; compare duration, finished yield, and quality across batches. Start a new run from a prior setup, copying only the procedure/planned settings and never prior readings, actual yields, photos, or review sign-off.
-- [x] **Clipboard smoke sheet:** Print a run/lot sheet with product, raw quantity, probe assignments, planned settings, load/wrap/pull/rest checkpoints, temperature/time write-in rows, yield, notes, and initials. Link its QR code to the corresponding run/lot. Follow the shared print controller/header conventions and retain at least 28px handwritten cells. Allow paper results and photos to be entered afterward.
-- [x] **Review and traceability:** Preserve source photos and original entered readings; record who corrected a value, when, and why. Clearly distinguish unreviewed transcription, confirmed readings, missing checkpoints, and manager/admin review. A device title such as “Well Done,” a setpoint, or a cook timer must not automatically mark a lot complete, approved, or compliant with its configured procedure.
+## Change log
 
-**Validation:** Production build/TypeScript, 213 unit checks, 47 disposable-PostgreSQL checks, smoking acceptance and workspace browser regressions passed. The supplied screenshot matched all six summary fields; the browser made no third-party requests. Short mixed-run sheets were visually reviewed as a two-page PDF, with decoded QR links and handwriting cells ≥28px. Desktop and mobile-emulated OCR measured 0.5s/0.6s with local asset delivery. Physical iPhone/Safari and mobile-network timing remain field validation; additional device layouts and handwriting are unvalidated.
-
-**Field validation still open:** Physical iPhone/Safari first-use download and recognition timing; emulated mobile coverage above is not a substitute for that hardware measurement.
-
-### Optional later phase — expanded photo interpretation
-
-- [ ] Extend local OCR parsing to additional thermometer layouts after validating representative images. Preserve confirmed results and avoid reprocessing on every view. Product/lot and probe assignments still require confirmation when the image does not establish them.
-- [ ] Consider paid AI only as an explicit opt-in fallback for layouts local OCR cannot handle, gated on the spending controls described in the deferred AI section below. Local OCR, photo storage, and manual entry remain independently usable without paid AI calls.
-- [ ] Retain the chart image for visual comparison. A separate local image-processing experiment could calibrate the axes and trace colored curves, but any reconstructed points must be labeled approximate, preserve gaps/overlap ambiguity, and never be presented as original device samples or proof of threshold timing. Exact time-series ingestion and live alerts require a suitable device export/integration and remain separate future scope.
-
-Implementation references: [Tesseract.js browser/Node OCR](https://github.com/naptha/tesseract.js) and [Tesseract image-quality guidance](https://tesseract-ocr.github.io/tessdoc/ImproveQuality.html). Local OCR reads text; application rules map that text to cook fields. No paid vision service is required for this approach.
-
-### Acceptance example from the supplied screenshot
-
-A user can attach the October 31, 2026 screenshot to a smoking lot and use local OCR to draft its visible source title **“Breast: Well Done”**, date, target **165°F**, cooking time **6 hr 22 min**, and reported peak **144.8°F**, then confirm/correct those fields before saving. Test the actual OCR output against these expected values rather than assuming recognition succeeds. Actual product, probe-to-lot assignments, start/finish timestamps, and finished yield require user entry or confirmation. The displayed target and reported peak remain separate facts; the title is not evidence of completion. The original chart stays viewable, with no fabricated sample readings. A mixed run can also contain brisket or cheese with independent lot records and procedures.
-
-### Copy-Paste Agent Prompt for Chunk 9
-> Read `AGENTS.md`, Chunk 9 of `ROADMAP.md`, `prisma/schema.prisma`, `docs/production-project-logs.md`, and `docs/accounting-invoices.md`. Implement the first-release smoking program: multi-product runs/lots, authenticated photo storage, browser-local OCR with reviewed field parsing and manual fallback, cook summaries/checkpoints, actual yields, searchable history, repeat-run setup, printable QR smoke sheets, and audited review. Support the listed products plus custom additions. Reuse existing production-project and document-storage patterns without changing historical packets or automatically posting inventory/accounting. Keep paid AI extraction, graph reconstruction, and device integrations deferred. Verify role/venue access, readable image round trips, local-only OCR processing, recognition accuracy and failure recovery, duplicate/retry behavior, mixed-product/probe assignments, yield units, correction history, repeat-run resets, print/QR usability, and the screenshot acceptance example; run TypeScript and the relevant build, unit, transaction, and browser checks.
-
----
-
-## Chunk 10: Monthly Operating Calendar & Invoice Ingredient Prices
-**Goal:** Track daily gross sales, actual labor dollars and food purchases by invoice date in a visual monthly calendar, and match invoice lines to existing ingredients for supplier price history.
-
-**User decisions — November 1, 2026:** Use gross sales; attribute food spend to the invoice date. Prioritize this work ahead of the remaining cleanup/smoking chunks. Manual reviewed matching is in scope; paid AI and automatic catalog-price posting remain deferred.
-
-### Checklist
-- [x] Venue/month calendar with daily detail entry, gross sales, labor dollars, food purchases and percentages, monthly recorded totals, missing-versus-zero handling, mobile layout and CSV.
-- [x] Invoice-dated purchases/credits with document links, correction/void history, explicit food review, duplicate prevention and no prep-ledger/inventory writes.
-- [x] Reviewed invoice line entry matched to the existing ingredient database; explicit quantity/pack/unit conversion, paid prices, supplier/date provenance, unmatched/non-food rows, and credits.
-- [x] Ingredient price-history charts and tables by supplier with compatible-unit comparisons, same-supplier changes and invoice links. Preserve catalog prices until deliberately edited through the existing workflow.
-- [x] Confirm the reviewed food-line total into the calendar once per invoice. Later line edits require reconfirming the total and reopen daily food review.
-
-**Implementation status — November 1, 2026:** Implemented. Production build/TypeScript, targeted ESLint, 206 unit checks and 39 disposable-PostgreSQL checks passed. Desktop/mobile browser checks cover daily gross sales/labor/food entry, invoice matching and normalized prices, explicit food-total confirmation, CSV, interrupted-response recovery, permissions and unchanged catalog/ledger records. Existing invoice PDF/photo upload, preview/download, duplicate detection and accounting-export regressions passed. A production PDF asset-path issue discovered during regression testing was fixed. Calendar, invoice and ingredient-history screenshots were visually reviewed.
-
-See [operating-calendar.md](docs/operating-calendar.md) for operation, scope, deployment and verification. Requires `20261101030000_operating_calendar`, applied by normal startup. Existing records are preserved without invented historical purchases. Food purchases remain distinct from inventory-adjusted food cost.
-
----
-
-## Future: AI Invoice Assistance & Spending Controls (Deferred)
-**Status:** Not scheduled or enabled. Compact document storage works independently.
-
-- [ ] Benchmark a lower-cost vision model on real invoices, pack sizes, decimals and credits before choosing a default; measure accuracy and actual billed cost.
-- [ ] Add explicit opt-in extraction from an already stored invoice, with saved results reused on later views.
-- [ ] Track actual billed input/output/reasoning tokens, model and per-invoice cost, including failed attempts and retries where reported.
-- [ ] Add an app-enforced monthly spending cap, conservative per-request reservations, document/page limits, rate/concurrency controls and budget alerts. Stop AI work when the cap is reached while keeping document storage available. Provider dashboard budgets alone are not a hard app cap.
-- [ ] Explain estimated cost before extraction and show actual usage afterward.
-- [ ] Restore reviewed extraction, vendor-specific SKU/GCODE and cross-vendor matching, explicit pack-unit/USD checks, recent vendor comparison, >5% price warnings and recipe/menu margin previews before an admin/manager applies any catalog changes.
-- [ ] Revalidate proposals before saving, preserve original facts and review history, and prevent duplicate extraction charges during concurrent uploads/retries.
+- **2026-11-28** — Created from three audits. Retired: old `ROADMAP.md`, `docs/agent-execution-roadmap.md`, `docs/agent-execution-progress.md`, `docs/soigne-roadmap.md`, `docs/app-improvements-roadmap.md`, `docs/enterprise-experience-review.md`, `docs/print-redesign-plan.md`.
