@@ -43,7 +43,8 @@ for (const file of await readdir("node_modules/tesseract.js-core")) {
       `${destination}/core/${file}`,
     ]);
 }
-copies.push(["node_modules/pdfjs-dist/build/pdf.worker.min.mjs", `${destination}/pdf.worker.min.mjs`]);
+// The legacy build polyfills recent JavaScript (e.g. Map.getOrInsertComputed) for older phones and browsers.
+copies.push(["node_modules/pdfjs-dist/legacy/build/pdf.worker.min.mjs", `${destination}/pdf.worker.min.mjs`]);
 for (const folder of ["standard_fonts", "wasm"]) {
   await cp(`node_modules/pdfjs-dist/${folder}`, `${destination}/pdf/${folder}`, { recursive: true });
 }

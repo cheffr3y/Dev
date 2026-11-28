@@ -20,7 +20,7 @@ export async function recognizeInvoice(file: Blob, progress: Progress, signal: A
     progress("Preprocessing invoice on this device");const bitmap=await createImageBitmap(file);
     try {const canvas=prepare(bitmap,bitmap.width,bitmap.height);check(signal);const result=await recognizeLocalCanvas(canvas,"invoice",progress,signal);pages.push({page:1,text:result.text,regions:result.invoiceRows});}finally{bitmap.close();}
   } else {
-    const pdfjs=await import("pdfjs-dist/build/pdf.mjs");pdfjs.GlobalWorkerOptions.workerSrc="/ocr/pdf.worker.min.mjs";
+    const pdfjs=await import("pdfjs-dist/legacy/build/pdf.mjs");pdfjs.GlobalWorkerOptions.workerSrc="/ocr/pdf.worker.min.mjs";
     const task=pdfjs.getDocument({data:new Uint8Array(await file.arrayBuffer()),useSystemFonts:true,standardFontDataUrl:"/ocr/pdf/standard_fonts/",wasmUrl:"/ocr/pdf/wasm/",maxImageSize:60_000_000});
     const abort=()=>{void task.destroy();};signal.addEventListener("abort",abort);
     try {const pdfDocument=await task.promise;if(pdfDocument.numPages>20)throw new Error("Use at most 20 invoice pages.");

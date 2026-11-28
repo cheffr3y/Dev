@@ -58,7 +58,7 @@ try {
     assert.equal(await checkbox.isDisabled(), true);
   }
   assert.equal(await fields.locator('input[value="wheat"]').isChecked(), true);
-  assert.deepEqual(await form.evaluate(el => new FormData(el).getAll("allergen")), ["wheat"]);
+  assert.deepEqual(await form.evaluate(el => new FormData(el).getAll("allergen")), ["wheat", "gluten"]); // a Wheat tag always implies Gluten
   console.log("Nested ingredient tags are locked; only the manual selection submits.");
   const saveRecipe = manager.waitForResponse(response => response.request().method() === "POST");
   await manager.getByRole("button", { name: "Save Changes", exact: true }).click();
@@ -66,6 +66,7 @@ try {
   console.log("Recipe save completed.");
   await manager.reload();
   assert.equal(await fields.locator('input[value="wheat"]').isChecked(), true);
+  assert.equal(await fields.locator('input[value="gluten"]').isChecked(), true);
   await manager.goto(`${soupUrl}/print`);
   const profile = manager.locator(".recipe-specs > div").last();
   for (const label of ["Milk", "Wheat", "Soy", "Mustard"]) assert.ok((await profile.innerText()).includes(label));
@@ -109,7 +110,7 @@ try {
   await staff.getByRole("row").filter({ hasText: newIngredient }).getByText("Eggs", { exact: true }).waitFor();
   await staff.goto(soupUrl);
   await staff.getByRole("tab", { name: "HACCP & Compliance", exact: true }).click();
-  await staff.getByText("Wheat, Mustard", { exact: true }).waitFor();
+  await staff.getByText("Wheat, Gluten, Mustard", { exact: true }).waitFor();
   console.log("Ingredient creation persists tags; staff can read ingredients and inherited recipe allergens without editing controls.");
 } catch (error) {
   for (const context of contexts) for (const page of context.pages()) {

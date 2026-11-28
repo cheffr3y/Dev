@@ -35,7 +35,10 @@ console.log("Migration preserves IDs, codes, separate stock, user/event assignme
 const passwordHash = await bcrypt.hash("local-smoke-only", 4);
 await prisma.user.createMany({ data: ["ADMIN", "MANAGER", "STAFF"].map(role => ({ name: role, email: `${role.toLowerCase()}@local.test`, passwordHash, role, homeVenueId: role === "MANAGER" ? oldBrew.id : directory[0].id })) });
 
+const step = message => console.log(`VENUE_STEP ${new Date().toISOString()} ${message}`);
+step("launching browser");
 const browser = await launchBrowser();
+step("browser launched");
 const output = process.env.VENUE_REVIEW_DIR || "/tmp/venue-directory-review";
 await mkdir(output, { recursive: true });
 const contexts = [];
@@ -46,6 +49,8 @@ async function login(role) {
   contexts.push(context);
   const page = await context.newPage();
   page.setDefaultTimeout(15000);
+  // Progress trail: if CI ever stalls, the log shows the last page reached.
+  page.on("framenavigated", frame => { if (frame === page.mainFrame()) step(`${role} ${frame.url()}`); });
   page.on("pageerror", error => errors.push(error.message));
   await page.goto(`${process.env.AUTH_URL}/login`);
   await page.getByLabel("Email").fill(`${role}@local.test`);

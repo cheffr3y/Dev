@@ -17,6 +17,8 @@ async function main() {
   const other = await prisma.venue.create({ data: { id: "pulse-other-venue", name: "Other Kitchen", code: "POTHER" } });
   await prisma.user.updateMany({ where: { email: { in: ["admin@local.test", "manager@local.test", "staff@local.test"] } }, data: { homeVenueId: venue.id } });
   const admin = await prisma.user.findUniqueOrThrow({ where: { email: "admin@local.test" } });
+  // Earlier suites can leave shared (venue-less) active menus; assert only what this fixture adds.
+  const baseline = (await loadMorningPulse(venue.id, true)).margins, baselineMenus = (await loadMorningPulse(venue.id, true)).activeMenus;
   const vendor = await prisma.vendor.create({ data: { name: "Pulse Supplier" } });
   const butter = await prisma.item.create({ data: { name: "Pulse Butter", unit: "lb", unitCost: 8, vendorId: vendor.id, priceUpdatedAt: new Date(), gcode: "PULSE-BUTTER" } });
   const missing = await prisma.item.create({ data: { name: "Pulse Missing Details", unit: " ", unitCost: 0 } });
@@ -50,9 +52,9 @@ async function main() {
   assert.deepEqual(pulse.banquets.map(b => b.name), ["Pulse Today Banquet", "Pulse Last Day Banquet"]);
   assert.deepEqual(pulse.events.map(e => e.name), ["Pulse Today Event"]);
   assert.equal(pulse.festivals.some(f => f.name === "Pulse Shared Festival"), true);
-  assert.equal(pulse.activeMenus, 2);
-  assert.deepEqual(pulse.margins.rows.map(row => [row.title, row.fcp]), [["Pulse Dinner Dish", 50]]);
-  assert.equal(pulse.margins.needsReview, 1);
+  assert.equal(pulse.activeMenus, baselineMenus + 2);
+  assert.deepEqual(pulse.margins.rows.filter(row => !baseline.rows.some(old => old.id === row.id)).map(row => [row.title, row.fcp]), [["Pulse Dinner Dish", 50]]);
+  assert.equal(pulse.margins.needsReview, baseline.needsReview + 1);
   assert.equal(pulse.queue?.find(row => row.day === day)?.transfers, 1);
   assert.equal(pulse.queue?.some(row => row.day === closed), false);
   assert.equal(pulse.queue?.some(row => row.day === "2025-01-01"), false);

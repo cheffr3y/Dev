@@ -14,6 +14,8 @@ for (const name of names) assertDisposableBrowserEnvironment(suites[name]);
 await waitForServer();
 
 // A separate process per case preserves cleanup and keeps fixture changes ordered.
+// BROWSER_CONTINUE=1 runs every requested suite and reports all failures at the end.
+const keepGoing = process.env.BROWSER_CONTINUE === "1", failed = [];
 for (const name of names) {
   console.log(`\nBrowser suite: ${name}`);
   const child = spawn(process.execPath, ["--import", "tsx", fileURLToPath(new URL(`./cases/${name}.mjs`, import.meta.url))], {
@@ -27,5 +29,9 @@ for (const name of names) {
     child.once("exit", (status, signal) => resolve(status ?? (signal === "SIGINT" ? 130 : 1)));
   });
   process.removeListener("SIGINT", onInterrupt); process.removeListener("SIGTERM", onTerminate);
-  if (code !== 0) process.exit(code);
+  if (code !== 0) { if (!keepGoing) process.exit(code); failed.push(name); }
+}
+if (keepGoing) {
+  console.log(`\nBrowser suites: ${names.length - failed.length} passed, ${failed.length} failed${failed.length ? `: ${failed.join(", ")}` : ""}`);
+  if (failed.length) process.exit(1);
 }

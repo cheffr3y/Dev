@@ -54,6 +54,9 @@ try {
   await page.keyboard.press("Escape");
   await kitchen.waitFor({ state: "detached" });
   assert.equal(await page.evaluate(() => document.activeElement?.textContent), "Kitchen");
+  // Escape must keep the menu closed, not reopen it when focus returns to the job link.
+  await page.waitForTimeout(500);
+  assert.equal(await kitchen.count(), 0);
   await page.goto(`${base}/invoices`);
   await page.waitForLoadState("networkidle");
   await page.getByRole("button", { name: "Collapse sidebar", exact: true }).click();

@@ -8,7 +8,9 @@ export const reviewRowSchema = z.object({
   savedRevision: z.number().int().nonnegative().nullable().optional(),
   packText: z.string().max(100).optional(),
   eachWeightOz: z.number().finite().nullable().optional(),
-  key: id, purchaseId: z.string().uuid(), itemId: id,
+  // Match the purchase validator: saved line ids need not be UUIDs, and a stricter
+  // draft rule would crash the review grid for such an invoice.
+  key: id, purchaseId: z.string().min(1).max(150), itemId: id,
   rawCode: z.string().max(100).nullable(), rawDescription: z.string().max(500),
   quantity: numeric, unit: z.string().max(40), unitPrice: numeric, extendedPrice: numeric,
   totalMode: z.enum(["calculated", "entered"]).optional(),

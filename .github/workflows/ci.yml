@@ -1,0 +1,81 @@
+name: CI
+
+# Runs on every push (any branch) and every pull request. Each run starts from a clean
+# machine and a throwaway Postgres; it never touches the production database.
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: culinary-ops
+    env:
+      # Build-time placeholders only. Real values live in the deployment, never here.
+      AUTH_SECRET: ci-build-only-secret
+      DATABASE_URL: postgresql://ci@127.0.0.1:1/unused
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: culinary-ops/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Production build
+        run: npm run build
+
+      - name: Locate Postgres and install the test browser
+        run: |
+          if ! ls -d /usr/lib/postgresql/*/bin >/dev/null 2>&1; then sudo apt-get update && sudo apt-get install -y postgresql; fi
+          echo "PREP_PG_BIN=$(ls -d /usr/lib/postgresql/*/bin | sort -V | tail -1)" >> "$GITHUB_ENV"
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      # Database integration tests, then the browser suites, against one throwaway database.
+      # Suites still waiting for repair (including venue-directory, which hangs on CI) are listed in
+      # ROADMAP.md item 1.8 and are not run here yet.
+      - name: Database integration and browser tests
+        timeout-minutes: 20
+        env:
+          PREP_BROWSER_SMOKE: "1"
+          BROWSER_CONTINUE: "1"
+          BROWSER_SUITES: >-
+            morning-pulse specials invoice-workflow recipe-dependencies url-state schedule-editor
+            workspace purchase-counts dietary-review banquet-setup recipe-costing ingredient-allergens
+            ingredient-cleanup production-jobs operating-calendar games-shell
+        run: bash scripts/test-prep-postgres.sh
+
+      - name: Homestead database tests
+        timeout-minutes: 10
+        run: npm run test:homestead
+
+
+      - name: Keep test screenshots when something fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-screenshots
+          path: /tmp/*-review/
+          if-no-files-found: ignore
+          retention-days: 7
