@@ -55,6 +55,7 @@ jobs:
       # Database integration tests, then the browser suites, against one throwaway database.
       # Suites still waiting for repair are listed in ROADMAP.md item 1.8 and are not run here yet.
       - name: Database integration and browser tests
+        timeout-minutes: 20
         env:
           PREP_BROWSER_SMOKE: "1"
           BROWSER_CONTINUE: "1"
@@ -65,9 +66,11 @@ jobs:
         run: bash scripts/test-prep-postgres.sh
 
       - name: Homestead database tests
+        timeout-minutes: 10
         run: npm run test:homestead
 
       - name: Venue directory database and browser tests
+        timeout-minutes: 10
         run: npm run test:venues
 
       - name: Keep test screenshots when something fails
