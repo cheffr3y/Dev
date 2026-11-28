@@ -14,7 +14,7 @@ try {
     await db.invoiceItemAlias.create({data:{vendorId:vendor.id,itemId:item.id,rawCode:code,normalizedOcrText:description,tokens:description.split(" "),defaultUnit:"cs",defaultPackQty:packQty,defaultPackUnit:"oz"}});
   }
   const context=await browser.newContext({viewport:{width:1600,height:1100}}),page=await context.newPage(),errors=[];
-  page.setDefaultTimeout(60000);page.on("pageerror",error=>errors.push(error.message));
+  page.setDefaultTimeout(60000);page.on("pageerror",error=>{errors.push(error.message);console.error("BROWSER_ERROR",error.message);});page.on("console",message=>{if(message.type()==="error")console.error("BROWSER_CONSOLE",message.text());});
   await page.goto(`${base}/login`);await page.getByLabel("Email").fill("admin@local.test");await page.getByLabel("Password").fill("local-smoke-only");await page.getByRole("button",{name:"Sign in",exact:true}).click();await page.waitForURL(`${base}/`);
   const pdf=await PDFDocument.create(),font=await pdf.embedFont(StandardFonts.Courier),sheet=pdf.addPage([1000,600]);
   ["INVOICE DATE 11/02/2026","SHIP TO: Clipboard Kitchen","W. MEQUON RD ORDER TAKER 555.00","QUANTITY ITEM DESCRIPTION PRICE EXTENDED PRICE",
@@ -25,7 +25,8 @@ try {
   await page.getByRole("button",{name:"Store invoice",exact:true}).click();await page.waitForURL(/\/invoices\?.*id=/);
   const id=new URL(page.url()).searchParams.get("id"),review=page.getByRole("region",{name:"Invoice purchase review",exact:true}),table=review.getByRole("table",{name:"Editable invoice lines"});
   const rows=table.locator("tbody tr"),rollRow=rows.filter({has:page.locator('input[value="104028"]')}),pepperRow=rows.filter({has:page.locator('input[value="SPP101"]')});
-  await review.getByRole("button",{name:"Approve All Matched Lines (2)",exact:true}).waitFor();
+  // In-browser OCR is CPU-bound and much slower on shared CI machines.
+  await review.getByRole("button",{name:"Approve All Matched Lines (2)",exact:true}).waitFor({timeout:180000});
   assert.equal(await rows.count(),2,"Fees and address garbage are hidden by default");
   assert.equal(await rollRow.getByLabel("OCR description",{exact:true}).inputValue(),"PAR BAKED ASSORTED DIAMOND ROLL");
   assert.equal(await rollRow.getByLabel("Line total ($)",{exact:true}).inputValue(),"52.44");
@@ -112,4 +113,12 @@ try {
   assert.equal((await db.operatingFoodExpense.findUniqueOrThrow({where:{invoiceDocumentId:id}})).amountCents,9744);
   assert.equal(await db.invoicePurchaseLine.count({where:{invoiceDocumentId:id}}),2);
   assert.deepEqual(errors,[]);console.log(`Invoice spreadsheet browser checks passed. Screenshots: ${output}`);
+} catch (error) {
+  // Leave evidence for CI: what the review region showed, browser errors, and a screenshot.
+  for (const context of browser.contexts()) for (const page of context.pages()) {
+    console.error("FAILURE_URL", page.url());
+    console.error("FAILURE_REVIEW_TEXT", await page.getByRole("region",{name:"Invoice purchase review",exact:true}).innerText({timeout:2000}).catch(()=>"(review region not found)"));
+    await page.screenshot({path:`${output}/failure.png`,fullPage:true}).catch(()=>{});
+  }
+  throw error;
 } finally {await browser.close();await db.$disconnect();}

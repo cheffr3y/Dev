@@ -69,3 +69,12 @@ jobs:
 
       - name: Venue directory database and browser tests
         run: npm run test:venues
+
+      - name: Keep test screenshots when something fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-screenshots
+          path: /tmp/*-review/
+          if-no-files-found: ignore
+          retention-days: 7
