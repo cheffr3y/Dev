@@ -44,14 +44,16 @@ try {
   await page.goto(`${base}/recipes`);
   const soupPath = await page.getByRole("link", { name: "Cleanup test soup", exact: true }).getAttribute("href");
   await page.goto(base + soupPath);
-  await page.getByText("Edit ingredient", { exact: true }).click();
-  const line = page.locator("form").filter({ has: page.getByRole("button", { name: "Save ingredient line", exact: true }) });
+  // The soup's single raw-ingredient line (the duplicate merged below) is edited through its row's "Edit" disclosure.
+  const formulaRow = page.locator('tr[id^="formula-item-"]').filter({ has: page.locator("td.recipe-row-actions") }).first();
+  await formulaRow.locator("td.recipe-row-actions summary").click();
+  const line = formulaRow.locator("form").filter({ has: page.getByRole("button", { name: "Save ingredient line", exact: true }) });
   await line.getByLabel("Quantity", { exact: true }).fill("3");
   await line.locator('textarea[name="note"]').fill("finely diced");
   await save(page, line, "Save ingredient line");
   await page.getByRole("status").filter({ hasText: "Ingredient line saved." }).waitFor();
   await page.reload();
-  await page.getByText("finely diced", { exact: true }).last().waitFor();
+  await page.getByText("finely diced", { exact: true }).filter({ visible: true }).first().waitFor(); // the closed editor holds a hidden copy
   console.log("Full ingredient editor persists structured pack data; recipe lines edit quantities and notes directly.");
   await page.goto(`${base}/items/merge?source=${source}&target=${target}`);
   await page.getByRole("heading", { name: "Compare and replace", exact: true }).waitFor();
@@ -63,7 +65,7 @@ try {
   await page.getByRole("status").waitFor();
   await page.goto(base + soupPath);
   await page.getByRole("row").filter({ hasText: "Tomato, Roma" }).filter({ hasText: "finely diced" }).waitFor();
-  await page.getByText("finely diced", { exact: true }).last().waitFor();
+  await page.getByText("finely diced", { exact: true }).filter({ visible: true }).first().waitFor(); // the closed editor holds a hidden copy
   const soupRow = page.getByRole("row").filter({ hasText: "Tomato, Roma" }).filter({ hasText: "finely diced" });
   assert.match(await soupRow.innerText(), /3 oz/);
   await page.goto(`${base}/items?q=roma`);

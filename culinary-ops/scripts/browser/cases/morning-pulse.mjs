@@ -21,9 +21,12 @@ async function login(role, viewport = { width: 1440, height: 1000 }) {
   return page;
 }
 async function open(page, query = "") {
-  await page.keyboard.press("Control+k");
   const input = page.getByRole("combobox", { name: "Search actions, recipes & ingredients", exact: true });
-  await input.waitFor();
+  // The shortcut listener attaches after hydration; a key pressed right after navigation can be missed.
+  for (let attempt = 0; ; attempt++) {
+    await page.keyboard.press("Control+k");
+    try { await input.waitFor({ timeout: 2000 }); break; } catch (error) { if (attempt >= 4) throw error; }
+  }
   await page.waitForFunction(() => document.activeElement?.getAttribute("role") === "combobox");
   if (query) await input.fill(query);
   return input;
@@ -98,7 +101,7 @@ try {
   await admin.waitForFunction(() => window.__pulsePrints === 1);
   assert.equal(new URL(admin.url()).searchParams.has("print"), false);
   await admin.reload();
-  await admin.getByRole("button", { name: "Print cook packet" }).waitFor();
+  await admin.getByRole("button", { name: "Print event cook packets", exact: true }).waitFor();
   assert.equal(await admin.evaluate(() => window.__pulsePrints), 0);
   await admin.emulateMedia({ media: "print" });
   assert.equal(await admin.locator("header.no-print").isVisible(), false);

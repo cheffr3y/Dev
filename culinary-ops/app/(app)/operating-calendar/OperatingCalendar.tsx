@@ -6,7 +6,7 @@ import { money, pct } from "@/lib/recipes/costing";
 import { buildOperatingMonth, type OperatingDayData, type FoodExpenseData } from "@/lib/accounting/operating-calendar";
 import { FoodExpenseForm, OperatingDayForm, type InvoiceChoice } from "@/components/OperatingEntryForms";
 const amount = (cents: number | null) => cents == null ? "—" : money(cents / 100);
-const shortAmount = (cents: number | null) => cents == null ? "—" : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 1 }).format(cents / 100);
+const shortAmount = (cents: number | null) => cents == null ? "—" : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact", minimumFractionDigits: 0, maximumFractionDigits: 1 }).format(cents / 100);
 export function OperatingCalendar({ month, venueId, venues, entries, expenses, invoices, today, initialDay }: {
   month: string; venueId: string; venues: { id: string; name: string }[]; entries: OperatingDayData[]; expenses: FoodExpenseData[]; invoices: InvoiceChoice[]; today: string; initialDay?: string;
 }) {

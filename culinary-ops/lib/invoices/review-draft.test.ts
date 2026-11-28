@@ -12,6 +12,13 @@ test("review drafts retain unfinished values without preserving approval verific
   assert.equal(reviewDraftSchema.safeParse({ ...draft, usd: true }).success, false);
 });
 
+test("saved invoice lines with non-UUID ids still load into a review draft", () => {
+  const draft = emptyReviewDraft(1);
+  const row = { key: "saved-operating-line", purchaseId: "operating-line", itemId: "", rawCode: null, rawDescription: "Two cases of tomatoes", quantity: 2, unit: "case", unitPrice: null, extendedPrice: 60, packQty: 10, packUnit: "lb", ignored: false, remember: true, newName: "", newUnit: "" };
+  assert.equal(reviewDraftSchema.safeParse({ ...draft, rows: [row] }).success, true);
+  assert.equal(reviewDraftSchema.safeParse({ ...draft, rows: [{ ...row, purchaseId: "" }] }).success, false);
+});
+
 test("draft saves serialize edits made during a slow save", async () => {
   const initial = emptyReviewDraft(1), requests: number[] = [];
   let release = () => {};
